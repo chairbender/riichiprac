@@ -275,11 +275,11 @@ The world-space layout already exists, user-signed-off, in
 
 | Quantity | Committed value | 3D use |
 | --- | --- | --- |
-| Mat | 25 units = 700 mm square, front/back walls at radius 7.0 | layout reference; the drawn felt is a square sized per frame to reach the top and bottom edges (3D-02), wall ring |
-| Tile | 1 unit = 28 mm; 21 × 28 × 16.5 mm; 0.3 mm gaps | tile mesh + layout pitch |
-| Wall | 4 runs × 17 stacks × 2 tiers, 0.760714 pitch, one missing top tile at slot 16 (draw end) | wall layout |
-| Ponds | 3 rows × 6, nearest row at 4.81, next at 2.7886, 4 overflow anchors on the near row | river layout |
-| Human hand | 13 tiles + a draw slot at +5.5805, reclined about its far bottom edge | hand layout |
+| Mat | 25 units = 700 mm square; side wall runs at 6.875 (derived), end runs at 5.875 | layout reference; the drawn felt is a square sized per frame to reach the top and bottom edges (3D-02), wall ring |
+| Tile | 1 unit = 28 mm; 21 × 28 × 16.5 mm; bodies **touch** (no groove) | tile mesh + layout pitch |
+| Wall | 4 runs × 17 stacks × 2 tiers, 0.75 pitch (one tile), one missing top tile at slot 16 (draw end) | wall layout |
+| Ponds | 3 rows × 6, nearest row at 4.81, then 3.81 and 2.81 (one tile apart), 4 overflow anchors on the near row | river layout |
+| Human hand | 13 tiles + a draw slot at +5.5125, reclined about its far bottom edge | hand layout |
 | Compass well | 4 units | compass overlay anchor |
 | Camera | 75 mm on 36 mm, 50° pitch, X = 0, 76 units, negative Shift Y | reference lens/pitch; the shipped frame solves closer (see the revisions below) |
 
@@ -332,34 +332,35 @@ and they supersede the reference values above where they differ.
   ("the top row is not lined up with the bottom row"). `wallTierHeightUnits(tier)`
   is the one formula now (`thickness / 2` bottom, `tierStepUnits + thickness / 2`
   top); the layout, the dora indicators and `hero.ts` all call it.
-- **Hands sit much closer to the wall.** `HAND.backRadiusUnits` 10.6 → **8.35**,
+- **Hands sit much closer to the wall.** `HAND.backRadiusUnits` 10.6 → **8.225**
+  (8.35 before 3D-20 closed the pitches, which pulled the side runs in by 0.125),
   i.e. the hand's front edge is 24 mm in front of a **side** run's outer face
   instead of 24 mm in front of the mat edge. That is the floor: a side run
   occupies the band beside every seat's hand, so the hand cannot come further in
   without the two overlapping (the layout gate caught exactly that during the
   wall-ring change). `MELD.rowRadiusUnits` follows the hand, and extra meld rows
   now step **toward the player** (`+index * rowPitch`) — the doc always said
-  "nearer the player", the code stepped inward, and with the hand at 8.35 that
+  "nearer the player", the code stepped inward, and with the hand at 8.225 that
   would put rows 2–3 inside the wall ring (the overlap the change surfaced).
 - **The player's and the across player's hands sit a tile thickness closer.**
-  `HAND.endSeatRadiusUnits` (7.7607) is one 16.5 mm thickness inside
-  `HAND.backRadiusUnits` (8.35), and `boardLayout.handRadius(seat, humanSeat)`
+  `HAND.endSeatRadiusUnits` (7.6357) is one 16.5 mm thickness inside
+  `HAND.backRadiusUnits` (8.225), and `boardLayout.handRadius(seat, humanSeat)`
   gives it to the human and the far seat only — they face the inset end runs, so
-  they have the slack; the left/right seats keep 8.35 because their side runs
+  they have the slack; the left/right seats keep 8.225 because their side runs
   are the floor. Their melds move with them (`placeMelds` takes the seat's own
-  radius). Measured at 16:9: the solved distance drops **55.56 → 53.33** and the
-  hand's long axis grows to **7.40 %** of the frame height. The hand's own
-  bottom margin is 6.27 % in the all-melds fixture (3.94 % when only the human
-  has one, 2.00 % with none) because a left/right seat's meld row runs along the
-  near corner at its side radius and is therefore the board's nearest content —
-  the hand cannot be lower while those stay in frame.
+  radius). Measured at 16:9: the solved distance drops **55.56 → 52.73** and the
+  hand's long axis grows to **7.49 %** of the frame height. The hand's own
+  bottom margin is 6.59 % in the all-melds fixture because a left/right seat's
+  meld row runs along the near corner at its side radius and is therefore the
+  board's nearest content — the hand cannot be lower while those stay in frame.
 - **The wall ring is squared.** The front and back runs (the human's own edge and
-  the far edge) moved from the ring radius 7.0 to **`WALL.endRunRadiusUnits`
-  5.9607**, so their outer face is flush with a side run's end tile at
-  `WALL.runHalfLengthUnits` 6.4607 — "their outside edge lines up with the edge
-  of the left/right walls". The side runs stay on 7.0. All four cannot be inset:
-  a 17-stack run already spans its whole side of the ring, so a smaller square
-  would overlap two stacks at every corner. Consequence for the framing: the
+  the far edge) sit at **`WALL.endRunRadiusUnits` 5.875**, so their outer face is
+  flush with a side run's end tile at `WALL.runHalfLengthUnits` 6.375 — "their
+  outside edge lines up with the edge of the left/right walls". The side runs'
+  radius is **derived** from that length since 3D-20 (`6.375 + tileHeight / 2 =
+  6.875`), which is what makes the corners shared edges rather than 1.1 mm slots.
+  All four cannot share one radius: a 17-stack run already spans its whole side
+  of the ring, so a smaller square would overlap two stacks at every corner. Consequence for the framing: the
   board's vertical extremes are the **hands** (z ±8.94) and the side players'
   meld rows, not the walls, so the camera stays at 55.56 at 16:9 — the wall move
   is composition, not extra zoom. `wallRunRadius(run, humanSeat)` is the one rule
@@ -470,9 +471,15 @@ match, so no flip is applied to the row and the tangent basis (`x` right,
 - `outputColorSpace = SRGBColorSpace`, `toneMapping = NoToneMapping`. The 2.5D
   shells were baked through AgX; the 3D view is not required to match them
   pixel-for-pixel, only to be a plausible sibling. Matching is a user call.
-- Context: `antialias: false`, `alpha: false`, `powerPreference:
-  'high-performance'`, `preserveDrawingBuffer: false`. At an 8.3 MP backing
-  store, 4× MSAA is a fill-rate and memory cost with nothing to buy.
+- Context: `alpha: false`, `powerPreference: 'high-performance'`,
+  `preserveDrawingBuffer: false`. **MSAA is on above the `compat` tier** since
+  3D-20 (see §3D-20's "Landed" record), which reverses this section's original
+  `antialias: false`: the committed 0.055-unit bevel and the 1.5 mm bevel valley
+  between two touching tiles are 1-4 px at the reference solve, so without it
+  every silhouette, bevel and seam edge was a hard step. The 3D-20 measurement is the justification (the
+  hand's outer silhouette's largest one-pixel luma step falls 48 % at 1920 x 1080
+  with MSAA on), and the cost is buffers only (+174 MB at the 8.29 MP cap) since
+  MSAA does not multiply the per-pixel POM march.
 
 ### 2.7 Interaction and accessibility
 
@@ -515,6 +522,13 @@ expressed as `min(devicePixelRatio, 2)` **and** an area limit:
 | high (desktop) | ≤ 8.29 MP | 12 | 3 | 2.0 | 60 fps (16.7 ms) |
 | balanced | ≤ 4.67 MP | 8 | 2 | 1.5 | 60 fps |
 | compat (mobile / weak) | ≤ 2.07 MP | 0 (normal + AO only) | 0 | 1.0 | 30 fps floor (33 ms) |
+
+**MSAA (3D-20).** `high` and `balanced` ask for a 4x context; `compat` does not.
+The tiers above are *resolved* (resolved-buffer) areas; the sample buffers they
+imply at the cap are 4 x (colour 4 B + depth 3 B) = 232 MB against 58 MB, i.e.
++174 MB — buffers, not fill: the fragment shader (and so the POM march) still
+runs once per pixel. `capabilities.backingStoreBytes(pixels, antialias)` states
+the numbers and a unit test pins them.
 
 Draw calls: **4 in steady state** (tiles, contact shadows, riichi sticks, felt)
 and a hard ceiling of **12** including debug. Instances: one tile mesh with
@@ -1293,7 +1307,7 @@ the committed table geometry.
   exactly (no duplicates, none dropped); wall tiles are the fixed decorative
   set and are excluded from that comparison.
 - No two foreground tiles' oriented boxes intersect (a separating-axis check at
-  the committed 0.3 mm gaps); stacked wall tiers are the only intentional
+  the closed contact seams); stacked wall tiers are the only intentional
   proximity and are separated by the tier gap.
 - Pond rows start at the far row and fill toward the seat, matching the
   committed convention; the 4 overflow cells are used before any new row.
@@ -1444,16 +1458,17 @@ by landing this one with `cc-task land-next`.
 **Board handoff follow-up (2026-11-18, same day).** The first render produced
 four layout corrections, all recorded in §2.4's "Board handoff revisions" and
 landed here: the wall's top tier sits on the bottom tier (the thickness was
-counted twice, so the top row floated), the hands moved from radius 10.6 to 8.35
+counted twice, so the top row floated), the hands moved from radius 10.6 to 8.225
 (and meld rows step toward the player so they clear the wall), the camera frames
 the board rather than the mat with the 76-unit floor deleted — 16:9 solves to
-55.56, the tiles are ~37 % larger and the human hand sits 3.82 % above the bottom
-edge — the front/back wall runs are inset to 5.9607 so the ring's front and back
-edges line up with the side runs' end tiles, and the human's and the across
-player's hands then move a tile thickness closer to those end runs
-(`HAND.endSeatRadiusUnits` 7.7607), which lets the camera solve in to **53.33**.
-`check-3d-layout.mjs` gates all of it, including the hand's bottom sliver and the
-two run radii; the look is still the user's call at the same URL.
+52.73 after 3D-20 closed the pitches (55.56 before that), the tiles are ~37 %
+larger and the human hand sits 6.59 % above the bottom edge — the front/back wall
+runs are inset to 5.875 so the ring's front and back edges line up with the side
+runs' end tiles, and the human's and the across player's hands then move a tile
+thickness closer to those end runs (`HAND.endSeatRadiusUnits` 7.6357), which lets
+the camera solve in. `check-3d-layout.mjs` gates all of it, including the hand's
+bottom sliver, the two run radii and (since 3D-20) the tile-gap table; the look is
+still the user's call at the same URL.
 
 ---
 
@@ -1919,12 +1934,12 @@ past the object's base, with the core dark at the foot:
 
 | cast | where it lands |
 | --- | --- |
-| `wall-cast-0` (near run) | the felt strip between the near wall (outer face 6.46) and the human's hand (7.76) |
-| `wall-cast-1/3` (side runs) | sideways past the side walls' outer face (7.5) |
-| `wall-cast-2` (far run) | up-screen past the far wall (6.46) to 7.66 |
-| `wall-end-cast-1/3` (side runs' ends) | +Z off each side run's end face, 1.0 wide (the wall's own thickness), to 7.66 — fills the notch where the near run's band stops at x ±6.46 |
-| `hand-cast-1` (right seat) | +X from its base, to +10.35 |
-| `hand-cast-2` (across) | -Z from its outer base edge, to -9.55 (partly near the top edge) |
+| `wall-cast-0` (near run) | the felt strip between the near wall (outer face 6.375) and the human's hand (7.636), reaching 1.2 units out |
+| `wall-cast-1/3` (side runs) | sideways past the side walls' outer face (7.375) |
+| `wall-cast-2` (far run) | up-screen past the far wall (6.375) to 7.575 |
+| `wall-end-cast-1/3` (side runs' ends) | +Z off each side run's end face, 1.0 wide (the wall's own thickness), to 7.575 — fills the notch where the near run's band stops at x ±6.375 |
+| `hand-cast-1` (right seat) | +X from its base at 8.225, reaching 9.425 |
+| `hand-cast-2` (across) | -Z from its outer base edge at 7.636, to -8.836 (partly near the top edge) |
 | `hand-cast-3` (left seat) | -X from its base |
 | `hand-group-0` (the human) | **unchanged** |
 
@@ -1938,9 +1953,9 @@ alone; the hand's own band is untouched.
 
 ### 3D-20 — Anti-aliasing and white seams between touching tiles
 
-**Goal.** Remove the aliasing on tile silhouettes/bevels and the bright line that
-shows through the 0.3 mm groove where two tiles are in contact, without breaking
-the draw-call budget or the layout's no-overlap invariant.
+**Goal.** Remove the aliasing on tile silhouettes/bevels and the see-through slot
+between two tiles that should be touching, without breaking the draw-call budget
+or the layout's no-overlap invariant.
 
 **Depends on:** 3D-07.
 
@@ -1950,6 +1965,133 @@ this plan does not duplicate a spec that is still being refined. The plan-level
 constraints bind: no 2.5D-pipeline diff, `drawCalls ≤ 4` in the default scene,
 `measure()` reporting intact, `check-3d-layout.mjs` green, and AGENTS.md §6 (a
 numeric probe or the user's verdict, never an agent's look).
+
+**Landed 2026-11-19 (task 261118-2243).** Two rounds: the first fixed the wrong
+thing, the second fixed the real one. Both are recorded because the first
+round's numbers are what identified the mistake.
+
+*Round 1 (rejected by the user).* A shader-darkened inter-tile crevice, derived
+from the 2.5D masks. It measured "no *bright* pixel in the groove" and passed its
+gate, but the user reported the result as "a painted-on black smudge on the edges
+of the tile" and named the real defect: **you could see through the gaps**. The
+gate's statistic could not see that (a dark felt sliver never wins a brightest-
+pixel test), and it only sampled four mid-row lateral seams, never the wall's
+corners or the tier ends. The crevice is gone: no `contact.ts`, no `aContact`
+attribute, no shading term.
+
+*What the gaps were — measured.* `frontend/src/renderers/three/gaps.ts` measures
+every pair of tiles' surface-to-surface separation. On the fixture board before
+the change: **520 slots** in (0, 1.4 mm] —
+
+| family | count | width |
+| --- | --- | --- |
+| wall stacks and wall tiers | 300 | 0.30 mm |
+| wall ring **corners** | 20 | **1.10 mm** |
+| pond rows | 91 | 0.30 mm |
+| pond columns | 53 | 0.20 mm |
+| hand row | 36 | 0.30 mm |
+| wall / dora | 10 | 0.30 mm |
+| meld | 8 | 0.30 mm |
+| dora / dora | 2 | 0.30 mm |
+
+The corner slots were not the committed groove at all: the stack pitch carried
+0.0107 units, so a run's end sat at `runHalfLengthUnits` 6.4607, while the side
+runs were hard-coded to radius 7 and their inner faces to 6.5000 — a 0.0393-unit
+(1.1 mm) slot at every corner, full run length deep, straight down to the felt.
+
+*The fix — close the layout, not shade it.* There is no groove constant any more:
+
+- every row pitch is the body extent it repeats (wall stacks, wall tiers, hand
+  row, pond columns, pond rows, meld slots, sideways advances), so touching
+  bodies meet exactly;
+- the wall's side-run radius is **derived** (`runHalfLength + tileHeight / 2` =
+  6.875) so an end run's outer face and a side run's inner face are the same
+  plane and the corner tiles share a 0.75 × 16.5 mm face instead of a slot;
+- the *deliberate* separations stay and are documented as such: the 7.35 mm
+  tsumogiri draw gap, the 4.2 mm between the draw and the meld row, the 2.8 mm
+  between meld rows, the felt between zones.
+
+Result, measured by the same instrument: the fixture board has **520 touching
+pairs and 0 slots**, the widest board (4 melds/seat, kans, 22 discards, 5 dora)
+**576 touching pairs and 0 slots**, and no pair interpenetrates. What remains
+between two touching tiles is their own bevels' shallow V (2 × 0.055 units), which
+is geometry, not a hole — the user asked for the groove to stay.
+
+*The gate.* `check-3d-layout.mjs` now prints the touching-pair table and asserts
+that **no pair is separated by anything between a true contact and a deliberate
+1.4 mm gap** — the statement "there is no slot", which is what the defect was.
+`node frontend/scripts/check-3d-seams.mjs` (or `npm run seams:check` in
+`frontend/`) renders the same board in headless Chrome and reads `readPixels`
+scanlines across four seams (hand row, pond row, wall front, wall tier): every
+seam now reports **0 leak pixels** (no core pixel reads as the felt's green or the
+clear colour) at 1920 × 1080, 1366 × 768 and 820 × 1180 at DPR 2, with MSAA on and
+off. Its other half is the anti-aliasing measurement (see below).
+
+*MSAA.* `capabilities.antiAliasFor(tier)` asks for a 4× context above the
+`compat` tier (off at `compat`), which reverses plan §2.6's original
+`antialias: false`; the user has accepted the AA. The cost is buffers, not shader
+work — MSAA runs the fragment shader once per pixel, so the 12-step POM march is
+not multiplied, and at the 8.29 MP cap the backing store goes from 58 MB
+(colour 33.2 + depth 24.9) to 232 MB (132.6 + 99.5), i.e. +174 MB, which is why
+`compat` keeps it off. Measured on the human hand's outer silhouette as the mean
+largest one-pixel luma step over nine parallel scan lines, MSAA off → on:
+**182.9 → 162.9 (11 %)** at 1920 × 1080, **178.2 → 121.0 (32 %)** at 1366 × 768,
+**186.9 → 143.0 (23 %)** at 820 × 1180 @ DPR 2. A single scan line is grid-phase
+noise (it read −2 % on one run), which is why the probe averages nine.
+
+*Sign-off (2026-11-19).* The user reviewed the closed-gap board and the
+plate-only finish over Tailscale HTTPS and replied "Looks great." — the visual
+verdict AGENTS.md §6 requires for 3D-20. Two rounds were rejected on the way
+here (the crevice shading, then nothing else); both are recorded below because
+the numbers that rejected them are what pointed at the real causes.
+
+**Follow-up (2026-11-19): a non-secure origin lost the carve.** Found while
+serving the board over a tailnet URL: `crypto.subtle` does not exist on a
+plain-HTTP origin other than `localhost`, the relief bridge's SHA-256 pin threw
+`hash-unavailable`, and the loader took its procedural fallback — so the 3D view
+drew fallback faces with only one console line to say so. The bridge now verifies
+with its own `sha256.ts` (`sha256HexSync`, plain JS, ~30 ms for the three ~3 MB
+atlases, tested against the standard vectors, `node:crypto` and the committed
+pins) and WebCrypto is only the fast path; `ReliefAssets.verification` reports
+`webcrypto` or `javascript`, `measure().reliefVerification` surfaces it, and one
+warning names HTTPS as the fix. Measured on the tailnet HTTP origin: `status:
+relief3d`, `reliefVerification: javascript`, the committed art drawn, no fallback.
+
+**Follow-up (2026-11-19): the glint on wall bevels.** With the seams closed the
+user reported a *different* defect: "very bright prominent white highlights" on
+the bevelled edge of some wall tiles, and only some. It is not the seam work and
+not geometry — it is the shell finish evaluated per pixel.
+
+*Cause.* The body carries the shell's finish (roughness 0.16-0.18 plus a
+0.1-roughness clear coat). A GGX lobe that tight is 1-2 deg wide and thousands of
+times the diffuse level at its peak, so wherever a bevel's normal crosses the
+half-vector *for that tile's own view ray* the rim saturates — and its neighbour,
+half a tile away, does not. That is why only a band of tiles lights up and why it
+moves with the viewport. The 2.5D shells never show it because their key is baked:
+a 40 deg-wide tube drawn into the sprite, identical on every tile of an attitude.
+
+*Measured.* A geometry-only probe could not attribute it (a face-up hand tile in
+front of a wall looks like a wall face), so the probe now asks the shader: it
+draws the board twice — lit, then `?debug=flags`, whose RGB *is*
+`(face-up, blue-body, plate-zone)` — and tallies bright pixels per family. On the
+fixture board at 1280 x 720, at 200 luma: **276 of 141,862 blue-body pixels
+(0.195 %)** were bright, 142 of them fully clipped; after the fix, **24 (0.017 %)**
+and none clipped. The ivory body (19,497 -> 19,512) and the face-up plates
+(133,027 -> 133,085) did not move, i.e. nothing about the approved face look
+changed.
+
+*Fix.* `lighting.BODY_SPECULAR`: keep the shell's finish on **plate-like**
+surfaces (`|local normal . face normal|` >= 0.985 — a flat face or backing, where
+the lobe lands as a uniform sheen over the whole plate) and give the curved band
+a broad, coat-free lobe (roughness 0.45, coat 0). The new `?debug=flags` view
+stays as a real debug mode; `Scene.glintReport()` + `glintProbe.ts` are the
+numeric instrument, and `check-3d-seams.mjs` prints and gates them (blue-body
+bright pixels <= 0.1 % of blue-body coverage).
+
+*Companion facts.* `drawCalls` stays 4, `measure()` is unchanged and
+`RendererOptions.antialias` is the host's resolved decision. The in-page probe is
+`frontend/scripts/seam-probe.html` (`?aa=`, `?debug=`, `?png=`, `?w=&h=&dpr=`),
+which mounts the real `TableScene`; `TableScene.seamReport()` is the read-back.
 
 ---
 

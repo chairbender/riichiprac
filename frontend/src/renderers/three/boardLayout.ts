@@ -497,10 +497,9 @@ function handRow(count: number): {
  *
  * The row's left edge is fixed at `-POND.columnCentreOffsetUnits - half a tile`,
  * which puts an all-upright row's first centre exactly on the reference's
- * `-columnCentreOffsetUnits` and steps every later tile by
- * `POND.columnPitchUnits`. A turned tile is wider along the row, so it is set
- * out from its neighbour's far edge by the column gap and advances the cursor by
- * its long axis (the reference's `turned` step).
+ * `-columnCentreOffsetUnits`. A turned tile is wider along the row, so the cursor
+ * advances by whichever of its two extents faces the row; there is no gap
+ * (`POND.columnGapUnits` is 0), so consecutive discards touch.
  */
 function placeRow(tiles: readonly SnapshotTile[]): number[] {
   let cursor = -POND.columnCentreOffsetUnits - TILE.widthUnits / 2;
@@ -511,10 +510,7 @@ function placeRow(tiles: readonly SnapshotTile[]): number[] {
       : TILE.widthUnits / 2;
     const centre = cursor + half;
     centres.push(centre);
-    cursor =
-      centre +
-      half +
-      (tile.sideways ? TILE.gapUnits : POND.columnGapUnits);
+    cursor = centre + half + POND.columnGapUnits;
   }
   return centres;
 }

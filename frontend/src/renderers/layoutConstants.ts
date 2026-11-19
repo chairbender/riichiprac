@@ -31,19 +31,24 @@ export const TILE_MM = {
 export const UNIT_MM = TILE_MM.height;
 
 /**
- * The committed tile body, in world units, plus the groove width used to
- * derive every row pitch.
+ * The committed tile body, in world units.
  *
  * The body and bevel are `shell-spec.json`'s values, so the 3D tile cannot
  * drift from the shipped 2.5D shell. The face plate is the carved relief's
  * 17.92 x 24.92 mm cell (0.64 x 0.89 units), inset by the 0.055-unit bevel.
+ *
+ * **There is no groove constant.** Every row pitch in this module is derived
+ * from a body extent, so two tiles in a row meet exactly. The 2.5D reference
+ * spaces its shells by a 0.2-0.3 mm groove; in 3D that slot is a hole the eye can
+ * see through (the wall ring's corners were 1.1 mm open), so the 3D chain closes
+ * it instead: see `gaps.ts` and the layout gate's gap table. What remains between
+ * two touching tiles is their own bevels' shallow V, which is geometry, not a
+ * gap.
  */
 export const TILE = {
   widthUnits: TILE_MM.width / UNIT_MM,
   heightUnits: TILE_MM.height / UNIT_MM,
   thicknessUnits: TILE_MM.thickness / UNIT_MM,
-  /** The 0.3 mm gap between tiles in a row. */
-  gapUnits: 0.3 / UNIT_MM,
   bevelUnits: 0.055,
   facePlateWidthUnits: 17.92 / UNIT_MM,
   facePlateHeightUnits: 24.92 / UNIT_MM,
@@ -121,25 +126,35 @@ const WALL_DRAW_END_TIERS = 1;
  * A run's tangential half-length: the outer edge of its end tile.
  *
  * The end stack's centre is `(stacks - 1) / 2` pitches from the run's centre
- * line, and half a tile width beyond that is the tile's outer edge. It is what
- * the side runs reach toward the front and back of the table.
+ * line, and half a tile width beyond that is the tile's outer edge. Because the
+ * stack pitch is exactly one tile width, consecutive runs' end tiles meet here
+ * with no slot (see {@link WALL.radiusUnits}).
  */
 const WALL_RUN_HALF_LENGTH_UNITS =
-  ((WALL_STACKS_PER_RUN - 1) / 2) * (TILE.widthUnits + TILE.gapUnits) +
-  TILE.widthUnits / 2;
+  ((WALL_STACKS_PER_RUN - 1) / 2) * TILE.widthUnits + TILE.widthUnits / 2;
 
 export const WALL = {
   runs: WALL_RUNS,
   stacksPerRun: WALL_STACKS_PER_RUN,
   tiers: WALL_TIERS,
-  /** Ring radius from the table centre to a side run's tile centre line. */
-  radiusUnits: 7,
+  /**
+   * Ring radius from the table centre to a **side** run's tile centre line.
+   *
+   * Derived, not authored: a side run's inner face must land exactly on an end
+   * run's end tile's end face, so the four runs close the square with no corner
+   * slot. A side tile is `tileHeight` long across the radial axis, so its inner
+   * face is `radius - tileHeight / 2`; setting that equal to
+   * `runHalfLengthUnits` gives this value. (It was the literal 7 while the
+   * pitches carried a 0.3 mm groove, which left a 1.1 mm slot at every corner —
+   * the defect 3D-20 exists for.)
+   */
+  radiusUnits: WALL_RUN_HALF_LENGTH_UNITS + TILE.heightUnits / 2,
   /** A run's tangential half-length: the outer edge of its end tile. */
   runHalfLengthUnits: WALL_RUN_HALF_LENGTH_UNITS,
   /**
    * Centre-line radius of the **front and back** runs (the ones at the human's
-   * own edge and the far edge), inset from {@link WALL.radiusUnits} so their
-   * outer face is flush with a side run's end tile.
+   * own edge and the far edge), inset so their outer face is flush with a side
+   * run's end tile.
    *
    * A wall tile lies with its 28 mm long axis pointing radially, so a run's
    * outer face is `radius + tileHeight / 2`. Leaving all four runs on one ring
@@ -147,15 +162,18 @@ export const WALL = {
    * `radiusUnits + tileHeight / 2 - runHalfLengthUnits` (~29 mm), and that
    * protrusion is exactly the board's vertical (front-to-back) extent on
    * screen. Insetting them squares the ring's outer corners and buys the camera
-   * that much more room (board handoff, 2026-11-18).
+   * that much more room (board handoff, 2026-11-18). With the pitches closed this
+   * is also what makes the ring watertight: the end run's outer face and a side
+   * run's inner face are the same plane, and the end tiles overlap along the run
+   * by three quarters of a tile, so the corner is a shared edge, not a slot.
    */
   endRunRadiusUnits: WALL_RUN_HALF_LENGTH_UNITS - TILE.heightUnits / 2,
-  /** One stack pitch: a 21 mm tile plus the 0.3 mm groove. */
-  stackPitchUnits: TILE.widthUnits + TILE.gapUnits,
-  /** The second tier's rise: one 16.5 mm thickness plus the 0.3 mm tier gap. */
-  tierStepUnits: TILE.thicknessUnits + TILE.gapUnits,
-  /** Centre-to-centre length of one 17-stack run (the reference's 12.932143). */
-  runSpanUnits: WALL_STACKS_PER_RUN * (TILE.widthUnits + TILE.gapUnits),
+  /** One stack pitch: exactly one tile width, so stacks touch. */
+  stackPitchUnits: TILE.widthUnits,
+  /** The second tier's rise: exactly one tile thickness, so the tiers touch. */
+  tierStepUnits: TILE.thicknessUnits,
+  /** Centre-to-centre length of one 17-stack run. */
+  runSpanUnits: WALL_STACKS_PER_RUN * TILE.widthUnits,
   /** The committed one-tile draw end: slot 16 loses its top tier on every run. */
   drawEndSlot: WALL_DRAW_END_SLOT,
   drawEndTiers: WALL_DRAW_END_TIERS,
@@ -193,6 +211,12 @@ export const DORA = {
 } as const;
 
 /**
+ * The nearest pond row's centre-line radius. The two further rows are one tile
+ * height inside it each, so the three rows touch.
+ */
+const POND_NEAREST_ROW_RADIUS_UNITS = 4.81;
+
+/**
  * One seat's discard pond: 3 rows of 6, filled from the far row toward the
  * player, plus four overflow anchors that extend the nearest row. Rows are
  * listed nearest-to-player first, matching the reference's radii; the first
@@ -201,25 +225,29 @@ export const DORA = {
 export const POND = {
   columns: 6,
   rows: 3,
-  /** A 21 mm tile plus the 0.2 mm column groove. */
-  columnPitchUnits: TILE.widthUnits + 0.2 / UNIT_MM,
-  /** The column gap a turned tile is set out from its neighbour by. */
-  columnGapUnits: 0.2 / UNIT_MM,
-  /** A 28 mm tile plus the 0.3 mm row groove. */
-  rowPitchUnits: TILE.heightUnits + TILE.gapUnits,
+  /** One column pitch: exactly one tile width, so a row's discards touch. */
+  columnPitchUnits: TILE.widthUnits,
+  /** A turned tile is set out from its neighbour by no gap at all. */
+  columnGapUnits: 0,
+  /** One row pitch: exactly one tile height, so stacked rows touch. */
+  rowPitchUnits: TILE.heightUnits,
   /** Distance from table centre to each row's centre line, nearest first. */
-  rowRadiiUnits: [4.81, 3.799286, 2.788571],
+  rowRadiiUnits: [
+    POND_NEAREST_ROW_RADIUS_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS - TILE.heightUnits,
+    POND_NEAREST_ROW_RADIUS_UNITS - 2 * TILE.heightUnits,
+  ],
   /** Half of a 6-column row (2.5 pitches), measured from the seat's centre line. */
-  columnCentreOffsetUnits: 2.5 * (TILE.widthUnits + 0.2 / UNIT_MM),
+  columnCentreOffsetUnits: 2.5 * TILE.widthUnits,
   /** Extra anchors on the nearest row, at columns 6..9. */
   overflowColumns: 4,
   /** Which row the overflow cells extend: the nearest row, index into rowRadiiUnits. */
   overflowRow: 0,
   /**
-   * A turned (riichi) discard advances the row by its long axis: a 28 mm tile
-   * plus the 0.3 mm groove, exactly the reference's `turned` step.
+   * A turned (riichi) discard advances the row by its long axis: exactly one
+   * tile height, so the next discard touches it.
    */
-  sidewaysPitchUnits: TILE.heightUnits + TILE.gapUnits,
+  sidewaysPitchUnits: TILE.heightUnits,
   /** 18 pond cells plus the four overflow anchors. */
   capacity: 18 + 4,
 } as const;
@@ -237,14 +265,27 @@ export const POND = {
 /** The felt between a side wall run's outer face and a hand's front edge. */
 const HAND_WALL_GAP_UNITS = 0.85;
 
+/**
+ * The tsumogiri gap between the concealed row and the drawn tile: 7.35 mm.
+ *
+ * This one is deliberate, not a groove: the drawn tile is *supposed* to read as
+ * separate, and the felt shows between it and the row (the layout gate lists it
+ * as an intentional gap). 0.2625 x 28 = 7.35 mm.
+ */
+const HAND_DRAW_GAP_UNITS = 0.2625;
+
 export const HAND = {
   concealedCount: 13,
-  /** One stack pitch: a 21 mm tile plus the 0.3 mm groove. */
-  pitchUnits: TILE.widthUnits + TILE.gapUnits,
+  /** One hand-row pitch: exactly one tile width, so the row is closed. */
+  pitchUnits: TILE.widthUnits,
   /** The intentional tsumogiri gap between the hand row and the drawn tile. */
   drawGapUnits: 0.2625,
-  /** The drawn tile's centre offset from the seat's centre line. */
-  drawOffsetUnits: 5.576785714,
+  /**
+   * The drawn tile's centre offset from the seat's centre line: six pitches plus
+   * half a tile to the row's right edge, the tsumogiri gap, then half a tile.
+   */
+  drawOffsetUnits:
+    6 * TILE.widthUnits + TILE.widthUnits + HAND_DRAW_GAP_UNITS,
   /**
    * Gap from a wall run's **outer face** to the hand's front edge: ~24 mm.
    *
@@ -301,25 +342,43 @@ export const HAND = {
  * ring — so a four-meld hand never leaves the mat and never reaches into the
  * wall; the hand now sits at 8.35, so stepping inward would collide.
  */
+/** The felt between the drawn tile's right edge and the meld row: 4.2 mm. */
+const MELD_ROW_CLEARANCE_UNITS = 0.15;
+
+/**
+ * The felt between two meld rows: 2.8 mm.
+ *
+ * A meld's own tiles touch (they are one slab), but two *different* melds sit on
+ * separate rows with visible felt between them — a deliberate separation, wide
+ * enough that it never reads as a slot the camera could look through (the layout
+ * gate's slot threshold is 1.4 mm).
+ */
+const MELD_ROW_GAP_UNITS = 0.1;
+
 export const MELD = {
   /** A full row's nominal slots: two upright, the called tile, the kan extension. */
   slots: 4,
-  /** Advance past an upright meld tile. */
-  uprightPitchUnits: TILE.widthUnits + TILE.gapUnits,
-  /** Advance past a sideways (called) meld tile. */
-  sidewaysPitchUnits: TILE.heightUnits + TILE.gapUnits,
-  /** The gap a sideways slot is set out from its neighbour by. */
-  slotGapUnits: TILE.gapUnits,
-  /** Tangential start of the row, clear of the drawn tile (5.58 + 0.375). */
-  rowStartUnits: 6.1,
+  /** Advance past an upright meld tile: exactly its width. */
+  uprightPitchUnits: TILE.widthUnits,
+  /** Advance past a sideways (called) meld tile: exactly its height. */
+  sidewaysPitchUnits: TILE.heightUnits,
+  /** Meld tiles touch: a called meld is one slab, as in a real hand. */
+  slotGapUnits: 0,
+  /**
+   * Tangential start of the row: the drawn tile's right edge plus
+   * {@link MELD.rowClearanceUnits}, so the row never grazes the draw.
+   */
+  rowStartUnits: HAND.drawOffsetUnits + TILE.widthUnits / 2 + MELD_ROW_CLEARANCE_UNITS,
+  /** The felt between the drawn tile and the meld row: 4.2 mm. */
+  rowClearanceUnits: 0.15,
   /**
    * Centre-line radius of the first meld row, at a **left/right** seat's hand
    * radius. The near/far seats' melds use their own hand radius
    * (`HAND.endSeatRadiusUnits`); `boardLayout.handRadius` is the rule.
    */
   rowRadiusUnits: HAND.backRadiusUnits,
-  /** Radius step for a second/third meld row (a 28 mm tile plus clearance). */
-  rowPitchUnits: 1.05,
+  /** Radius step for a second/third meld row: a tile height plus 2.8 mm felt. */
+  rowPitchUnits: TILE.heightUnits + MELD_ROW_GAP_UNITS,
   /** Meld rows before a row has to keep growing along its own length. */
   rowCount: 3,
   /** Tangential limit of one row: the mat edge (12.5) less 0.1 units. */

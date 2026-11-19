@@ -2,6 +2,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BACKING_STORE_MAX_PIXELS,
+  MSAA_SAMPLES,
+  antiAliasFor,
+  backingStoreBytes,
   MAX_DEVICE_PIXEL_RATIO,
   RENDERED3D_EXPOSED,
   effectiveDevicePixelRatio,
@@ -248,5 +251,27 @@ describe('probeCapabilities', () => {
       }),
     );
     expect(probeCapabilities().maxTextureSize).toBe(0);
+  });
+});
+
+describe('the MSAA decision (3D-20)', () => {
+  it('asks for MSAA above the compat tier and never on it', () => {
+    expect(antiAliasFor('high')).toBe(true);
+    expect(antiAliasFor('balanced')).toBe(true);
+    expect(antiAliasFor('compat')).toBe(false);
+    expect(MSAA_SAMPLES).toBe(4);
+  });
+
+  it('states the backing-store cost the decision trades', () => {
+    const off = backingStoreBytes(BACKING_STORE_MAX_PIXELS, false);
+    const on = backingStoreBytes(BACKING_STORE_MAX_PIXELS, true);
+    // Colour: 4 bytes per pixel per sample; depth: 3 bytes (24-bit).
+    expect(off.colour).toBe(BACKING_STORE_MAX_PIXELS * 4);
+    expect(off.depth).toBe(BACKING_STORE_MAX_PIXELS * 3);
+    expect(on.colour).toBe(off.colour * MSAA_SAMPLES);
+    expect(on.depth).toBe(off.depth * MSAA_SAMPLES);
+    // The plan's numbers: ~58 MB without MSAA, ~232 MB with it at the cap.
+    expect(Math.round(off.total / 1e6)).toBe(58);
+    expect(Math.round(on.total / 1e6)).toBe(232);
   });
 });

@@ -237,6 +237,7 @@ describe('board instances', () => {
       ]),
     ).toThrow(/non-finite matrix/);
   });
+
 });
 
 describe('the board mesh', () => {

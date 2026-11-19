@@ -18,10 +18,10 @@
  * `InstancedMesh`; this shader only has to use it. The per-instance attributes
  * are the atlas cell rect (vec4 `u0, v0, u1, v1`) and `aFlags`, the bitfield
  * 3D-07 packs (`boardMesh.INSTANCE_FLAG`: face-up, highlighted, dimmed). The
- * fragment stage tests the bits: face-up chooses between the carved face and
- * the blue back, and the other two shade the tile. A face-down tile is rotated
- * by the layout (3D-06), so its visible surface is the mesh's local -Z back
- * plate and needs no second geometry.
+ * fragment stage tests the bits: face-up chooses between the carved face and the
+ * blue back, and the other two shade the tile. A face-down tile is rotated by the
+ * layout (3D-06), so its visible surface is the mesh's local -Z back plate and
+ * needs no second geometry.
  */
 
 export const TILE_VERTEX_SHADER = /* glsl */ `
@@ -38,6 +38,12 @@ varying vec3 vWorldPosition;
 varying vec3 vLocalPosition;
 varying float vFaceZone;
 varying float vFlags;
+/**
+ * The *mesh-local* normal's Z: 1 on a flat face/backing, far below that on a
+ * bevel or a side wall. The fragment stage uses it to keep the shell's finish on
+ * plate-like surfaces only (see lighting.BODY_SPECULAR).
+ */
+varying float vLocalNormalZ;
 
 void main() {
   vec4 localPosition = vec4(position, 1.0);
@@ -71,6 +77,7 @@ void main() {
   vLocalPosition = localPosition.xyz;
   vFaceZone = faceZone;
   vFlags = aFlags;
+  vLocalNormalZ = normal.z;
 
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }

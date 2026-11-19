@@ -42,6 +42,7 @@
 import { BAKED_TILE_FACE_IDS, isTileFaceId } from '../contract';
 import type { QualityTier, ReliefStatus, TileFaceId } from '../contract';
 import { TILE } from '../layoutConstants';
+import { sha256HexSync } from './sha256';
 
 /**
  * The relief manifest schema version this bridge understands. A different
@@ -213,7 +214,6 @@ export type ReliefAssetErrorCode =
   | 'atlas-fetch'
   | 'atlas-bytes'
   | 'atlas-hash'
-  | 'hash-unavailable'
   | 'texture';
 
 /** A typed, reportable load failure. Always triggers the fallback. */
@@ -381,12 +381,29 @@ export interface ReliefTextureFactory<
   create(request: ReliefTextureRequest): TTexture | Promise<TTexture>;
 }
 
+/**
+ * How the atlases' digests were computed.
+ *
+ * `webcrypto` is the normal path. `javascript` means `crypto.subtle` was missing
+ * — which only happens outside a **secure context**, i.e. any plain-HTTP origin
+ * other than `localhost` — and the bridge verified the same pins with
+ * `sha256.sha256HexSync` instead. The carve is still the committed carve, but the
+ * origin is worth knowing about (it also turns off other web-platform features),
+ * so it is reported rather than swallowed.
+ */
+export type ReliefVerification = 'webcrypto' | 'javascript';
+
 /** The loaded bridge. `cellForFace` is null for `blank` (no baked art). */
 export interface ReliefAssets<
   TTexture extends ReliefTextureHandle = ReliefTextureHandle,
 > {
   readonly status: ReliefStatus;
   readonly tier: QualityTier;
+  /**
+   * Which SHA-256 verified the committed atlases, or null on the fallback path
+   * (nothing was verified there). See {@link ReliefVerification}.
+   */
+  readonly verification: ReliefVerification | null;
   readonly textures: Readonly<Record<ReliefTextureRole, TTexture>>;
   /** GPU bytes for the three textures at this tier, mips included. */
   readonly atlasBytes: number;
@@ -667,15 +684,30 @@ export function parseReliefManifest(
   };
 }
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
+/**
+ * SHA-256 of `bytes`, with how it was computed.
+ *
+ * WebCrypto first (native and fast). Outside a secure context `crypto.subtle` is
+ * undefined — a plain-HTTP LAN or tailnet origin is *not* secure — so the
+ * fallback is the bridge's own implementation over the same bytes, against the
+ * same pins. Before this, that case threw `hash-unavailable` and the whole view
+ * silently fell back to the procedural cells: the art was lost on any
+ * self-hosted HTTP URL, which is exactly how the defect was found.
+ */
+async function sha256Hex(
+  bytes: Uint8Array,
+): Promise<{ readonly digest: string; readonly how: ReliefVerification }> {
   const subtle = globalThis.crypto?.subtle;
   if (!subtle) {
-    fail('hash-unavailable', 'WebCrypto SubtleCrypto is unavailable');
+    return { digest: sha256HexSync(bytes), how: 'javascript' };
   }
   const digest = await subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+  return {
+    digest: [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join(''),
+    how: 'webcrypto',
+  };
 }
 
 async function fetchBytes(
@@ -775,6 +807,8 @@ function fallbackCells(): Map<TileFaceId, ReliefFaceCell> {
 function createAssets<TTexture extends ReliefTextureHandle>(options: {
   readonly status: ReliefStatus;
   readonly tier: QualityTier;
+  /** Which SHA-256 verified the atlases, or null on the fallback path. */
+  readonly verification: ReliefVerification | null;
   readonly textures: Readonly<Record<ReliefTextureRole, TTexture>>;
   readonly bytesByRole: Readonly<Record<ReliefTextureRole, number>>;
   readonly faces: ReadonlyMap<TileFaceId, ReliefFaceCell>;
@@ -785,6 +819,7 @@ function createAssets<TTexture extends ReliefTextureHandle>(options: {
   return {
     status: options.status,
     tier: options.tier,
+    verification: options.verification,
     textures: options.textures,
     bytesByRole: options.bytesByRole,
     faces: options.faces,
@@ -836,6 +871,7 @@ async function loadRelief3d<TTexture extends ReliefTextureHandle>(
   const manifest = parseReliefManifest(raw, PINNED_RELIEF3D_ATLASES);
 
   const payloads = {} as Record<ReliefAtlasKey, Uint8Array>;
+  let verification: ReliefVerification | null = null;
   for (const key of Object.keys(PINNED_RELIEF3D_ATLASES) as ReliefAtlasKey[]) {
     const pin = PINNED_RELIEF3D_ATLASES[key];
     const bytes = await fetchBytes(
@@ -847,10 +883,11 @@ async function loadRelief3d<TTexture extends ReliefTextureHandle>(
     if (bytes.byteLength !== pin.bytes) {
       fail('atlas-bytes', `${pin.file} is ${bytes.byteLength} bytes, pinned at ${pin.bytes}`);
     }
-    const digest = await sha256Hex(bytes);
-    if (digest !== pin.sha256) {
+    const hashed = await sha256Hex(bytes);
+    if (hashed.digest !== pin.sha256) {
       fail('atlas-hash', `${pin.file} SHA-256 does not match the pin`);
     }
+    verification = verification ?? hashed.how;
     payloads[key] = bytes;
   }
 
@@ -878,6 +915,7 @@ async function loadRelief3d<TTexture extends ReliefTextureHandle>(
   );
   return createAssets({
     status: 'relief3d',
+    verification,
     tier: options.tier,
     textures,
     bytesByRole: { albedo: perTexture, normalDepth: perTexture, aoRoughness: perTexture },
@@ -919,6 +957,7 @@ async function loadFallback<TTexture extends ReliefTextureHandle>(
   );
   return createAssets({
     status: 'fallback',
+    verification: null,
     tier: options.tier,
     textures,
     bytesByRole: {
@@ -949,7 +988,18 @@ export async function loadReliefAssets<TTexture extends ReliefTextureHandle>(
     options.warn ?? ((message: string) => console.warn(message));
   const anisotropy = anisotropyFor(options.tier, options.maxAnisotropy);
   try {
-    return await loadRelief3d(options, fetchImpl, anisotropy);
+    const assets = await loadRelief3d(options, fetchImpl, anisotropy);
+    if (assets.verification === 'javascript') {
+      // Not a failure — the committed pins still verified — but the origin is not
+      // a secure context, which is worth saying out loud: the fix is to serve
+      // over HTTPS, and `measure().reliefVerification` reports it too.
+      warn(
+        '[3d] relief3d atlases verified with the JavaScript SHA-256 fallback: this origin is not a ' +
+          'secure context (crypto.subtle is unavailable outside HTTPS/localhost). The carved art is ' +
+          'the committed art; serve over HTTPS to use WebCrypto.',
+      );
+    }
+    return assets;
   } catch (error) {
     const code = error instanceof ReliefAssetError ? error.code : 'manifest-shape';
     warn(

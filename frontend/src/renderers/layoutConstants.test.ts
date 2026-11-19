@@ -31,7 +31,6 @@ describe('3D layout constants: tile and table', () => {
     expect(TILE.facePlateHeightUnits).toBeCloseTo(24.92 / 28, 12);
     expect(TILE.facePlateWidthUnits * UNIT_MM).toBeCloseTo(17.92, 12);
     expect(TILE.facePlateHeightUnits * UNIT_MM).toBeCloseTo(24.92, 12);
-    expect(TILE.gapUnits * UNIT_MM).toBeCloseTo(0.3, 12);
     // The plate plus two bevel insets stays inside the 21 mm body.
     expect(TILE.facePlateWidthUnits + 2 * TILE.bevelUnits).toBeLessThanOrEqual(
       TILE.widthUnits,
@@ -53,20 +52,24 @@ describe('3D layout constants: seats', () => {
 });
 
 describe('3D layout constants: wall', () => {
-  it('is four runs of 17 stacks, two tiers, on a radius-7 ring', () => {
+  it('is four runs of 17 stacks, two tiers, on a derived ring', () => {
     expect(WALL.runs).toBe(4);
     expect(WALL.stacksPerRun).toBe(17);
     expect(WALL.tiers).toBe(2);
-    expect(WALL.radiusUnits).toBe(7);
     expect(WALL.slotsPerRun).toBe(34);
+    // No gap constant: a side run's inner face lands exactly on an end run's
+    // end tile, which is what closes the ring's corners.
+    expect(WALL.radiusUnits).toBeCloseTo(6.875, 12);
+    expect(WALL.radiusUnits - TILE.heightUnits / 2).toBeCloseTo(
+      WALL.runHalfLengthUnits,
+      12,
+    );
   });
 
-  it('spaces stacks by the 21 mm tile plus the 0.3 mm groove', () => {
-    expect(WALL.stackPitchUnits).toBeCloseTo(0.75 + 0.3 / 28, 12);
-    expect(WALL.stackPitchUnits).toBeCloseTo(0.7607142857, 9);
-    expect(WALL.tierStepUnits).toBeCloseTo(16.5 / 28 + 0.3 / 28, 12);
-    expect(WALL.tierStepUnits).toBeCloseTo(0.6, 12);
-    expect(WALL.runSpanUnits).toBeCloseTo(12.932142857, 8);
+  it('spaces stacks by exactly one tile, so runs and tiers touch', () => {
+    expect(WALL.stackPitchUnits).toBe(TILE.widthUnits);
+    expect(WALL.tierStepUnits).toBe(TILE.thicknessUnits);
+    expect(WALL.runSpanUnits).toBeCloseTo(17 * 0.75, 12);
   });
 
   it('squares the ring: the end runs are inset, the side runs are not', () => {
@@ -75,7 +78,7 @@ describe('3D layout constants: wall', () => {
       ((WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits + TILE.widthUnits / 2,
       12,
     );
-    expect(WALL.runHalfLengthUnits).toBeCloseTo(6.4607142857, 9);
+    expect(WALL.runHalfLengthUnits).toBeCloseTo(6.375, 12);
     // The front/back runs' outer face is flush with a side run's end tile, so
     // the ring's front and back edges line up with the side walls.
     expect(WALL.endRunRadiusUnits).toBeCloseTo(
@@ -85,11 +88,11 @@ describe('3D layout constants: wall', () => {
     expect(
       WALL.endRunRadiusUnits + TILE.heightUnits / 2 - WALL.runHalfLengthUnits,
     ).toBeCloseTo(0, 12);
-    // The protrusion the inset removes: the side runs still reach further out
-    // than the end runs' faces, which is the 1-unit band a square ring cannot
-    // fill without the corner stacks overlapping.
-    expect(WALL.radiusUnits + TILE.heightUnits / 2).toBeGreaterThan(
-      WALL.runHalfLengthUnits,
+    // The inset is exact: the end runs' outer faces *are* the side runs' inner
+    // faces, so the ring's corners share an edge rather than a slot.
+    expect(WALL.radiusUnits - TILE.heightUnits / 2).toBeCloseTo(
+      WALL.endRunRadiusUnits + TILE.heightUnits / 2,
+      12,
     );
     expect(WALL.endRunRadiusUnits).toBeLessThan(WALL.radiusUnits);
   });
@@ -113,22 +116,30 @@ describe('3D layout constants: pond', () => {
     expect(POND.rowRadiiUnits).toHaveLength(POND.rows);
   });
 
-  it('uses the committed row/column pitches and radii', () => {
-    expect(POND.columnPitchUnits).toBeCloseTo(0.757142857, 9);
-    expect(POND.rowPitchUnits).toBeCloseTo(1.010714286, 9);
-    expect(POND.columnCentreOffsetUnits).toBeCloseTo(1.892857142, 8);
-    // Row 0 is nearest the player; the rows advance toward the table centre.
-    expect(POND.rowRadiiUnits).toEqual([4.81, 3.799286, 2.788571]);
-    expect(POND.rowRadiiUnits[0]).toBeGreaterThan(POND.rowRadiiUnits[2]);
+  it('spaces rows and columns by exactly one tile, so a pond is closed', () => {
+    expect(POND.columnPitchUnits).toBe(TILE.widthUnits);
+    expect(POND.rowPitchUnits).toBe(TILE.heightUnits);
+    expect(POND.columnGapUnits).toBe(0);
+    expect(POND.columnCentreOffsetUnits).toBeCloseTo(1.875, 12);
+    // Row 0 is nearest the player; the rows advance toward the table centre by
+    // one tile height each.
+    expect(POND.rowRadiiUnits[0]).toBe(4.81);
+    expect(POND.rowRadiiUnits[1]).toBeCloseTo(3.81, 12);
+    expect(POND.rowRadiiUnits[2]).toBeCloseTo(2.81, 12);
+    expect(POND.rowRadiiUnits[0] - POND.rowRadiiUnits[1]).toBeCloseTo(
+      TILE.heightUnits,
+      12,
+    );
   });
 });
 
 describe('3D layout constants: human hand', () => {
   it('is 13 concealed tiles plus a separated draw slot', () => {
     expect(HAND.concealedCount).toBe(13);
-    expect(HAND.pitchUnits).toBeCloseTo(0.7607142857, 9);
+    expect(HAND.pitchUnits).toBe(TILE.widthUnits);
     expect(HAND.drawGapUnits).toBe(0.2625);
-    expect(HAND.drawOffsetUnits).toBeCloseTo(5.576785714, 9);
+    // Six pitches + a half tile + the tsumogiri gap + a half tile.
+    expect(HAND.drawOffsetUnits).toBeCloseTo(6 * 0.75 + 0.75 + 0.2625, 12);
     // The board handoff (2026-11-18) moved the hand in from the reference's
     // 10.6. Its floor is a *side* run's outer face, because a side run occupies
     // the band beside the hand: radius + tileHeight / 2 + wallGapUnits.
@@ -136,7 +147,7 @@ describe('3D layout constants: human hand', () => {
       WALL.radiusUnits + TILE.heightUnits / 2 + HAND.wallGapUnits,
       12,
     );
-    expect(HAND.backRadiusUnits).toBeCloseTo(8.35, 12);
+    expect(HAND.backRadiusUnits).toBeCloseTo(8.225, 12);
     expect(HAND.wallGapUnits).toBeGreaterThan(0.5);
     expect(HAND.wallGapUnits).toBeLessThan(1.2);
     // The near wall is an inset end run, so it sits further behind the hand.
@@ -211,8 +222,8 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     expect(POND.overflowRow).toBe(0);
     expect(POND.rowRadiiUnits[POND.overflowRow]).toBe(POND.rowRadiiUnits[0]);
     expect(POND.overflowColumns).toBe(4);
-    expect(POND.columnGapUnits).toBeCloseTo(0.2 / 28, 12);
-    expect(POND.sidewaysPitchUnits).toBeCloseTo(1 + 0.3 / 28, 12);
+    expect(POND.columnGapUnits).toBe(0);
+    expect(POND.sidewaysPitchUnits).toBe(TILE.heightUnits);
     // The committed centre offset is the middle of a 6-column row.
     expect(POND.columnCentreOffsetUnits).toBeCloseTo(
       2.5 * POND.columnPitchUnits,
@@ -220,15 +231,16 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     );
     expect(
       POND.columnCentreOffsetUnits + TILE.widthUnits / 2,
-    ).toBeCloseTo(2.267857142, 8);
+    ).toBeCloseTo(2.25, 12);
   });
 
   it('lays a meld row right of the drawn tile, outside the wall', () => {
     expect(MELD.slots).toBe(4);
-    expect(MELD.rowStartUnits).toBeCloseTo(6.1, 12);
+    expect(MELD.rowStartUnits).toBeCloseTo(5.5125 + 0.375 + 0.15, 12);
     expect(MELD.rowRadiusUnits).toBe(HAND.backRadiusUnits);
-    expect(MELD.uprightPitchUnits).toBeCloseTo(0.7607142857, 9);
-    expect(MELD.sidewaysPitchUnits).toBeCloseTo(1.0107142857, 9);
+    expect(MELD.uprightPitchUnits).toBe(TILE.widthUnits);
+    expect(MELD.sidewaysPitchUnits).toBe(TILE.heightUnits);
+    expect(MELD.slotGapUnits).toBe(0);
     // The row starts clear of the 13-tile draw slot.
     expect(MELD.rowStartUnits).toBeGreaterThan(
       HAND.drawOffsetUnits + TILE.widthUnits / 2,
