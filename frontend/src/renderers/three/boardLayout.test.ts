@@ -16,6 +16,7 @@ import {
   frameForAspect,
   handTileToEyeDeg,
   handFaceToViewDeg,
+  handRadius,
   layoutBoard,
   orientedBox,
   orientedBoxCorners,
@@ -161,8 +162,9 @@ describe('3D board layout: the hand', () => {
     }
   });
 
-  it('stands the hand on its far bottom edge at the committed radius', () => {
-    // The bottom far corner sits on the felt at HAND.backRadiusUnits.
+  it('stands the hand on its far bottom edge at the seat\u2019s hand radius', () => {
+    // The bottom far corner sits on the felt at the seat's own radius: the
+    // human is an end seat, so that is HAND.endSeatRadiusUnits.
     for (const tile of humanHand(board)) {
       const [, ay, az] = poseAxes(tile.pose);
       const half = 0.5;
@@ -172,7 +174,11 @@ describe('3D board layout: the hand', () => {
         tile.pose.position[2] - ay[2] * half - az[2] * (TILE.thicknessUnits / 2),
       ];
       const radius = radialUnits(fixture.humanSeat, farBottom);
-      expect(radius).toBeCloseTo(HAND.backRadiusUnits, 9);
+      expect(radius).toBeCloseTo(handRadius(fixture.humanSeat, fixture.humanSeat), 9);
+      expect(radius).toBeCloseTo(
+        HAND.backRadiusUnits - TILE.thicknessUnits,
+        9,
+      );
       expect(farBottom[1]).toBeCloseTo(0, 9);
     }
   });
@@ -284,7 +290,7 @@ describe('3D board layout: melds', () => {
       expect(tile.pose.tiltDeg).toBe(-90);
       expect(tile.faceUp).toBe(true);
       expect(radialUnits(0, tile.pose.position)).toBeCloseTo(
-        MELD.rowRadiusUnits,
+        handRadius(0, fixture.humanSeat),
         9,
       );
     }
@@ -629,7 +635,10 @@ describe('3D board layout: camera framing', () => {
       }
     }
     expect(bottom).toBeGreaterThanOrEqual(CAMERA.safeAreaMargin - 1e-9);
-    expect(bottom).toBeLessThanOrEqual(0.04);
+    // The nearest content is not the hand but the left/right players' meld
+    // rows, which run along the near corners at their own (side) radius, so the
+    // hand's own margin is larger than the safe area. The gate bounds it.
+    expect(bottom).toBeLessThanOrEqual(0.07);
   });
 
   it('keeps every tile inside the safe area at every aspect', () => {

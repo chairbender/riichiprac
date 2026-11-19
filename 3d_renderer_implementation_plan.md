@@ -341,6 +341,18 @@ and they supersede the reference values above where they differ.
   now step **toward the player** (`+index * rowPitch`) — the doc always said
   "nearer the player", the code stepped inward, and with the hand at 8.35 that
   would put rows 2–3 inside the wall ring (the overlap the change surfaced).
+- **The player's and the across player's hands sit a tile thickness closer.**
+  `HAND.endSeatRadiusUnits` (7.7607) is one 16.5 mm thickness inside
+  `HAND.backRadiusUnits` (8.35), and `boardLayout.handRadius(seat, humanSeat)`
+  gives it to the human and the far seat only — they face the inset end runs, so
+  they have the slack; the left/right seats keep 8.35 because their side runs
+  are the floor. Their melds move with them (`placeMelds` takes the seat's own
+  radius). Measured at 16:9: the solved distance drops **55.56 → 53.33** and the
+  hand's long axis grows to **7.40 %** of the frame height. The hand's own
+  bottom margin is 6.27 % in the all-melds fixture (3.94 % when only the human
+  has one, 2.00 % with none) because a left/right seat's meld row runs along the
+  near corner at its side radius and is therefore the board's nearest content —
+  the hand cannot be lower while those stay in frame.
 - **The wall ring is squared.** The front and back runs (the human's own edge and
   the far edge) moved from the ring radius 7.0 to **`WALL.endRunRadiusUnits`
   5.9607**, so their outer face is flush with a side run's end tile at
@@ -1406,11 +1418,12 @@ four layout corrections, all recorded in §2.4's "Board handoff revisions" and
 landed here: the wall's top tier sits on the bottom tier (the thickness was
 counted twice, so the top row floated), the hands moved from radius 10.6 to 8.35
 (and meld rows step toward the player so they clear the wall), the camera frames
-the board rather than the mat with the 76-unit floor deleted — 16:9 now solves to
+the board rather than the mat with the 76-unit floor deleted — 16:9 solves to
 55.56, the tiles are ~37 % larger and the human hand sits 3.82 % above the bottom
-edge — and the front/back wall runs are inset to 5.9607 so the ring's front and
-back edges line up with the side runs' end tiles (a composition change; the
-camera is unchanged because the hands, not the walls, are the vertical extremes).
+edge — the front/back wall runs are inset to 5.9607 so the ring's front and back
+edges line up with the side runs' end tiles, and the human's and the across
+player's hands then move a tile thickness closer to those end runs
+(`HAND.endSeatRadiusUnits` 7.7607), which lets the camera solve in to **53.33**.
 `check-3d-layout.mjs` gates all of it, including the hand's bottom sliver and the
 two run radii; the look is still the user's call at the same URL.
 

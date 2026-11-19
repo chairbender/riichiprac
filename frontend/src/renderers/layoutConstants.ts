@@ -248,27 +248,39 @@ export const HAND = {
   /**
    * Gap from a wall run's **outer face** to the hand's front edge: ~24 mm.
    *
-   * The binding wall is a **side** run, not the one a player faces: a side run
-   * occupies the band `radius ± tileHeight / 2` right beside that player's hand,
-   * so the hand's front edge is `WALL.radiusUnits + tileHeight / 2 + this gap`.
-   * The front/back runs are inset (they sit behind the hand, not beside it), so
-   * a hand has more felt in front of the near wall than this — see
-   * {@link HAND.backRadiusUnits}.
+   * The binding wall for a left/right player is a **side** run, which occupies
+   * the band `radius ± tileHeight / 2` right beside that player's hand, so their
+   * hand's front edge is `WALL.radiusUnits + tileHeight / 2 + this gap` — the
+   * geometric floor, because the side runs cannot be inset (a 17-stack run
+   * already spans its whole side of the ring, so a smaller square would overlap
+   * at the corners). See {@link HAND.endSeatRadiusUnits} for the near/far hands,
+   * which face the inset end runs and sit a tile thickness closer.
    */
   wallGapUnits: 0.85,
   /**
-   * Distance from table centre to the standing hand's back edge.
+   * Distance from table centre to a **left/right** player's standing-hand back
+   * edge: the side run's outer face plus `wallGapUnits`.
    *
    * The hand's front edge (its nearest point: the tile stands on its far bottom
-   * edge and leans back toward the table centre) sits `wallGapUnits` in front of
-   * a **side** run's outer face. That is the floor: the side runs cannot be
-   * inset with them, because a 17-stack run already spans its whole side of the
-   * ring and the corner stacks would collide. The reference rig put the hand at
-   * 10.6 (the mat edge); the board handoff (2026-11-18) moved it to this floor.
-   * Melds share this radius (`MELD.rowRadiusUnits`).
+   * edge and leans back toward the table centre) sits 24 mm in front of the side
+   * run it is next to. Melds of that seat share it.
    */
   backRadiusUnits:
     WALL.radiusUnits + TILE.heightUnits / 2 + HAND_WALL_GAP_UNITS,
+  /**
+   * Distance from table centre to the **human's** and the **across** player's
+   * standing-hand back edge: one tile thickness closer to the wall than
+   * {@link HAND.backRadiusUnits} (board handoff, 2026-11-18).
+   *
+   * Those two seats face the inset end runs, not the side runs, so there is a
+   * tile thickness of slack in front of them; the handoff asked for exactly that
+   * much and for the camera to use the freed depth. It leaves 36 mm of felt
+   * between the near wall's outer face and the hand (an equal-*gap* rule would
+   * give 24 mm, i.e. `WALL.endRunRadiusUnits + tileHeight / 2 + wallGapUnits`
+   * = 7.31, if that is ever wanted instead).
+   */
+  endSeatRadiusUnits:
+    WALL.radiusUnits + TILE.heightUnits / 2 + HAND_WALL_GAP_UNITS - TILE.thicknessUnits,
   reclineDeg: 40,
   reclineBandDeg: [30, 45],
   /** Largest allowed angle between the hand face normal and the view ray. */
@@ -300,7 +312,11 @@ export const MELD = {
   slotGapUnits: TILE.gapUnits,
   /** Tangential start of the row, clear of the drawn tile (5.58 + 0.375). */
   rowStartUnits: 6.1,
-  /** Centre-line radius of the first meld row, at the hand's radius. */
+  /**
+   * Centre-line radius of the first meld row, at a **left/right** seat's hand
+   * radius. The near/far seats' melds use their own hand radius
+   * (`HAND.endSeatRadiusUnits`); `boardLayout.handRadius` is the rule.
+   */
   rowRadiusUnits: HAND.backRadiusUnits,
   /** Radius step for a second/third meld row (a 28 mm tile plus clearance). */
   rowPitchUnits: 1.05,

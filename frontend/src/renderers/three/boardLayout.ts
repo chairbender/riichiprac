@@ -435,18 +435,35 @@ function lyingPose(
   };
 }
 
+/**
+ * A seat's hand radius: the near/far seats sit a tile thickness closer to their
+ * (inset) end run than the side seats do. Mirrors {@link wallRunRadius}, so a
+ * seat's hand always faces its own run.
+ */
+export function handRadius(seat: Seat, humanSeat: Seat): number {
+  const farSeat = ((humanSeat + 2) % SEATS.count) as Seat;
+  return seat === humanSeat || seat === farSeat
+    ? HAND.endSeatRadiusUnits
+    : HAND.backRadiusUnits;
+}
+
 /** The human hand's reclined pose, or an opponent's upright one. */
-function handPose(seat: Seat, w: number, reclined: boolean): TilePose {
+function handPose(
+  seat: Seat,
+  w: number,
+  reclined: boolean,
+  radius: number,
+): TilePose {
   const tiltDeg = reclined ? -HAND.reclineDeg : 0;
   const phi = tiltDeg * DEG;
   const u0 = TILE.thicknessUnits / 2;
   const v0 = TILE.heightUnits / 2;
-  // The tile stands on its far bottom edge at HAND.backRadiusUnits and leans
+  // The tile stands on its far bottom edge at the seat's hand radius and leans
   // back about that edge; the body centre moves with the tilt.
   const du = u0 * Math.cos(phi) + v0 * Math.sin(phi);
   const dv = v0 * Math.cos(phi) - u0 * Math.sin(phi);
   return {
-    position: seatPoint(seat, w, HAND.backRadiusUnits + du, dv),
+    position: seatPoint(seat, w, radius + du, dv),
     yawDeg: seatYawDeg(seat),
     tiltDeg,
     rollDeg: 0,
@@ -523,6 +540,7 @@ function pondRows(
 function placeMelds(
   melds: TableSnapshot['seats'][number]['melds'],
   seat: Seat,
+  handRadiusUnits: number,
 ): BoardTile[] {
   const placed: BoardTile[] = [];
   let row = 0;
@@ -532,8 +550,7 @@ function placeMelds(
   // the committed `MELD` doc says and what keeps them clear of the wall now that
   // the hands sit at 8.35: stepping inward would put rows 2-3 inside the ring.
   const rowRadius = (index: number): number =>
-    MELD.rowRadiusUnits +
-    Math.min(index, MELD.rowCount - 1) * MELD.rowPitchUnits;
+    handRadiusUnits + Math.min(index, MELD.rowCount - 1) * MELD.rowPitchUnits;
 
   for (const meld of melds) {
     const width = meld.tiles.reduce(
@@ -672,6 +689,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
   for (const seatState of snapshot.seats) {
     const seat = seatState.seat;
     const isHuman = seat === humanSeat;
+    const radius = handRadius(seat, humanSeat);
     const row = handRow(seatState.concealed.length);
     const handFaceUp = isHuman;
 
@@ -680,7 +698,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
         boardTile(
           tile,
           seat,
-          handPose(seat, row.centres[index], isHuman),
+          handPose(seat, row.centres[index], isHuman, radius),
           handFaceUp && tile.faceUp,
         ),
       );
@@ -693,13 +711,13 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
         boardTile(
           seatState.draw,
           seat,
-          handPose(seat, w, isHuman),
+          handPose(seat, w, isHuman, radius),
           handFaceUp && seatState.draw.faceUp,
         ),
       );
     }
 
-    tiles.push(...placeMelds(seatState.melds, seat));
+    tiles.push(...placeMelds(seatState.melds, seat, radius));
 
     for (const pondRow of pondRows(seatState.river)) {
       const u = POND.rowRadiiUnits[pondRow.row];

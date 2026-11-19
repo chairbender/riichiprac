@@ -36,6 +36,7 @@ import {
   poseMatrix,
   seatPoint,
   frameForAspect,
+  handRadius,
   wallRunRadius,
   wallTierHeightUnits,
 } from './boardLayout';
@@ -75,7 +76,8 @@ function handHeroPose(): TilePose {
   const du = u0 * Math.cos(phi) + v0 * Math.sin(phi);
   const dv = v0 * Math.cos(phi) - u0 * Math.sin(phi);
   return {
-    position: seatPoint(0, 0, HAND.backRadiusUnits + du, dv),
+    // The human is an end seat, so the hero hand sits at the end-run radius.
+    position: seatPoint(0, 0, handRadius(0, 0) + du, dv),
     yawDeg: 0,
     tiltDeg,
     rollDeg: 0,

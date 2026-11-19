@@ -355,12 +355,23 @@ async function main() {
       const radius = corner[0] * outward[0] + corner[2] * outward[2];
       return (
         tile.pose.tiltDeg === -C.HAND.reclineDeg &&
-        close(radius, C.HAND.backRadiusUnits) &&
+        close(radius, L.handRadius(humanSeat, humanSeat), 1e-9) &&
         close(corner[1], 0)
       );
     }),
     `tilt ${C.HAND.reclineDeg}°`,
   );
+  // The near and far hands sit one tile thickness closer to their (inset) end
+  // runs than the side hands do: the handoff's "player and across player" rule.
+  const acrossSeat = (humanSeat + 2) % C.SEATS.count;
+  check(
+    'the player and across hands are one tile thickness closer than the side hands',
+    close(L.handRadius(humanSeat, humanSeat), C.HAND.backRadiusUnits - C.TILE.thicknessUnits, 1e-9) &&
+      close(L.handRadius(acrossSeat, humanSeat), C.HAND.backRadiusUnits - C.TILE.thicknessUnits, 1e-9) &&
+      close(L.handRadius((humanSeat + 1) % C.SEATS.count, humanSeat), C.HAND.backRadiusUnits, 1e-9),
+    `${formatNumber(L.handRadius(humanSeat, humanSeat), 4)} / across ${formatNumber(L.handRadius(acrossSeat, humanSeat), 4)} / side ${formatNumber(C.HAND.backRadiusUnits, 4)}`,
+  );
+
   check(
     'hand recline stays inside the accepted band',
     C.HAND.reclineDeg >= C.HAND.reclineBandDeg[0] &&
@@ -571,9 +582,13 @@ async function main() {
     referenceLongAxis + 1e-9 >= C.CAMERA.handLongAxisMinViewportFraction,
     `${formatNumber(referenceLongAxis * 100, 2)} %`,
   );
+  // The fixture gives every seat a meld, and a left/right seat's meld row runs
+  // along the near corner at its own (side) radius, so it is the board's nearest
+  // content, not the hand. With no opponent melds the hand is the nearest tile
+  // and sits at the 2 % safe area (the unit test and the report print both).
   check(
-    'the human hand sits within 4 % of the frame bottom at 16:9',
-    referenceHandBottom <= 0.04 + 1e-9,
+    'the human hand sits within 7 % of the frame bottom at 16:9',
+    referenceHandBottom <= 0.07 + 1e-9,
     `${formatNumber(referenceHandBottom * 100, 2)} %`,
   );
 
