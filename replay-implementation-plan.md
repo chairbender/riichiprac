@@ -2381,7 +2381,7 @@ counted as an implementation unit.
 > `select --size 2250` returns 2,250 reviewed bases with all cores in 55 min.
 > Q2r2 adds bulk mechanical dispositions (`review --verdicts`) and a 251-row
 > stratified sampled sheet, so the ~2.3k queue is reviewable without
-> one-at-a-time app review. Details:
+> one-at-a-time app review. User sign-off recorded 2026-11-19. Details:
 > [`q2-scale-up-2000.md`](q2-scale-up-2000.md).
 
 ### 5.4 Critical path and parallel tracks

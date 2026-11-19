@@ -378,6 +378,7 @@
     "snapshot_bytes": 4972216320,
     "snapshot_sha256": "1d66e7427f5fb0bfe3a263ef44ed077a9af65c6e8a8b8349aad5e0940cb52141"
   },
+  "user_signoff": "approved 2026-11-19 (251-row sampled review + the 2,211-base pack)",
   "variant_stage": {
     "attempts": 11250,
     "bases": 2250,

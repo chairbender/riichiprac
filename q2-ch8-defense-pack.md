@@ -184,7 +184,8 @@ pack with **1,038 real bases, 0 variants** (six lessons, 1,047,001 bytes); the
 
 **2k scale-up (2026-11-19).** The Q2s follow-up replaces the pack with
 **2,211 real bases, 0 variants** (seven lessons, 2,260,809 bytes) after growing
-the corpus and adding the bulk/sampled review flow. Details in
+the corpus and adding the bulk/sampled review flow. The user signed off on the
+251-row sample and the shipped pack. Details in
 [`q2-scale-up-2000.md`](q2-scale-up-2000.md).
 
 ## Variants disabled, and the pack

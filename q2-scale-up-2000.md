@@ -181,8 +181,9 @@ Snapshot after assembly:
 
 The 251-row sample at
 [`testdata/reports/q2-scale-2k/review-sample.md`](../testdata/reports/q2-scale-2k/review-sample.md)
-and the published pack were presented to the user on 2026-11-19. Verdict:
-_pending_ (recorded here once received).
+and the published pack were presented to the user on 2026-11-19. **User
+sign-off: approved** ("Sign off") for the 2,211-base, 0-variant pack and the
+sampled content review.
 
 ## Scale decision (Q2s)
 
