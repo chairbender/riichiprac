@@ -357,7 +357,7 @@ function heroReportFixture(): HeroReport {
     ...overrides,
   });
   return {
-    relief: 'committed',
+    relief: 'relief3d',
     tier: 'high',
     pomSteps: 12,
     carveDepthMm: 0.55,

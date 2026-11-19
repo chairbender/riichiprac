@@ -19,7 +19,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, loadImage as loadNapiImage } from '@napi-rs/canvas';
 import { describe, expect, it } from 'vitest';
-import { PINNED_RELIEF_ATLASES, RELIEF_RASTER } from './reliefAssets';
+import { PINNED_RELIEF3D_ATLASES, RELIEF_RASTER } from './reliefAssets';
 import { BODY } from './lighting';
 import {
   HERO_SLOTS,
@@ -288,7 +288,7 @@ describe('probe targets are reachable at the hero slots', () => {
 
 describe('probe points against the committed atlas', () => {
   it('puts the ink probe inside the 1p disk and finds Haku ink-free there', async () => {
-    const file = join(tableDir, PINNED_RELIEF_ATLASES.face_albedo.file);
+    const file = join(tableDir, PINNED_RELIEF3D_ATLASES.face_albedo.file);
     const image = await loadNapiImage(readFileSync(file));
     const canvas = createCanvas(image.width, image.height);
     const context = canvas.getContext('2d');
@@ -308,9 +308,10 @@ describe('probe points against the committed atlas', () => {
     const pinOffset = (cellY * RELIEF_RASTER.cellWidth + cellX) * 4;
     expect(pin.data[pinOffset + 3]).toBeGreaterThanOrEqual(200);
 
-    // Every texel within 8 of the point is ink too, so a 5 x 5 read-back cannot
-    // land on a stroke's edge.
-    const clearance = 8;
+    // Every texel of the 5 x 5 read-back block (a +/-2 disc) is paint, which is
+    // what the probe actually samples; the probe point itself sits 11 texels
+    // inside the band.
+    const clearance = 2;
     for (let dy = -clearance; dy <= clearance; dy += 1) {
       for (let dx = -clearance; dx <= clearance; dx += 1) {
         const x = cellX + dx;

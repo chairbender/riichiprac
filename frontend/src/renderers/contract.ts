@@ -148,7 +148,7 @@ export type QualityTier = 'high' | 'balanced' | 'compat';
  * Which relief art the scene draws (3D-03): the committed Task 4B atlases, or
  * the procedural neutral cell when they are missing or off-pin.
  */
-export type ReliefStatus = 'relief3d' | 'committed' | 'fallback';
+export type ReliefStatus = 'relief3d' | 'fallback';
 
 /** Query-selectable debug views of the carved face shader. */
 export type DebugMode =

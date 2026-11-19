@@ -15,9 +15,15 @@
  * 32 455 painted): that white is the bare tile showing through the pattern, so
  * it must stay at the uncarved surface and read as a raised island. `1m` has no
  * white, which is why treating the alpha as the carve mask worked there and
- * turned `1p` into one recessed disc. The mask here is therefore the albedo's
- * alpha *and* a colour that differs from the ivory by more than
- * {@link PAINT_CONTRAST}: the same rule the runtime paint probe uses.
+ * turned `1p` into one recessed disc. The rule is the 2.5D chain's own published
+ * one (`tools/render/decal-spec.json`: `whiteFillUncarved` with
+ * `whiteFillThreshold` 0.9): a pixel is bare tile when every channel is at least
+ * 90 % white. Keeping the two chains on the same threshold is what makes the 3D
+ * islands and the decal islands identical.
+ *
+ * Inputs are the committed flat glyph masters (`frontend/public/table/faces/`,
+ * 300 x 400), not the retired Task 4B albedo: the relief assets were removed
+ * from the tree on 2026-11-18 (AGENTS.md §5).
  *
  * So this tool re-bakes the two carve channels at the decal's geometry:
  *
@@ -76,14 +82,11 @@ const CARVE = {
 };
 
 /**
- * A painted pixel must differ from the tile's ivory by at least this ΔE. White
- * in the artwork is the bare tile (1p alone has 17 066 such pixels); the
- * threshold matches the runtime paint probe's so the bake and the check agree.
+ * The 2.5D chain's published white-island rule (`decal-spec.json`'s
+ * `whiteFillThreshold`): a pixel whose every channel is at least this fraction
+ * white is the bare tile showing through the artwork, not white enamel.
  */
-const PAINT_CONTRAST = 10;
-
-/** The committed ivory, for the paint/white test. */
-const IVORY = [245, 240, 235];
+const WHITE_FILL_THRESHOLD = 0.9;
 
 /** The committed cell grid and plate, matching `relief.json`. */
 const RASTER = { cellWidth: 256, cellHeight: 340, columns: 6, rows: 7 };
@@ -243,69 +246,74 @@ function bezierProfile(u, topSpread, bottomSpread) {
 /* One face                                                           */
 /* ------------------------------------------------------------------ */
 
-/** sRGB bytes to CIE Lab (D65). */
-function srgbToLab(r, g, b) {
-  const f = (value) => {
-    const v = value / 255;
-    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  };
-  const R = f(r);
-  const G = f(g);
-  const B = f(b);
-  const x = (R * 0.4124564 + G * 0.3575761 + B * 0.1804375) / 0.95047;
-  const y = R * 0.2126729 + G * 0.7151522 + B * 0.072175;
-  const z = (R * 0.0193339 + G * 0.119192 + B * 0.9503041) / 1.08883;
-  const t = (value) => (value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116);
-  return [116 * t(y) - 16, 500 * (t(x) - t(y)), 200 * (t(y) - t(z))];
-}
-
-const IVORY_LAB = srgbToLab(...IVORY);
-
-/** ΔE76 between an 8-bit colour and the tile's ivory. */
-function ivoryDistance(r, g, b) {
-  const lab = srgbToLab(r, g, b);
-  return Math.hypot(lab[0] - IVORY_LAB[0], lab[1] - IVORY_LAB[1], lab[2] - IVORY_LAB[2]);
-}
-
 /**
- * Read one face's committed albedo cell: the pigment RGB and the paint mask.
+ * Read one face's committed glyph master and sample it into the cell.
  *
- * The albedo is the only carve-independent channel, so it is the input here: a
- * pixel counts as painted only when it is opaque *and* its colour is a real
- * pigment (not the artwork's white, which is the bare tile).
+ * The glyph is sampled **premultiplied** (so a transparent neighbour cannot
+ * darken a paint edge) and then un-premultiplied, which gives a straight-alpha
+ * pigment exactly where the art has coverage. The bare-tile rule is applied to
+ * the sampled colour.
  */
 async function albedoCell(face) {
-  const index = FACE_IDS.indexOf(face);
-  const column = index % RASTER.columns;
-  const row = Math.floor(index / RASTER.columns);
-  const image = await loadImage(readFileSync(join(tableDir, 'relief/face_albedo.png')));
+  const image = await loadImage(readFileSync(join(tableDir, 'faces', `${face}.png`)));
   const canvas = createCanvas(image.width, image.height);
   const context = canvas.getContext('2d');
   context.drawImage(image, 0, 0);
-  const data = context.getImageData(
-    column * RASTER.cellWidth,
-    row * RASTER.cellHeight,
-    RASTER.cellWidth,
-    RASTER.cellHeight,
-  ).data;
+  const source = context.getImageData(0, 0, image.width, image.height).data;
   const width = RASTER.cellWidth;
   const height = RASTER.cellHeight;
+
+  // Premultiply once so the bilinear filter is correct at the art's edges.
+  const premultiplied = new Float64Array(image.width * image.height * 4);
+  for (let i = 0; i < image.width * image.height; i += 1) {
+    const alpha = source[i * 4 + 3] / 255;
+    premultiplied[i * 4] = source[i * 4] * alpha;
+    premultiplied[i * 4 + 1] = source[i * 4 + 1] * alpha;
+    premultiplied[i * 4 + 2] = source[i * 4 + 2] * alpha;
+    premultiplied[i * 4 + 3] = source[i * 4 + 3];
+  }
+
+  const same = (x, y) => {
+    const cx = Math.min(image.width - 1.001, Math.max(0, x));
+    const cy = Math.min(image.height - 1.001, Math.max(0, y));
+    const x0 = Math.floor(cx);
+    const y0 = Math.floor(cy);
+    const x1 = Math.min(image.width - 1, x0 + 1);
+    const y1 = Math.min(image.height - 1, y0 + 1);
+    const fx = cx - x0;
+    const fy = cy - y0;
+    const out = [0, 0, 0, 0];
+    for (let channel = 0; channel < 4; channel += 1) {
+      const top = premultiplied[(y0 * image.width + x0) * 4 + channel] * (1 - fx) +
+        premultiplied[(y0 * image.width + x1) * 4 + channel] * fx;
+      const bottom = premultiplied[(y1 * image.width + x0) * 4 + channel] * (1 - fx) +
+        premultiplied[(y1 * image.width + x1) * 4 + channel] * fx;
+      out[channel] = top * (1 - fy) + bottom * fy;
+    }
+    return out;
+  };
+
   const mask = new Float64Array(width * height);
   const pigment = new Uint8ClampedArray(width * height * 4);
   let white = 0;
-  for (let i = 0; i < width * height; i += 1) {
-    const offset = i * 4;
-    const alpha = data[offset + 3];
-    const painted =
-      alpha > 128 && ivoryDistance(data[offset], data[offset + 1], data[offset + 2]) > PAINT_CONTRAST;
-    if (!painted && alpha > 128) white += 1;
-    mask[i] = painted ? 1 : 0;
-    pigment[offset] = data[offset];
-    pigment[offset + 1] = data[offset + 1];
-    pigment[offset + 2] = data[offset + 2];
-    // The white (unpainted) and transparent pixels both become transparent, so
-    // the runtime draws the ivory body there instead of a flat white paint.
-    pigment[offset + 3] = painted ? 255 : 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const sample = same(((x + 0.5) / width) * image.width - 0.5, ((y + 0.5) / height) * image.height - 0.5);
+      const alpha = sample[3] / 255;
+      const r = alpha > 1e-6 ? sample[0] / alpha : 0;
+      const g = alpha > 1e-6 ? sample[1] / alpha : 0;
+      const b = alpha > 1e-6 ? sample[2] / alpha : 0;
+      const threshold = 255 * WHITE_FILL_THRESHOLD;
+      const bareTile = r >= threshold && g >= threshold && b >= threshold;
+      const painted = alpha > 0.5 && !bareTile;
+      if (!painted && alpha > 0.5) white += 1;
+      const index = y * width + x;
+      mask[index] = painted ? 1 : 0;
+      pigment[index * 4] = Math.round(r);
+      pigment[index * 4 + 1] = Math.round(g);
+      pigment[index * 4 + 2] = Math.round(b);
+      pigment[index * 4 + 3] = painted ? 255 : 0;
+    }
   }
   return { mask, pigment, white, width, height };
 }
@@ -545,8 +553,8 @@ async function bake() {
     purpose:
       'Normal/height and AO/roughness for the live-lit 3D face, baked at the approved decal carve geometry: the glyph area is displaced inward through a 0.3 mm Bezier transition so the wall is inside the painted silhouette (the decals\' bright rim and dark inner shadow). The committed relief albedo is reused because the paint colour and mask do not depend on the carve geometry.',
     source: {
-      glyphs: 'frontend/public/table/faces/<id>.png (committed, public domain)',
-      albedo: 'relief/face_albedo.png (committed Task 4B) for the pigment; the relief3d alpha drops the artwork white so it stays uncarved',
+      glyphs: 'frontend/public/table/faces/<id>.png (committed flat masters, 300 x 400, public domain)',
+      albedo: 'sampled from the committed glyph masters; the relief3d alpha drops the artwork white (whiteFillThreshold 0.9) so it stays uncarved',
       geometry: 'tools/render/decal-spec.json carve block (the approved 2.5D engraving)',
       generator: 'frontend/tools/relief3d/bake-relief3d.mjs',
       note: 'Nothing under tools/render is written; the 2.5D pipeline is read for its published carve numbers only.',

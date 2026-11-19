@@ -1369,7 +1369,12 @@ accessible marker on that seat.
 
 ---
 
-### 3D-10 — Carve calibration: light-space self-shadow, debug modes, step tiers
+### 3D-10 — Carve self-shadow, debug modes, step tiers
+
+**Reshaped 2026-11-18.** Carve *geometry* is no longer this unit's job: 3D-17
+bakes it from `decal-spec.json` (decided with the user after the live-shading
+comparison). 3D-10 keeps the light-space self-shadow, the `?debug=` modes and
+the step-tier calibration.
 
 **Goal.** Finish the carving: micro-shadow the groove walls, make the parameters
 observable, and lock the per-tier step counts against the measured budget.
@@ -1668,11 +1673,16 @@ public-domain glyph PNGs.
 **Gate:** frontend gate + the bake's own `--check` + user verdict.
 
 **As built (3D-17, 2026-11-18).** `frontend/tools/relief3d/bake-relief3d.mjs` (Node,
-no Blender, `@napi-rs/canvas` for decode only) bakes `frontend/public/table/relief3d/`
-plus `relief3d.json`: the decal's carve (glyph area displaced inward, wall inside
-the painted silhouette, 0.495 mm through a 0.3 mm Bézier transition) as normal+height
-and AO+roughness at 256 × 340, reusing the committed albedo (paint is
-geometry-independent). 22 s for 37 faces; 1.06 MB + 1.01 MB committed. Normals are
+no Blender, `@napi-rs/canvas` for PNG decode only) bakes
+`frontend/public/table/relief3d/` plus `relief3d.json`: the decal's carve (glyph
+area displaced inward, wall **inside** the painted silhouette, 0.495 mm through a
+0.3 mm Bézier transition) as albedo, normal+height and AO+roughness at 256 × 340.
+Inputs are the committed **flat glyph masters** (`faces/<id>.png`), premultiplied
+and un-premultiplied into the cell, with the 2.5D chain's published bare-tile
+rule (`whiteFillUncarved`, `whiteFillThreshold` 0.9). 22 s for 37 faces; 0.45 MB
+albedo + 1.53 MB normal + 0.95 MB AO/roughness committed. This replaced the
+retired Task 4B albedo as the input when main removed those assets (2026-11-18);
+`reliefAssets.ts` now has a single source (relief3d) plus the procedural cell. Normals are
 the exact height-field gradient; AO is a stated horizon approximation (8
 directions × 10 steps over 1.4 mm). `reliefAssets.ts` gained `source:
 'relief3d' | 'committed'` with its own pin table and a degrade-to-committed path;
@@ -1696,8 +1706,14 @@ shaded ivory between strokes and 59–88 ink with 66–80 dark stroke edges, whe
 committed bake read a flat 84 everywhere. The paint's *interior variation* (decal
 p05 31 … p95 177) still exceeds ours (63 … 90): the decal's bright end is a
 specular streak from its area light, and our directional key plus a 24° spread
-does not reproduce it. `hero-vs-decal.png` in the artifact directory puts the two
-side by side. **Verdict: pending.**
+does not reproduce it. `hero-vs-decal-1p.png` in the artifact directory puts the two
+side by side.
+
+**Verdict (2026-11-18, after the `1p` white-island fix): approved** — "That's
+better, that looks great." The carve reads as physically recessed at the hand's
+16°, the depth sweep remains the review process (it is where the bumps read),
+and the shell body, blue band and Haku's clean face were accepted earlier in the
+same thread. `POM_HEIGHT_SCALE` stays at 0.25; `1p` is the hero face.
 
 ## 7. Proposed command-center slicing
 

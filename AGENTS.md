@@ -100,12 +100,19 @@ engraving depth is a bug even when it renders.
   table model and anchor bank on 2026-11-17. `frontend/src/renderers/layoutConstants.ts`
   mirrors those numbers; if one is missing, take it from the spec and cite it.
 * **The carve** — `tools/render/decal-spec.json` and the committed carved decals
-  (`frontend/public/table/decals/`) are the approved engraving look:
-  `depthFractionOfThickness` 0.03 baked as **shading** (a rounded profile plus
-  occlusion), never as a runtime displacement. A view that slides a stroke
-  sideways at a grazing angle reads deeper than the decals the user signed off;
-  keep any parallax displacement a small fraction of the physical depth (the 3D
-  chain's `POM_HEIGHT_SCALE`), and hand the scale choice back as a comparison.
+  (`frontend/public/table/decals/`) are the approved engraving look. The 3D
+  chain bakes that *geometry* into its own channel atlas
+  (`frontend/tools/relief3d/bake-relief3d.mjs` →
+  `frontend/public/table/relief3d/` + `relief3d.json`): the glyph area pushed in
+  by `depthFractionOfThickness` 0.03 (0.495 mm) through a 0.3 mm Bézier
+  transition, with the wall **inside** the painted silhouette, and
+  `whiteFillUncarved` / `whiteFillThreshold` 0.9 leaving the artwork's white as
+  raised bare tile (`1p` alone is 17 % white). Displacement is scaled
+  (`POM_HEIGHT_SCALE`) so a stroke does not slide at a grazing angle; hand the
+  scale back as the depth-sweep comparison. **The Task 4B relief atlases are
+  retired and were removed from the tree on 2026-11-18** — do not read
+  `frontend/public/table/relief*`; the glyph masters (`faces/<id>.png`) are the
+  carve's input and `relief3d/` is its output.
 * **Materials and lighting** — the shells' materials above, and
   `shell-spec.json`'s `lighting` block (key azimuth 315°, elevation 55°,
   `#fff7ea`) which the 3D chain's `LIGHT` already mirrors.
