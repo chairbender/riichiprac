@@ -496,6 +496,10 @@ open `frontend/public/table/board_bg.png` and `frontend/public/table/blanks/`,
 or run `cd frontend && npm run dev`, and compare against
 `tools/render/reference/rig/v13-shadow-darker-1x.png`.
 
+**Sign-off.** The user reviewed the committed board, the 16 bucket blanks and
+the 37-face atlas on 2026-11-18 and approved them. The numeric gate is
+`bash tools/render/bake-board-assets.sh --check` (1002 checks, 0 failures).
+
 ## Directory layout
 
 | Path | Committed | Purpose |
