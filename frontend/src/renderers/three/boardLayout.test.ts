@@ -16,6 +16,7 @@ import {
   frameForAspect,
   handTileToEyeDeg,
   handFaceToViewDeg,
+  handRadius,
   layoutBoard,
   orientedBox,
   orientedBoxCorners,
@@ -25,6 +26,8 @@ import {
   projectToPixels,
   referenceFrame,
   seatPoint,
+  wallRunRadius,
+  wallTierHeightUnits,
   type BoardTile,
 } from './boardLayout';
 import { boardFixture } from './boardFixture';
@@ -159,8 +162,9 @@ describe('3D board layout: the hand', () => {
     }
   });
 
-  it('stands the hand on its far bottom edge at the committed radius', () => {
-    // The bottom far corner sits on the felt at HAND.backRadiusUnits.
+  it('stands the hand on its far bottom edge at the seat\u2019s hand radius', () => {
+    // The bottom far corner sits on the felt at the seat's own radius: the
+    // human is an end seat, so that is HAND.endSeatRadiusUnits.
     for (const tile of humanHand(board)) {
       const [, ay, az] = poseAxes(tile.pose);
       const half = 0.5;
@@ -170,7 +174,11 @@ describe('3D board layout: the hand', () => {
         tile.pose.position[2] - ay[2] * half - az[2] * (TILE.thicknessUnits / 2),
       ];
       const radius = radialUnits(fixture.humanSeat, farBottom);
-      expect(radius).toBeCloseTo(HAND.backRadiusUnits, 9);
+      expect(radius).toBeCloseTo(handRadius(fixture.humanSeat, fixture.humanSeat), 9);
+      expect(radius).toBeCloseTo(
+        HAND.backRadiusUnits - TILE.thicknessUnits,
+        9,
+      );
       expect(farBottom[1]).toBeCloseTo(0, 9);
     }
   });
@@ -282,7 +290,7 @@ describe('3D board layout: melds', () => {
       expect(tile.pose.tiltDeg).toBe(-90);
       expect(tile.faceUp).toBe(true);
       expect(radialUnits(0, tile.pose.position)).toBeCloseTo(
-        MELD.rowRadiusUnits,
+        handRadius(0, fixture.humanSeat),
         9,
       );
     }
@@ -338,6 +346,54 @@ describe('3D board layout: wall, dora and sticks', () => {
     }
   });
 
+  it('insets the front and back runs so the ring\u2019s edges line up', () => {
+    // The human's and the far runs are the end runs; the other two are sides.
+    expect(wallRunRadius(0, 0)).toBe(WALL.endRunRadiusUnits);
+    expect(wallRunRadius(2, 0)).toBe(WALL.endRunRadiusUnits);
+    expect(wallRunRadius(1, 0)).toBe(WALL.radiusUnits);
+    expect(wallRunRadius(3, 0)).toBe(WALL.radiusUnits);
+    // The inset follows the human: with the human at seat 1, runs 1 and 3 are
+    // the end runs.
+    expect(wallRunRadius(1, 1)).toBe(WALL.endRunRadiusUnits);
+    expect(wallRunRadius(3, 1)).toBe(WALL.endRunRadiusUnits);
+    expect(wallRunRadius(0, 1)).toBe(WALL.radiusUnits);
+
+    // Every wall tile sits on its own run's radius.
+    for (const tile of board.wall) {
+      const run = Math.floor(tile.slot / WALL.slotsPerRun);
+      expect(radialUnits(run as Seat, tile.pose.position)).toBeCloseTo(
+        wallRunRadius(run as Seat, fixture.humanSeat),
+        9,
+      );
+    }
+
+    // The near end run's outer face is flush with a side run's end tile in
+    // world space: both are `WALL.runHalfLengthUnits` from the centre line.
+    const nearRun = board.wall.filter(
+      (tile) =>
+        Math.floor(tile.slot / WALL.slotsPerRun) === fixture.humanSeat &&
+        tile.slot % WALL.tiers === 0,
+    );
+    expect(nearRun.length).toBeGreaterThan(0);
+    const tile = nearRun[0];
+    expect(tile.pose.position[2] + TILE.heightUnits / 2).toBeCloseTo(
+      WALL.runHalfLengthUnits,
+      9,
+    );
+    // Side runs still reach further out than that, which is why the hand ring
+    // cannot move in past them.
+    const sideRun = board.wall.find(
+      (entry) =>
+        Math.floor(entry.slot / WALL.slotsPerRun) ===
+        ((fixture.humanSeat + 1) % 4),
+    );
+    expect(sideRun).toBeDefined();
+    if (!sideRun) return;
+    expect(Math.abs(sideRun.pose.position[0]) + TILE.heightUnits / 2).toBeGreaterThan(
+      WALL.runHalfLengthUnits,
+    );
+  });
+
   it('reveals dora on the far wall\u2019s top tier, replacing wall tiles', () => {
     const farSeat = ((fixture.humanSeat + 2) % 4) as Seat;
     const dora = board.foreground.filter((tile) => tile.zone === 'dora');
@@ -345,14 +401,12 @@ describe('3D board layout: wall, dora and sticks', () => {
     dora.forEach((tile, index) => {
       expect(tile.pose.tiltDeg).toBe(-90);
       expect(tile.faceUp).toBe(true);
+      // The far run is an inset end run, not a side run.
       expect(radialUnits(farSeat, tile.pose.position)).toBeCloseTo(
-        WALL.radiusUnits,
+        wallRunRadius(farSeat, fixture.humanSeat),
         9,
       );
-      expect(tile.pose.position[1]).toBeCloseTo(
-        TILE.thicknessUnits + WALL.tierStepUnits + TILE.thicknessUnits / 2,
-        9,
-      );
+      expect(tile.pose.position[1]).toBeCloseTo(wallTierHeightUnits(1), 9);
       // Counting in from the draw end: one stack per indicator, no gap.
       const right = seatPoint(farSeat, 1, 0, 0);
       const w =
@@ -494,16 +548,21 @@ describe('3D board layout: camera framing', () => {
     ];
   };
 
-  it('reproduces the committed v13 rig exactly at 16:9', () => {
+  it('keeps the committed lens and pitch, solved closer for the board', () => {
+    // Decision 2 (2026-11-18) adopted the reference's 75 mm lens and 50° pitch;
+    // the board handoff (also 2026-11-18) asked for the camera to come in, so the
+    // distance is the board's own fit, strictly inside the reference's 76 units.
     const frame = frameForAspect(16 / 9, board);
     expect(frame.pitchDeg).toBe(CAMERA.pitchDeg);
-    expect(frame.distanceUnits).toBeCloseTo(CAMERA.distanceUnits, 9);
+    expect(frame.tanHalfHorizontal).toBeCloseTo(18 / 75, 12);
+    expect(frame.distanceUnits).toBeLessThan(CAMERA.distanceUnits);
     expect(frame.eye[0]).toBeCloseTo(0, 12);
+    const pitch = 50 * (Math.PI / 180);
     expect(frame.eye[1]).toBeCloseTo(
-      CAMERA.targetUnits[1] + 76 * Math.sin(50 * (Math.PI / 180)),
+      CAMERA.targetUnits[1] + frame.distanceUnits * Math.sin(pitch),
       9,
     );
-    expect(frame.eye[2]).toBeCloseTo(76 * Math.cos(50 * (Math.PI / 180)), 9);
+    expect(frame.eye[2]).toBeCloseTo(frame.distanceUnits * Math.cos(pitch), 9);
     // The committed Shift Y is the reference's, and the solver only nudges it
     // far enough to reach the safe area.
     expect(frame.shiftNdcY).toBeGreaterThan(committedShiftNdcY(16 / 9));
@@ -535,35 +594,51 @@ describe('3D board layout: camera framing', () => {
     );
   });
 
-  it('keeps the mat and the hand inside the safe area at every aspect', () => {
+  it('frames the board, not the mat, at every aspect', () => {
+    // Since the board handoff the fit subject is the tiles (the felt is a
+    // procedural square that runs off the frame), so the mat corners are allowed
+    // to crop while every tile keeps the committed safe area.
     const height = 1000;
+    let cropped = 0;
     for (const aspect of [...CAMERA.supportedAspects, ...requiredAspects]) {
       const frame = frameForAspect(aspect, board);
       const width = height * aspect;
       const margin = CAMERA.safeAreaMargin;
       for (const corner of matCorners()) {
         const pixel = projectToPixels(corner, frame, width, height);
-        expect(pixel.x / width, `aspect ${aspect} left`).toBeGreaterThanOrEqual(
-          margin,
-        );
-        expect(1 - pixel.x / width, `aspect ${aspect} right`).toBeGreaterThanOrEqual(
-          margin,
-        );
-        expect(pixel.y / height, `aspect ${aspect} top`).toBeGreaterThanOrEqual(
-          margin,
-        );
-        expect(1 - pixel.y / height, `aspect ${aspect} bottom`).toBeGreaterThanOrEqual(
-          margin,
-        );
+        if (pixel.x < 0 || pixel.x > width || pixel.y < 0 || pixel.y > height) {
+          cropped += 1;
+        }
       }
       for (const tile of humanHand(board)) {
         for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
           const ndc = projectPoint(corner, frame);
-          expect(1 - Math.abs(ndc.x) * 0.5).toBeGreaterThanOrEqual(margin);
-          expect(1 - Math.abs(ndc.y) * 0.5).toBeGreaterThanOrEqual(margin);
+          expect(1 - Math.abs(ndc.x) * 0.5, `tile x at ${aspect}`).toBeGreaterThanOrEqual(margin);
+          expect(1 - Math.abs(ndc.y) * 0.5, `tile y at ${aspect}`).toBeGreaterThanOrEqual(margin);
         }
       }
     }
+    // The mat is not framing subject any more: at landscape aspects its corners
+    // leave the frame, which is the "tiles too small" fix.
+    expect(cropped).toBeGreaterThan(0);
+  });
+
+  it('puts the human hand a sliver above the bottom edge at 16:9', () => {
+    const height = 1000;
+    const width = height * (16 / 9);
+    const frame = frameForAspect(16 / 9, board);
+    let bottom = 1;
+    for (const tile of humanHand(board)) {
+      for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+        const pixel = projectToPixels(corner, frame, width, height);
+        bottom = Math.min(bottom, 1 - pixel.y / height);
+      }
+    }
+    expect(bottom).toBeGreaterThanOrEqual(CAMERA.safeAreaMargin - 1e-9);
+    // The nearest content is not the hand but the left/right players' meld
+    // rows, which run along the near corners at their own (side) radius, so the
+    // hand's own margin is larger than the safe area. The gate bounds it.
+    expect(bottom).toBeLessThanOrEqual(0.07);
   });
 
   it('keeps every tile inside the safe area at every aspect', () => {

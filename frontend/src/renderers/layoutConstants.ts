@@ -91,10 +91,10 @@ export const SEATS = {
 } as const;
 
 /**
- * The wall: four runs of 17 stacks, two face-down tiles high, on a ring of
- * radius 7.0. Every run is missing its top tile at the draw end (slot 16), as
- * the committed reference draws it. The wall is decorative: the engine
- * publishes `tiles_remaining`, not per-slot occupancy, so it is never depleted
+ * The wall: four runs of 17 stacks, two face-down tiles high, on a ring. Every
+ * run is missing its top tile at the draw end (slot 16), as the committed
+ * reference draws it. The wall is decorative: the engine publishes
+ * `tiles_remaining`, not per-slot occupancy, so it is never depleted
  * (§9 R6 of the plan).
  *
  * A wall tile's snapshot slot is
@@ -104,6 +104,12 @@ export const SEATS = {
  * snapshot wall has {@link WALL.tileCount} tiles and no gaps in the slot
  * meanings it does use. The wall is decorative; board layout is free to use the
  * constants for a symmetric ring.
+ *
+ * The ring is **not** four identical rotations: the two runs at the human's own
+ * edge and the far edge sit at {@link WALL.endRunRadiusUnits} so their outer
+ * faces are flush with the side runs' end tiles (see that constant). The side
+ * runs stay at {@link WALL.radiusUnits}; `boardLayout.wallRunRadius` is the one
+ * place that decides which is which.
  */
 const WALL_RUNS = 4;
 const WALL_STACKS_PER_RUN = 17;
@@ -111,12 +117,39 @@ const WALL_TIERS = 2;
 const WALL_DRAW_END_SLOT = 16;
 const WALL_DRAW_END_TIERS = 1;
 
+/**
+ * A run's tangential half-length: the outer edge of its end tile.
+ *
+ * The end stack's centre is `(stacks - 1) / 2` pitches from the run's centre
+ * line, and half a tile width beyond that is the tile's outer edge. It is what
+ * the side runs reach toward the front and back of the table.
+ */
+const WALL_RUN_HALF_LENGTH_UNITS =
+  ((WALL_STACKS_PER_RUN - 1) / 2) * (TILE.widthUnits + TILE.gapUnits) +
+  TILE.widthUnits / 2;
+
 export const WALL = {
   runs: WALL_RUNS,
   stacksPerRun: WALL_STACKS_PER_RUN,
   tiers: WALL_TIERS,
-  /** Ring radius from the table centre to a run's tile centre line. */
+  /** Ring radius from the table centre to a side run's tile centre line. */
   radiusUnits: 7,
+  /** A run's tangential half-length: the outer edge of its end tile. */
+  runHalfLengthUnits: WALL_RUN_HALF_LENGTH_UNITS,
+  /**
+   * Centre-line radius of the **front and back** runs (the ones at the human's
+   * own edge and the far edge), inset from {@link WALL.radiusUnits} so their
+   * outer face is flush with a side run's end tile.
+   *
+   * A wall tile lies with its 28 mm long axis pointing radially, so a run's
+   * outer face is `radius + tileHeight / 2`. Leaving all four runs on one ring
+   * makes the front/back runs stick out past the side runs' ends by
+   * `radiusUnits + tileHeight / 2 - runHalfLengthUnits` (~29 mm), and that
+   * protrusion is exactly the board's vertical (front-to-back) extent on
+   * screen. Insetting them squares the ring's outer corners and buys the camera
+   * that much more room (board handoff, 2026-11-18).
+   */
+  endRunRadiusUnits: WALL_RUN_HALF_LENGTH_UNITS - TILE.heightUnits / 2,
   /** One stack pitch: a 21 mm tile plus the 0.3 mm groove. */
   stackPitchUnits: TILE.widthUnits + TILE.gapUnits,
   /** The second tier's rise: one 16.5 mm thickness plus the 0.3 mm tier gap. */
@@ -201,6 +234,9 @@ export const POND = {
  * supported aspect. The draw offset comes from the reference's structured
  * `hand.drawnOffsetUnits` field (its prose rounds the same slot to 5.5805).
  */
+/** The felt between a side wall run's outer face and a hand's front edge. */
+const HAND_WALL_GAP_UNITS = 0.85;
+
 export const HAND = {
   concealedCount: 13,
   /** One stack pitch: a 21 mm tile plus the 0.3 mm groove. */
@@ -209,8 +245,42 @@ export const HAND = {
   drawGapUnits: 0.2625,
   /** The drawn tile's centre offset from the seat's centre line. */
   drawOffsetUnits: 5.576785714,
-  /** Distance from table centre to the standing hand's back edge. */
-  backRadiusUnits: 10.6,
+  /**
+   * Gap from a wall run's **outer face** to the hand's front edge: ~24 mm.
+   *
+   * The binding wall for a left/right player is a **side** run, which occupies
+   * the band `radius ± tileHeight / 2` right beside that player's hand, so their
+   * hand's front edge is `WALL.radiusUnits + tileHeight / 2 + this gap` — the
+   * geometric floor, because the side runs cannot be inset (a 17-stack run
+   * already spans its whole side of the ring, so a smaller square would overlap
+   * at the corners). See {@link HAND.endSeatRadiusUnits} for the near/far hands,
+   * which face the inset end runs and sit a tile thickness closer.
+   */
+  wallGapUnits: 0.85,
+  /**
+   * Distance from table centre to a **left/right** player's standing-hand back
+   * edge: the side run's outer face plus `wallGapUnits`.
+   *
+   * The hand's front edge (its nearest point: the tile stands on its far bottom
+   * edge and leans back toward the table centre) sits 24 mm in front of the side
+   * run it is next to. Melds of that seat share it.
+   */
+  backRadiusUnits:
+    WALL.radiusUnits + TILE.heightUnits / 2 + HAND_WALL_GAP_UNITS,
+  /**
+   * Distance from table centre to the **human's** and the **across** player's
+   * standing-hand back edge: one tile thickness closer to the wall than
+   * {@link HAND.backRadiusUnits} (board handoff, 2026-11-18).
+   *
+   * Those two seats face the inset end runs, not the side runs, so there is a
+   * tile thickness of slack in front of them; the handoff asked for exactly that
+   * much and for the camera to use the freed depth. It leaves 36 mm of felt
+   * between the near wall's outer face and the hand (an equal-*gap* rule would
+   * give 24 mm, i.e. `WALL.endRunRadiusUnits + tileHeight / 2 + wallGapUnits`
+   * = 7.31, if that is ever wanted instead).
+   */
+  endSeatRadiusUnits:
+    WALL.radiusUnits + TILE.heightUnits / 2 + HAND_WALL_GAP_UNITS - TILE.thicknessUnits,
   reclineDeg: 40,
   reclineBandDeg: [30, 45],
   /** Largest allowed angle between the hand face normal and the view ray. */
@@ -227,8 +297,9 @@ export const HAND = {
  * `calledWidthUnits`. A meld therefore occupies as many slots as it has tiles,
  * and consecutive melds follow each other along the row (the reference only
  * models the single 4-slot row). If a row would run past {@link MELD.maxRowUnits}
- * the next meld starts a row one pitch nearer the player, so a four-meld hand
- * never leaves the mat.
+ * the next meld starts a row one pitch **toward the player** — away from the wall
+ * ring — so a four-meld hand never leaves the mat and never reaches into the
+ * wall; the hand now sits at 8.35, so stepping inward would collide.
  */
 export const MELD = {
   /** A full row's nominal slots: two upright, the called tile, the kan extension. */
@@ -241,7 +312,11 @@ export const MELD = {
   slotGapUnits: TILE.gapUnits,
   /** Tangential start of the row, clear of the drawn tile (5.58 + 0.375). */
   rowStartUnits: 6.1,
-  /** Centre-line radius of the first meld row, at the hand's radius. */
+  /**
+   * Centre-line radius of the first meld row, at a **left/right** seat's hand
+   * radius. The near/far seats' melds use their own hand radius
+   * (`HAND.endSeatRadiusUnits`); `boardLayout.handRadius` is the rule.
+   */
   rowRadiusUnits: HAND.backRadiusUnits,
   /** Radius step for a second/third meld row (a 28 mm tile plus clearance). */
   rowPitchUnits: 1.05,

@@ -1,5 +1,6 @@
 /**
- * The carved tile's vertex shader (3D-05).
+ * The carved tile's vertex shader (3D-05; the board's per-instance flags in
+ * 3D-07).
  *
  * One program draws every tile: the body geometry is built once (3D-04) and the
  * carved face comes from a per-instance atlas rect plus the instance matrix, so
@@ -15,15 +16,17 @@
  *
  * Instancing. three declares `instanceMatrix` itself when the mesh is an
  * `InstancedMesh`; this shader only has to use it. The per-instance attributes
- * are the atlas cell rect (vec4 `u0, v0, u1, v1`) and the face-up flag, which
- * the fragment stage uses to choose between the carved face and the blue back.
- * A face-down tile is rotated by the layout (3D-06), so its visible surface is
- * the mesh's local -Z back plate and needs no second geometry.
+ * are the atlas cell rect (vec4 `u0, v0, u1, v1`) and `aFlags`, the bitfield
+ * 3D-07 packs (`boardMesh.INSTANCE_FLAG`: face-up, highlighted, dimmed). The
+ * fragment stage tests the bits: face-up chooses between the carved face and
+ * the blue back, and the other two shade the tile. A face-down tile is rotated
+ * by the layout (3D-06), so its visible surface is the mesh's local -Z back
+ * plate and needs no second geometry.
  */
 
 export const TILE_VERTEX_SHADER = /* glsl */ `
 attribute vec4 aAtlasRect;
-attribute float aFaceUp;
+attribute float aFlags;
 attribute vec4 tangent;
 attribute float faceZone;
 
@@ -34,7 +37,7 @@ varying vec3 vWorldBitangent;
 varying vec3 vWorldPosition;
 varying vec3 vLocalPosition;
 varying float vFaceZone;
-varying float vFaceUp;
+varying float vFlags;
 
 void main() {
   vec4 localPosition = vec4(position, 1.0);
@@ -67,7 +70,7 @@ void main() {
   vWorldBitangent = worldBitangent;
   vLocalPosition = localPosition.xyz;
   vFaceZone = faceZone;
-  vFaceUp = aFaceUp;
+  vFlags = aFlags;
 
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }

@@ -192,7 +192,7 @@ async function main() {
     ['row gap / bevel', `${formatNumber(C.TILE.gapUnits, 4)} / ${formatNumber(C.TILE.bevelUnits)}`],
     ['mat / compass well', `${C.TABLE.matSizeUnits} / ${C.TABLE.compassWellUnits}`],
     ['wall runs x stacks x tiers', `${C.WALL.runs} x ${C.WALL.stacksPerRun} x ${C.WALL.tiers}`],
-    ['wall ring radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
+    ['wall ring radius / end-run radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.endRunRadiusUnits, 6)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
     ['wall draw end (slot, tiers at seat right)', `${C.WALL.drawEndSlot}, ${C.WALL.drawEndTiers} (${C.WALL.drawEndIsSeatRight})`],
     ['pond rows x columns (+overflow)', `${C.POND.rows} x ${C.POND.columns} (+${C.POND.overflowColumns})`],
     ['pond radii (nearest first)', formatMatrix3(C.POND.rowRadiiUnits)],
@@ -268,6 +268,32 @@ async function main() {
     `${board.wall.length} = ${C.WALL.tileCount} - ${fixture.dora.length}`,
   );
 
+  const runRadiusOk = [0, 1, 2, 3].every((run) => {
+    const expected = L.wallRunRadius(run, fixture.humanSeat);
+    return board.wall
+      .filter((tile) => Math.floor(tile.slot / C.WALL.slotsPerRun) === run)
+      .every((tile) => {
+        const outward = L.seatPoint(run, 0, 1, 0);
+        const radius =
+          tile.pose.position[0] * outward[0] + tile.pose.position[2] * outward[2];
+        return close(radius, expected, 1e-9);
+      });
+  });
+  check(
+    'front/back runs sit on the inset radius, side runs on the ring',
+    runRadiusOk,
+    `end ${formatNumber(C.WALL.endRunRadiusUnits, 4)} / side ${formatNumber(C.WALL.radiusUnits, 4)}`,
+  );
+  check(
+    'a front/back run\u2019s outer face is flush with a side run\u2019s end tile',
+    close(
+      C.WALL.endRunRadiusUnits + C.TILE.heightUnits / 2,
+      C.WALL.runHalfLengthUnits,
+      1e-9,
+    ),
+    `${formatNumber(C.WALL.runHalfLengthUnits, 6)} units`,
+  );
+
   const farSeat = (humanSeat + 2) % C.SEATS.count;
   const doraTiles = board.foreground.filter((tile) => tile.zone === 'dora');
   check(
@@ -277,11 +303,8 @@ async function main() {
       const radius =
         tile.pose.position[0] * outward[0] + tile.pose.position[2] * outward[2];
       return (
-        close(radius, C.WALL.radiusUnits) &&
-        close(
-          tile.pose.position[1],
-          C.TILE.thicknessUnits + C.WALL.tierStepUnits + C.TILE.thicknessUnits / 2,
-        ) &&
+        close(radius, L.wallRunRadius(farSeat, humanSeat)) &&
+        close(tile.pose.position[1], L.wallTierHeightUnits(1)) &&
         tile.pose.tiltDeg === -90
       );
     }),
@@ -332,12 +355,23 @@ async function main() {
       const radius = corner[0] * outward[0] + corner[2] * outward[2];
       return (
         tile.pose.tiltDeg === -C.HAND.reclineDeg &&
-        close(radius, C.HAND.backRadiusUnits) &&
+        close(radius, L.handRadius(humanSeat, humanSeat), 1e-9) &&
         close(corner[1], 0)
       );
     }),
     `tilt ${C.HAND.reclineDeg}°`,
   );
+  // The near and far hands sit one tile thickness closer to their (inset) end
+  // runs than the side hands do: the handoff's "player and across player" rule.
+  const acrossSeat = (humanSeat + 2) % C.SEATS.count;
+  check(
+    'the player and across hands are one tile thickness closer than the side hands',
+    close(L.handRadius(humanSeat, humanSeat), C.HAND.backRadiusUnits - C.TILE.thicknessUnits, 1e-9) &&
+      close(L.handRadius(acrossSeat, humanSeat), C.HAND.backRadiusUnits - C.TILE.thicknessUnits, 1e-9) &&
+      close(L.handRadius((humanSeat + 1) % C.SEATS.count, humanSeat), C.HAND.backRadiusUnits, 1e-9),
+    `${formatNumber(L.handRadius(humanSeat, humanSeat), 4)} / across ${formatNumber(L.handRadius(acrossSeat, humanSeat), 4)} / side ${formatNumber(C.HAND.backRadiusUnits, 4)}`,
+  );
+
   check(
     'hand recline stays inside the accepted band',
     C.HAND.reclineDeg >= C.HAND.reclineBandDeg[0] &&
@@ -458,15 +492,15 @@ async function main() {
   /* ---------------------------- framing ------------------------------ */
   const height = 1000;
   const aspects = [...C.CAMERA.supportedAspects].sort((a, b) => b - a);
-  console.log('\nframing (mat corners and all tiles inside the safe area)');
+  console.log('\nframing (every tile inside the safe area; the mat may crop)');
   console.log(
-    '  aspect   pitch  distance   mat X    mat Y   tiles     hand long   face/view   strict ray',
+    '  aspect   pitch  distance   mat X    mat Y   tiles     hand long   hand bottom   face/view   strict ray',
   );
 
-  let matOk = true;
   let tilesOk = true;
   let faceOk = true;
   let referenceLongAxis = 0;
+  let referenceHandBottom = 1;
   for (const aspect of aspects) {
     const frame = L.frameForAspect(aspect, board);
     const width = height * aspect;
@@ -504,6 +538,17 @@ async function main() {
     const longAxis = Math.hypot(a.x - b.x, a.y - b.y) / height;
     if (aspect === C.CAMERA.framingAspect) referenceLongAxis = longAxis;
 
+    // The human hand's own bottom margin: the handoff asked for the hand to sit
+    // only a sliver above the bottom edge, which is a number, not a look.
+    let handBottom = 1;
+    for (const entry of humanHand) {
+      for (const corner of L.orientedBoxCorners(L.orientedBox(entry.pose))) {
+        const pixel = L.projectToPixels(corner, frame, width, height);
+        handBottom = Math.min(handBottom, 1 - pixel.y / height);
+      }
+    }
+    if (aspect === C.CAMERA.framingAspect) referenceHandBottom = handBottom;
+
     const faceToView = L.handFaceToViewDeg(frame);
     const strict = Math.max(
       ...humanHand.map((entry) => L.handTileToEyeDeg(entry, frame)),
@@ -513,11 +558,11 @@ async function main() {
       `  ${aspect.toFixed(3).padStart(6)}  ${String(frame.pitchDeg).padStart(4)}°  ${formatNumber(frame.distanceUnits, 2).padStart(7)}` +
         `  ${(marginX * 100).toFixed(2).padStart(6)}%  ${(marginY * 100).toFixed(2).padStart(6)}%` +
         `  ${(tilesMargin * 100).toFixed(2).padStart(6)}%  ${(longAxis * 100).toFixed(2).padStart(8)}%` +
+        `  ${(handBottom * 100).toFixed(2).padStart(10)}%` +
         `  ${faceToView.toFixed(1).padStart(8)}°  ${strict.toFixed(1).padStart(9)}°`,
     );
 
     const margin = C.CAMERA.safeAreaMargin;
-    if (marginX + 1e-9 < margin || marginY + 1e-9 < margin) matOk = false;
     if (tilesMargin + 1e-9 < margin) tilesOk = false;
     if (faceToView > C.HAND.maxFaceToViewDeg + 1e-9) faceOk = false;
   }
@@ -527,7 +572,6 @@ async function main() {
       '   landscape readability gate at the reference aspect, since a portrait\n' +
       '   frame is taller than the table and shrinks any height fraction)\n',
   );
-  check('the mat corners keep the 2 % safe-area margin', matOk);
   check('every tile keeps the 2 % safe-area margin', tilesOk);
   check(
     'the hand face-to-view angle is within 25° at every aspect',
@@ -538,13 +582,23 @@ async function main() {
     referenceLongAxis + 1e-9 >= C.CAMERA.handLongAxisMinViewportFraction,
     `${formatNumber(referenceLongAxis * 100, 2)} %`,
   );
+  // The fixture gives every seat a meld, and a left/right seat's meld row runs
+  // along the near corner at its own (side) radius, so it is the board's nearest
+  // content, not the hand. With no opponent melds the hand is the nearest tile
+  // and sits at the 2 % safe area (the unit test and the report print both).
+  check(
+    'the human hand sits within 7 % of the frame bottom at 16:9',
+    referenceHandBottom <= 0.07 + 1e-9,
+    `${formatNumber(referenceHandBottom * 100, 2)} %`,
+  );
 
   const sixteenNine = L.frameForAspect(C.CAMERA.framingAspect, board);
   check(
-    'the 16:9 frame is the committed reference rig (75 mm, 50°, 76 units)',
-    close(sixteenNine.distanceUnits, C.CAMERA.distanceUnits) &&
-      sixteenNine.pitchDeg === C.CAMERA.pitchDeg,
-    `d = ${formatNumber(sixteenNine.distanceUnits, 6)}`,
+    'the 16:9 frame keeps the committed 75 mm / 50° lens, solved from the board',
+    sixteenNine.pitchDeg === C.CAMERA.pitchDeg &&
+      close(sixteenNine.tanHalfHorizontal, 18 / 75, 1e-12) &&
+      sixteenNine.distanceUnits < C.CAMERA.distanceUnits,
+    `d = ${formatNumber(sixteenNine.distanceUnits, 3)} (reference ${C.CAMERA.distanceUnits})`,
   );
   const reference = L.referenceFrame(C.CAMERA.framingAspect);
   const referenceCorners = matCorners.map((corner) =>

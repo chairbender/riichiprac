@@ -1,6 +1,8 @@
 /**
  * The carved tile material (3D-05): the shader program, its uniforms, the POM
- * step tiers and the numeric parallax bound.
+ * step tiers and the numeric parallax bound. Since 3D-07 one material also
+ * draws the whole board, so it owns the per-instance highlight/dim ranges the
+ * `aFlags` bits select ({@link TILE_HIGHLIGHT}).
  *
  * The material is one `ShaderMaterial` shared by every tile instance. It reads
  * the three committed relief atlases (3D-03) with per-instance atlas rects, and
@@ -143,6 +145,26 @@ export const PAINT_CAVITY_BLEND = 0.0;
 export const PAINT_SHEEN = 0.05;
 
 /**
+ * How the per-instance flags shade a tile (3D-07).
+ *
+ * `boardMesh.INSTANCE_FLAG` carries two *shading* bits: a highlighted tile is
+ * the newest discard of a seat a call/ron offer names, and a dimmed tile is a
+ * tsumogiri discard. The numbers are deliberately modest — both are
+ * information, not a spotlight — but large enough to be measured: the highlight
+ * lifts a tile ~35 % and warms it, the dim drops it to 62 %. They apply after
+ * the BRDF, so the carved face, the body and the blue back all respond
+ * consistently.
+ */
+export const TILE_HIGHLIGHT = {
+  /** Multiplied into the shaded colour of a highlighted instance. */
+  tint: [1.35, 1.22, 1.05] as const,
+  /** 1 = the tint applies in full to a highlighted instance. */
+  strength: 1,
+  /** Multiplier on a dimmed (tsumogiri) instance. */
+  dimGain: 0.62,
+} as const;
+
+/**
  * Debug-mode codes the shader branches on. `hero` selects a *view* (the scene
  * composition), and `pom-off` is a step count of 0, so neither has a code here;
  * `wireframe` is a material flag rather than a fragment output.
@@ -253,6 +275,9 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     uAmbientIntensity: { value: TILE_LIGHTING_UNIFORMS.ambientIntensity },
     uSpecularF0: { value: TILE_LIGHTING_UNIFORMS.specularF0 },
     uWrap: { value: TILE_LIGHTING_UNIFORMS.wrap },
+    uHighlightTint: { value: [...TILE_HIGHLIGHT.tint] },
+    uHighlightStrength: { value: TILE_HIGHLIGHT.strength },
+    uDimGain: { value: TILE_HIGHLIGHT.dimGain },
   };
 
   const material = new ShaderMaterial({

@@ -8,8 +8,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { CAMERA, TABLE } from '../layoutConstants';
-import { groundHit, rigPoseForAspect } from './cameraRig';
-import { FELT, feltSizeForPose, generateFeltPixels } from './felt';
+import { frameForAspect } from './boardLayout';
+import { groundHit } from './cameraRig';
+import { FELT, feltSizeForFrame, generateFeltPixels } from './felt';
 
 describe('procedural felt', () => {
   it('generates an RGBA texture of the declared size', () => {
@@ -69,16 +70,16 @@ describe('procedural felt', () => {
     const aspects = [...CAMERA.supportedAspects, 9 / 19.5, 9 / 21];
 
     for (const aspect of aspects) {
-      const pose = rigPoseForAspect(aspect);
-      const size = feltSizeForPose(pose);
+      const frame = frameForAspect(aspect);
+      const size = feltSizeForFrame(frame);
       const half = size / 2;
       expect(size, `size at ${aspect}`).toBeGreaterThan(TABLE.matSizeUnits);
 
       // The square is centred on the table and square by construction: the
       // near and far edges must both be at or beyond the frame's top and bottom
       // lines, at the centre line where the felt cannot rely on its width.
-      const top = groundHit(pose, 0, 1);
-      const bottom = groundHit(pose, 0, -1);
+      const top = groundHit(frame, 0, 1);
+      const bottom = groundHit(frame, 0, -1);
       expect(top, `top at ${aspect}`).not.toBeNull();
       expect(bottom, `bottom at ${aspect}`).not.toBeNull();
       if (!top || !bottom) continue;
@@ -95,10 +96,10 @@ describe('procedural felt', () => {
     // inside the frame. (On a tall window the same square is wider than the
     // frame, which is geometry, not a bug.)
     for (const aspect of [21 / 9, 16 / 9]) {
-      const pose = rigPoseForAspect(aspect);
-      const half = feltSizeForPose(pose) / 2;
+      const frame = frameForAspect(aspect);
+      const half = feltSizeForFrame(frame) / 2;
       for (const ndcY of [-1, 1]) {
-        const left = groundHit(pose, -1, ndcY);
+        const left = groundHit(frame, -1, ndcY);
         expect(left, `left at ${aspect}`).not.toBeNull();
         if (!left) continue;
         expect(Math.abs(left[0]), `left edge at ${aspect}`).toBeGreaterThan(half);

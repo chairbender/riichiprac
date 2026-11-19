@@ -1,122 +1,62 @@
 /**
- * The committed whole-table camera rig, plus its aspect fit (3D-02).
+ * The three.js `PerspectiveCamera` adapter for the solved board frame (3D-07).
  *
- * Decision D7 and user decision 2 (2026-11-18) adopt the already-signed-off
- * whole-table rig from `layoutConstants.ts`: a 75 mm lens on a 36 mm horizontal
- * gauge, pitched 50 deg down, centred on X = 0, with the negative Shift Y from
- * the reference reproduced as a projection offset. Nothing here invents a
- * second framing.
+ * There is exactly **one** framing source in the 3D chain:
+ * `boardLayout.frameForAspect` (plan §2.4, reconciliation of 2026-11-18). It
+ * solves the committed rig's eye distance, pitch, field of view and projection
+ * shift against the real `layoutBoard` extents and owns the numeric gate in
+ * `frontend/scripts/check-3d-layout.mjs`. 3D-02's parallel solver lived here and
+ * is deleted: this module no longer decides where the camera goes, it only
+ * applies a {@link CameraFrame} to a three camera and answers the pure
+ * projection questions the rest of the scene asks (where a view ray meets the
+ * felt, what the view-projection matrix is).
  *
- * Two things this module owns that the 2.5D reference cannot answer:
+ * Two consequences the later units depend on:
  *
- * - **The aspect fit.** The reference is one 1920 x 1080 frame. At every other
- *   aspect the eye is solved back to the smallest distance that keeps the mat
- *   corners and the human hand inside the frame with the reference's own inset
- *   (see {@link FIT_MARGIN}). At 16:9 that solution is the committed distance,
- *   so the reference frame is reproduced exactly; the solver only ever moves
- *   the camera *back*, never in past the committed rig.
- * - **The portrait preset.** A portrait frame keeps the committed horizontal
- *   field of view and would leave the table as a postage stamp, so portrait
- *   uses the steeper committed portrait pitch ({@link CAMERA.portraitPitchDeg}).
+ * - 3D-08's hit rects must project through this same frame — a second camera
+ *   would put the DOM buttons off the tiles (plan §9 R7);
+ * - the felt is sized from the frame with {@link groundHit}, so it still reaches
+ *   the top and bottom of the window at every supported aspect.
  *
- * Pure math: no DOM and no three.js (the three `PerspectiveCamera` is applied
- * from {@link applyPoseToCamera}). That keeps the framing numbers printable and
- * testable in Node without a GPU.
+ * Pure math apart from the one adapter call, which takes a three camera as an
+ * argument. No DOM, no GPU, no clock.
  */
 
 import type { PerspectiveCamera } from 'three';
-import { CAMERA, HAND, TABLE } from '../layoutConstants';
+import { CAMERA } from '../layoutConstants';
+import type { CameraFrame, Vec3 } from './boardLayout';
 
 const DEG = Math.PI / 180;
-
-/** A point or direction in 3D world space: +X right, +Y up, +Z toward the human. */
-export type Vec3 = readonly [number, number, number];
 
 /** A column-major 4 x 4 matrix, the layout three.js uses. */
 export type Mat4 = readonly number[];
 
-/**
- * The fraction of the frame kept clear of the framing subject when the eye has
- * to move back.
- *
- * The committed 16:9 frame is the reference: at 76 units the mat's near corners
- * sit 0.36 % of the frame height above the bottom edge, and the reference note
- * only claims a width margin. 0.4 % therefore keeps the committed inset (the
- * 16:9 solution lands within half a pixel of the reference) while still giving
- * the other aspects a non-zero edge clearance. A larger margin would move the
- * 16:9 camera back and stop reproducing the signed-off reference.
- */
-export const FIT_MARGIN = 0.004;
-
-/**
- * The warm-up points every aspect is fitted to: the four mat corners plus the
- * human hand's front/bottom and front/top corners at its committed back radius,
- * so the near edge and the top of the reclined hand both stay in frame.
- */
-export const FRAMING_SUBJECT = {
-  /** Half of the 700 mm mat. */
-  matHalfUnits: TABLE.matSizeUnits / 2,
-  /** Half the 13-tile hand plus the 0.2625-unit draw gap, in units. */
-  handHalfWidthUnits: (HAND.concealedCount * HAND.pitchUnits) / 2 + 0.3,
-  /** The hand's front edge, at its committed back radius from the table centre. */
-  handFrontUnits: HAND.backRadiusUnits,
-  /** How far the reclined hand stands above the felt. */
-  handTopUnits: 0.95,
-} as const;
-
-/** Every point the framing solver must keep inside the frame. */
-export function framingSubjectPoints(): readonly Vec3[] {
-  const half = FRAMING_SUBJECT.matHalfUnits;
-  const handX = FRAMING_SUBJECT.handHalfWidthUnits;
-  const front = FRAMING_SUBJECT.handFrontUnits;
-  const top = FRAMING_SUBJECT.handTopUnits;
-  return [
-    [-half, 0, -half],
-    [-half, 0, half],
-    [half, 0, -half],
-    [half, 0, half],
-    [-handX, 0, front],
-    [-handX, top, front],
-    [handX, 0, front],
-    [handX, top, front],
-  ];
+/** The camera's right, up and forward axes at a frame (unit vectors). */
+export interface CameraAxes {
+  readonly right: Vec3;
+  readonly up: Vec3;
+  readonly forward: Vec3;
 }
 
-/** The horizontal field of view of the committed lens, in degrees. */
-export function horizontalFieldOfViewDeg(): number {
-  return 2 * Math.atan((CAMERA.sensorWidthMm / 2) / CAMERA.lensMm) / DEG;
+/** The camera's own axes for a frame: +X right, pithed down by `pitchDeg`. */
+export function frameAxes(frame: CameraFrame): CameraAxes {
+  const pitch = frame.pitchDeg * DEG;
+  const forward: Vec3 = [0, -Math.sin(pitch), -Math.cos(pitch)];
+  const right: Vec3 = [1, 0, 0];
+  return { right, up: cross(right, forward), forward };
 }
 
-/**
- * The vertical field of view for an aspect ratio: a horizontal sensor fit, so
- * the horizontal field is fixed and the vertical one follows from the aspect.
- */
-export function verticalFieldOfViewDeg(aspect: number): number {
-  const fovX = horizontalFieldOfViewDeg() * DEG;
-  return (2 * Math.atan(Math.tan(fovX / 2) / normaliseAspect(aspect))) / DEG;
+/** The vertical field of view a frame resolves to, in degrees. */
+export function frameVerticalFieldOfViewDeg(frame: CameraFrame): number {
+  return (2 * Math.atan(frame.tanHalfVertical)) / DEG;
 }
 
-/** The committed pitch for an aspect: 50 deg landscape, 62 deg portrait. */
-export function pitchForAspect(aspect: number): number {
-  return normaliseAspect(aspect) < 1 ? CAMERA.portraitPitchDeg : CAMERA.pitchDeg;
+/** The horizontal field of view a frame resolves to, in degrees (informational). */
+export function frameHorizontalFieldOfViewDeg(frame: CameraFrame): number {
+  return (2 * Math.atan(frame.tanHalfHorizontal)) / DEG;
 }
 
-/**
- * The projection lift, in NDC y, that reproduces the reference's negative Shift
- * Y. Blender measures the shift against the sensor **width** and its positive
- * direction moves the image down, so a -0.02 shift lifts the image by
- * `2 * 0.02 * aspect` NDC (38.4 px at 1920 x 1080, as the reference records).
- */
-export function shiftNdcY(aspect: number): number {
-  return -2 * CAMERA.shiftY * normaliseAspect(aspect);
-}
-
-/** Fall back to the reference aspect for a nonsensical or absent one. */
-function normaliseAspect(aspect: number): number {
-  return Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
-}
-
-/** Column-major perspective projection with the rig's lens shift. */
+/** Column-major perspective projection with the frame's lens shift. */
 export function perspectiveMatrix(
   fovYDeg: number,
   aspect: number,
@@ -132,7 +72,8 @@ export function perspectiveMatrix(
   /*
    * A point's NDC y is `(m[5] * y + m[9] * z) / -z`, so `m[9] = -lift` adds
    * `+lift` to every projected y. That is the lens shift: the content rises,
-   * the frustum stays symmetric in z.
+   * the frustum stays symmetric in z. It is exactly `CameraFrame.shiftNdcY`
+   * (the reference's negative Shift Y plus the solver's safe-area nudge).
    */
   m[9] = -projectionShiftNdcY;
   m[10] = (far + near) / (near - far);
@@ -169,6 +110,38 @@ export function multiplyMat4(a: Mat4, b: Mat4): number[] {
   return out;
 }
 
+/** The frame's projection matrix at the committed clip planes. */
+export function projectionMatrixForFrame(
+  frame: CameraFrame,
+  near: number = CAMERA.clipStartUnits,
+  far: number = CAMERA.clipEndUnits,
+): number[] {
+  return perspectiveMatrix(
+    frameVerticalFieldOfViewDeg(frame),
+    frame.aspect,
+    near,
+    far,
+    frame.shiftNdcY,
+  );
+}
+
+/** The frame's view matrix (`frame.eye` looking at `frame.target`). */
+export function viewMatrixForFrame(frame: CameraFrame): number[] {
+  return lookAtMatrix(frame.eye, frame.target);
+}
+
+/** The frame's combined view-projection matrix. */
+export function viewProjectionForFrame(
+  frame: CameraFrame,
+  near: number = CAMERA.clipStartUnits,
+  far: number = CAMERA.clipEndUnits,
+): number[] {
+  return multiplyMat4(
+    projectionMatrixForFrame(frame, near, far),
+    viewMatrixForFrame(frame),
+  );
+}
+
 /** The projected NDC position of a world point. */
 export interface ProjectedPoint {
   readonly ndcX: number;
@@ -189,202 +162,25 @@ export function projectPoint(viewProjection: Mat4, point: Vec3): ProjectedPoint 
   return { ndcX: x / safeW, ndcY: y / safeW, ndcZ: z / safeW, inFront };
 }
 
-/** One resolved camera pose for a viewport aspect. */
-export interface RigPose {
-  readonly aspect: number;
-  readonly portrait: boolean;
-  readonly pitchDeg: number;
-  /** Eye-to-target distance along the view axis, in tile units. */
-  readonly distanceUnits: number;
-  readonly eyeUnits: Vec3;
-  readonly targetUnits: Vec3;
-  readonly fovXDeg: number;
-  readonly fovYDeg: number;
-  /** The lens lift in NDC y (positive raises the projected content). */
-  readonly shiftNdcY: number;
-  readonly view: Mat4;
-  readonly projection: Mat4;
-  readonly viewProjection: Mat4;
-}
-
-/** The committed aim point in 3D world space. */
-export const RIG_TARGET_UNITS: Vec3 = [
-  CAMERA.targetUnits[0],
-  CAMERA.targetUnits[1],
-  CAMERA.targetUnits[2],
-];
-
-/** The eye for a pitch and distance: above and toward +Z of the target. */
-export function eyeFor(pitchDeg: number, distanceUnits: number): Vec3 {
-  const pitch = pitchDeg * DEG;
-  return [
-    RIG_TARGET_UNITS[0],
-    RIG_TARGET_UNITS[1] + distanceUnits * Math.sin(pitch),
-    RIG_TARGET_UNITS[2] + distanceUnits * Math.cos(pitch),
-  ];
-}
-
-function poseAt(aspect: number, distanceUnits: number): RigPose {
-  const pitchDeg = pitchForAspect(aspect);
-  const eye = eyeFor(pitchDeg, distanceUnits);
-  const fovYDeg = verticalFieldOfViewDeg(aspect);
-  const lift = shiftNdcY(aspect);
-  const view = lookAtMatrix(eye, RIG_TARGET_UNITS);
-  const projection = perspectiveMatrix(
-    fovYDeg,
-    aspect,
-    CAMERA.clipStartUnits,
-    CAMERA.clipEndUnits,
-    lift,
-  );
-  return {
-    aspect,
-    portrait: aspect < 1,
-    pitchDeg,
-    distanceUnits,
-    eyeUnits: eye,
-    targetUnits: RIG_TARGET_UNITS,
-    fovXDeg: horizontalFieldOfViewDeg(),
-    fovYDeg,
-    shiftNdcY: lift,
-    view,
-    projection,
-    viewProjection: multiplyMat4(projection, view),
-  };
-}
-
-/** True when every framing point projects inside the frame with the fit margin. */
-export function framesSubject(pose: RigPose, margin = FIT_MARGIN): boolean {
-  const limit = 1 - 2 * margin;
-  for (const point of framingSubjectPoints()) {
-    const projected = projectPoint(pose.viewProjection, point);
-    if (!projected.inFront || projected.ndcZ < -1 || projected.ndcZ > 1) return false;
-    if (Math.abs(projected.ndcX) > limit || Math.abs(projected.ndcY) > limit) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/** The farthest distance the solver will consider (the clip end is 600). */
-const MAX_FIT_DISTANCE_UNITS = 4 * CAMERA.distanceUnits;
-const FIT_ITERATIONS = 48;
-
 /**
- * The eye distance for an aspect: the committed distance, moved back only as
- * far as the fit needs. Monotone in distance, so a fixed-iteration bisection is
- * deterministic and exact enough for framing assertions (~1e-12 units).
- */
-export function fitDistanceUnits(aspect: number): number {
-  const committed = CAMERA.distanceUnits;
-  if (framesSubject(poseAt(aspect, committed))) return committed;
-
-  let near: number = committed;
-  let far: number = MAX_FIT_DISTANCE_UNITS;
-  for (let step = 0; step < FIT_ITERATIONS; step += 1) {
-    const middle = (near + far) / 2;
-    if (framesSubject(poseAt(aspect, middle))) {
-      far = middle;
-    } else {
-      near = middle;
-    }
-  }
-  return far;
-}
-
-/** Resolve the full rig pose for a viewport aspect. */
-export function rigPoseForAspect(aspect: number): RigPose {
-  const resolved = normaliseAspect(aspect);
-  return poseAt(resolved, fitDistanceUnits(resolved));
-}
-
-/** One mat corner or hand corner, projected to CSS pixels. */
-export interface FramedPoint {
-  readonly label: string;
-  readonly x: number;
-  readonly y: number;
-}
-
-/** The numbers this unit prints (and 3D-06 gates from the real layout). */
-export interface FramingReport {
-  readonly aspect: number;
-  readonly width: number;
-  readonly height: number;
-  readonly pitchDeg: number;
-  readonly distanceUnits: number;
-  readonly fovXDeg: number;
-  readonly fovYDeg: number;
-  readonly shiftNdcY: number;
-  /** Smallest distance from a projected point to a frame edge, as a fraction of that edge. */
-  readonly marginX: number;
-  readonly marginY: number;
-  readonly points: readonly FramedPoint[];
-}
-
-/**
- * Project the framing subject into a `width x height` frame and report the
- * numbers. `height` defaults to the frame implied by the aspect.
- */
-export function framingReport(
-  aspect: number,
-  width = 1920,
-  height = width / normaliseAspect(aspect),
-): FramingReport {
-  const pose = rigPoseForAspect(aspect);
-  const labels = [
-    'mat far left',
-    'mat near left',
-    'mat far right',
-    'mat near right',
-    'hand near left',
-    'hand far left',
-    'hand near right',
-    'hand far right',
-  ];
-  let marginX = Number.POSITIVE_INFINITY;
-  let marginY = Number.POSITIVE_INFINITY;
-  const points = framingSubjectPoints().map((point, index) => {
-    const projected = projectPoint(pose.viewProjection, point);
-    marginX = Math.min(marginX, (1 - Math.abs(projected.ndcX)) / 2);
-    marginY = Math.min(marginY, (1 - Math.abs(projected.ndcY)) / 2);
-    return {
-      label: labels[index] ?? `point ${index}`,
-      x: (projected.ndcX * 0.5 + 0.5) * width,
-      y: (0.5 - projected.ndcY * 0.5) * height,
-    };
-  });
-  return {
-    aspect: pose.aspect,
-    width,
-    height,
-    pitchDeg: pose.pitchDeg,
-    distanceUnits: pose.distanceUnits,
-    fovXDeg: pose.fovXDeg,
-    fovYDeg: pose.fovYDeg,
-    shiftNdcY: pose.shiftNdcY,
-    marginX,
-    marginY,
-    points,
-  };
-}
-
-/**
- * Apply a resolved pose to a three.js `PerspectiveCamera`.
+ * Apply a solved frame to a three.js `PerspectiveCamera`.
  *
  * The projection matrix is patched after `updateProjectionMatrix` because
  * three's `PerspectiveCamera` has no lens-shift field; `projectionMatrixInverse`
- * is refreshed so any later ray cast or unprojection stays exact.
+ * is refreshed so any later ray cast or unprojection stays exact. This is the
+ * whole camera: there is no distance solve, no second pitch preset and no
+ * margin here — those live in `boardLayout.frameForAspect` and nowhere else.
  */
-export function applyPoseToCamera(camera: PerspectiveCamera, pose: RigPose): void {
-  camera.fov = pose.fovYDeg;
-  camera.aspect = pose.aspect;
+export function applyFrameToCamera(camera: PerspectiveCamera, frame: CameraFrame): void {
+  camera.fov = frameVerticalFieldOfViewDeg(frame);
+  camera.aspect = frame.aspect;
   camera.near = CAMERA.clipStartUnits;
   camera.far = CAMERA.clipEndUnits;
-  camera.position.set(pose.eyeUnits[0], pose.eyeUnits[1], pose.eyeUnits[2]);
+  camera.position.set(frame.eye[0], frame.eye[1], frame.eye[2]);
   camera.up.set(0, 1, 0);
-  camera.lookAt(pose.targetUnits[0], pose.targetUnits[1], pose.targetUnits[2]);
+  camera.lookAt(frame.target[0], frame.target[1], frame.target[2]);
   camera.updateProjectionMatrix();
-  camera.projectionMatrix.elements[9] = -pose.shiftNdcY;
+  camera.projectionMatrix.elements[9] = -frame.shiftNdcY;
   camera.projectionMatrixInverse.copy(camera.projectionMatrix);
   camera.projectionMatrixInverse.invert();
 }
@@ -402,24 +198,15 @@ export type GroundPoint = readonly [number, number];
  * coverage at every supported aspect.
  */
 export function groundHit(
-  pose: RigPose,
+  frame: CameraFrame,
   ndcX: number,
   ndcY: number,
 ): GroundPoint | null {
-  const forward = normalise([
-    pose.targetUnits[0] - pose.eyeUnits[0],
-    pose.targetUnits[1] - pose.eyeUnits[1],
-    pose.targetUnits[2] - pose.eyeUnits[2],
-  ]);
-  const right = normalise(cross(forward, [0, 1, 0]));
-  const up = cross(right, forward);
-
-  const tanHalfY = Math.tan((pose.fovYDeg * DEG) / 2);
-  const tanHalfX = tanHalfY * pose.aspect;
+  const { right, up, forward } = frameAxes(frame);
   // The NDC y already includes the lens lift, so remove it before rebuilding
   // the camera-space direction.
-  const sx = ndcX * tanHalfX;
-  const sy = (ndcY - pose.shiftNdcY) * tanHalfY;
+  const sx = ndcX * frame.tanHalfHorizontal;
+  const sy = (ndcY - frame.shiftNdcY) * frame.tanHalfVertical;
 
   const direction = normalise([
     forward[0] + sx * right[0] + sy * up[0],
@@ -428,11 +215,8 @@ export function groundHit(
   ]);
   if (direction[1] >= -1e-9) return null;
 
-  const distance = -pose.eyeUnits[1] / direction[1];
-  return [
-    pose.eyeUnits[0] + distance * direction[0],
-    pose.eyeUnits[2] + distance * direction[2],
-  ];
+  const distance = -frame.eye[1] / direction[1];
+  return [frame.eye[0] + distance * direction[0], frame.eye[2] + distance * direction[2]];
 }
 
 function dot(a: Vec3, b: Vec3): number {

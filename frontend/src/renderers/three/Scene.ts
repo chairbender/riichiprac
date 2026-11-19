@@ -1,18 +1,33 @@
 /**
- * The three.js scene behind the lazy entry (3D-02, hero view 3D-05).
+ * The three.js scene behind the lazy entry (3D-02; the board from 3D-07).
  *
  * This module is only reachable through the host's `import('./three')`, so no
  * byte of three.js can reach the entry chunk. It owns the renderer, the resize
  * path, the on-demand frame loop and a dispose registry; it owns no game rules
  * and reads no `GameState` (a `TableSnapshot` is the only input).
  *
- * As of 3D-05 the scene is the felt, its lights, and — only under
- * `?renderer=3d&debug=hero` — the four hero tiles in their real committed
- * attitudes (see `hero.ts`). The four are one instanced draw of 3D-04's mesh
- * with `tileMaterial`'s carved shader, so the unit proves the look and the draw
- * shape 3D-07 will scale to a board. The board itself arrives in 3D-07, the DOM
- * overlay's hit rects in 3D-08, motion in 3D-12 and the perf HUD in 3D-13; those
- * units add to this shell rather than replace it.
+ * The picture, in draw order:
+ *
+ * | layer | object | draws |
+ * | --- | --- | --- |
+ * | felt | one plane (`felt.ts`) | 1 |
+ * | contact shadows | one instanced quad layer (`shadows.ts`), transparent | 1 |
+ * | tiles | one `InstancedMesh` for the whole board (`boardMesh.ts`) | 1 |
+ * | riichi sticks | one instanced box layer (`sticks.ts`) | 1 |
+ *
+ * Four draw calls in the default debug-off scene, and the tile count does not
+ * change that: wall, ponds, hands, melds and dora all ride the same instance
+ * buffer (§2.8). The shadows are transparent, so three draws them after the
+ * opaque tiles and the depth test keeps them off every tile body.
+ *
+ * `?renderer=3d&debug=hero` still mounts 3D-05's four hero tiles instead of the
+ * board (see `hero.ts`); every other debug mode draws the board, so 3D-10's
+ * albedo/height/normal/steps views are the real table.
+ *
+ * Camera. There is one framing source: 3D-06's `boardLayout.frameForAspect`,
+ * solved against the real layout at the current aspect (§2.4). `cameraRig.ts` is
+ * only the three `PerspectiveCamera` adapter. The felt is re-sized from the same
+ * frame so it still reaches the top and bottom edges.
  *
  * Debug reporting. `heroReport()` re-draws, reads the five probe blocks back with
  * `readPixels` and prints them as numbers; `heroCaptures()` renders the same
@@ -23,14 +38,10 @@
 
 import {
   AmbientLight,
-  BufferAttribute,
-  BufferGeometry,
   Color,
   DirectionalLight,
   HemisphereLight,
-  InstancedBufferAttribute,
   InstancedMesh,
-  Matrix4,
   NoToneMapping,
   PerspectiveCamera,
   SRGBColorSpace,
@@ -39,6 +50,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
+import type { Object3D } from 'three';
 import { effectiveDevicePixelRatio } from '../capabilities';
 import type {
   HeroCapture,
@@ -49,25 +61,34 @@ import type {
   RendererStats,
   TableRenderer,
   TableSnapshot,
+  TileFaceId,
 } from '../contract';
-import { HERO_FAILED_EVENT, HERO_READY_EVENT } from '../contract';
+import { BOARD_FAILED_EVENT, BOARD_READY_EVENT, HERO_FAILED_EVENT, HERO_READY_EVENT } from '../contract';
 import { CAMERA, LIGHT } from '../layoutConstants';
-import { applyPoseToCamera, rigPoseForAspect, verticalFieldOfViewDeg } from './cameraRig';
-import { createFelt, feltSizeForPose } from './felt';
+import { frameForAspect, layoutBoard } from './boardLayout';
+import type { BoardLayout, CameraFrame } from './boardLayout';
+import {
+  buildBoardInstances,
+  createBoardMesh,
+  instanceFlags,
+} from './boardMesh';
+import type { BoardInstance, BoardMeshHandle } from './boardMesh';
+import { applyFrameToCamera, frameVerticalFieldOfViewDeg } from './cameraRig';
+import { createFelt, feltSizeForFrame } from './felt';
 import type { FeltSurface } from './felt';
 import { heroInstances, heroParallaxAt, probeWorldPoint } from './hero';
 import type { HeroInstance, HeroSlot } from './hero';
 import { sceneLightSpecs } from './lighting';
-import {
-  allProbesPass,
-  readProbes,
-} from './probes';
+import { allProbesPass, readProbes } from './probes';
 import type { ProbePixelSource, ProbeProjector } from './probes';
 import { loadReliefAssets } from './reliefAssets';
 import type { ReliefAssets } from './reliefAssets';
 import { createReliefTextureFactory } from './reliefTextures';
 import type { ReliefGpuTexture } from './reliefTextures';
-import { buildTileGeometry } from './tileGeometry';
+import { createShadowLayer, shadowInstances } from './shadows';
+import type { ShadowLayer } from './shadows';
+import { createStickMesh } from './sticks';
+import type { StickMesh } from './sticks';
 import {
   CARVE_DEPTH_MM,
   POM_HEIGHT_SCALE_SWEEP,
@@ -115,8 +136,17 @@ interface HeroView {
   readonly assets: ReliefAssets<ReliefGpuTexture>;
   readonly material: TileMaterialHandle;
   readonly mesh: InstancedMesh;
-  readonly geometry: BufferGeometry;
+  readonly geometry: BoardMeshHandle['geometry'];
   readonly instances: readonly HeroInstance[];
+}
+
+/** The mounted board: the tile mesh plus its shadow and stick layers. */
+interface BoardView {
+  readonly assets: ReliefAssets<ReliefGpuTexture>;
+  readonly material: TileMaterialHandle;
+  readonly tiles: BoardMeshHandle;
+  readonly shadows: ShadowLayer;
+  readonly sticks: StickMesh;
 }
 
 /** The macro capture's square edge, in pixels. */
@@ -128,18 +158,41 @@ const HERO_CAPTURE_FILL = 0.72;
 /** The framed extent around a tile in the macro capture, in world units. */
 const HERO_CAPTURE_FRAME_UNITS = 1.15;
 
-/** Build 3D-04's mesh as a three geometry, attributes and index included. */
-function createTileRenderGeometry(): BufferGeometry {
-  const data = buildTileGeometry();
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new BufferAttribute(data.positions, 3));
-  geometry.setAttribute('normal', new BufferAttribute(data.normals, 3));
-  geometry.setAttribute('uv', new BufferAttribute(data.uvs, 2));
-  geometry.setAttribute('tangent', new BufferAttribute(data.tangents, 4));
-  geometry.setAttribute('faceZone', new BufferAttribute(data.faceZone, 1));
-  geometry.setIndex(new BufferAttribute(data.indices, 1));
-  geometry.computeBoundingSphere();
-  return geometry;
+/**
+ * The default debug-off scene's draw-call plan (3D-07, §2.8).
+ *
+ * Four draws, regardless of the snapshot: the felt plane, the contact-shadow
+ * quads (one instanced layer), the whole tile board (one instanced mesh) and the
+ * riichi sticks (one instanced layer). The board's lights cast no shadow maps, so
+ * there is no extra depth pass. `measure().drawCalls` reports what the renderer
+ * actually issued; the gate test builds the three board layers headlessly,
+ * counts their meshes, and checks this plan against the 4-call budget.
+ */
+export const SCENE_DRAW_CALLS = {
+  felt: 1,
+  shadows: 1,
+  tiles: 1,
+  sticks: 1,
+} as const;
+
+/** How many draw calls the default scene plans for. */
+export function steadyStateDrawCalls(): number {
+  return Object.values(SCENE_DRAW_CALLS).reduce((sum, count) => sum + count, 0);
+}
+
+/**
+ * The number of draw calls a scene graph of plain/instanced meshes issues.
+ *
+ * One visible mesh is one call in this scene (no multi-material groups, no
+ * lines, no points), so this is the same number three's `info.render.calls`
+ * counts for it — which is what lets a GPU-free test assert the budget.
+ */
+export function countSceneDrawCalls(root: Object3D): number {
+  let calls = 0;
+  root.traverseVisible((object) => {
+    if ((object as { isMesh?: boolean }).isMesh === true) calls += 1;
+  });
+  return calls;
 }
 
 /** The scene's drawable picture plus the renderer the host drives. */
@@ -152,11 +205,15 @@ export class TableScene implements TableRenderer {
   private readonly canvas: HTMLCanvasElement;
   private hero: HeroView | null = null;
   private heroStarted = false;
+  private board: BoardView | null = null;
+  private boardStarted = false;
+  private layout: BoardLayout | null = null;
+  private frame: CameraFrame;
   private tier: QualityTier;
   private frameHandle: number | null = null;
   private disposed = false;
   private revision = 0;
-  private aspect = 16 / 9;
+  private aspect = CAMERA.framingAspect;
 
   constructor(canvas: HTMLCanvasElement, options: RendererOptions) {
     this.tier = options.tier;
@@ -192,9 +249,13 @@ export class TableScene implements TableRenderer {
 
     this.scene = new Scene();
     this.scene.background = new Color('#0b1116');
+
+    // One framing source: 3D-06's solved frame (§2.4). The default aspect is
+    // the reference frame until the host reports the real element size.
+    this.frame = frameForAspect(this.aspect);
     this.camera = new PerspectiveCamera(
-      verticalFieldOfViewDeg(16 / 9),
-      16 / 9,
+      frameVerticalFieldOfViewDeg(this.frame),
+      this.frame.aspect,
       CAMERA.clipStartUnits,
       CAMERA.clipEndUnits,
     );
@@ -203,12 +264,13 @@ export class TableScene implements TableRenderer {
     this.scene.add(this.felt.mesh);
     this.addLights();
 
-    // A default 16:9 pose until the host reports the real element size.
-    const initialPose = rigPoseForAspect(16 / 9);
-    applyPoseToCamera(this.camera, initialPose);
-    this.felt.setSize(feltSizeForPose(initialPose));
+    applyFrameToCamera(this.camera, this.frame);
+    this.felt.setSize(feltSizeForFrame(this.frame));
+
     if (options.debug === 'hero') {
       this.startHero(options);
+    } else {
+      this.startBoard(options);
     }
     this.requestFrame();
   }
@@ -219,13 +281,22 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * Accept a new snapshot. The hero scene draws no snapshot tiles, but the
-   * revision is recorded now so 3D-12's "a new revision is a cut, never a move"
-   * rule has one owner, and the frame is redrawn so a later board cannot be
-   * stale.
+   * Accept a new snapshot: lay it out (3D-06), rewrite the instance buffers and
+   * re-solve the frame, because the framing target includes the tiles.
+   *
+   * Idempotent and O(tiles): the same snapshot produces identical buffers, and
+   * no geometry, material or texture is reallocated. A new revision is a cut,
+   * never a move (the buffer is replaced wholesale; 3D-12 owns any motion).
    */
   syncState(snapshot: TableSnapshot): void {
+    if (this.disposed) return;
     this.revision = snapshot.revision;
+    const layout = layoutBoard(snapshot);
+    this.layout = layout;
+    this.syncBoard(layout);
+    // A deeper river or a taller hand can move the solved camera, so the frame
+    // and the felt follow the layout, not only the viewport.
+    this.reframe();
     this.requestFrame();
   }
 
@@ -244,11 +315,7 @@ export class TableScene implements TableRenderer {
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(cssWidth, cssHeight, false);
     this.aspect = cssWidth / cssHeight;
-    const pose = rigPoseForAspect(this.aspect);
-    applyPoseToCamera(this.camera, pose);
-    // The felt is a square that reaches the top and bottom edges, so it is
-    // re-sized with the framing; it is never stretched to the aspect.
-    this.felt.setSize(feltSizeForPose(pose));
+    this.reframe();
     // Draw now rather than on the next frame: the host reveals the canvas as
     // soon as this returns, and a resize is a discrete change, not a loop.
     this.draw();
@@ -262,6 +329,7 @@ export class TableScene implements TableRenderer {
   setQuality(tier: QualityTier): void {
     this.tier = tier;
     this.hero?.material.setTier(tier);
+    this.board?.material.setTier(tier);
     this.requestFrame();
   }
 
@@ -279,14 +347,15 @@ export class TableScene implements TableRenderer {
   /** The numbers the perf HUD and the budget gate read (final in 3D-13). */
   measure(): RendererStats {
     const info = this.renderer.info.render;
+    const view = this.board ?? this.hero;
     return {
       tier: this.tier,
       drawCalls: info.calls,
       triangles: info.triangles,
-      instances: this.hero?.mesh.count ?? 0,
-      atlasBytes: this.hero?.assets.atlasBytes ?? 0,
-      relief: this.hero?.assets.status,
-      pomSteps: this.hero?.material.pomSteps(),
+      instances: this.board?.tiles.count ?? this.hero?.mesh.count ?? 0,
+      atlasBytes: view?.assets.atlasBytes ?? 0,
+      relief: view?.assets.status,
+      pomSteps: view?.material.pomSteps(),
       frameMsP50: 0,
       frameMsP95: 0,
     };
@@ -393,7 +462,7 @@ export class TableScene implements TableRenderer {
       hero.material.setHeightScale(liveScale);
       this.renderer.setPixelRatio(liveRatio);
       this.renderer.setSize(cssSize.x, cssSize.y, false);
-      applyPoseToCamera(this.camera, rigPoseForAspect(this.aspect));
+      applyFrameToCamera(this.camera, this.frame);
       this.draw();
     }
     return captures;
@@ -407,10 +476,10 @@ export class TableScene implements TableRenderer {
   private applyHeroCaptureCamera(slot: HeroSlot): void {
     // The committed eye, not the camera's current (macro) position: every slot
     // and both POM states must use the board's own incidence ray.
-    const eye = new Vector3(...rigPoseForAspect(this.aspect).eyeUnits);
+    const eye = new Vector3(...frameForAspect(this.aspect).eye);
     const centre = new Vector3(...slot.pose.position);
     const direction = eye.sub(centre).normalize();
-    const fovYDeg = verticalFieldOfViewDeg(1);
+    const fovYDeg = frameVerticalFieldOfViewDeg(frameForAspect(1));
     const halfFov = (fovYDeg * Math.PI) / 360;
     const distance =
       HERO_CAPTURE_FRAME_UNITS / 2 / (HERO_CAPTURE_FILL * Math.tan(halfFov));
@@ -433,6 +502,7 @@ export class TableScene implements TableRenderer {
       this.frameHandle = null;
     }
     this.hero = null;
+    this.board = null;
     this.registry.disposeAll();
     this.scene.clear();
     this.renderer.dispose();
@@ -463,36 +533,84 @@ export class TableScene implements TableRenderer {
     }
   }
 
+  /**
+   * Re-solve the camera and the felt for the current aspect and layout. The only
+   * place this class touches the frame, so no second framing can appear.
+   */
+  private reframe(): void {
+    this.frame = frameForAspect(this.aspect, this.layout ?? undefined);
+    applyFrameToCamera(this.camera, this.frame);
+    // The felt is a square that reaches the top and bottom edges, so it is
+    // re-sized with the framing; it is never stretched to the aspect.
+    this.felt.setSize(feltSizeForFrame(this.frame));
+  }
+
+  /** Rewrite the board's instance buffers for a new layout, if mounted. */
+  private syncBoard(layout: BoardLayout): void {
+    const board = this.board;
+    if (!board) return;
+    board.tiles.sync(
+      buildBoardInstances(layout, (face: TileFaceId) => board.assets.cellForFace(face)),
+    );
+    board.shadows.sync(shadowInstances(layout));
+    board.sticks.sync(layout.sticks);
+  }
+
   /** Load the committed relief atlases and mount the four hero tiles. */
   private startHero(options: RendererOptions): void {
     if (this.heroStarted) return;
     this.heroStarted = true;
+    this.loadRelief(options)
+      .then((assets) => {
+        if (this.disposed || !assets) return;
+        this.buildHero(assets, options);
+      })
+      .catch((error: unknown) => {
+        this.reportFailure(HERO_FAILED_EVENT, error);
+      });
+  }
+
+  /** Load the committed relief atlases and mount the board. */
+  private startBoard(options: RendererOptions): void {
+    if (this.boardStarted) return;
+    this.boardStarted = true;
+    this.loadRelief(options)
+      .then((assets) => {
+        if (this.disposed || !assets) return;
+        this.buildBoard(assets, options);
+      })
+      .catch((error: unknown) => {
+        this.reportFailure(BOARD_FAILED_EVENT, error);
+      });
+  }
+
+  /**
+   * Load 3D-03's bridge, or resolve null when the view was disposed mid-load
+   * (the caller disposes the assets it received).
+   */
+  private loadRelief(
+    options: RendererOptions,
+  ): Promise<ReliefAssets<ReliefGpuTexture> | null> {
     const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const baseUrl =
       typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
         ? String(import.meta.env.BASE_URL)
         : '/';
-    void loadReliefAssets<ReliefGpuTexture>({
+    return loadReliefAssets<ReliefGpuTexture>({
       tier: options.tier,
       baseUrl,
       maxAnisotropy,
       createTexture: createReliefTextureFactory(maxAnisotropy),
-    })
-      .then((assets) => {
-        if (this.disposed) {
-          assets.dispose();
-          return;
-        }
-        this.buildHero(assets, options);
-      })
-      .catch((error: unknown) => {
-        this.reportHeroFailure(error);
-      });
+    }).then((assets) => {
+      if (this.disposed) {
+        assets.dispose();
+        return null;
+      }
+      return assets;
+    });
   }
 
   private buildHero(assets: ReliefAssets<ReliefGpuTexture>, options: RendererOptions): void {
-    const geometry = createTileRenderGeometry();
-    this.registry.add({ dispose: () => geometry.dispose() });
     const material = createTileMaterial({
       tier: options.tier,
       debug: options.debug,
@@ -502,35 +620,37 @@ export class TableScene implements TableRenderer {
     });
 
     const instances = heroInstances((face) => assets.cellForFace(face));
-    const mesh = new InstancedMesh(geometry, material.material, instances.length);
+    // One geometry per mesh: the instanced attributes live on it. The hero view
+    // allocates exactly its four slots; the board allocates the full capacity.
+    const board = createBoardMesh(
+      instances.map((instance): BoardInstance => ({
+        id: instance.slot.id,
+        matrix: instance.matrix,
+        atlasRect: instance.atlasRect ?? [0, 0, 1, 1],
+        flags: instanceFlags({
+          faceUp: instance.slot.faceUp,
+          highlighted: false,
+          dimmed: false,
+        }),
+        face: instance.slot.face,
+      })),
+      material,
+      Math.max(1, instances.length),
+    );
+    const mesh = board.mesh;
     mesh.name = 'hero-tiles';
-    // Every instance has its own transform; the geometry's bounding sphere says
-    // nothing about where they are, so culling would drop visible tiles.
-    mesh.frustumCulled = false;
 
-    const rects = new Float32Array(instances.length * 4);
-    const faceUp = new Float32Array(instances.length);
-    const matrix = new Matrix4();
-    instances.forEach((instance, index) => {
-      const rect = instance.atlasRect ?? [0, 0, 1, 1];
-      rects.set(rect, index * 4);
-      faceUp[index] = instance.slot.faceUp ? 1 : 0;
-      matrix.fromArray(instance.matrix);
-      mesh.setMatrixAt(index, matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    geometry.setAttribute('aAtlasRect', new InstancedBufferAttribute(rects, 4));
-    geometry.setAttribute('aFaceUp', new InstancedBufferAttribute(faceUp, 1));
     this.scene.add(mesh);
 
     // The registry owns both lifetimes; the hero view keeps the live handles.
-    this.registry.add({ dispose: () => assets.dispose() });
-    this.registry.add({ dispose: () => material.dispose() });
+    this.registry.add(assets);
+    this.registry.add(material);
+    this.registry.add(board);
     this.hero = {
       assets,
       material,
       mesh,
-      geometry,
+      geometry: board.geometry,
       instances,
     };
 
@@ -541,12 +661,47 @@ export class TableScene implements TableRenderer {
     this.canvas.dispatchEvent(new CustomEvent(HERO_READY_EVENT));
   }
 
-  private reportHeroFailure(error: unknown): void {
+  private buildBoard(assets: ReliefAssets<ReliefGpuTexture>, options: RendererOptions): void {
+    const material = createTileMaterial({
+      tier: options.tier,
+      debug: options.debug,
+      albedo: assets.textures.albedo,
+      normalDepth: assets.textures.normalDepth,
+      aoRoughness: assets.textures.aoRoughness,
+    });
+    const layout = this.layout;
+    const tiles = createBoardMesh(
+      layout
+        ? buildBoardInstances(layout, (face) => assets.cellForFace(face))
+        : [],
+      material,
+    );
+    const shadows = createShadowLayer(layout ? shadowInstances(layout) : []);
+    const sticks = createStickMesh(layout?.sticks ?? []);
+
+    this.scene.add(shadows.mesh);
+    this.scene.add(tiles.mesh);
+    this.scene.add(sticks.mesh);
+
+    this.registry.add(assets);
+    this.registry.add(material);
+    this.registry.add(tiles);
+    this.registry.add(shadows);
+    this.registry.add(sticks);
+    this.board = { assets, material, tiles, shadows, sticks };
+
+    // A snapshot that arrived before the atlases is already laid out; frame it
+    // now so the camera and the felt match the board.
+    this.reframe();
+    this.renderer.compile(this.scene, this.camera);
+    this.draw();
+    this.canvas.dispatchEvent(new CustomEvent(BOARD_READY_EVENT));
+  }
+
+  private reportFailure(event: string, error: unknown): void {
     const message = error instanceof Error ? error.message : String(error);
     if (this.disposed) return;
-    this.canvas.dispatchEvent(
-      new CustomEvent(HERO_FAILED_EVENT, { detail: message }),
-    );
+    this.canvas.dispatchEvent(new CustomEvent(event, { detail: message }));
   }
 
   /** Read the five probe blocks from the current frame. */

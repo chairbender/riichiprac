@@ -281,7 +281,7 @@ The world-space layout already exists, user-signed-off, in
 | Ponds | 3 rows × 6, nearest row at 4.81, next at 2.7886, 4 overflow anchors on the near row | river layout |
 | Human hand | 13 tiles + a draw slot at +5.5805, reclined about its far bottom edge | hand layout |
 | Compass well | 4 units | compass overlay anchor |
-| Camera | 75 mm on 36 mm, 50° pitch, X = 0, 76 units, negative Shift Y | `cameraRig.ts` |
+| Camera | 75 mm on 36 mm, 50° pitch, X = 0, 76 units, negative Shift Y | reference lens/pitch; the shipped frame solves closer (see the revisions below) |
 
 The 3D chain **mirrors** those constants in `renderers/layoutConstants.ts` and
 owns them: `check-3d-layout.mjs` asserts the internal invariants (counts, framing,
@@ -317,7 +317,69 @@ against the real board and owns the gate, so it is the only projection source
 from 3D-07 on.** `cameraRig.ts` becomes a thin `PerspectiveCamera` adapter, the
 felt is sized from that frame (`groundHit` against the frame's eye/axes/fov/
 shift, preserving the top/bottom rule), and 3D-08's hit rects use the same
-frame. No view may project through a second camera.
+frame. No view may project through a second camera. *(Landed in 3D-07: the
+solver is gone; `cameraRig.ts` is `applyFrameToCamera` plus pure projection
+helpers, and `cameraRig.test.ts` proves a real `PerspectiveCamera` fed a frame
+projects every sample point exactly as `boardLayout.projectPoint` does.)*
+
+**Board handoff revisions (2026-11-18, after the first full board render).** The
+user's verdict on the 3D-07 board changed four layout numbers; they are binding
+and they supersede the reference values above where they differ.
+
+- **The wall's top tier was wrong in 3D-06.** `WALL.tierStepUnits` already
+  contains the lower tile's thickness plus the tier gap, and the layout added
+  the thickness again, so the top row hovered 16.5 mm above the row it sits on
+  ("the top row is not lined up with the bottom row"). `wallTierHeightUnits(tier)`
+  is the one formula now (`thickness / 2` bottom, `tierStepUnits + thickness / 2`
+  top); the layout, the dora indicators and `hero.ts` all call it.
+- **Hands sit much closer to the wall.** `HAND.backRadiusUnits` 10.6 → **8.35**,
+  i.e. the hand's front edge is 24 mm in front of a **side** run's outer face
+  instead of 24 mm in front of the mat edge. That is the floor: a side run
+  occupies the band beside every seat's hand, so the hand cannot come further in
+  without the two overlapping (the layout gate caught exactly that during the
+  wall-ring change). `MELD.rowRadiusUnits` follows the hand, and extra meld rows
+  now step **toward the player** (`+index * rowPitch`) — the doc always said
+  "nearer the player", the code stepped inward, and with the hand at 8.35 that
+  would put rows 2–3 inside the wall ring (the overlap the change surfaced).
+- **The player's and the across player's hands sit a tile thickness closer.**
+  `HAND.endSeatRadiusUnits` (7.7607) is one 16.5 mm thickness inside
+  `HAND.backRadiusUnits` (8.35), and `boardLayout.handRadius(seat, humanSeat)`
+  gives it to the human and the far seat only — they face the inset end runs, so
+  they have the slack; the left/right seats keep 8.35 because their side runs
+  are the floor. Their melds move with them (`placeMelds` takes the seat's own
+  radius). Measured at 16:9: the solved distance drops **55.56 → 53.33** and the
+  hand's long axis grows to **7.40 %** of the frame height. The hand's own
+  bottom margin is 6.27 % in the all-melds fixture (3.94 % when only the human
+  has one, 2.00 % with none) because a left/right seat's meld row runs along the
+  near corner at its side radius and is therefore the board's nearest content —
+  the hand cannot be lower while those stay in frame.
+- **The wall ring is squared.** The front and back runs (the human's own edge and
+  the far edge) moved from the ring radius 7.0 to **`WALL.endRunRadiusUnits`
+  5.9607**, so their outer face is flush with a side run's end tile at
+  `WALL.runHalfLengthUnits` 6.4607 — "their outside edge lines up with the edge
+  of the left/right walls". The side runs stay on 7.0. All four cannot be inset:
+  a 17-stack run already spans its whole side of the ring, so a smaller square
+  would overlap two stacks at every corner. Consequence for the framing: the
+  board's vertical extremes are the **hands** (z ±8.94) and the side players'
+  meld rows, not the walls, so the camera stays at 55.56 at 16:9 — the wall move
+  is composition, not extra zoom. `wallRunRadius(run, humanSeat)` is the one rule
+  (the inset follows the human, so it also moves when the human seat changes),
+  and the dora indicators ride the far run's inset radius.
+- **The fit subject is the board, not the mat.** `framingPoints` is the tile
+  corners; the 25-unit mat is no longer in the fit, so the mat crops and the
+  felt (a procedural square sized from the frame) runs off the edges. The
+  reference's 76-unit distance **floor is deleted**: it existed to keep the
+  reference's mat framing and would pin the camera back, which is exactly the
+  "too far away / tiles too small" the handoff named. The lens (75 mm on 36 mm),
+  the 50°/62° pitch, X = 0 and the Shift Y are unchanged.
+- **Result at 16:9:** solved distance **55.56** (was 76), hand long axis 7.12 %
+  of the frame height (was 5.17 %), the human hand's lowest body point 3.82 %
+  above the bottom edge, and every tile still inside the 2 % safe area. Other
+  aspects: 72.64 at 21:9, 47.05 at 3:2, 44.14 at 4:3 and 1:1, 42.67 in portrait.
+  `check-3d-layout.mjs` prints all of it and gates the hand's bottom sliver.
+- **Side effect, accepted:** the frame is solved against the actual tiles, so a
+  meld-heavy board (which reaches further to the player's right) solves slightly
+  further back. A typical board is stable.
 
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
@@ -849,7 +911,8 @@ who does not ask for it.
 - `cameraRig.ts` (imports `layoutConstants.ts`) with the committed rig and the
   aspect/portrait fit.
 - `felt.ts`: deterministic 512 × 512 procedural felt texture and **one square
-  plane, sized per frame** (`feltSizeForPose`, from the frame's top/bottom
+  plane, sized per frame** (`feltSizeForFrame` since 3D-07 made 3D-06's frame the
+  only projection source, from the frame's top/bottom
   ground intersection) so it always reaches the top and bottom edges. It is
   never stretched to the aspect: on a wide window its side edges stay inside the
   frame and the background shows beside it. The 25-unit mat stays the layout
@@ -1235,8 +1298,10 @@ the committed table geometry.
 - Pond rows start at the far row and fill toward the seat, matching the
   committed convention; the 4 overflow cells are used before any new row.
 - The human hand's face-normal-to-view angle is ≤ 25° at every supported aspect
-  (9:16, 3:4, 1:1, 16:9, 21:9); all mat corners are in frame with ≥ 2 % margin;
-  the hand's tile long axis is ≥ 5 % of viewport height.
+  (9:16, 3:4, 1:1, 16:9, 21:9); ~~all mat corners are in frame with ≥ 2 %
+  margin~~ **every tile is in frame with ≥ 2 % margin** (revised 2026-11-18 after
+  the board handoff: the board is the fit subject, not the mat — see §2.4's
+  revisions); the hand's tile long axis is ≥ 5 % of viewport height.
 - `check-3d-layout.mjs` prints the constant table and the per-zone counts and
   framing numbers for the five aspects, and fails on any internal invariant. Its
   optional `--reference` run compares the constants against
@@ -1289,6 +1354,106 @@ the committed table geometry.
   body (a render-order assertion plus a user check).
 
 **Gate:** frontend gate.
+
+**As built (3D-07, 2026-11-18).** Files: `three/{boardMesh,shadows,sticks}.ts`,
+the rewritten `three/cameraRig.ts` (the adapter only), the board wiring in
+`three/Scene.ts`, `felt.ts` (`feltSizeForFrame`), `hero.ts` (the same frame),
+`three/materials/tile.{vert,frag}.ts` (`aFlags` replaces `aFaceUp`), the
+highlight/dim uniforms in `tileMaterial.ts`, two board lifecycle events in
+`contract.ts` and their listeners in `RendererHost.tsx`, plus
+`three/{boardMesh,shadows,sticks,drawCalls,cameraRig.test,felt.test}.test.ts`
+and one fixture change (`boardFixture` flags the newest discard its
+`highlightDiscard` names, so the highlight path is exercised).
+
+*Draw shape.* The whole board is one `InstancedMesh` (capacity 320, count live),
+the contact shadows one instanced quad layer, the sticks one instanced box layer,
+and the felt one plane: **4 draw calls**, invariant to tile count. The fixture
+board is 252 tiles / 203 grounded shadows; the widest board the layout gate
+builds is 280 tiles, so the capacity is a malformed-snapshot guard, not a
+budget. `boardMesh.test.ts` fails on > 320 instances or a non-finite matrix
+instead of dropping tiles. The GPU-free half of the `drawCalls ≤ 4` gate builds
+the three board layers with the production builders and counts meshes
+(`drawCalls.test.ts`, via `countSceneDrawCalls`); `measure().drawCalls` still
+reports the renderer's own count in the browser.
+
+*One camera.* `cameraRig.ts` no longer solves anything: `applyFrameToCamera`
+copies 3D-06's `frameForAspect` eye/target/pitch/fov and patches the lens shift
+into `projectionMatrix[9]`. `cameraRig.test.ts` applies frames at all seven
+supported aspects to a real three `PerspectiveCamera` and asserts the frame's
+eye, pitch, fov and shift, then that `Vector3.project(camera)` equals
+`boardLayout.projectPoint` for five sample points (the two projections are one).
+The felt is re-sized from the same frame (`feltSizeForFrame`), so the 16:9 solve
+moves it up with the image; `groundHit` round-trips each felt hit back to its
+asking NDC point.
+
+*Flags.* `boardMesh.INSTANCE_FLAG` is `faceUp: 1, highlighted: 2, dimmed: 4`,
+packed as one float attribute and decoded in the fragment shader with
+`mod`/`floor` bit tests. Face-up selects the carved plate, face-down the blue
+back; highlighted multiplies by `TILE_HIGHLIGHT.tint` (1.35/1.22/1.05) at
+strength 1, dimmed multiplies by `dimGain` 0.62 after the BRDF. Tests assert the
+bits (hover/tsumogiri tiles, wall = 0), that opponent hands and the wall are
+face-down while the human hand and dora are face-up, and that a riichi discard's
+body — not a glyph — is turned: its glyph-up axis is the seat's right (+X) where
+its neighbour's is the tile's forward (-Z), both horizontal.
+
+*Contact shadows.* One instanced draw with two profiles. **Lying tiles** get one
+quad each: the oriented-box footprint plus 0.12 units per side, at `liftUnits`
+0.015 above the felt, with a procedural rounded-rect alpha (`shadowAlphaAt`: 1 at
+the centre, 0 at every edge, monotone between) in a 64 × 64 `DataTexture`; the
+wall's top tier is excluded (it rests on the tile below). **The human's hand
+group** — the concealed row *and* the drawn tile unioned — gets one analytic
+band instead, because that hand is reclined 40° and overhangs its contact line,
+so per-tile quads read as a scalloped line rather than a hand on the table. The
+other three hands stand on the table (per-tile blobs are correct there) and keep
+them. The band is the **2.5D recipe,
+copied**: `table-reference-spec.json`'s rig variant `v13-shadow-darker`
+(chosen 2026-11-17) publishes `handShadow { depthUnits 0.5, offsetUnits 0.18,
+spreadUnits 0.18, sigmaUnits 0.26, sigmaXUnits 0.1, unionGroups }`, derived from
+the shipped UI group layer (`shells.json` `shadowShape`, σ 5 px standing,
+`#0b1418`) and `2_5d_mahjong_tile_rendering_architecture.md` §10.12 ("blur the
+union once"). In 3D it is built from the tiles' **contact** corners (a reclined
+hand's body overhangs its contact edge by ~0.45 units, so its box would make the
+band twice as deep). The rig's own numbers read thin and crisp at this camera's
+closer solve, so the handoffs widened them: **1.1 deep, its south (solid) edge
+0.65 past the contact line, spread 0.24 at both row ends, Gaussian σ 0.5 across /
+0.3 along**, and the quad carries a **1.5σ fade margin** outside that rectangle.
+
+That margin was a bug fix, not a tweak: the analytic profile is 0.5 alpha on the
+rectangle's edge and 0 a sigma outside it, so a quad that ended at the rectangle
+was cut off at half opacity — a hard-edged "solid rectangle". With the margin the
+profile completes inside the geometry: 0.99 alpha on the contact line, 0.84 at
+28 px, 0.5 at 46 px, 0 at 81 px below the hand at 1920 × 1080 (~27 luma at its
+darkest). The reference view's band is ~46 px at its own scale, so this is
+deliberately larger/lower per the handoff. The tsumogiri gap gets shadow like the
+rest of the union. Both profiles are one material/one call (the shader
+branches on a per-instance kind). The material is transparent black,
+`depthTest` on, `depthWrite` off, drawn in the transparent pass after the opaque
+tiles, and every quad sits below a tile's top surface — so the depth test, not an
+ordering hack, keeps a quad off a tile body. Tests assert all of that
+numerically, including the v13 constants, the band's edge alpha and its anchor.
+
+*Handoff (accepted 2026-11-18).* The board, the squared wall ring, the closer
+camera, the hand bands and the radial casts were reviewed in the live view over
+several rounds and signed off ("That looks good now"). The private-hand shade
+(3D-18) was rejected in favour of the radial cast shadows (3D-19). The
+waterfall/deal-in motion and the perf HUD remain 3D-12/3D-13; the antialiasing
+and touching-tile seam work is the designated successor task **261118-2243**
+("3D R20: anti-aliasing and white seams between touching tiles"), to be started
+by landing this one with `cc-task land-next`.
+
+**Board handoff follow-up (2026-11-18, same day).** The first render produced
+four layout corrections, all recorded in §2.4's "Board handoff revisions" and
+landed here: the wall's top tier sits on the bottom tier (the thickness was
+counted twice, so the top row floated), the hands moved from radius 10.6 to 8.35
+(and meld rows step toward the player so they clear the wall), the camera frames
+the board rather than the mat with the 76-unit floor deleted — 16:9 solves to
+55.56, the tiles are ~37 % larger and the human hand sits 3.82 % above the bottom
+edge — the front/back wall runs are inset to 5.9607 so the ring's front and back
+edges line up with the side runs' end tiles, and the human's and the across
+player's hands then move a tile thickness closer to those end runs
+(`HAND.endSeatRadiusUnits` 7.7607), which lets the camera solve in to **53.33**.
+`check-3d-layout.mjs` gates all of it, including the hand's bottom sliver and the
+two run radii; the look is still the user's call at the same URL.
 
 ---
 
@@ -1714,6 +1879,79 @@ better, that looks great." The carve reads as physically recessed at the hand's
 16°, the depth sweep remains the review process (it is where the bumps read),
 and the shell body, blue band and Haku's clean face were accepted earlier in the
 same thread. `POM_HEIGHT_SCALE` stays at 0.25; `1p` is the hero face.
+
+### 3D-19 — Radial cast shadows from standing things
+
+**Goal.** The board should read as lit from a lamp above the compass: every
+standing thing throws a fairly diffuse shadow **directly away from the table
+centre**. Replaces 3D-18, which shaded the hand's own material instead of putting
+a shadow on the felt.
+
+**Depends on:** 3D-06 (layout, `wallRunRadius`), 3D-07 (the shadow layer).
+
+**Deliverables**
+
+- `shadows.SHADOW.cast` (the numbers) and one `bandQuad` helper shared with the
+  human hand's band.
+- `shadowInstances`: one radial band per **opponent hand** (row + draw unioned),
+  one per **wall run**, and one per **side run's player-facing end**; the human's
+  hand keeps its own signed-off band untouched; ponds, melds, dora keep their
+  contact blobs.
+
+**Acceptance criteria**
+
+- The human hand's band is byte-for-byte what it was (depth 1.1, offset 0.65,
+  spread 0.24, σ 0.5/0.3) — the user asked for it to be unaffected.
+- Every radial band's visible edge lands exactly `cast.lengthUnits` past the
+  object's own base on its outward axis, for all four seats and all four runs;
+  tests compute the base from the tiles' contact corners.
+- Every band is a blurred rectangle with the 1.5σ fade margin, so its alpha
+  reaches 0 inside the quad (no half-opacity cut-off).
+- One quad per hand group and per wall run; still one instanced draw.
+
+**Gate:** frontend gate.
+
+**As built (3D-19, 2026-11-18).** `SHADOW.cast = { lengthUnits 1.2, overlapUnits
+0.2, spreadUnits 0.24, sigmaAcrossUnits 0.6, sigmaAlongUnits 0.35 }`; the quad's
+fade margin moved to `SHADOW.marginSigmas` (1.5) and is shared by both band
+kinds. At 16:9 (≈ 58 px per unit near the centre) each cast is a ~70 px gradient
+past the object's base, with the core dark at the foot:
+
+| cast | where it lands |
+| --- | --- |
+| `wall-cast-0` (near run) | the felt strip between the near wall (outer face 6.46) and the human's hand (7.76) |
+| `wall-cast-1/3` (side runs) | sideways past the side walls' outer face (7.5) |
+| `wall-cast-2` (far run) | up-screen past the far wall (6.46) to 7.66 |
+| `wall-end-cast-1/3` (side runs' ends) | +Z off each side run's end face, 1.0 wide (the wall's own thickness), to 7.66 — fills the notch where the near run's band stops at x ±6.46 |
+| `hand-cast-1` (right seat) | +X from its base, to +10.35 |
+| `hand-cast-2` (across) | -Z from its outer base edge, to -9.55 (partly near the top edge) |
+| `hand-cast-3` (left seat) | -X from its base |
+| `hand-group-0` (the human) | **unchanged** |
+
+184 quads in total on the fixture board (177 tile blobs + 4 wall casts + 2 side
+end casts + the human's band + 3 hand casts), one instanced draw. The near wall's cast and the
+human's band overlap between 6.8 and 7.7 units from the centre — physically where
+a centre lamp's wall shadow would fall — so that strip reads darker than either
+alone; the hand's own band is untouched.
+
+---
+
+### 3D-20 — Anti-aliasing and white seams between touching tiles
+
+**Goal.** Remove the aliasing on tile silhouettes/bevels and the bright line that
+shows through the 0.3 mm groove where two tiles are in contact, without breaking
+the draw-call budget or the layout's no-overlap invariant.
+
+**Depends on:** 3D-07.
+
+**Deliverables / acceptance:** held in the task body of **261118-2243** ("3D R20:
+anti-aliasing and white seams between touching tiles") until the unit starts, so
+this plan does not duplicate a spec that is still being refined. The plan-level
+constraints bind: no 2.5D-pipeline diff, `drawCalls ≤ 4` in the default scene,
+`measure()` reporting intact, `check-3d-layout.mjs` green, and AGENTS.md §6 (a
+numeric probe or the user's verdict, never an agent's look).
+
+---
 
 ## 7. Proposed command-center slicing
 

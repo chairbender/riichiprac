@@ -23,9 +23,10 @@
  * plan's fill-rate notes say.
  *
  * Pure module: pose math is `boardLayout`'s (one convention for the whole
- * chain), the camera is `cameraRig`'s committed rig, and nothing here imports
- * three or touches the DOM. `Scene.ts` turns these values into an
- * `InstancedMesh`; `probes.ts` projects the probe points.
+ * chain), the camera is `boardLayout.frameForAspect` (the chain's single
+ * projection source since 3D-07, §2.4), and nothing here imports three or
+ * touches the DOM. `Scene.ts` turns these values into an `InstancedMesh`;
+ * `probes.ts` projects the probe points.
  */
 
 import type { TileFaceId } from '../contract';
@@ -34,9 +35,12 @@ import {
   poseAxes,
   poseMatrix,
   seatPoint,
+  frameForAspect,
+  handRadius,
+  wallRunRadius,
+  wallTierHeightUnits,
 } from './boardLayout';
 import type { TilePose, Vec3 } from './boardLayout';
-import { rigPoseForAspect } from './cameraRig';
 import { POM_HEIGHT_SCALE, parallaxTexels } from './tileMaterial';
 import type { ParallaxReading } from './tileMaterial';
 
@@ -72,7 +76,8 @@ function handHeroPose(): TilePose {
   const du = u0 * Math.cos(phi) + v0 * Math.sin(phi);
   const dv = v0 * Math.cos(phi) - u0 * Math.sin(phi);
   return {
-    position: seatPoint(0, 0, HAND.backRadiusUnits + du, dv),
+    // The human is an end seat, so the hero hand sits at the end-run radius.
+    position: seatPoint(0, 0, handRadius(0, 0) + du, dv),
     yawDeg: 0,
     tiltDeg,
     rollDeg: 0,
@@ -102,9 +107,8 @@ function wallStackW(stack: number): number {
   return (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits;
 }
 
-/** The top tier's body centre height. */
-const WALL_TOP_TIER_UNITS =
-  TILE.thicknessUnits + WALL.tierStepUnits + TILE.thicknessUnits / 2;
+/** The top tier's body centre height (the layout's own formula). */
+const WALL_TOP_TIER_UNITS = wallTierHeightUnits(DORA.tier);
 
 /** The first dora indicator's stack: one in from the missing draw-end top. */
 const DORA_STACK = WALL.drawEndSlot - 1;
@@ -146,7 +150,14 @@ export const HERO_SLOTS: readonly HeroSlot[] = [
     label: 'dora indicator (far wall, face-up)',
     face: '1z',
     faceUp: true,
-    pose: lyingHeroPose(2, WALL.radiusUnits, WALL_TOP_TIER_UNITS, wallStackW(DORA_STACK)),
+    // The hero view is the human-at-seat-0 board, where run 2 is the far (inset)
+  // run; `boardLayout.wallRunRadius` is the same rule the layout applies.
+  pose: lyingHeroPose(
+    2,
+    wallRunRadius(2, 0),
+    WALL_TOP_TIER_UNITS,
+    wallStackW(DORA_STACK),
+  ),
   },
   {
     id: 'back',
@@ -156,7 +167,12 @@ export const HERO_SLOTS: readonly HeroSlot[] = [
     pose: {
       // The far seat's frame: its right is -X, which is what turns the wall run
       // (and the back's 180° yaw) the same way the board does.
-      position: seatPoint(2, wallStackW(BACK_STACK), WALL.radiusUnits, WALL_TOP_TIER_UNITS),
+      position: seatPoint(
+        2,
+        wallStackW(BACK_STACK),
+        wallRunRadius(2, 0),
+        WALL_TOP_TIER_UNITS,
+      ),
       yawDeg: 180,
       tiltDeg: 90,
       rollDeg: 0,
@@ -306,17 +322,17 @@ function angleToEyeDeg(slot: HeroSlot, eye: Vec3): number {
  * Measure the four hero slots at one viewport aspect: the exact angle between
  * each plate's face normal and the ray from the plate to the committed camera,
  * and the full-depth displacement that angle implies at the committed carve
- * depth. The eye comes from the same `cameraRig` pose the scene uses (3D-07
- * switches the scene to `boardLayout.frameForAspect`; the two agree within
- * 0.05 units at the reference aspect).
+ * depth. The eye comes from 3D-06's solved frame — from 3D-07 on, the single
+ * projection source for the whole 3D chain (§2.4), so the hero view and the
+ * board see exactly the same camera.
  */
 export function heroParallaxAt(
   aspect: number,
   heightScale: number = POM_HEIGHT_SCALE,
 ): HeroParallaxReport {
-  const pose = rigPoseForAspect(aspect);
+  const frame = frameForAspect(aspect);
   const slots = HERO_SLOTS.map((slot) => {
-    const angle = slot.faceUp ? angleToEyeDeg(slot, pose.eyeUnits) : 0;
+    const angle = slot.faceUp ? angleToEyeDeg(slot, frame.eye) : 0;
     // A face-down tile shows no carving, so only the three face-up slots can
     // contribute a displacement.
     const reading = parallaxTexels(slot.faceUp ? angle : 0, { heightScale });
@@ -324,7 +340,7 @@ export function heroParallaxAt(
   });
   let worst = slots[0];
   for (const entry of slots) if (entry.texels > worst.texels) worst = entry;
-  return { aspect: pose.aspect, heightScale, slots, worst };
+  return { aspect: frame.aspect, heightScale, slots, worst };
 }
 
 /** The report at every aspect the framing solver must support. */

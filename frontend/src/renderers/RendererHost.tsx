@@ -23,7 +23,12 @@ import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } f
 import type { ReactNode } from 'react';
 import { probeCapabilities } from './capabilities';
 import type { DebugMode, HeroReport, QualityTier, TableRenderer, TableSnapshot } from './contract';
-import { HERO_FAILED_EVENT, HERO_READY_EVENT } from './contract';
+import {
+  BOARD_FAILED_EVENT,
+  BOARD_READY_EVENT,
+  HERO_FAILED_EVENT,
+  HERO_READY_EVENT,
+} from './contract';
 import './RendererHost.css';
 
 /** The host's observable lifecycle. */
@@ -368,18 +373,26 @@ export function RendererHost({
     const onHeroReady = () => {
       setHeroReport(renderer?.heroReport?.() ?? null);
     };
-    const onHeroFailed = (event: Event) => {
+    const onFailed = (event: Event) => {
       const detail = (event as CustomEvent<string>).detail;
       setStatus({
         state: 'failed',
         message:
           typeof detail === 'string' && detail.length > 0
             ? detail
-            : 'The hero tile could not be built.',
+            : 'The 3D table could not be built.',
       });
     };
+    // 3D-07: the board reports the same way. Ready is just the mount signal
+    // (the host is already `ready` by then); a failure replaces the view.
+    const onBoardReady = () => {
+      if (cancelled) return;
+      setStatus({ state: 'ready', message: null });
+    };
     canvas.addEventListener(HERO_READY_EVENT, onHeroReady);
-    canvas.addEventListener(HERO_FAILED_EVENT, onHeroFailed);
+    canvas.addEventListener(HERO_FAILED_EVENT, onFailed);
+    canvas.addEventListener(BOARD_READY_EVENT, onBoardReady);
+    canvas.addEventListener(BOARD_FAILED_EVENT, onFailed);
 
     if (typeof ResizeObserver === 'function') {
       observer = new ResizeObserver(measure);
@@ -418,7 +431,9 @@ export function RendererHost({
       canvas?.removeEventListener('webglcontextlost', onContextLost);
       canvas?.removeEventListener('webglcontextrestored', onContextRestored);
       canvas?.removeEventListener(HERO_READY_EVENT, onHeroReady);
-      canvas?.removeEventListener(HERO_FAILED_EVENT, onHeroFailed);
+      canvas?.removeEventListener(HERO_FAILED_EVENT, onFailed);
+      canvas?.removeEventListener(BOARD_READY_EVENT, onBoardReady);
+      canvas?.removeEventListener(BOARD_FAILED_EVENT, onFailed);
       renderer?.dispose();
       renderer = null;
       rendererRef.current = null;
