@@ -8,10 +8,12 @@
  * 1. **A per-tile blob** for lying tiles (ponds, melds, dora, the wall's bottom
  *    tier): the tile's oriented-box footprint plus a fixed rim, shaded with the
  *    procedural rounded-rect alpha in {@link shadowAlphaPixels}.
- * 2. **One blurred band per seat's hand group** — the concealed row *and* the
- *    drawn tile unioned into a single footprint — because a hand stands on its
- *    far bottom edge, so per-tile quads read as a thin scalloped line rather
- *    than a hand resting on the table.
+ * 2. **One blurred band for the human's hand group** — the concealed row *and*
+ *    the drawn tile unioned into a single footprint. Only that hand is reclined
+ *    (40° back on its far bottom edge) and overhangs its contact line, so
+ *    per-tile quads read as a thin scalloped line rather than a hand resting on
+ *    the table. The other three hands stand on the table, where per-tile blobs
+ *    are correct and stay as they are.
  *
  * The hand group is the **2.5D recipe, copied rather than reinvented**. The
  * user-approved whole-table rig (`tools/render/table-reference-spec.json`, rig
@@ -86,21 +88,29 @@ export const SHADOW = {
   /** One quad per grounded non-hand tile plus one per seat's hand group. */
   capacity: BOARD_TILE_CAPACITY,
   /**
-   * The hand group's recipe, straight from the v13 rig (see the header).
+   * The human hand's band, from the v13 rig and then widened to read like it.
+   *
+   * v13's `handShadow` is depth 0.5 / offset 0.18 / σ 0.26 across / 0.10 along
+   * at the 2.5D rig's 76-unit camera. On the 3D board's closer solve (53 units)
+   * that band showed only ~31 px of gradient under the hand and read as a thin
+   * line, so the handoff (2026-11-18, second shadow round) asked for it further
+   * down and blurrier: the numbers below double the offset, deepen the band and
+   * widen the blur, which puts ~49 px of gradient in front of the contact line
+   * — the reference view's own ~46 px at its scale.
    *
    * `depthUnits` is the band's depth across the row, anchored on the hand's
    * contact edge; `offsetUnits` moves it that far toward the viewer (+Z);
-   * `spreadUnits` is added at both row ends; the sigmas are the Gaussian blur
-   * across and along the band. A reclined hand's body overhangs its contact
-   * edge, so the band is built from the tile's **contact** corners, not its
-   * whole oriented box — that is what keeps it at the rig's 0.5-depth.
+   * `spreadUnits` is added at both row ends; the sigmas are the blur across and
+   * along the band. A reclined hand's body overhangs its contact edge, so the
+   * band is built from the tile's **contact** corners, not its whole oriented
+   * box — using the box would make it twice as deep again.
    */
   hand: {
-    depthUnits: 0.5,
-    offsetUnits: 0.18,
-    spreadUnits: 0.18,
-    sigmaAcrossUnits: 0.26,
-    sigmaAlongUnits: 0.1,
+    depthUnits: 0.7,
+    offsetUnits: 0.35,
+    spreadUnits: 0.24,
+    sigmaAcrossUnits: 0.45,
+    sigmaAlongUnits: 0.22,
   },
 } as const;
 
@@ -272,15 +282,18 @@ function tileQuad(tile: BoardTile): ShadowInstance {
 }
 
 /**
- * Every contact quad: one per grounded non-hand tile, plus one per seat that has
- * a hand or a drawn tile.
+ * Every contact quad: one per grounded tile, except the human's hand and drawn
+ * tile, which are unioned into a single band.
+ *
+ * Only the human's hand is reclined and overhangs its contact line; the other
+ * three hands stand on the table, so their per-tile blobs are already right.
  */
 export function shadowInstances(layout: BoardLayout): readonly ShadowInstance[] {
   const instances: ShadowInstance[] = [];
   const groups = new Map<Seat, GroupSpan>();
   for (const tile of layout.tiles) {
     if (!isGrounded(tile)) continue;
-    if (isHandGroupTile(tile)) {
+    if (isHandGroupTile(tile) && tile.seat === layout.humanSeat) {
       const { right } = seatBasis(tile.seat);
       const rowIsX = Math.abs(right[0]) > Math.abs(right[2]);
       const span = groups.get(tile.seat) ?? {

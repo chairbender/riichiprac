@@ -141,6 +141,8 @@ export interface BoardStick {
 
 /** Everything the renderer needs to draw one table. */
 export interface BoardLayout {
+  /** The absolute seat the human is in; the wall inset and the hand poses follow it. */
+  readonly humanSeat: Seat;
   /** Every tile, in a stable authoring order (not a paint order). */
   readonly tiles: readonly BoardTile[];
   /** The decorative wall only. */
@@ -763,6 +765,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
   );
 
   return {
+    humanSeat,
     tiles,
     wall,
     foreground: tiles.filter((tile) => tile.zone !== 'wall'),

@@ -4,14 +4,14 @@
  *
  * The pixels need a GPU, so the gate is everything numeric:
  *
- * - one quad per grounded non-hand tile, and exactly **one** hand group per seat
- *   (the concealed row and the drawn tile unioned), whether the seat has 13 + 1
- *   tiles or 1 + 0;
+ * - one quad per grounded tile, with **the human's** hand row and drawn tile
+ *   unioned into a single band (the other hands stand on the table and keep
+ *   their per-tile blobs);
  * - every quad at the same lift, above the felt and below every tile's top
  *   surface, with a footprint at least the tile's own;
- * - the hand group's footprint is the union of its tiles' footprints spread by
- *   the v13 rig's 0.18 and moved 0.18 toward the viewer, with σ 0.26 across and
- *   0.10 along the band;
+ * - the band's footprint is anchored on the hand's contact line, 0.7 deep, moved
+ *   0.35 toward the viewer, spread 0.24 at both row ends, with σ 0.45 across and
+ *   0.22 along (the v13 recipe, widened for this camera);
  * - the tile blob's alpha texture is a rounded, feathered blob (opaque in the
  *   middle, zero at every edge, deterministic), and the band's profile is 0.5
  *   on its edge, 1 a ring width inside and 0 a ring width outside;
@@ -46,33 +46,43 @@ const handGroupFor = (seat: number) =>
   shadows.find((instance) => instance.id === `hand-group-${seat}`);
 
 describe('contact quad placement', () => {
-  it('emits one hand group per seat and one blob per other grounded tile', () => {
-    const groups = shadows.filter((instance) => instance.kind === SHADOW_KIND.band);
+  it('unions the human hand only; the other hands keep per-tile blobs', () => {
+    const bands = shadows.filter((instance) => instance.kind === SHADOW_KIND.band);
     const blobs = shadows.filter((instance) => instance.kind === SHADOW_KIND.blob);
-    expect(groups).toHaveLength(4);
-    expect(groups.map((group) => group.id).sort()).toEqual([
-      'hand-group-0',
-      'hand-group-1',
-      'hand-group-2',
-      'hand-group-3',
-    ]);
+    expect(bands).toHaveLength(1);
+    expect(bands[0].id).toBe(`hand-group-${layout.humanSeat}`);
 
-    // Every grounded hand/draw tile is covered by its seat's group, and no
-    // hand/draw tile has a blob of its own any more.
     const handTiles = grounded.filter(
       (tile) => tile.zone === 'hand' || tile.zone === 'draw',
     );
-    expect(handTiles.length).toBeGreaterThan(0);
-    for (const tile of handTiles) {
-      expect(blobs.some((blob) => blob.id === tile.id), tile.id).toBe(false);
-    }
+    const humanHand = handTiles.filter((tile) => tile.seat === layout.humanSeat);
     const blobIds = new Set(blobs.map((blob) => blob.id));
+    // The human's hand/draw tiles are in the band, not in blobs...
+    for (const tile of humanHand) {
+      expect(blobIds.has(tile.id), tile.id).toBe(false);
+    }
+    // ...and every grounded tile that is not the human's hand has its own blob.
     for (const tile of grounded) {
-      if (tile.zone === 'hand' || tile.zone === 'draw') continue;
+      if (tile.seat === layout.humanSeat && (tile.zone === 'hand' || tile.zone === 'draw')) {
+        continue;
+      }
       expect(blobIds.has(tile.id), tile.id).toBe(true);
     }
-    // Fewer quads than grounded tiles now that each hand is one quad.
-    expect(shadows.length).toBeLessThan(grounded.length);
+    expect(blobs).toHaveLength(grounded.length - humanHand.length);
+    expect(shadows).toHaveLength(grounded.length - humanHand.length + 1);
+  });
+
+  it('follows the human seat', () => {
+    const shifted = layoutBoard(boardFixture({ humanSeat: 2 }));
+    const bands = shadowInstances(shifted).filter(
+      (instance) => instance.kind === SHADOW_KIND.band,
+    );
+    expect(bands.map((band) => band.id)).toEqual(['hand-group-2']);
+    // Seat 0's hand is an opponent's now, so it has blobs again.
+    const blobs = shadowInstances(shifted).filter(
+      (instance) => instance.kind === SHADOW_KIND.blob,
+    );
+    expect(blobs.some((blob) => blob.id.startsWith('hand-0-'))).toBe(true);
   });
 
   it('anchors one band on the hand row + drawn tile contact line (v13)', () => {
@@ -102,8 +112,8 @@ describe('contact quad placement', () => {
       9,
     );
     expect(group.centre[0]).toBeCloseTo((minX + maxX) / 2, 9);
-    // Depth: exactly the rig's 0.5, with its south edge 0.18 past the contact
-    // edge and its north edge 0.32 under the body.
+    // Depth: a fixed band with its south edge 0.35 past the contact edge and
+    // its north edge under the hand.
     expect(group.sizeUnits[1]).toBeCloseTo(SHADOW.hand.depthUnits, 9);
     const south = group.centre[2] + group.sizeUnits[1] / 2;
     const north = group.centre[2] - group.sizeUnits[1] / 2;
@@ -112,6 +122,10 @@ describe('contact quad placement', () => {
       contactZ - (SHADOW.hand.depthUnits - SHADOW.hand.offsetUnits),
       9,
     );
+    // The band reaches the felt well past the contact line: the handoff asked
+    // for it lower and blurrier than the reference rig's own numbers.
+    expect(SHADOW.hand.offsetUnits).toBeGreaterThan(0.18);
+    expect(SHADOW.hand.sigmaAcrossUnits).toBeGreaterThan(0.26);
     // Dark where the hand meets the felt: v13's core alpha over the felt.
     expect(
       bandAlphaAt(
@@ -128,58 +142,43 @@ describe('contact quad placement', () => {
     expect(draw.pose.position[0]).toBeGreaterThan(group.centre[0] - group.sizeUnits[0] / 2);
   });
 
-  it('mirrors the band for the across player and runs the side bands along their rows', () => {
-    // The across seat faces the camera, so its contact edge is its nearest (max)
-    // z and the band is south of it, exactly like the player's.
-    const across = handGroupFor(2);
-    expect(across).toBeDefined();
-    if (!across) return;
-    const acrossTiles = grounded.filter(
-      (tile) => tile.seat === 2 && (tile.zone === 'hand' || tile.zone === 'draw'),
-    );
-    let contactZ = Number.NEGATIVE_INFINITY;
-    for (const tile of acrossTiles) {
-      for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
-        if (corner[1] > SHADOW.groundToleranceUnits) continue;
-        contactZ = Math.max(contactZ, corner[2]);
+  it('gives every opponent hand a contact blob at its own base', () => {
+    for (const seat of [1, 2, 3] as const) {
+      const blobs = shadows.filter(
+        (instance) =>
+          instance.kind === SHADOW_KIND.blob && instance.id.startsWith(`hand-${seat}-`),
+      );
+      expect(blobs.length, `seat ${seat}`).toBeGreaterThan(0);
+      for (const blob of blobs) {
+        const tile = grounded.find((entry) => entry.id === blob.id);
+        expect(tile, blob.id).toBeDefined();
+        if (!tile) continue;
+        // Centred on the tile's own (upright) footprint, not moved south.
+        expect(blob.centre[0]).toBeCloseTo(tile.pose.position[0], 9);
+        expect(blob.centre[2]).toBeCloseTo(tile.pose.position[2], 9);
       }
     }
-    expect(across.centre[2] + across.sizeUnits[1] / 2).toBeCloseTo(
-      contactZ + SHADOW.hand.offsetUnits,
-      9,
-    );
-    // A side seat's row runs along Z, so its band's long axis is Z too.
-    const right = handGroupFor(1);
-    expect(right).toBeDefined();
-    if (!right) return;
-    expect(right.sizeUnits[1]).toBeGreaterThan(right.sizeUnits[0] * 4);
   });
 
-  it('uses the rig\u2019s sigmas across and along the band', () => {
+  it('assigns the sigmas across and along the human band', () => {
     // The human's row runs along world X, so the across-sigma is on Z.
     const human = handGroupFor(0);
     expect(human?.sigmaUnits).toEqual([
       SHADOW.hand.sigmaAlongUnits,
       SHADOW.hand.sigmaAcrossUnits,
     ]);
-    // Seat 1's row runs along Z, so the axes swap.
-    const right = handGroupFor(1);
-    expect(right?.sigmaUnits).toEqual([
-      SHADOW.hand.sigmaAcrossUnits,
-      SHADOW.hand.sigmaAlongUnits,
-    ]);
-    // The rig's numbers, copied (v13-shadow-darker.handShadow).
-    expect(SHADOW.hand).toEqual({
-      depthUnits: 0.5,
-      offsetUnits: 0.18,
-      spreadUnits: 0.18,
-      sigmaAcrossUnits: 0.26,
-      sigmaAlongUnits: 0.1,
-    });
     // Blob quads carry no analytic sigma.
     for (const blob of shadows.filter((entry) => entry.kind === SHADOW_KIND.blob)) {
       expect(blob.sigmaUnits).toEqual([0, 0]);
     }
+    // The numbers the handoff settled on, checked as a table.
+    expect(SHADOW.hand).toEqual({
+      depthUnits: 0.7,
+      offsetUnits: 0.35,
+      spreadUnits: 0.24,
+      sigmaAcrossUnits: 0.45,
+      sigmaAlongUnits: 0.22,
+    });
   });
 
   it('emits nothing for a raised tier, and everything at the same lift', () => {
@@ -233,7 +232,7 @@ describe('contact quad placement', () => {
       expect(shadow.matrix[8]).toBeCloseTo(0, 6);
       expect(shadow.matrix[9]).toBeCloseTo(1, 6);
       expect(shadow.matrix[10]).toBeCloseTo(0, 6);
-      // The hand groups reach 0.18 past the row, so allow that in the bounds.
+      // The human band reaches past the row, so allow that in the bounds.
       const slack = 12.5 + SHADOW.hand.spreadUnits + SHADOW.hand.offsetUnits;
       expect(Math.abs(shadow.centre[0]) + shadow.sizeUnits[0] / 2).toBeLessThanOrEqual(slack);
       expect(Math.abs(shadow.centre[2]) + shadow.sizeUnits[1] / 2).toBeLessThanOrEqual(slack);
