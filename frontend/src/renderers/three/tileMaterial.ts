@@ -34,7 +34,7 @@ import type { IUniform, Texture, WebGLRenderer } from 'three';
 import type { DebugMode, QualityTier } from '../contract';
 import { TILE, UNIT_MM } from '../layoutConstants';
 import { RELIEF_RASTER } from './reliefAssets';
-import { TILE_LIGHTING_UNIFORMS } from './lighting';
+import { BODY_SPECULAR, TILE_LIGHTING_UNIFORMS } from './lighting';
 import { TILE_VERTEX_SHADER } from './materials/tile.vert';
 import { TILE_FRAGMENT_SHADER } from './materials/tile.frag';
 
@@ -175,6 +175,8 @@ export const DEBUG_MODE_CODE = {
   height: 2,
   normal: 3,
   steps: 4,
+  /** `?debug=flags`: face-up, blue-body and plate-zone as a false-colour image. */
+  flags: 5,
 } as const;
 
 /** Bitmap size of one atlas cell at a tier's upload scale. */
@@ -274,6 +276,8 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     uAmbientColor: { value: [...TILE_LIGHTING_UNIFORMS.ambientColor] },
     uAmbientIntensity: { value: TILE_LIGHTING_UNIFORMS.ambientIntensity },
     uSpecularF0: { value: TILE_LIGHTING_UNIFORMS.specularF0 },
+    uBodySpecularRoughness: { value: BODY_SPECULAR.roughness },
+    uPlateLikeEdges: { value: [...BODY_SPECULAR.plateLikeEdges] },
     uWrap: { value: TILE_LIGHTING_UNIFORMS.wrap },
     uHighlightTint: { value: [...TILE_HIGHLIGHT.tint] },
     uHighlightStrength: { value: TILE_HIGHLIGHT.strength },

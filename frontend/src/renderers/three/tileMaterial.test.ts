@@ -19,7 +19,7 @@
 import { Texture } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { RELIEF_RASTER } from './reliefAssets';
-import { TILE_LIGHTING_UNIFORMS } from './lighting';
+import { BODY_SPECULAR, TILE_LIGHTING_UNIFORMS } from './lighting';
 import { TILE_FRAGMENT_SHADER } from './materials/tile.frag';
 import { TILE_VERTEX_SHADER } from './materials/tile.vert';
 import {
@@ -197,6 +197,37 @@ describe('material uniforms', () => {
     expect(handle.heightScale()).toBe(1);
     handle.setHeightScale(-1);
     expect(handle.heightScale()).toBe(0);
+    handle.dispose();
+  });
+
+  it('confines the shell finish to plate-like surfaces (3D-20 follow-up)', () => {
+    const handle = material();
+    expect(handle.uniforms.uBodySpecularRoughness.value).toBe(BODY_SPECULAR.roughness);
+    expect(handle.uniforms.uPlateLikeEdges.value).toEqual([...BODY_SPECULAR.plateLikeEdges]);
+    // The fragment stage blends the two finishes by the local normal's Z, which
+    // the vertex stage must publish.
+    expect(TILE_VERTEX_SHADER).toContain('varying float vLocalNormalZ;');
+    expect(TILE_VERTEX_SHADER).toContain('vLocalNormalZ = normal.z;');
+    expect(TILE_FRAGMENT_SHADER).toContain('abs(vLocalNormalZ)');
+    expect(TILE_FRAGMENT_SHADER).toContain('float bodyCoat = coat * plateLike;');
+    // The bevel ring is body, the flat plate is plate: the edges straddle both.
+    expect(BODY_SPECULAR.plateLikeEdges[0]).toBeGreaterThan(0.5);
+    expect(BODY_SPECULAR.plateLikeEdges[1]).toBeLessThan(1);
+    expect(BODY_SPECULAR.roughness).toBeGreaterThan(0.18);
+    handle.dispose();
+  });
+
+  it('has a flags debug view the glint probe can read (3D-20 follow-up)', () => {
+    expect(DEBUG_MODE_CODE.flags).toBe(5);
+    expect(debugCodeFor('flags')).toBe(5);
+    expect(TILE_FRAGMENT_SHADER).toContain(
+      'colour = vec3(flagFaceUp, blueBody ? 1.0 : 0.0, vFaceZone);',
+    );
+    const handle = material();
+    handle.setDebug('flags');
+    expect(handle.uniforms.uDebug.value).toBe(5);
+    handle.setDebug(null);
+    expect(handle.uniforms.uDebug.value).toBe(0);
     handle.dispose();
   });
 

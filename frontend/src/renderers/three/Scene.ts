@@ -53,6 +53,8 @@ import {
 import type { Object3D } from 'three';
 import { effectiveDevicePixelRatio } from '../capabilities';
 import type {
+  DebugMode,
+  GlintReport,
   HeroCapture,
   HeroReport,
   HitRect,
@@ -86,6 +88,8 @@ import { loadReliefAssets } from './reliefAssets';
 import type { ReliefAssets } from './reliefAssets';
 import { createReliefTextureFactory } from './reliefTextures';
 import type { ReliefGpuTexture } from './reliefTextures';
+import { classifyGlintFrame } from './glintProbe';
+import type { GlintFrame } from './glintProbe';
 import { edgeScans, readEdge, readSeam, seamRasters } from './seamProbe';
 import type { SeamPixelSource } from './seamProbe';
 import { createShadowLayer, shadowInstances } from './shadows';
@@ -213,6 +217,8 @@ export class TableScene implements TableRenderer {
   private layout: BoardLayout | null = null;
   private frame: CameraFrame;
   private tier: QualityTier;
+  /** The debug view the host asked for; the glint probe restores it. */
+  private debugMode: DebugMode | null;
   private frameHandle: number | null = null;
   private disposed = false;
   private revision = 0;
@@ -220,6 +226,7 @@ export class TableScene implements TableRenderer {
 
   constructor(canvas: HTMLCanvasElement, options: RendererOptions) {
     this.tier = options.tier;
+    this.debugMode = options.debug;
     this.canvas = canvas;
 
     const context = canvas.getContext('webgl2', {
@@ -467,6 +474,53 @@ export class TableScene implements TableRenderer {
       allSeamsPass: seams.length > 0 && seams.every((seam) => seam.pass),
       edge,
     };
+  }
+
+  /**
+   * The glint probe (3D-20 follow-up): which surface family drew each bright
+   * pixel, from two draws of the same board — the lit frame, then
+   * `?debug=flags`, whose RGB is the shader's own branch state.
+   *
+   * Re-draws and reads back in the same task (`preserveDrawingBuffer` is false),
+   * restores the live debug view afterwards, and returns null outside the board
+   * view.
+   */
+  glintReport(): GlintReport | null {
+    if (!this.board || this.disposed) return null;
+    const material = this.board.material;
+    const liveDebug = this.debugMode;
+    const read = (): GlintFrame => {
+      this.draw();
+      const size = this.renderer.getDrawingBufferSize(new Vector2());
+      const gl = this.renderer.getContext();
+      const raw = new Uint8Array(size.x * size.y * 4);
+      gl.readPixels(0, 0, size.x, size.y, gl.RGBA, gl.UNSIGNED_BYTE, raw);
+      // `readPixels` is bottom-up; the classifier's rows must match each other,
+      // so both frames are flipped the same way.
+      const data = new Uint8Array(raw.length);
+      const rowBytes = size.x * 4;
+      for (let row = 0; row < size.y; row += 1) {
+        data.set(
+          raw.subarray((size.y - 1 - row) * rowBytes, (size.y - row) * rowBytes),
+          row * rowBytes,
+        );
+      }
+      return { data, width: size.x, height: size.y };
+    };
+    try {
+      material.setDebug(liveDebug);
+      const lit = read();
+      material.setDebug('flags');
+      const flags = read();
+      return {
+        widthPx: lit.width,
+        heightPx: lit.height,
+        ...classifyGlintFrame(lit, flags),
+      };
+    } finally {
+      material.setDebug(liveDebug);
+      this.requestFrame();
+    }
   }
 
   /**

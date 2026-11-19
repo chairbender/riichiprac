@@ -80,10 +80,12 @@ try {
     renderer.syncState(boardFixture());
     renderer.setSize(width, height, dpr);
     const seams = renderer.seamReport?.() ?? null;
+    const glint = renderer.glintReport?.() ?? null;
     const png = wantPng ? canvas.toDataURL('image/png') : null;
     publish({
       options: { width, height, dpr, tier, antialias, debug },
       seams,
+      glint,
       stats: renderer.measure(),
       png,
     });

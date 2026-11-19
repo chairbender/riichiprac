@@ -260,6 +260,19 @@ function printVariant(label, report) {
     `  ${label}: ${widthPx} x ${heightPx}, MSAA ${antialias ? 'on' : 'off'}, ` +
       `${drawCalls} draw calls, ${report.stats?.instances ?? '?'} instances`,
   );
+  const glint = report.glint;
+  if (glint) {
+    const pct = (bucket) =>
+      bucket.coverage > 0 ? (100 * bucket.bright) / bucket.coverage : 0;
+    console.log(
+      `    glint (>= ${glint.threshold} luma): plate ${glint.plate.bright}/${glint.plate.coverage} px` +
+        ` (${pct(glint.plate).toFixed(1)} %), ivory band ${glint.ivoryBody.bright}/${glint.ivoryBody.coverage}` +
+        ` (${pct(glint.ivoryBody).toFixed(1)} %), blue body ${glint.blueBody.bright}/${glint.blueBody.coverage}` +
+        ` (${pct(glint.blueBody).toFixed(3)} %, must be <= 0.100 %) -> ${glint.pass ? 'ok' : 'FAIL'}`,
+    );
+  } else {
+    console.log('    glint: not measured');
+  }
   let pass = 0;
   for (const seam of seams.seams) {
     const verdict = seam.pass ? 'ok   ' : 'FAIL ';
@@ -299,8 +312,12 @@ function printVariant(label, report) {
     writeFileSync(file, Buffer.from(report.png.split(',')[1] ?? '', 'base64'));
     console.log(`    artifact: ${file}`);
   }
-  const ok = pass === seams.seams.length;
-  console.log(`    verdict: ${pass}/${seams.seams.length} seams have no leak -> ${ok ? 'ok' : 'FAIL'}`);
+  const glintOk = report.glint ? report.glint.pass : false;
+  const ok = pass === seams.seams.length && glintOk;
+  console.log(
+    `    verdict: ${pass}/${seams.seams.length} seams have no leak, glint ${glintOk ? 'ok' : 'FAIL'}` +
+      ` -> ${ok ? 'ok' : 'FAIL'}`,
+  );
   return { ok, pass, total: seams.seams.length };
 }
 

@@ -156,6 +156,8 @@ export type DebugMode =
   | 'height'
   | 'normal'
   | 'steps'
+  /** The shader's own branch state per pixel: face-up / blue-body / plate zone. */
+  | 'flags'
   | 'pom-off'
   | 'wireframe'
   /** The 3D-05 hero view: the carved tile in four real board attitudes. */
@@ -362,6 +364,40 @@ export interface EdgeReadingNumber {
   readonly pass: boolean;
 }
 
+/**
+ * One surface family's bright-pixel tally from the glint probe (3D-20 follow-up).
+ *
+ * `bright` counts pixels at or above the measured luma threshold; `coverage` is
+ * how many pixels the family covers, so a ratio is comparable across viewports.
+ * A specular highlight that saturates belongs on a flat plate (where it is a
+ * uniform sheen), never on the curved body band — that is what `pass` checks.
+ */
+export interface GlintBucket {
+  readonly coverage: number;
+  readonly bright: number;
+}
+
+/** Where a bright pixel was drawn, from the shader's own flags. */
+export interface GlintReport {
+  readonly widthPx: number;
+  readonly heightPx: number;
+  /** The luma at or above which a pixel counts as bright. */
+  readonly threshold: number;
+  /** Body fragments with the blue backing (wall bevels and side walls). */
+  readonly blueBody: GlintBucket;
+  /** Body fragments with the ivory body (the shells' 4.95 mm ivory band). */
+  readonly ivoryBody: GlintBucket;
+  /** Fragments on a carved face or a backing plate (`faceUp`). */
+  readonly plate: GlintBucket;
+  /**
+   * True when the glint is confined to plate-like surfaces: the ivory body's
+   * bright pixels are its own albedo (it is an ivory surface, so it may be
+   * bright), and the blue body — whose albedo is dark — must not carry a
+   * saturated rim.
+   */
+  readonly pass: boolean;
+}
+
 /** The seam probe's whole report (3D-20), as `Scene.seamReport()` returns it. */
 export interface SeamReport {
   /** Whether the context was created with MSAA (3D-20's alias decision). */
@@ -423,6 +459,11 @@ export interface TableRenderer {
    * null outside the board view. Debug-only, so it is optional.
    */
   seamReport?(): SeamReport | null;
+  /**
+   * 3D-20's glint probe: which surface family owns each bright pixel, read from
+   * two draws of the same board (lit and `?debug=flags`). Debug-only, optional.
+   */
+  glintReport?(): GlintReport | null;
   dispose(): void;
 }
 

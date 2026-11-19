@@ -76,6 +76,7 @@ export const DEBUG_MODES: readonly DebugMode[] = [
   'height',
   'normal',
   'steps',
+  'flags',
   'pom-off',
   'wireframe',
   'hero',

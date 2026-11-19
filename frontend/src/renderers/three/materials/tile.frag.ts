@@ -103,6 +103,8 @@ uniform float uFillIntensity;
 uniform vec3 uAmbientColor;
 uniform float uAmbientIntensity;
 uniform float uSpecularF0;
+uniform float uBodySpecularRoughness;
+uniform vec2 uPlateLikeEdges;
 uniform float uWrap;
 uniform vec3 uHighlightTint;
 uniform float uHighlightStrength;
@@ -116,6 +118,7 @@ varying vec3 vWorldPosition;
 varying vec3 vLocalPosition;
 varying float vFaceZone;
 varying float vFlags;
+varying float vLocalNormalZ;
 
 const float PI = 3.141592653589793;
 const float EPSILON = 1e-4;
@@ -298,7 +301,14 @@ void main() {
   vec3 ambientIrradiance = uAmbientColor * uAmbientIntensity;
   vec3 diffuse = albedo * (keyIrradiance + fillIrradiance + ambientIrradiance) / PI * cavity;
 
-  vec3 specular = uKeyColor * uKeyIntensity * keySpecular(N, V, roughness, coat);
+  // The shell's finish belongs to the flat face and backing only. On the bevel
+  // ring the same finish would render as a one-tile-wide white rim wherever the
+  // view ray crosses the key's half-vector (see lighting.BODY_SPECULAR), so the
+  // curved band takes a broad, coat-free lobe instead.
+  float plateLike = smoothstep(uPlateLikeEdges.x, uPlateLikeEdges.y, abs(vLocalNormalZ));
+  float bodyRoughness = mix(uBodySpecularRoughness, roughness, plateLike);
+  float bodyCoat = coat * plateLike;
+  vec3 specular = uKeyColor * uKeyIntensity * keySpecular(N, V, bodyRoughness, bodyCoat);
 
   vec3 colour = diffuse + specular;
   // The baked lacquer's broad sheen (see PAINT_SHEEN): painted pixels only, and
@@ -323,6 +333,12 @@ void main() {
     } else if (uDebug < 4.5) {
       float ratio = uPomSteps > 0.5 ? stepsTaken / uPomSteps : 0.0;
       colour = vec3(ratio, 1.0 - ratio, 0.0);
+    } else if (uDebug < 5.5) {
+      // debug=flags: the shader's own branch state per pixel — R face-up,
+      // G blue body (else ivory), B carved-plate zone. The glint probe
+      // (glintProbe.ts) uses it to attribute a bright pixel to the surface that
+      // drew it instead of guessing from geometry.
+      colour = vec3(flagFaceUp, blueBody ? 1.0 : 0.0, vFaceZone);
     }
   }
 

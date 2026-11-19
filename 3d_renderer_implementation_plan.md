@@ -2039,6 +2039,37 @@ largest one-pixel luma step over nine parallel scan lines, MSAA off → on:
 **186.9 → 143.0 (23 %)** at 820 × 1180 @ DPR 2. A single scan line is grid-phase
 noise (it read −2 % on one run), which is why the probe averages nine.
 
+**Follow-up (2026-11-19): the glint on wall bevels.** With the seams closed the
+user reported a *different* defect: "very bright prominent white highlights" on
+the bevelled edge of some wall tiles, and only some. It is not the seam work and
+not geometry — it is the shell finish evaluated per pixel.
+
+*Cause.* The body carries the shell's finish (roughness 0.16-0.18 plus a
+0.1-roughness clear coat). A GGX lobe that tight is 1-2 deg wide and thousands of
+times the diffuse level at its peak, so wherever a bevel's normal crosses the
+half-vector *for that tile's own view ray* the rim saturates — and its neighbour,
+half a tile away, does not. That is why only a band of tiles lights up and why it
+moves with the viewport. The 2.5D shells never show it because their key is baked:
+a 40 deg-wide tube drawn into the sprite, identical on every tile of an attitude.
+
+*Measured.* A geometry-only probe could not attribute it (a face-up hand tile in
+front of a wall looks like a wall face), so the probe now asks the shader: it
+draws the board twice — lit, then `?debug=flags`, whose RGB *is*
+`(face-up, blue-body, plate-zone)` — and tallies bright pixels per family. On the
+fixture board at 1280 x 720, at 200 luma: **276 of 141,862 blue-body pixels
+(0.195 %)** were bright, 142 of them fully clipped; after the fix, **24 (0.017 %)**
+and none clipped. The ivory body (19,497 -> 19,512) and the face-up plates
+(133,027 -> 133,085) did not move, i.e. nothing about the approved face look
+changed.
+
+*Fix.* `lighting.BODY_SPECULAR`: keep the shell's finish on **plate-like**
+surfaces (`|local normal . face normal|` >= 0.985 — a flat face or backing, where
+the lobe lands as a uniform sheen over the whole plate) and give the curved band
+a broad, coat-free lobe (roughness 0.45, coat 0). The new `?debug=flags` view
+stays as a real debug mode; `Scene.glintReport()` + `glintProbe.ts` are the
+numeric instrument, and `check-3d-seams.mjs` prints and gates them (blue-body
+bright pixels <= 0.1 % of blue-body coverage).
+
 *Companion facts.* `drawCalls` stays 4, `measure()` is unchanged and
 `RendererOptions.antialias` is the host's resolved decision. The in-page probe is
 `frontend/scripts/seam-probe.html` (`?aa=`, `?debug=`, `?png=`, `?w=&h=&dpr=`),

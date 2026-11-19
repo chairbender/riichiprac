@@ -108,6 +108,46 @@ export const LIGHTING = {
   wrap: 0.3,
 } as const;
 
+/**
+ * How the **body** (bevels, side walls and backing) is lit, as distinct from the
+ * carved plate (follow-up to 3D-20, 2026-11-19).
+ *
+ * The shipped shells bake a *broad* key — a 40 x 2.5-unit tube at 56 units, i.e.
+ * about 40 deg of source — so a shell's bevel shows the same soft rim on every
+ * tile of a given attitude. One or two tiles never light up differently from
+ * their neighbours, because the highlight is painted in, not evaluated.
+ *
+ * The 3D chain evaluates it. With the shell's own finish on the bevel (roughness
+ * 0.16-0.18 plus a 0.1-roughness clear coat) a GGX lobe is about 1-2 deg wide and
+ * its peak is thousands of times the diffuse level, so *wherever* a bevel's
+ * normal happens to cross the half-vector between the key and that tile's view
+ * ray, the rim saturates to white — and neighbouring tiles, with a slightly
+ * different view ray, do not. Measured on the fixture board at 1280 x 720: 142
+ * pixels of clipped white (>= 250 luma) on blue body surfaces, in one band along
+ * a wall, 0.10 % of the body's coverage; the user reported exactly that as
+ * "unnatural ... the only wall tiles with such a strong highlight".
+ *
+ * The fix is the 2.5D look, expressed in material terms: keep the shell's finish
+ * on **plate-like** surfaces (a flat face or backing, where the lobe lands as a
+ * uniform sheen over the whole plate and cannot vary tile to tile) and give the
+ * curved band a broad, coat-free lobe. Measured after: 24 px >= 200 and **0** >=
+ * 230, a 91 % cut, with the plates unchanged to within 0.05 % (133,027 -> 133,085
+ * plate pixels >= 200, 19,497 -> 19,512 on the ivory bands).
+ */
+export const BODY_SPECULAR = {
+  /**
+   * The body lobe's roughness: broad enough that a 4-pixel bevel cannot clip,
+   * and close to the 0.45 the relief atlas uses for open resin.
+   */
+  roughness: 0.45,
+  /**
+   * `|local normal . face normal|` above which a fragment is treated as plate:
+   * a smoothstep at 0.9 then 0.985, so the bevel ring (whose normals leave the
+   * face axis immediately) is body and the flat plate is plate.
+   */
+  plateLikeEdges: [0.9, 0.985] as const,
+} as const;
+
 /** The normal orientation the rig is calibrated neutral for (the felt plane). */
 export const IRRADIANCE_NEUTRAL_NORMAL: Direction3 = [0, 1, 0];
 
