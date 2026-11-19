@@ -178,9 +178,9 @@ reviewed, mechanically clean candidates and the evidence.
 **Sign-off and scale-up (2026-11-18).** The user reviewed the shipped 100 bases,
 approved skipping the separate Q2r task, and chose to scale to **500 real bases**
 with mechanical review plus a user spot-check. The scale-up run replaces this
-pack with **550 real bases, 0 variants** (five lessons, 550,577 bytes); the
+pack with **1,038 real bases, 0 variants** (six lessons, 1,047,001 bytes); the
 100-base evidence above remains the Q2 acceptance record. Details in
-[`q2-scale-up-500.md`](q2-scale-up-500.md).
+[`q2-scale-up-1000.md`](q2-scale-up-1000.md).
 
 ## Variants disabled, and the pack
 

@@ -1,0 +1,137 @@
+{
+  "schema": "riichiprac.q2-scale-1k-measurements",
+  "version": 1,
+  "pack_id": "replay.ch8-defense.2026-11",
+  "target": "1,000 real bases",
+  "corpus": {
+    "games": 544,
+    "mortal_mirror": 250,
+    "mortal_sampling_sweep": 250,
+    "akochan": 44,
+    "decisions": 278517,
+    "book_labels": 41009,
+    "stable": 24808,
+    "contested": 16201
+  },
+  "selection": {
+    "size_requested": 1080,
+    "selected": 1080,
+    "held_out": 54,
+    "replays_walked": 544,
+    "candidates_valid": 20640,
+    "workers": 14,
+    "wall_minutes": 45,
+    "funnel": {
+      "games_requested": 544,
+      "games_parsed": 544,
+      "games_valid": 544,
+      "decision_points": 278517,
+      "trigger_hits": 228668,
+      "reconstructed": 278517,
+      "book_matches": 41009,
+      "mortal_labelled": 41009,
+      "gate_passed": 20640,
+      "held_out": 54,
+      "selected": 1080,
+      "packed": 0
+    },
+    "corpus_mix": {
+      "akochan_tactics": {
+        "cap": 30,
+        "selected": 28,
+        "candidates": 945
+      },
+      "akochan_vs_mortal": {
+        "cap": 30,
+        "selected": 30,
+        "candidates": 516
+      },
+      "heterogeneous_table": {
+        "cap": 30,
+        "selected": 30,
+        "candidates": 936
+      },
+      "mortal_mirror": {
+        "cap": 500,
+        "selected": 498,
+        "candidates": 9047
+      },
+      "mortal_sampling_sweep": {
+        "cap": 500,
+        "selected": 494,
+        "candidates": 9142
+      }
+    },
+    "max_per_replay": 2,
+    "extracted_only": true
+  },
+  "review": {
+    "items": 1080,
+    "valid": 1080,
+    "invalid": 0,
+    "pending": 0,
+    "accepted": 1080,
+    "rejected": 0,
+    "mode": "mechanical review + spot-check"
+  },
+  "pack": {
+    "scenarios": 1038,
+    "bases": 1038,
+    "variants": 0,
+    "bytes": 1047001,
+    "sha256": "3bdcc1736670aba63b9c9fd8d8fce8426a8a8d1799f8b125d2397a3cc782ef17",
+    "lessons": {
+      "fold_to_riichi": 350,
+      "defense_safety_chart": 391,
+      "suji_kabe_safety": 126,
+      "push_or_fold": 152,
+      "defense_stuck_heuristic": 11,
+      "kabe_one_chance": 8
+    },
+    "book_sections": [
+      "ch8.1",
+      "ch8.2",
+      "ch8.3"
+    ],
+    "replays": 539,
+    "adjacent_same_replay_bases": 0,
+    "unique_hand_strings": 1038,
+    "duplicate_hand_strings": 0,
+    "drop_counts": {
+      "duplicate_hand": 40,
+      "lesson_too_small": 2
+    },
+    "largest_base_scenarios": 1,
+    "largest_base_share": 0.0009633911368015414,
+    "licence": "CC-BY-4.0",
+    "data_commercial_use": false,
+    "requires_model": false,
+    "agents": [
+      "akochan (akochan master-53188a0-minimum, akochan-custom)",
+      "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+      "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+      "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+    ]
+  },
+  "checks": {
+    "ch8_pack": "23/23",
+    "hosting": "41/41",
+    "serving": "8/8",
+    "audit_findings": 0,
+    "frontend_tests": "320 passed, 1 skipped",
+    "rust_lib_tests": "1122 passed",
+    "q1_end_to_end": "PASS"
+  },
+  "storage": {
+    "snapshot": "snapshots/miner-20261118-194500.sqlite",
+    "snapshot_bytes": 1768316928,
+    "snapshot_sha256": "6ccdd9f350fedcee9028891888ac2d01eb2b782131c12388a48436e4b50ed54b",
+    "integrity_check": "ok",
+    "replays": 999,
+    "decisions": 278517,
+    "selected_scenarios": 1080,
+    "pack_scenarios": 1038
+  },
+  "spot_check": "/tmp/opencode/q2-scale-1k-spot-check.md (all 11 defense_stuck_heuristic bases + 89 random shipped bases)",
+  "scale_decision": "shipped 1,038 real bases; next 2k needs more games and a proper review tool"
+}

@@ -226,6 +226,15 @@ enum Command {
         #[arg(long)]
         extracted_only: bool,
 
+        /// Worker threads for the offline selection walk. 0 uses every
+        /// available core; 1 is for debugging and tests.
+        #[arg(long, value_name = "N", default_value_t = 0)]
+        workers: usize,
+
+        /// Print phase and file progress to stderr.
+        #[arg(long)]
+        progress: bool,
+
         /// Keep only stable book labels (reject book/Mortal disagreement).
         #[arg(long)]
         stable_book_only: bool,
@@ -786,6 +795,8 @@ fn main() -> ExitCode {
             corpus_cap,
             max_per_replay,
             extracted_only,
+            workers,
+            progress,
             stable_book_only,
             max_section_share,
             max_kind_share,
@@ -832,6 +843,8 @@ fn main() -> ExitCode {
                     limit,
                     extracted_only,
                     config,
+                    workers,
+                    progress,
                     dry_run,
                 },
                 json,

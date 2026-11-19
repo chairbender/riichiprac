@@ -100,6 +100,19 @@ impl FunnelCounter {
         }
     }
 
+    /// Merge another counter into this one. Used by the parallel offline
+    /// stages, where each worker counts its own shard and the parent combines
+    /// the shards in file order.
+    pub fn merge(&mut self, other: &Self) {
+        for (stage, count) in &other.counts {
+            self.add(*stage, *count);
+        }
+        for (reason, count) in &other.rejections {
+            let entry = self.rejections.entry(reason.clone()).or_insert(0);
+            *entry = entry.saturating_add(*count);
+        }
+    }
+
     /// Rejection counts keyed by reason.
     #[must_use]
     pub fn rejections(&self) -> &BTreeMap<String, u64> {

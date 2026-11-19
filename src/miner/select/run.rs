@@ -33,8 +33,10 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use rayon::prelude::*;
 use rusqlite::Connection;
 use serde::Serialize;
 
@@ -50,8 +52,9 @@ use crate::miner::licence::allowed_data_licence;
 use crate::miner::provenance::{GameProvenance, sha256_hex};
 use crate::miner::source::SourceGate;
 use crate::miner::storage::{DataRoot, open_miner_db, utc_stamp, write_atomic};
-use crate::miner::trigger::report::load_label;
-use crate::miner::trigger::{TriggerReport, evaluate_cheap, evaluate_with_label, families::Family};
+use crate::miner::trigger::{
+    TriggerError, TriggerReport, evaluate_cheap, evaluate_with_label, families::Family,
+};
 use crate::replay::walk::{DecisionKind, DecisionSnapshot, walk_path};
 use crate::report::{BuildReportRequest, ReportReason, ReportedAction, ReportedAi, build_report};
 use crate::state::{CorrectAction, CorrectActionType, TargetAction};
@@ -82,6 +85,11 @@ pub struct SelectionOptions {
     pub extracted_only: bool,
     /// The selection configuration.
     pub config: SelectionConfig,
+    /// Worker threads. `0` uses every available core; `1` is for debugging and
+    /// tests. Offline miner stages default to the whole machine.
+    pub workers: usize,
+    /// Print phase/file progress to stderr.
+    pub progress: bool,
     /// Do not write the queue, the held-out set or the report.
     pub dry_run: bool,
 }
@@ -153,6 +161,60 @@ struct ReplayRow {
     licence: String,
     validation: String,
     provenance_json: String,
+}
+
+/// The labels every selection pass reads, loaded once so the parallel workers do
+/// not each open a SQLite connection. The decision row wins; the L1 cache is the
+/// fallback, exactly as `trigger::report::load_label`.
+struct LabelIndex {
+    by_decision: BTreeMap<String, ModelLabel>,
+    by_hash: BTreeMap<String, ModelLabel>,
+}
+
+impl LabelIndex {
+    fn load(connection: &Connection) -> Result<Self, SelectionError> {
+        let mut by_decision = BTreeMap::new();
+        let mut statement = connection.prepare(
+            "SELECT decision_id, label_json FROM decisions WHERE label_json IS NOT NULL",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        for row in rows {
+            let (decision_id, json) = row?;
+            let label: ModelLabel = serde_json::from_str(&json)
+                .map_err(|err| SelectionError::Trigger(TriggerError::Json(err)))?;
+            by_decision.insert(decision_id, label);
+        }
+        let mut by_hash = BTreeMap::new();
+        let mut statement = connection.prepare(
+            "SELECT state_hash, label_json FROM model_labels
+             WHERE status = 'ok' AND label_json IS NOT NULL
+             ORDER BY state_hash, model_sha256, classifier_version, options_hash",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        for row in rows {
+            let (state_hash, json) = row?;
+            if by_hash.contains_key(&state_hash) {
+                continue;
+            }
+            let label: ModelLabel = serde_json::from_str(&json)
+                .map_err(|err| SelectionError::Trigger(TriggerError::Json(err)))?;
+            by_hash.insert(state_hash, label);
+        }
+        Ok(Self {
+            by_decision,
+            by_hash,
+        })
+    }
+
+    fn get(&self, decision_id: &str, state_hash: &str) -> Option<&ModelLabel> {
+        self.by_decision
+            .get(decision_id)
+            .or_else(|| self.by_hash.get(state_hash))
+    }
 }
 
 fn load_replay_rows(
@@ -256,6 +318,39 @@ fn io_error(path: &Path, source: std::io::Error) -> SelectionError {
     }
 }
 
+/// Per-file result of the label-sample pass.
+struct Pass1File {
+    replay_id: String,
+    facts: ReplayFacts,
+    decisions_seen: u64,
+    decisions_dropped: u64,
+    decisions_labelled: u64,
+    samples: SampleCuts,
+    funnel: FunnelCounter,
+}
+
+/// Per-file result of the trigger/candidate pass.
+#[derive(Default)]
+struct Pass2File {
+    candidates: Vec<Candidate>,
+    gate_counts: BTreeMap<GateKind, u64>,
+    triggered: u64,
+    classified: u64,
+    reconstructed: u64,
+    funnel: FunnelCounter,
+}
+
+fn tick(done: &AtomicUsize, total: usize, phase: &str, enabled: bool) {
+    if !enabled {
+        return;
+    }
+    let current = done.fetch_add(1, Ordering::Relaxed) + 1;
+    let step = (total / 10).max(1);
+    if current == total || current.is_multiple_of(step) {
+        eprintln!("select: {phase} {current}/{total} replay file(s)");
+    }
+}
+
 /// Walk a replay shard and select a review queue.
 pub fn run_selection(
     root: &DataRoot,
@@ -305,6 +400,23 @@ pub fn run_selection(
         });
     }
     let replay_rows = load_replay_rows(&connection)?;
+    let labels = LabelIndex::load(&connection)?;
+
+    let workers = if options.workers == 0 {
+        std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
+    } else {
+        options.workers
+    };
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(workers)
+        .build()
+        .map_err(|err| SelectionError::InvalidConfig(format!("cannot start worker pool: {err}")))?;
+    if options.progress {
+        eprintln!(
+            "select: {} replay file(s), {workers} worker thread(s)",
+            files.len()
+        );
+    }
 
     let mut funnel = FunnelCounter::new();
     funnel.add(FunnelStage::GamesRequested, files.len() as u64);
@@ -318,41 +430,67 @@ pub fn run_selection(
     let mut replay_facts: BTreeMap<String, ReplayFacts> = BTreeMap::new();
 
     // Pass 1: the label sample. No triggers, no candidates, no forward pass.
-    for path in &files {
-        let walk = match walk_path(path) {
-            Ok(walk) => walk,
-            Err(err) => {
+    // Files are independent, so the whole shard is walked with `workers`
+    // threads; the per-file results merge in file order.
+    let pass1_done = AtomicUsize::new(0);
+    let pass1: Vec<Result<Pass1File, String>> = pool.install(|| {
+        files
+            .par_iter()
+            .map(|path| {
+                tick(&pass1_done, files.len(), "pass 1", options.progress);
+                let walk = walk_path(path).map_err(|err| format!("{}: {err}", path.display()))?;
+                let mut local = FunnelCounter::new();
+                local.bump(FunnelStage::GamesParsed);
+                local.reject_many("reachability", walk.skipped.len() as u64);
+                let replay_id = walk.replay_id.as_str().to_string();
+                let family = family_of_path(path, &replays_dir);
+                let mut facts = facts_for(replay_rows.get(&replay_id), &family);
+                facts.walk_clean = walk.skipped.is_empty();
+                if facts.source_ok && facts.licence_ok && facts.provenance_ok && facts.validation_ok
+                {
+                    local.bump(FunnelStage::GamesValid);
+                }
+                let mut samples = SampleCuts::default();
+                let mut labelled = 0_u64;
+                for decision in &walk.decisions {
+                    let hash = exact_state_hash(&decision.state);
+                    if let Some(label) = labels.get(&decision.decision_id, &hash) {
+                        labelled += 1;
+                        samples.add(
+                            &DecisionFamily::of(decision).key(),
+                            label,
+                            &decision.played.action,
+                        );
+                    }
+                }
+                Ok(Pass1File {
+                    replay_id,
+                    facts,
+                    decisions_seen: walk.decisions.len() as u64,
+                    decisions_dropped: walk.skipped.len() as u64,
+                    decisions_labelled: labelled,
+                    samples,
+                    funnel: local,
+                })
+            })
+            .collect()
+    });
+
+    for result in pass1 {
+        match result {
+            Ok(file) => {
+                replays_walked += 1;
+                decisions_seen += file.decisions_seen;
+                decisions_dropped += file.decisions_dropped;
+                decisions_labelled += file.decisions_labelled;
+                funnel.merge(&file.funnel);
+                samples.merge(&file.samples);
+                replay_facts.insert(file.replay_id, file.facts);
+            }
+            Err(error) => {
                 replays_failed += 1;
                 funnel.reject("replay_unreadable");
-                push_error(&mut errors, format!("{}: {err}", path.display()));
-                continue;
-            }
-        };
-        replays_walked += 1;
-        funnel.bump(FunnelStage::GamesParsed);
-        funnel.reject_many("reachability", walk.skipped.len() as u64);
-        decisions_dropped += walk.skipped.len() as u64;
-        let replay_id = walk.replay_id.as_str().to_string();
-        let family = family_of_path(path, &replays_dir);
-        let mut facts = facts_for(replay_rows.get(&replay_id), &family);
-        facts.walk_clean = walk.skipped.is_empty();
-        if facts.source_ok && facts.licence_ok && facts.provenance_ok && facts.validation_ok {
-            funnel.bump(FunnelStage::GamesValid);
-        }
-        replay_facts.insert(replay_id, facts);
-
-        for decision in &walk.decisions {
-            decisions_seen += 1;
-            let hash = exact_state_hash(&decision.state);
-            let label = load_label(&connection, &decision.decision_id, &hash)
-                .map_err(SelectionError::Trigger)?;
-            if let Some(label) = label {
-                decisions_labelled += 1;
-                samples.add(
-                    &DecisionFamily::of(decision).key(),
-                    &label,
-                    &decision.played.action,
-                );
+                push_error(&mut errors, error);
             }
         }
     }
@@ -362,80 +500,100 @@ pub fn run_selection(
         .label_cuts(&options.config.percentiles)
         .map_err(SelectionError::Threshold)?;
 
-    // Pass 2: triggers, gates, signals, score.
+    // Pass 2: triggers, gates, signals, score. Independent per replay file.
+    let pass2_done = AtomicUsize::new(0);
+    let pass2: Vec<Pass2File> = pool.install(|| {
+        files
+            .par_iter()
+            .map(|path| {
+                tick(&pass2_done, files.len(), "pass 2", options.progress);
+                let walk = match walk_path(path) {
+                    Ok(walk) => walk,
+                    Err(_) => return Pass2File::default(),
+                };
+                let replay_id = walk.replay_id.as_str().to_string();
+                let Some(facts) = replay_facts.get(&replay_id).cloned() else {
+                    return Pass2File::default();
+                };
+                let family = family_of_path(path, &replays_dir);
+                let mut out = Pass2File::default();
+                for decision in &walk.decisions {
+                    out.reconstructed += 1;
+                    let hash = exact_state_hash(&decision.state);
+                    let label = labels.get(&decision.decision_id, &hash);
+                    let report = match label {
+                        Some(label) => {
+                            evaluate_with_label(decision, label, &cuts, &options.config.trigger)
+                        }
+                        None => evaluate_cheap(decision, &options.config.trigger),
+                    };
+                    if report.has_any() {
+                        out.triggered += 1;
+                    }
+                    if label.is_some_and(|label| label.book.is_some()) {
+                        out.classified += 1;
+                    }
+                    let Some(label) = label else {
+                        *out.gate_counts.entry(GateKind::AnswerDefined).or_insert(0) += 1;
+                        out.funnel.reject("no_label");
+                        continue;
+                    };
+                    let plan = match answer_plan(decision, label) {
+                        Ok(plan) => plan,
+                        Err(failure) => {
+                            *out.gate_counts.entry(failure.gate).or_insert(0) += 1;
+                            out.funnel.reject(&failure.code);
+                            continue;
+                        }
+                    };
+                    if options.config.stable_book_only && label.kind() != LabelKind::Book {
+                        out.funnel.reject("scope_not_stable_book");
+                        continue;
+                    }
+                    if !options.config.section_allowed(plan.section.as_deref())
+                        || !options.config.lesson_allowed(plan.lesson.as_deref())
+                        || !options.config.replay_family_allowed(&family)
+                    {
+                        out.funnel.reject("out_of_scope");
+                        continue;
+                    }
+                    match build_candidate(
+                        decision,
+                        label,
+                        plan,
+                        report,
+                        &facts,
+                        &family,
+                        &options.config,
+                        &samples,
+                        &cuts,
+                    ) {
+                        Ok(candidate) => out.candidates.push(candidate),
+                        Err(failure) => {
+                            *out.gate_counts.entry(failure.gate).or_insert(0) += 1;
+                            out.funnel.reject(&failure.code);
+                        }
+                    }
+                }
+                out
+            })
+            .collect()
+    });
+
     let mut candidates: Vec<Candidate> = Vec::new();
     let mut gate_counts: BTreeMap<GateKind, u64> = BTreeMap::new();
     let mut decisions_triggered = 0_u64;
     let mut decisions_classified = 0_u64;
     let mut reconstructed = 0_u64;
-
-    for path in &files {
-        let walk = match walk_path(path) {
-            Ok(walk) => walk,
-            Err(_) => continue,
-        };
-        let replay_id = walk.replay_id.as_str().to_string();
-        let Some(facts) = replay_facts.get(&replay_id).cloned() else {
-            continue;
-        };
-        let family = family_of_path(path, &replays_dir);
-        for decision in &walk.decisions {
-            reconstructed += 1;
-            let hash = exact_state_hash(&decision.state);
-            let label = load_label(&connection, &decision.decision_id, &hash)
-                .map_err(SelectionError::Trigger)?;
-            let report = match &label {
-                Some(label) => evaluate_with_label(decision, label, &cuts, &options.config.trigger),
-                None => evaluate_cheap(decision, &options.config.trigger),
-            };
-            if report.has_any() {
-                decisions_triggered += 1;
-            }
-            if label.as_ref().is_some_and(|label| label.book.is_some()) {
-                decisions_classified += 1;
-            }
-            let Some(label) = label.as_ref() else {
-                *gate_counts.entry(GateKind::AnswerDefined).or_insert(0) += 1;
-                funnel.reject("no_label");
-                continue;
-            };
-            let plan = match answer_plan(decision, label) {
-                Ok(plan) => plan,
-                Err(failure) => {
-                    *gate_counts.entry(failure.gate).or_insert(0) += 1;
-                    funnel.reject(&failure.code);
-                    continue;
-                }
-            };
-            if options.config.stable_book_only && label.kind() != LabelKind::Book {
-                funnel.reject("scope_not_stable_book");
-                continue;
-            }
-            if !options.config.section_allowed(plan.section.as_deref())
-                || !options.config.lesson_allowed(plan.lesson.as_deref())
-                || !options.config.replay_family_allowed(&family)
-            {
-                funnel.reject("out_of_scope");
-                continue;
-            }
-            match build_candidate(
-                decision,
-                label,
-                plan,
-                report,
-                &facts,
-                &family,
-                &options.config,
-                &samples,
-                &cuts,
-            ) {
-                Ok(candidate) => candidates.push(candidate),
-                Err(failure) => {
-                    *gate_counts.entry(failure.gate).or_insert(0) += 1;
-                    funnel.reject(&failure.code);
-                }
-            }
+    for file in pass2 {
+        candidates.extend(file.candidates);
+        for (gate, count) in file.gate_counts {
+            *gate_counts.entry(gate).or_insert(0) += count;
         }
+        decisions_triggered += file.triggered;
+        decisions_classified += file.classified;
+        reconstructed += file.reconstructed;
+        funnel.merge(&file.funnel);
     }
     funnel.add(FunnelStage::TriggerHits, decisions_triggered);
     funnel.add(FunnelStage::Reconstructed, reconstructed);
@@ -452,8 +610,16 @@ pub fn run_selection(
 
     let paths = selection_paths(root, &options.config.pack_id);
     let created_at = rfc3339_now();
-    let (mut items, missing) =
-        build_review_items(&connection, &plan, &options.config, &created_at, &files)?;
+    let (mut items, missing) = pool.install(|| {
+        build_review_items(
+            &labels,
+            &plan,
+            &options.config,
+            &created_at,
+            &files,
+            options.progress,
+        )
+    })?;
     for decision_id in missing {
         push_error(
             &mut errors,
@@ -772,11 +938,12 @@ struct Queued {
 /// Returns the items in queue order (selected first, then held-out) and the
 /// decision ids that could not be found on the re-walk.
 fn build_review_items(
-    connection: &Connection,
+    labels: &LabelIndex,
     plan: &SelectionPlan,
     config: &SelectionConfig,
     created_at: &str,
     files: &[PathBuf],
+    progress: bool,
 ) -> Result<(Vec<ReviewItem>, Vec<String>), SelectionError> {
     let mut queued: Vec<Queued> = Vec::new();
     let mut selected: Vec<&SelectedScenario> = plan.selected.iter().collect();
@@ -825,67 +992,75 @@ fn build_review_items(
     }
 
     let mut built: Vec<Option<ReviewItem>> = vec![None; queued.len()];
-    for path in files {
-        let walk = match walk_path(path) {
-            Ok(walk) => walk,
-            Err(err) => {
-                return Err(SelectionError::Walk {
-                    path: path.display().to_string(),
-                    source: err,
-                });
-            }
-        };
-        let replay_id = walk.replay_id.as_str().to_string();
-        let Some(wanted) = needed.get(&replay_id) else {
-            continue;
-        };
-        for decision in &walk.decisions {
-            let Some(index) = wanted.get(&decision.decision_id) else {
-                continue;
+    let done = AtomicUsize::new(0);
+    let per_file: Vec<Result<Vec<(usize, ReviewItem)>, SelectionError>> = files
+        .par_iter()
+        .map(|path| {
+            tick(&done, files.len(), "pass 3", progress);
+            let walk = walk_path(path).map_err(|source| SelectionError::Walk {
+                path: path.display().to_string(),
+                source,
+            })?;
+            let replay_id = walk.replay_id.as_str().to_string();
+            let Some(wanted) = needed.get(&replay_id) else {
+                return Ok(Vec::new());
             };
-            let entry = &queued[*index];
-            let hash = exact_state_hash(&decision.state);
-            let label = load_label(connection, &decision.decision_id, &hash)
-                .map_err(SelectionError::Trigger)?
-                .ok_or_else(|| {
+            let mut out = Vec::new();
+            for decision in &walk.decisions {
+                let Some(index) = wanted.get(&decision.decision_id) else {
+                    continue;
+                };
+                let entry = &queued[*index];
+                let hash = exact_state_hash(&decision.state);
+                let label = labels.get(&decision.decision_id, &hash).ok_or_else(|| {
                     SelectionError::Review(format!(
                         "decision `{}` has no cached label for its review report",
                         decision.decision_id
                     ))
                 })?;
-            let reason = if entry.held_out {
-                format!(
-                    "held_out=qa;section={};kind={};turn={}",
-                    entry.candidate.book_section.as_deref().unwrap_or("none"),
-                    entry.candidate.kind.as_str(),
-                    entry.candidate.turn_bucket.as_str()
-                )
-            } else {
-                selection_reason(
-                    entry.family.unwrap_or(Family::Book),
-                    entry.candidate.book_section.as_deref(),
+                let reason = if entry.held_out {
+                    format!(
+                        "held_out=qa;section={};kind={};turn={}",
+                        entry.candidate.book_section.as_deref().unwrap_or("none"),
+                        entry.candidate.kind.as_str(),
+                        entry.candidate.turn_bucket.as_str()
+                    )
+                } else {
+                    selection_reason(
+                        entry.family.unwrap_or(Family::Book),
+                        entry.candidate.book_section.as_deref(),
+                        &entry.candidate,
+                        entry.rank.unwrap_or(0),
+                    )
+                };
+                let review = build_review_report(
+                    decision,
                     &entry.candidate,
-                    entry.rank.unwrap_or(0),
-                )
-            };
-            let review = build_review_report(
-                decision,
-                &entry.candidate,
-                &label,
-                &entry.queue_id,
-                &reason,
-                created_at,
-            )?;
-            built[*index] = Some(ReviewItem::new(
-                entry.queue_id.clone(),
-                config.pack_id.clone(),
-                &entry.candidate,
-                entry.family,
-                entry.rank,
-                entry.held_out,
-                reason,
-                review,
-            ));
+                    label,
+                    &entry.queue_id,
+                    &reason,
+                    created_at,
+                )?;
+                out.push((
+                    *index,
+                    ReviewItem::new(
+                        entry.queue_id.clone(),
+                        config.pack_id.clone(),
+                        &entry.candidate,
+                        entry.family,
+                        entry.rank,
+                        entry.held_out,
+                        reason,
+                        review,
+                    ),
+                ));
+            }
+            Ok(out)
+        })
+        .collect();
+    for result in per_file {
+        for (index, item) in result? {
+            built[index] = Some(item);
         }
     }
 

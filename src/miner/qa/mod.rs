@@ -455,6 +455,8 @@ pub fn run_fixture_pipeline(root: &DataRoot, options: &QaOptions) -> Result<QaRe
             limit: None,
             extracted_only: false,
             config: selection_config,
+            workers: 1,
+            progress: false,
             dry_run: false,
         },
     )?;

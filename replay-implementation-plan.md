@@ -2365,11 +2365,13 @@ counted as an implementation unit.
 > separate Q2r item. The corpus was expanded to **284 games / 146,374 decisions /
 > 21,745 book labels** (120 M1, 120 M2, 44 Akochan). `select --extracted-only
 > --max-per-replay 2` produced 560 bases (51 held out); `pack assemble
-> --no-variants --unique-hands --min-bases-per-lesson 4` ships **550 bases,
-> 0 variants, 550,577 bytes**, five ch. 8 lessons. `defense_stuck_heuristic`
-> returns with four distinct real positions; the two lessons below the four-base
-> floor are left out. The pack passes audit, 41/41 hosting, 23/23 ch8 content
-> and 8/8 serving checks. Details: [`q2-scale-up-500.md`](q2-scale-up-500.md).
+> --no-variants --unique-hands --min-bases-per-lesson 4` ships **1,038 bases,
+> 0 variants, 1,047,001 bytes**, six ch. 8 lessons. `defense_stuck_heuristic`
+> returns with 11 distinct real positions; the lessons below the four-base
+> floor are left out. Selection uses all cores (`--workers 0`, 14 threads,
+> ~45 minutes) with measured progress. The pack passes audit, 41/41 hosting,
+> 23/23 ch8 content and 8/8 serving checks. Details:
+> [`q2-scale-up-1000.md`](q2-scale-up-1000.md).
 
 ### 5.4 Critical path and parallel tracks
 
@@ -2462,6 +2464,17 @@ the spike says which mode is feasible.
 ## 7. Verification gates
 
 ### 7.1 Shared commands
+
+**Offline compute policy.** Batch miner/corpus stages must use the whole
+machine by default: corpus generation, extraction, labelling, selection and
+review-report building, and transform/variant generation. Derive worker counts
+from available cores, parallelise per game/replay/state, merge deterministic
+results in file order, and print phase/file progress. `--workers 1`, a fixture
+plan or a small `--limit` are the bounded modes for tests, fixtures and initial
+development only; a single-threaded production batch is a defect unless the
+operator explicitly asks for it. Selection already implements this
+(`select --workers 0`, default); the remaining serial stages are tracked as
+pipeline work, not accepted defaults.
 
 Define these once; unit gates reference them.
 

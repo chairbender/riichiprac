@@ -1163,6 +1163,8 @@ fn a_shard_run_writes_the_queue_the_report_and_the_latest_pointer() {
             limit: None,
             extracted_only: false,
             config,
+            workers: 1,
+            progress: false,
             dry_run: false,
         },
     )
@@ -1242,6 +1244,8 @@ fn a_dry_run_writes_nothing() {
             limit: None,
             extracted_only: false,
             config,
+            workers: 1,
+            progress: false,
             dry_run: true,
         },
     )

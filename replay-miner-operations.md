@@ -152,8 +152,9 @@ cargo run --release --features miner --bin mine_replays -- select \
   [--replays DIR] [--family NAME] [--limit N] \
   [--pack-id ID] [--size N] [--held-out-share F] [--seed TEXT] \
   [--section LIST] [--lesson LIST] [--corpus-family LIST] \
-  [--corpus-cap family=N,...] [--stable-book-only] \
-  [--max-section-share F] [--max-kind-share F] [--max-turn-share F] \
+  [--corpus-cap family=N,...] [--max-per-replay N] [--extracted-only] \
+  [--stable-book-only] [--max-section-share F] [--max-kind-share F] \
+  [--max-turn-share F] [--workers N] [--progress] \
   [--dry-run] [--json]
 
 cargo run --release --features miner --bin mine_replays -- review \
@@ -953,6 +954,14 @@ exceeding it. The report's `replay_families` rows record each family's cap,
 candidate count, selected count and whether the cap was reached. The scope is
 also written into the report notes, so the queue explains why a candidate was
 rejected (`out_of_scope`, `scope_not_stable_book`).
+
+`--extracted-only` drops replay files that have no `decisions` rows before the
+walk (a 999-file data root may hold only a few hundred extracted games).
+`--max-per-replay N` caps one source game's contribution, so adjacent turns
+cannot look like repeats. `--workers N` (default `0`) uses every available core;
+`--progress` prints phase/file progress to stderr. The selection passes are
+parallelised per replay file and merged in file order, so the report and pack
+are deterministic for a given worker count.
 
 The lesson scope does not change the family quotas: a scoped candidate still
 feeds `book`, `coverage`, `table_read`, `placement` or whichever families its
@@ -1791,13 +1800,13 @@ review is Q2r.
 Q2r item. The follow-on run extracted and book-labelled 240 additional M1/M2
 games (284 games / 146,374 decisions / 21,745 book labels in total), then used
 `select --extracted-only --max-per-replay 2` to pick 560 bases (51 held out). It
-ships **550 reviewed bases, 0 variants**, 550,577 bytes, five ch. 8 lessons;
-`defense_stuck_heuristic` now has four distinct real positions instead of one.
+ships **1,038 reviewed bases, 0 variants**, 1,047,001 bytes, six ch. 8 lessons;
+`defense_stuck_heuristic` now has 11 distinct real positions instead of one.
 `--unique-hands` removed seven same-hand near-duplicates, and
 `--min-bases-per-lesson 4` dropped the two undersupplied topics. The pack is
 `replay.ch8-defense.2026-11` and passes the same audit/hosting/serving checks.
-Details: [`q2-scale-up-500.md`](q2-scale-up-500.md), evidence:
-[`testdata/reports/q2-scale/`](testdata/reports/q2-scale/).
+Details: [`q2-scale-up-1000.md`](q2-scale-up-1000.md), evidence:
+[`testdata/reports/q2-scale-1k/`](testdata/reports/q2-scale-1k/).
 
 ## F1 acceptance evidence
 

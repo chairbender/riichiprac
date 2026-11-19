@@ -1,0 +1,306 @@
+{
+  "schema": "riichiprac.pack-assembly-report",
+  "version": 1,
+  "pack_id": "replay.ch8-defense.2026-11",
+  "generated_at": "2026-11-18T00:00:00Z",
+  "rows_read": 1080,
+  "bases": 1038,
+  "variants": 0,
+  "scenarios": 1038,
+  "families": [
+    {
+      "family": "book",
+      "bases": 444,
+      "variants": 0,
+      "scenarios": 444
+    },
+    {
+      "family": "coverage",
+      "bases": 217,
+      "variants": 0,
+      "scenarios": 217
+    },
+    {
+      "family": "close_call",
+      "bases": 143,
+      "variants": 0,
+      "scenarios": 143
+    },
+    {
+      "family": "table_read",
+      "bases": 97,
+      "variants": 0,
+      "scenarios": 97
+    },
+    {
+      "family": "placement",
+      "bases": 75,
+      "variants": 0,
+      "scenarios": 75
+    },
+    {
+      "family": "mistake",
+      "bases": 62,
+      "variants": 0,
+      "scenarios": 62
+    }
+  ],
+  "dropped": [
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-068",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-089",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-1022",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-142",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-146",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-168",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-181",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-187",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-262",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-293",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-300",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-466",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-474",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-488",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-530",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-584",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-616",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-618",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-645",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-660",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-679",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-702",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-713",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-727",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-729",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-746",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-757",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-806",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-860",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-872",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-909",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-917",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-918",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-922",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-926",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-947",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-950",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-952",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-955",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-957",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-479",
+      "reason": "lesson_too_small",
+      "detail": "lesson `kabe_suji_defense` has 2 base(s); the pack needs at least 4"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-658",
+      "reason": "lesson_too_small",
+      "detail": "lesson `kabe_suji_defense` has 2 base(s); the pack needs at least 4"
+    }
+  ],
+  "drop_counts": {
+    "duplicate_hand": 40,
+    "lesson_too_small": 2
+  },
+  "variant_share": 0.0,
+  "largest_base": {
+    "base": "replay.ch8-defense.2026-11-001",
+    "scenarios": 1,
+    "share": 0.0009633911368015414
+  },
+  "limits": {
+    "max_per_base": 8,
+    "max_pack_share": 0.2,
+    "variants_disabled": true,
+    "min_bases_per_lesson": 4,
+    "unique_actor_hands": true
+  },
+  "bytes": 1047001,
+  "max_bytes": 50000000,
+  "max_scenarios": 2000,
+  "sha256": "3bdcc1736670aba63b9c9fd8d8fce8426a8a8d1799f8b125d2397a3cc782ef17",
+  "export_path": "packs/replay.ch8-defense.2026-11-3bdcc1736670.json.gz",
+  "manifest_path": "packs/manifest.json",
+  "licence": "CC-BY-4.0",
+  "data_commercial_use": false,
+  "agents": [
+    "akochan (akochan master-53188a0-minimum, akochan-custom)",
+    "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+    "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+    "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+  ],
+  "review": {
+    "checked": true,
+    "items": 1080,
+    "accepted": 1080,
+    "rejected": 0
+  },
+  "audited": true,
+  "audit_clean": true,
+  "notes": [
+    "generated_at is the latest selected row's timestamp, so re-assembling the same rows hashes identically",
+    "a base state comes from the walked decision row; a variant re-applies its recorded chain to that state and the lesson classifier must re-derive the stored answer",
+    "variants are disabled for this pack: it ships the reviewed bases only, and its variety comes from real scenarios",
+    "a lesson needs at least 4 reviewed base(s) to stay in the pack; an undersupplied lesson is reported as `lesson_too_small` instead of repeating one position",
+    "the pack keeps one scenario per actor hand; a different river or score with the same 13/14 tiles is reported as `duplicate_hand`"
+  ]
+}
