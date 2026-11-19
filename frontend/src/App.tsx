@@ -172,6 +172,18 @@ export const App = () => {
   const tableView = useSettingsStore((state) => state.view);
   const setTableView = useSettingsStore((state) => state.setView);
   const [exportDescription, setExportDescription] = useState('');
+  /**
+   * 3D-11: the notice the 3D host handed back when it degraded. Keeping it in
+   * App means it survives the switch back to the standard table; the host's own
+   * notice is unmounted with the scene.
+   */
+  const [threeNotice, setThreeNotice] = useState<string | null>(null);
+  /**
+   * 3D-11: once the host degrades, this session stops asking for 3D even if a
+   * browser refused the URL cleanup. (The query flag is removed as well; this
+   * state is the belt to that braces.)
+   */
+  const [threeClosed, setThreeClosed] = useState(false);
   /** The parsed WASM catalogue, so a repeat deal does not re-parse it. */
   const wasmCatalogRef = useRef<ScenarioOption[] | null>(null);
   /**
@@ -693,7 +705,30 @@ export const App = () => {
    * explicit query, then stored view, then the store's default — so App only
    * mounts what it says.
    */
-  const tableMount = resolveTableMount(window.location.search, tableView);
+  const tableMount = resolveTableMount(
+    threeClosed ? '' : window.location.search,
+    tableView,
+  );
+
+  /*
+   * 3D-11: the scene closed itself because even `compat` could not hold 30 fps.
+   * The host has already stored the session memo; App's job is to return to the
+   * previously selected view and keep the explanation visible (a notice the
+   * user can dismiss). Removing `renderer=3d` from the URL makes the switch
+   * real, so the next render resolves the stored view and the standard shell.
+   */
+  const handleThreeDegraded = useCallback((message: string) => {
+    setThreeNotice(message);
+    setThreeClosed(true);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('renderer');
+      window.history.replaceState(window.history.state, '', url);
+    } catch {
+      // A browser that refuses history still gets the notice and the session
+      // memo; `threeClosed` keeps this session on the standard view.
+    }
+  }, []);
 
   /*
    * The 3D snapshot's `revision` identifies a *position*, not a move: it is
@@ -888,6 +923,7 @@ export const App = () => {
               callRiichi={callRiichi}
               callKan={callKan}
               onSelectTile={selectTile}
+              onDegraded={handleThreeDegraded}
             />
           ) : (
             <p className="status-msg" role="status">
@@ -909,6 +945,15 @@ export const App = () => {
 
         <div className="app-controls">{controls}</div>
       </header>
+
+      {threeNotice && (
+        <div className="three-fallback-notice" role="status">
+          <span>{threeNotice}</span>
+          <button type="button" onClick={() => setThreeNotice(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {hotseatOpen && (
         <HotseatCard

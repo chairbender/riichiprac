@@ -90,6 +90,52 @@
 }
 
 /*
+ * 3D-11's degradable notice: the view closed itself because compat could not
+ * hold 30 fps. It is a real dismissible control (the host has already stopped
+ * drawing), not a transient toast, and it floats over the fallback view.
+ */
+.renderer-3d-notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  max-width: min(520px, calc(100% - 24px));
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  color: #e7ecf3;
+  background: rgba(9, 14, 19, 0.92);
+  border: 1px solid #7a3a3a;
+  border-radius: 8px;
+}
+
+.renderer-3d-notice-text {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.renderer-3d-notice-dismiss {
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #0b1116;
+  background: #cfe0ff;
+  border: 1px solid #9fb4d6;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.renderer-3d-notice-dismiss:hover {
+  background: #e3edff;
+}
+
+/*
  * The interactive hand (3D-08): the first part of the floating UI layer.
  *
  * It covers the stage so its buttons can sit anywhere, but it is transparent to

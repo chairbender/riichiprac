@@ -308,6 +308,18 @@ export function reliefTextureSize(tier: QualityTier): {
 }
 
 /**
+ * The atlas upload scale a tier uses (3D-11 reads this).
+ *
+ * `high` and `balanced` share the full-resolution upload; only `compat` halves
+ * it. A tier change within the same scale must not re-decode and re-upload ~58
+ * MB of atlas — that is exactly the work a struggling device cannot afford — so
+ * the scene reloads only when this number changes.
+ */
+export function reliefUploadScale(tier: QualityTier): number {
+  return RELIEF_TIER_SETTINGS[tier].scale;
+}
+
+/**
  * GPU bytes for one texture, including the mip chain (x4/3, the §2.5
  * arithmetic). `58.5 MB` for all three at `high`, `14.6 MB` at `compat`.
  */

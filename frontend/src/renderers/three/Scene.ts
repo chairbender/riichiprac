@@ -65,6 +65,7 @@ import type {
   HeroCapture,
   HeroReport,
   HitRect,
+  QualityChangeDetail,
   QualityTier,
   RendererOptions,
   RendererStats,
@@ -73,7 +74,14 @@ import type {
   TableSnapshot,
   TileFaceId,
 } from '../contract';
-import { BOARD_FAILED_EVENT, BOARD_READY_EVENT, HERO_FAILED_EVENT, HERO_READY_EVENT } from '../contract';
+import {
+  BOARD_FAILED_EVENT,
+  BOARD_READY_EVENT,
+  DEGRADED_EVENT,
+  HERO_FAILED_EVENT,
+  HERO_READY_EVENT,
+  QUALITY_CHANGED_EVENT,
+} from '../contract';
 import { CAMERA, LIGHT } from '../layoutConstants';
 import { frameForAspect, layoutBoard, poseAxes } from './boardLayout';
 import type { BoardLayout, CameraFrame } from './boardLayout';
@@ -95,9 +103,10 @@ import type { HeroInstance, HeroSlot } from './hero';
 import { withHoverLift } from './hover';
 import { compassPlateRect, hitRects as projectHitRects } from './hitTest';
 import { sceneLightSpecs } from './lighting';
+import { FrameTimeMonitor } from './perf';
 import { allProbesPass, readProbes } from './probes';
 import type { ProbePixelSource, ProbeProjector } from './probes';
-import { loadReliefAssets } from './reliefAssets';
+import { loadReliefAssets, reliefUploadScale } from './reliefAssets';
 import type { ReliefAssets } from './reliefAssets';
 import { createReliefTextureFactory } from './reliefTextures';
 import type { ReliefGpuTexture } from './reliefTextures';
@@ -155,7 +164,7 @@ export class DisposeRegistry {
 
 /** The mounted hero view: the tiles, their material and the relief textures. */
 interface HeroView {
-  readonly assets: ReliefAssets<ReliefGpuTexture>;
+  assets: ReliefAssets<ReliefGpuTexture>;
   readonly material: TileMaterialHandle;
   readonly mesh: InstancedMesh;
   readonly geometry: BoardMeshHandle['geometry'];
@@ -164,7 +173,7 @@ interface HeroView {
 
 /** The mounted board: the tile mesh plus its shadow and stick layers. */
 interface BoardView {
-  readonly assets: ReliefAssets<ReliefGpuTexture>;
+  assets: ReliefAssets<ReliefGpuTexture>;
   readonly material: TileMaterialHandle;
   readonly tiles: BoardMeshHandle;
   readonly shadows: ShadowLayer;
@@ -186,6 +195,15 @@ const CARVE_CAPTURE_PANEL = { width: 1920, height: 1080 } as const;
 
 /** The framed extent of a pond-row or wall capture, in world units. */
 const CARVE_REGION_FRAME_UNITS = 2.6;
+
+/**
+ * How long after mount the scene measures real animation-frame deltas (3D-11).
+ *
+ * The view draws on demand, so idle gaps are not frame time. A short continuous
+ * window gives the EMA enough real frames to decide a tier without leaving the
+ * renderer drawing forever; 5 s covers the 2 s sustained rule with margin.
+ */
+export const PERF_SAMPLE_WINDOW_MS = 5000;
 
 /**
  * The default debug-off scene's draw-call plan (3D-07, §2.8; 3D-09 adds the
@@ -255,11 +273,20 @@ export class TableScene implements TableRenderer {
   private locked = false;
   /** The hand button the pointer/focus is on, lifted by half a tile height. */
   private hover: HandTileRef | null = null;
+  /** 3D-11's frame-time monitor: one tier downgrade per sustained window. */
+  private readonly perf: FrameTimeMonitor;
+  /** The latest devicePixelRatio the host reported (setSize). */
+  private requestedDpr = 1;
+  /** The one install-time perf sampling window; null once it has run. */
+  private sampleHandle: number | null = null;
+  private sampleStartedMs: number | null = null;
+  private sampled = false;
 
   constructor(canvas: HTMLCanvasElement, options: RendererOptions) {
     this.tier = options.tier;
     this.debugMode = options.debug;
     this.canvas = canvas;
+    this.perf = new FrameTimeMonitor(options.tier);
 
     const context = canvas.getContext('webgl2', {
       antialias: options.antialias,
@@ -345,7 +372,7 @@ export class TableScene implements TableRenderer {
     this.requestFrame();
   }
 
-  /** Resize the backing store (area-capped) and re-solve the camera framing. */
+  /** Resize the backing store (area-capped per tier) and re-solve the camera framing. */
   setSize(cssWidth: number, cssHeight: number, dpr: number): void {
     if (this.disposed) return;
     if (
@@ -356,11 +383,10 @@ export class TableScene implements TableRenderer {
     ) {
       return;
     }
-    const ratio = effectiveDevicePixelRatio(cssWidth, cssHeight, dpr);
-    this.renderer.setPixelRatio(ratio);
-    this.renderer.setSize(cssWidth, cssHeight, false);
     this.cssWidth = cssWidth;
     this.cssHeight = cssHeight;
+    this.requestedDpr = dpr;
+    this.applyBackingStore();
     this.aspect = cssWidth / cssHeight;
     this.reframe();
     // Draw now rather than on the next frame: the host reveals the canvas as
@@ -369,15 +395,90 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * Change the quality tier. The tier selects the depth-march step count and the
-   * atlas upload scale (3D-11 owns loading a different scale); the felt and the
-   * camera are tier-independent.
+   * Apply the tier's DPR/area cap and resize the drawing buffer.
+   *
+   * One place computes the ratio, so a tier change and a viewport change cannot
+   * disagree about the cap (3D-11's acceptance matrix is the test).
+   */
+  private applyBackingStore(): void {
+    if (this.cssWidth <= 0 || this.cssHeight <= 0) return;
+    const ratio = effectiveDevicePixelRatio(
+      this.cssWidth,
+      this.cssHeight,
+      this.requestedDpr,
+      this.tier,
+    );
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.setSize(this.cssWidth, this.cssHeight, false);
+  }
+
+  /**
+   * Change the quality tier (3D-11).
+   *
+   * Applies the tier's depth/self-shadow step counts, re-applies the DPR/area
+   * budget and, when the upload scale changes (`compat` halves the atlases),
+   * reloads the relief set and rebinds the material's textures. The camera and
+   * the layout are tier-independent.
    */
   setQuality(tier: QualityTier): void {
+    if (this.tier === tier) return;
+    // An explicit choice is a fresh start for the monitor (no oscillation from
+    // a stale sustained window).
+    this.perf.reset(tier);
+    this.applyTier(tier);
+  }
+
+  /** The tier change shared by the public setter and the automatic downgrade. */
+  private applyTier(tier: QualityTier): void {
     this.tier = tier;
     this.hero?.material.setTier(tier);
     this.board?.material.setTier(tier);
+    this.applyBackingStore();
+    this.reframe();
+    this.reloadReliefForTier(tier);
     this.requestFrame();
+  }
+
+  /**
+   * Reload the relief atlases when a tier changes their upload scale.
+   *
+   * `compat` halves each atlas axis (3D-03), so its textures are genuinely
+   * different images; keeping the previous upload would sample a half-size cell
+   * from a full-size atlas. Only that scale change triggers a reload; the
+   * step-count change is a uniform write.
+   */
+  private reloadReliefForTier(tier: QualityTier): void {
+    const view = this.board ?? this.hero;
+    if (!view || reliefUploadScale(view.assets.tier) === reliefUploadScale(tier)) {
+      return;
+    }
+    void this.loadRelief(tier)
+      .then((assets) => {
+        if (!assets) return;
+        if (this.disposed || this.tier !== tier) {
+          assets.dispose();
+          return;
+        }
+        const live = this.board ?? this.hero;
+        if (!live) {
+          assets.dispose();
+          return;
+        }
+        live.assets.dispose();
+        live.assets = assets;
+        live.material.setTextures(assets.textures);
+        // The cells' atlas rects are normalized, so the instance buffer is
+        // unchanged; only a fallback-to-committed swap could move them, and the
+        // tier path never changes the art source.
+        this.registry.add(assets);
+        if (this.board && this.layout) this.syncTiles(this.layout);
+        this.draw();
+      })
+      .catch((error: unknown) => {
+        // A tier reload is not fatal: the previous textures remain bound and
+        // the next mount will load the right scale.
+        console.warn(`[3d] could not reload the ${tier} relief set: ${String(error)}`);
+      });
   }
 
   /**
@@ -446,6 +547,7 @@ export class TableScene implements TableRenderer {
   measure(): RendererStats {
     const info = this.renderer.info.render;
     const view = this.board ?? this.hero;
+    const frame = this.perf.stats();
     return {
       tier: this.tier,
       drawCalls: info.calls,
@@ -456,8 +558,8 @@ export class TableScene implements TableRenderer {
       reliefVerification: view?.assets.verification ?? null,
       pomSteps: view?.material.pomSteps(),
       shadowSteps: view?.material.shadowSteps(),
-      frameMsP50: 0,
-      frameMsP95: 0,
+      frameMsP50: frame.p50,
+      frameMsP95: frame.p95,
     };
   }
 
@@ -905,6 +1007,7 @@ export class TableScene implements TableRenderer {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopPerfSampling();
     if (this.frameHandle !== null) {
       globalThis.cancelAnimationFrame?.(this.frameHandle);
       this.frameHandle = null;
@@ -988,7 +1091,7 @@ export class TableScene implements TableRenderer {
   private startHero(options: RendererOptions): void {
     if (this.heroStarted) return;
     this.heroStarted = true;
-    this.loadRelief(options)
+    this.loadRelief(this.tier)
       .then((assets) => {
         if (this.disposed || !assets) return;
         this.buildHero(assets, options);
@@ -1002,7 +1105,7 @@ export class TableScene implements TableRenderer {
   private startBoard(options: RendererOptions): void {
     if (this.boardStarted) return;
     this.boardStarted = true;
-    this.loadRelief(options)
+    this.loadRelief(this.tier)
       .then((assets) => {
         if (this.disposed || !assets) return;
         this.buildBoard(assets, options);
@@ -1012,12 +1115,9 @@ export class TableScene implements TableRenderer {
       });
   }
 
-  /**
-   * Load 3D-03's bridge, or resolve null when the view was disposed mid-load
-   * (the caller disposes the assets it received).
-   */
+  /** Load 3D-03's bridge at a tier, or resolve null after disposing the view. */
   private loadRelief(
-    options: RendererOptions,
+    tier: QualityTier,
   ): Promise<ReliefAssets<ReliefGpuTexture> | null> {
     const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const baseUrl =
@@ -1025,7 +1125,7 @@ export class TableScene implements TableRenderer {
         ? String(import.meta.env.BASE_URL)
         : '/';
     return loadReliefAssets<ReliefGpuTexture>({
-      tier: options.tier,
+      tier,
       baseUrl,
       maxAnisotropy,
       createTexture: createReliefTextureFactory(maxAnisotropy),
@@ -1040,7 +1140,7 @@ export class TableScene implements TableRenderer {
 
   private buildHero(assets: ReliefAssets<ReliefGpuTexture>, options: RendererOptions): void {
     const material = createTileMaterial({
-      tier: options.tier,
+      tier: this.tier,
       debug: options.debug,
       albedo: assets.textures.albedo,
       normalDepth: assets.textures.normalDepth,
@@ -1087,11 +1187,12 @@ export class TableScene implements TableRenderer {
     this.renderer.compile(this.scene, this.camera);
     this.draw();
     this.canvas.dispatchEvent(new CustomEvent(HERO_READY_EVENT));
+    this.startPerfSampling();
   }
 
   private buildBoard(assets: ReliefAssets<ReliefGpuTexture>, options: RendererOptions): void {
     const material = createTileMaterial({
-      tier: options.tier,
+      tier: this.tier,
       debug: options.debug,
       albedo: assets.textures.albedo,
       normalDepth: assets.textures.normalDepth,
@@ -1133,6 +1234,81 @@ export class TableScene implements TableRenderer {
     this.renderer.compile(this.scene, this.camera);
     this.draw();
     this.canvas.dispatchEvent(new CustomEvent(BOARD_READY_EVENT));
+    this.startPerfSampling();
+  }
+
+  /**
+   * Run one continuous sampling window and feed real frame deltas to the
+   * monitor (3D-11).
+   *
+   * On-demand drawing means idle gaps are not frame time, so the tier decision
+   * needs a bounded run of genuine frames. It happens once, after the first
+   * board/hero draw, and stops early on a terminal degrade. `FrameTimeMonitor`
+   * ignores deltas above 250 ms, so a hidden tab or a debugger pause cannot
+   * trigger a downgrade.
+   */
+  private startPerfSampling(): void {
+    if (this.disposed || this.sampled) return;
+    const schedule = globalThis.requestAnimationFrame;
+    if (typeof schedule !== 'function') return;
+    this.sampled = true;
+    const clock = (): number => {
+      const performanceNow = globalThis.performance?.now;
+      return typeof performanceNow === 'function'
+        ? performanceNow.call(globalThis.performance)
+        : Date.now();
+    };
+    const started = clock();
+    this.sampleStartedMs = started;
+    let last = started;
+
+    const step = (): void => {
+      this.sampleHandle = null;
+      if (this.disposed) return;
+      const now = clock();
+      const frameMs = now - last;
+      last = now;
+      this.draw();
+      this.applyFrameSample(this.perf.sample(now, frameMs));
+      const elapsed =
+        this.sampleStartedMs === null ? Number.POSITIVE_INFINITY : now - this.sampleStartedMs;
+      if (!this.disposed && !this.perf.degraded && elapsed < PERF_SAMPLE_WINDOW_MS) {
+        this.sampleHandle = schedule(step);
+      } else {
+        this.sampleStartedMs = null;
+      }
+    };
+
+    this.sampleHandle = schedule(step);
+  }
+
+  /** Apply a monitor decision: one tier down, or the terminal degrade. */
+  private applyFrameSample(sample: ReturnType<FrameTimeMonitor['sample']>): void {
+    if (sample.action === 'none') return;
+    const detail: QualityChangeDetail = {
+      tier: sample.tier,
+      frameMsEma: sample.frameMsEma,
+      kind: sample.action,
+      reason: sample.reason ?? '',
+    };
+    if (sample.action === 'downgrade') {
+      this.applyTier(sample.tier);
+      this.canvas.dispatchEvent(
+        new CustomEvent(QUALITY_CHANGED_EVENT, { detail }),
+      );
+      return;
+    }
+    this.stopPerfSampling();
+    this.canvas.dispatchEvent(new CustomEvent(DEGRADED_EVENT, { detail }));
+  }
+
+  /** Cancel the measuring loop (terminal degrade or teardown). */
+  private stopPerfSampling(): void {
+    if (this.sampleHandle !== null) {
+      globalThis.cancelAnimationFrame?.(this.sampleHandle);
+      this.sampleHandle = null;
+    }
+    this.sampleStartedMs = null;
   }
 
   private reportFailure(event: string, error: unknown): void {

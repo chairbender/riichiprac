@@ -21,6 +21,7 @@ import {
   reliefGpuBytes,
   reliefTextureBytes,
   reliefTextureSize,
+  reliefUploadScale,
 } from './reliefAssets';
 import type {
   ReliefFetch,
@@ -409,6 +410,11 @@ describe('relief3d: load', () => {
 
   it('halves each atlas axis and the GPU bytes at the compat tier', async () => {
     expect(reliefTextureSize('compat')).toEqual({ width: 768, height: 1190 });
+    // 3D-11: the upload scale only changes at compat, so a high <-> balanced
+    // downgrade never re-decodes the atlases.
+    expect(reliefUploadScale('high')).toBe(1);
+    expect(reliefUploadScale('balanced')).toBe(1);
+    expect(reliefUploadScale('compat')).toBe(0.5);
     const factory = fakeFactory();
     const assets = await loadReliefAssets({
       tier: 'compat',

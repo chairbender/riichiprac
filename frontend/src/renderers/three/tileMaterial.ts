@@ -287,6 +287,19 @@ export interface TileMaterialHandle {
   /** The live displacement scale (1 = the full physical 0.55 mm groove). */
   heightScale(): number;
   setHeightScale(scale: number): void;
+  /**
+   * Swap the three atlas textures (3D-11).
+   *
+   * A tier change can change the atlas upload scale (`compat` halves it), which
+   * is a different GPU texture, not a different uniform. The caller owns the
+   * `ReliefAssets` and disposes the old set; this rebinds the uniforms and the
+   * per-tier cell size in one place.
+   */
+  setTextures(textures: {
+    readonly albedo: Texture;
+    readonly normalDepth: Texture;
+    readonly aoRoughness: Texture;
+  }): void;
   setTier(tier: QualityTier): void;
   setDebug(debug: DebugMode | null): void;
   dispose(): void;
@@ -385,6 +398,11 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     setHeightScale(scale: number) {
       const value = Number.isFinite(scale) ? scale : POM_HEIGHT_SCALE;
       uniforms.uHeightScale.value = Math.min(1, Math.max(0, value));
+    },
+    setTextures(textures) {
+      uniforms.uAlbedo.value = textures.albedo;
+      uniforms.uNormalDepth.value = textures.normalDepth;
+      uniforms.uAoRoughness.value = textures.aoRoughness;
     },
     setTier(next: QualityTier) {
       tier = next;

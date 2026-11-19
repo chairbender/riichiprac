@@ -21,7 +21,17 @@
 
 import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { antiAliasFor, probeCapabilities } from './capabilities';
+import {
+  antiAliasFor,
+  probeCapabilities,
+  readStoredQualityTier,
+  readTierEnvironment,
+  readThreeFallback,
+  rememberThreeFallback,
+  resolveQualityTier,
+  threeViewUnavailableReason,
+} from './capabilities';
+import type { QualityTierSource, ThreeFallbackRecord } from './capabilities';
 import type {
   CarveReport,
   CompassRect,
@@ -29,6 +39,7 @@ import type {
   HandTileRef,
   HeroReport,
   HitRect,
+  QualityChangeDetail,
   QualityTier,
   TableRenderer,
   TableSnapshot,
@@ -38,9 +49,11 @@ import type { DebugLegend } from './debugLegend';
 import {
   BOARD_FAILED_EVENT,
   BOARD_READY_EVENT,
+  DEGRADED_EVENT,
   HERO_FAILED_EVENT,
   HERO_READY_EVENT,
 } from './contract';
+import { usePrefersReducedMotion } from './motionPreference';
 import { TableCompass, TableOverlay } from './overlay';
 import type { OverlayHandTile } from './handOverlay';
 import './RendererHost.css';
@@ -51,19 +64,14 @@ export type RendererHostState =
   | 'loading'
   | 'ready'
   | 'unsupported'
-  | 'failed';
+  | 'failed'
+  /** 3D-11: `compat` stayed above 33 ms for two seconds and the view closed. */
+  | 'degraded';
 
 interface HostStatus {
   readonly state: RendererHostState;
   readonly message: string | null;
 }
-
-/**
- * The tier used when the URL does not pin one. Automatic device tiering is
- * 3D-11's job; until then the view is reachable only by an explicit query
- * parameter, and a pinned `?quality=` always wins.
- */
-export const DEFAULT_QUALITY_TIER: QualityTier = 'high';
 
 export interface RendererHostProps {
   /** The immutable picture to draw; a new revision is a cut, never a move. */
@@ -96,10 +104,44 @@ export interface RendererHostProps {
     index?: number,
     isDraw?: boolean,
   ) => void;
+  /**
+   * 3D-11: the scene reported the terminal degrade (compat stayed above 33 ms
+   * for two seconds). The host has already disposed the scene, written the
+   * session memo and shown its own notice; this lets App return to the previous
+   * view and put the dismissible notice in the standard shell (3D-14's View
+   * switch does the same wiring when it lands).
+   */
+  readonly onDegraded?: (message: string) => void;
 }
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * The message a session fallback record produces, or null when the view may
+ * mount.
+ *
+ * A double context loss is terminal for the session: it is a driver/GPU fault,
+ * not a quality choice. A degrade only blocks the *automatic* tier, so an
+ * explicit `?quality=` or stored preference is still allowed to try.
+ */
+function sessionBlockMessage(
+  record: ThreeFallbackRecord | null,
+  source: QualityTierSource,
+): string | null {
+  if (!record) return null;
+  if (record.reason === 'context-lost') {
+    return (
+      'The 3D view was closed for this session after losing its WebGL context ' +
+      'twice. Close and reopen the tab to try again.'
+    );
+  }
+  if (source !== 'auto') return null;
+  return (
+    'The 3D view was turned off for this session because it could not hold ' +
+    '30 fps at the lowest quality. Pick a quality tier to try it again.'
+  );
 }
 
 type ThreeModule = typeof import('./three');
@@ -383,11 +425,12 @@ export function RendererHost({
   tier = null,
   debug = null,
   perfHud = false,
-  reducedMotion = false,
+  reducedMotion,
   fallback = null,
   callRiichi = false,
   callKan = false,
   onSelectTile,
+  onDegraded,
 }: RendererHostProps) {
   const headingId = useId();
   const descriptionId = useId();
@@ -404,6 +447,7 @@ export function RendererHost({
   const [carveExported, setCarveExported] = useState(0);
   const [hitRects, setHitRects] = useState<readonly HitRect[]>([]);
   const [compassRect, setCompassRect] = useState<CompassRect | null>(null);
+  const [degradeNotice, setDegradeNotice] = useState<string | null>(null);
 
   /**
    * Re-read the renderer's pure projection. Called after everything that can
@@ -451,15 +495,46 @@ export function RendererHost({
   // Once per mount: a probe that never leaks its context. Done in render rather
   // than an effect so the first paint already knows whether to show a canvas.
   const capabilities = useMemo(() => probeCapabilities(), []);
-  const resolvedTier = tier ?? DEFAULT_QUALITY_TIER;
+  // 3D-11: URL > stored > auto. The environment is read once per mount; a
+  // resize that changes the auto tier only matters on the next mount, and a
+  // mid-session downgrade is the frame-time monitor's job.
+  const environment = useMemo(() => readTierEnvironment(), []);
+  const storedTier = useMemo(() => readStoredQualityTier(), []);
+  const tierResolution = useMemo(
+    () =>
+      resolveQualityTier({
+        queryTier: tier,
+        storedTier,
+        environment,
+      }),
+    [tier, storedTier, environment],
+  );
+  const resolvedTier = tierResolution.tier;
+  // The session memo written by a previous mount, if any. A context loss is
+  // terminal for the session; a degrade only blocks an *automatic* retry, so an
+  // explicit tier can still ask for the view.
+  const sessionFallback = useMemo(() => readThreeFallback(), []);
+  const sessionFallbackMessage = useMemo(
+    () => sessionBlockMessage(sessionFallback, tierResolution.source),
+    [sessionFallback, tierResolution.source],
+  );
+  const mediaReducedMotion = usePrefersReducedMotion();
+  const reduceMotion = reducedMotion ?? mediaReducedMotion;
 
   useEffect(() => {
     if (!capabilities.webgl2) {
       setStatus({
         state: 'unsupported',
         message:
-          capabilities.unavailable ?? 'WebGL2 is not available in this browser.',
+          threeViewUnavailableReason(capabilities) ??
+          'WebGL2 is not available in this browser.',
       });
+      return;
+    }
+    if (sessionFallbackMessage) {
+      // A previous mount in this session already closed the view. Do not
+      // create a canvas or import three; the fallback and the reason stand.
+      setStatus({ state: 'degraded', message: sessionFallbackMessage });
       return;
     }
 
@@ -509,12 +584,14 @@ export function RendererHost({
       event.preventDefault();
       losses += 1;
       if (losses > 1) {
+        rememberThreeFallback('context-lost');
         renderer?.dispose();
         renderer = null;
         rendererRef.current = null;
         setStatus({
           state: 'failed',
-          message: 'The 3D view lost its WebGL context twice and was closed.',
+          message:
+            'The 3D view lost its WebGL context twice and was closed for this session.',
         });
         return;
       }
@@ -557,10 +634,34 @@ export function RendererHost({
       refreshHitRects();
       if (debug !== null) refreshCarve();
     };
+    // 3D-11: the scene's own frame-time monitor decided the view cannot hold
+    // 30 fps even at compat. Close it, remember the reason for the session and
+    // hand the message to App so it can return to the previous view.
+    const onDegradedEvent = (event: Event) => {
+      const detail = (event as CustomEvent<QualityChangeDetail>).detail;
+      const message =
+        typeof detail?.reason === 'string' && detail.reason.length > 0
+          ? `The 3D view was closed for this session: ${detail.reason}`
+          : 'The 3D view was closed for this session because it could not hold 30 fps at the lowest quality.';
+      // Tear-down must never look like a failure (see the cleanup path):
+      // `dispose()` forces a context loss, and without this the contextlost
+      // listener would turn the degrade into a spurious "restoring" state.
+      cancelled = true;
+      rememberThreeFallback('degraded');
+      renderer?.dispose();
+      renderer = null;
+      rendererRef.current = null;
+      setHitRects([]);
+      setCompassRect(null);
+      setDegradeNotice(message);
+      setStatus({ state: 'degraded', message: null });
+      onDegraded?.(message);
+    };
     canvas.addEventListener(HERO_READY_EVENT, onHeroReady);
     canvas.addEventListener(HERO_FAILED_EVENT, onFailed);
     canvas.addEventListener(BOARD_READY_EVENT, onBoardReady);
     canvas.addEventListener(BOARD_FAILED_EVENT, onFailed);
+    canvas.addEventListener(DEGRADED_EVENT, onDegradedEvent);
 
     if (typeof ResizeObserver === 'function') {
       observer = new ResizeObserver(measure);
@@ -576,7 +677,7 @@ export function RendererHost({
           tier: resolvedTier,
           debug,
           perfHud,
-          reducedMotion,
+          reducedMotion: reduceMotion,
           // 3D-20: MSAA above the compat tier; see `capabilities.MSAA_SAMPLES`.
           antialias: antiAliasFor(resolvedTier),
         });
@@ -605,6 +706,7 @@ export function RendererHost({
       canvas?.removeEventListener(HERO_FAILED_EVENT, onFailed);
       canvas?.removeEventListener(BOARD_READY_EVENT, onBoardReady);
       canvas?.removeEventListener(BOARD_FAILED_EVENT, onFailed);
+      canvas?.removeEventListener(DEGRADED_EVENT, onDegradedEvent);
       renderer?.dispose();
       renderer = null;
       rendererRef.current = null;
@@ -616,12 +718,14 @@ export function RendererHost({
   }, [
     capabilities,
     debug,
+    onDegraded,
     perfHud,
-    reducedMotion,
+    reduceMotion,
     refreshCarve,
     refreshHero,
     refreshHitRects,
     resolvedTier,
+    sessionFallbackMessage,
   ]);
 
   // Redraw on a new snapshot without remounting the renderer, and re-project
@@ -661,7 +765,7 @@ export function RendererHost({
             rects={hitRects}
             callRiichi={callRiichi}
             callKan={callKan}
-            reducedMotion={reducedMotion}
+            reducedMotion={reduceMotion}
             onSelectTile={onSelectTile}
             onHoverTile={reportHoverTile}
           />
@@ -695,6 +799,24 @@ export function RendererHost({
           >
             {status.message}
           </p>
+        )}
+        {degradeNotice && (
+          <div className="renderer-3d-notice" role="status">
+            <p className="renderer-3d-notice-text">{degradeNotice}</p>
+            <button
+              type="button"
+              className="renderer-3d-notice-dismiss"
+              onClick={() => {
+                setDegradeNotice(null);
+                setStatus({
+                  state: 'degraded',
+                  message: 'The 3D view is closed for this session.',
+                });
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
         )}
       </div>
     </RendererErrorBoundary>
