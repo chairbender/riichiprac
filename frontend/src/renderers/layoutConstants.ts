@@ -209,8 +209,17 @@ export const HAND = {
   drawGapUnits: 0.2625,
   /** The drawn tile's centre offset from the seat's centre line. */
   drawOffsetUnits: 5.576785714,
-  /** Distance from table centre to the standing hand's back edge. */
-  backRadiusUnits: 10.6,
+  /**
+   * Distance from table centre to the standing hand's back edge.
+   *
+   * The reference rig put the hand at 10.6 (the mat edge), which leaves a
+   * 92 mm band of empty felt between the wall ring's outer face (7.295) and the
+   * hand. The board handoff (2026-11-18) asked for the hands to sit much closer
+   * to the wall, so the hand's front edge is now 8.35 — a 30 mm gap, the
+   * distance a real hand sits behind the wall — and the camera solves in from
+   * that smaller board. Melds share this radius (`MELD.rowRadiusUnits`).
+   */
+  backRadiusUnits: 8.35,
   reclineDeg: 40,
   reclineBandDeg: [30, 45],
   /** Largest allowed angle between the hand face normal and the view ray. */
@@ -227,8 +236,9 @@ export const HAND = {
  * `calledWidthUnits`. A meld therefore occupies as many slots as it has tiles,
  * and consecutive melds follow each other along the row (the reference only
  * models the single 4-slot row). If a row would run past {@link MELD.maxRowUnits}
- * the next meld starts a row one pitch nearer the player, so a four-meld hand
- * never leaves the mat.
+ * the next meld starts a row one pitch **toward the player** — away from the wall
+ * ring — so a four-meld hand never leaves the mat and never reaches into the
+ * wall; the hand now sits at 8.35, so stepping inward would collide.
  */
 export const MELD = {
   /** A full row's nominal slots: two upright, the called tile, the kan extension. */

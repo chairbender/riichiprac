@@ -36,6 +36,7 @@ import {
   poseMatrix,
   seatPoint,
   frameForAspect,
+  wallTierHeightUnits,
 } from './boardLayout';
 import type { TilePose, Vec3 } from './boardLayout';
 import { POM_HEIGHT_SCALE, parallaxTexels } from './tileMaterial';
@@ -103,9 +104,8 @@ function wallStackW(stack: number): number {
   return (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits;
 }
 
-/** The top tier's body centre height. */
-const WALL_TOP_TIER_UNITS =
-  TILE.thicknessUnits + WALL.tierStepUnits + TILE.thicknessUnits / 2;
+/** The top tier's body centre height (the layout's own formula). */
+const WALL_TOP_TIER_UNITS = wallTierHeightUnits(DORA.tier);
 
 /** The first dora indicator's stack: one in from the missing draw-end top. */
 const DORA_STACK = WALL.drawEndSlot - 1;

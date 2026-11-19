@@ -360,6 +360,23 @@ function doraStack(index: number): number {
   return WALL.drawEndSlot - DORA.firstStackFromDrawEnd - index;
 }
 
+/**
+ * A wall tier's body-centre height above the felt.
+ *
+ * The bottom tier lies on the cloth (`thickness / 2`); the top tier's centre is
+ * one **tier step** above it, and `WALL.tierStepUnits` already includes the
+ * lower tile's full thickness plus the 0.3 mm tier gap, so the thickness is not
+ * added a second time. (It was, and the top row floated 16.5 mm above the row
+ * it is supposed to sit on — the board handoff's "the top row is not lined up
+ * with the bottom row".) Both tiers share the same stack centre and yaw, so the
+ * two bodies line up exactly; only their height differs.
+ */
+export function wallTierHeightUnits(tier: number): number {
+  return tier === 0
+    ? TILE.thicknessUnits / 2
+    : WALL.tierStepUnits + TILE.thicknessUnits / 2;
+}
+
 function tileId(prefix: string, seat: Seat | null, slot: number): string {
   return seat === null ? `${prefix}-${slot}` : `${prefix}-${seat}-${slot}`;
 }
@@ -495,8 +512,11 @@ function placeMelds(
   let row = 0;
   /** Tangential distance from the row start to the next tile's near edge. */
   let cursor = 0;
+  // Extra rows step *toward the player* (away from the wall ring), which is what
+  // the committed `MELD` doc says and what keeps them clear of the wall now that
+  // the hands sit at 8.35: stepping inward would put rows 2-3 inside the ring.
   const rowRadius = (index: number): number =>
-    MELD.rowRadiusUnits -
+    MELD.rowRadiusUnits +
     Math.min(index, MELD.rowCount - 1) * MELD.rowPitchUnits;
 
   for (const meld of melds) {
@@ -569,7 +589,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
         farSeat,
         (doraStack(index) - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits,
         WALL.radiusUnits,
-        TILE.thicknessUnits + WALL.tierStepUnits + TILE.thicknessUnits / 2,
+        wallTierHeightUnits(DORA.tier),
         // The far wall's own frame would turn the glyph away from the viewer, so
         // a revealed indicator is oriented the human's way: it is the one wall
         // tile whose face has to be read.
@@ -609,12 +629,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
       continue;
     }
     const w = (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits;
-    const height =
-      tier === 0
-        ? TILE.thicknessUnits / 2
-        : TILE.thicknessUnits +
-          WALL.tierStepUnits +
-          TILE.thicknessUnits / 2;
+    const height = wallTierHeightUnits(tier);
     wall.push(
       boardTile(
         tile,
@@ -907,20 +922,18 @@ function safeAreaNudge(
 }
 
 /**
- * The framing target: the whole mat plus every tile on it.
+ * The framing target: every tile the board draws.
  *
- * The mat corners alone would almost always dominate, but the human hand is
- * reclined and stands above the felt near the frame's bottom edge, so its body
- * corners are what the vertical fit is really protecting.
+ * The mat is **not** part of the fit. The felt is a procedural square sized from
+ * the solved frame, so the cloth can (and does) run off the frame edges; what
+ * must be framed is the table itself. Fitting the 25-unit mat instead makes the
+ * tiles small and leaves a wide empty border — the board handoff (2026-11-18)
+ * asked for the board to fill the frame, with the human hand only a sliver above
+ * the bottom edge. The safe area still keeps every tile corner 2 % inside the
+ * frame, so the wall ring and the near hand sit that far from the edges.
  */
 export function framingPoints(layout: BoardLayout): Vec3[] {
-  const half = TABLE.matSizeUnits / 2;
-  const points: Vec3[] = [
-    [-half, 0, -half],
-    [half, 0, -half],
-    [half, 0, half],
-    [-half, 0, half],
-  ];
+  const points: Vec3[] = [];
   for (const tile of layout.tiles) {
     points.push(...orientedBoxCorners(orientedBox(tile.pose)));
   }
@@ -933,29 +946,26 @@ export function framingPoints(layout: BoardLayout): Vec3[] {
  * This is `tools/render/table-reference-spec.json`'s rig — 75 mm, the preset
  * pitch, {@link CAMERA.distanceUnits} and the committed Shift Y — with no
  * safe-area nudge. `check-3d-layout.mjs` prints its mat-corner pixels next to
- * the shipped frame's so the reference agreement stays visible, and 3D-02 can
- * compare against it.
+ * the reference's so the lens/pitch agreement stays visible; the shipped frame
+ * is solved closer than this because it frames the board, not the mat.
  */
 export function referenceFrame(aspect: number): CameraFrame {
   return frameAt(aspect, pitchForAspect(aspect), CAMERA.distanceUnits);
 }
 
 /**
- * Solve the committed camera rig for one aspect.
+ * Solve the committed lens for one aspect.
  *
- * Two steps:
- *
- * 1. **Scale.** Find the smallest distance that fits the mat plus every tile
- *    inside the safe area, then multiply by `distanceUnits / <that distance at
- *    16:9>`. 16:9 is the signed-off reference frame, so it lands exactly on
- *    {@link CAMERA.distanceUnits}; every other aspect keeps the reference's
- *    relative margins instead of cropping or shrinking the table. Portrait
- *    aspects use the steeper preset pitch, which is what keeps the table filling
- *    the frame width there.
- * 2. **Nudge.** The committed Shift Y is the reference's framing, so the solver
- *    only adds the smallest vertical offset the safe area needs at the solved
- *    distance. That is what turns the reference's 4 px near-mat margin into a
- *    legal 2 % margin without moving the eye or changing the rig.
+ * The **lens and pitch are the reference's** (75 mm on 36 mm, 50° landscape /
+ * 62° portrait); only the distance is solved, and it is the smallest distance
+ * that fits every tile corner inside the safe area. There is deliberately no
+ * floor at the reference's 76 units any more: that floor existed because the
+ * subject was the reference's mat-plus-hand, and with the board as the subject
+ * it would pin the camera back and shrink the tiles (the handoff's "too far
+ * away / tiles too small"). The committed Shift Y is the reference's framing;
+ * the solver only adds the smallest vertical offset the safe area needs at the
+ * solved distance, which is what places the human hand a sliver above the
+ * bottom edge.
  */
 export function frameForAspect(
   aspect: number,
@@ -968,8 +978,7 @@ export function frameForAspect(
   const pitch = pitchForAspect(aspect);
   const margin = CAMERA.safeAreaMargin;
 
-  const scale = referenceDistanceScale(layout, points);
-  const distance = solvingDistance(aspect, pitch, points, margin) * scale;
+  const distance = solvingDistance(aspect, pitch, points, margin);
   const frame = frameAt(aspect, pitch, distance);
   const band = projectedBand(points, frame);
   const nudge = safeAreaNudge(band, margin);
@@ -979,35 +988,6 @@ export function frameForAspect(
     distance,
     committedShiftNdcY(aspect) + nudge,
   );
-}
-
-/**
- * `distanceUnits / (the 16:9 fit distance)`, never below 1: the committed
- * reference distance is a floor, so the shipped frame is never larger than the
- * reference's content in the frame. Cached per layout (the fit is the same work
- * on every resize).
- */
-const referenceScaleCache = new WeakMap<
-  BoardLayout,
-  { readonly points: Vec3[]; readonly scale: number }
->();
-
-function referenceDistanceScale(
-  layout: BoardLayout | undefined,
-  points: Vec3[],
-): number {
-  const referenceAspect = CAMERA.framingAspect;
-  const cached = layout ? referenceScaleCache.get(layout) : undefined;
-  if (cached && cached.points === points) return cached.scale;
-  const fit = solvingDistance(
-    referenceAspect,
-    pitchForAspect(referenceAspect),
-    points,
-    CAMERA.safeAreaMargin,
-  );
-  const scale = Math.max(1, CAMERA.distanceUnits / fit);
-  if (layout) referenceScaleCache.set(layout, { points, scale });
-  return scale;
 }
 
 /** The framing target without a board: the mat corners only. */

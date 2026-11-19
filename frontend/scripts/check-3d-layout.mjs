@@ -278,10 +278,7 @@ async function main() {
         tile.pose.position[0] * outward[0] + tile.pose.position[2] * outward[2];
       return (
         close(radius, C.WALL.radiusUnits) &&
-        close(
-          tile.pose.position[1],
-          C.TILE.thicknessUnits + C.WALL.tierStepUnits + C.TILE.thicknessUnits / 2,
-        ) &&
+        close(tile.pose.position[1], L.wallTierHeightUnits(1)) &&
         tile.pose.tiltDeg === -90
       );
     }),
@@ -458,15 +455,15 @@ async function main() {
   /* ---------------------------- framing ------------------------------ */
   const height = 1000;
   const aspects = [...C.CAMERA.supportedAspects].sort((a, b) => b - a);
-  console.log('\nframing (mat corners and all tiles inside the safe area)');
+  console.log('\nframing (every tile inside the safe area; the mat may crop)');
   console.log(
-    '  aspect   pitch  distance   mat X    mat Y   tiles     hand long   face/view   strict ray',
+    '  aspect   pitch  distance   mat X    mat Y   tiles     hand long   hand bottom   face/view   strict ray',
   );
 
-  let matOk = true;
   let tilesOk = true;
   let faceOk = true;
   let referenceLongAxis = 0;
+  let referenceHandBottom = 1;
   for (const aspect of aspects) {
     const frame = L.frameForAspect(aspect, board);
     const width = height * aspect;
@@ -504,6 +501,17 @@ async function main() {
     const longAxis = Math.hypot(a.x - b.x, a.y - b.y) / height;
     if (aspect === C.CAMERA.framingAspect) referenceLongAxis = longAxis;
 
+    // The human hand's own bottom margin: the handoff asked for the hand to sit
+    // only a sliver above the bottom edge, which is a number, not a look.
+    let handBottom = 1;
+    for (const entry of humanHand) {
+      for (const corner of L.orientedBoxCorners(L.orientedBox(entry.pose))) {
+        const pixel = L.projectToPixels(corner, frame, width, height);
+        handBottom = Math.min(handBottom, 1 - pixel.y / height);
+      }
+    }
+    if (aspect === C.CAMERA.framingAspect) referenceHandBottom = handBottom;
+
     const faceToView = L.handFaceToViewDeg(frame);
     const strict = Math.max(
       ...humanHand.map((entry) => L.handTileToEyeDeg(entry, frame)),
@@ -513,11 +521,11 @@ async function main() {
       `  ${aspect.toFixed(3).padStart(6)}  ${String(frame.pitchDeg).padStart(4)}°  ${formatNumber(frame.distanceUnits, 2).padStart(7)}` +
         `  ${(marginX * 100).toFixed(2).padStart(6)}%  ${(marginY * 100).toFixed(2).padStart(6)}%` +
         `  ${(tilesMargin * 100).toFixed(2).padStart(6)}%  ${(longAxis * 100).toFixed(2).padStart(8)}%` +
+        `  ${(handBottom * 100).toFixed(2).padStart(10)}%` +
         `  ${faceToView.toFixed(1).padStart(8)}°  ${strict.toFixed(1).padStart(9)}°`,
     );
 
     const margin = C.CAMERA.safeAreaMargin;
-    if (marginX + 1e-9 < margin || marginY + 1e-9 < margin) matOk = false;
     if (tilesMargin + 1e-9 < margin) tilesOk = false;
     if (faceToView > C.HAND.maxFaceToViewDeg + 1e-9) faceOk = false;
   }
@@ -527,7 +535,6 @@ async function main() {
       '   landscape readability gate at the reference aspect, since a portrait\n' +
       '   frame is taller than the table and shrinks any height fraction)\n',
   );
-  check('the mat corners keep the 2 % safe-area margin', matOk);
   check('every tile keeps the 2 % safe-area margin', tilesOk);
   check(
     'the hand face-to-view angle is within 25° at every aspect',
@@ -538,13 +545,19 @@ async function main() {
     referenceLongAxis + 1e-9 >= C.CAMERA.handLongAxisMinViewportFraction,
     `${formatNumber(referenceLongAxis * 100, 2)} %`,
   );
+  check(
+    'the human hand sits within 4 % of the frame bottom at 16:9',
+    referenceHandBottom <= 0.04 + 1e-9,
+    `${formatNumber(referenceHandBottom * 100, 2)} %`,
+  );
 
   const sixteenNine = L.frameForAspect(C.CAMERA.framingAspect, board);
   check(
-    'the 16:9 frame is the committed reference rig (75 mm, 50°, 76 units)',
-    close(sixteenNine.distanceUnits, C.CAMERA.distanceUnits) &&
-      sixteenNine.pitchDeg === C.CAMERA.pitchDeg,
-    `d = ${formatNumber(sixteenNine.distanceUnits, 6)}`,
+    'the 16:9 frame keeps the committed 75 mm / 50° lens, solved from the board',
+    sixteenNine.pitchDeg === C.CAMERA.pitchDeg &&
+      close(sixteenNine.tanHalfHorizontal, 18 / 75, 1e-12) &&
+      sixteenNine.distanceUnits < C.CAMERA.distanceUnits,
+    `d = ${formatNumber(sixteenNine.distanceUnits, 3)} (reference ${C.CAMERA.distanceUnits})`,
   );
   const reference = L.referenceFrame(C.CAMERA.framingAspect);
   const referenceCorners = matCorners.map((corner) =>

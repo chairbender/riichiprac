@@ -99,17 +99,23 @@ describe('the three camera is the solved frame', () => {
     });
   });
 
-  it('has one framing source: the 16:9 frame is the committed rig', () => {
-    // `frameForAspect` keeps the signed-off reference distance at 16:9; the
-    // adapter adds nothing, so the rendered eye is the reference's.
+  it('has one framing source: the committed lens, solved from the board', () => {
+    // Since the board handoff (2026-11-18) the subject is the board, not the
+    // reference mat, so the solved 16:9 distance is inside the reference's 76
+    // units while the lens and pitch stay the committed ones.
     const frame = frameForAspect(16 / 9, layout);
     expect(frame.pitchDeg).toBe(CAMERA.pitchDeg);
-    expect(frame.distanceUnits).toBeCloseTo(CAMERA.distanceUnits, 6);
+    expect(frame.distanceUnits).toBeLessThan(CAMERA.distanceUnits);
     const camera = new PerspectiveCamera();
     applyFrameToCamera(camera, frame);
-    // The reference's Blender (0, -48.85, 58.57) is three's (0, 58.57, 48.85).
-    expect(camera.position.y).toBeCloseTo(58.57, 1);
-    expect(camera.position.z).toBeCloseTo(48.85, 1);
+    expect(camera.position.y).toBeCloseTo(
+      CAMERA.targetUnits[1] + frame.distanceUnits * Math.sin((50 * Math.PI) / 180),
+      9,
+    );
+    expect(camera.position.z).toBeCloseTo(
+      frame.distanceUnits * Math.cos((50 * Math.PI) / 180),
+      9,
+    );
     // The lens is the committed 75 mm on 36 mm: 26.99° horizontal.
     expect(frameHorizontalFieldOfViewDeg(frame)).toBeCloseTo(26.9915, 3);
   });

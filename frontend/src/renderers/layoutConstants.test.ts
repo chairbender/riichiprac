@@ -104,7 +104,15 @@ describe('3D layout constants: human hand', () => {
     expect(HAND.pitchUnits).toBeCloseTo(0.7607142857, 9);
     expect(HAND.drawGapUnits).toBe(0.2625);
     expect(HAND.drawOffsetUnits).toBeCloseTo(5.576785714, 9);
-    expect(HAND.backRadiusUnits).toBe(10.6);
+    // The board handoff (2026-11-18) moved the hand in from the reference's
+    // 10.6 so it sits 30 mm behind the wall ring, not a hand's width away.
+    expect(HAND.backRadiusUnits).toBe(8.35);
+    expect(HAND.backRadiusUnits - TILE.thicknessUnits / 2).toBeGreaterThan(
+      WALL.radiusUnits,
+    );
+    expect(
+      HAND.backRadiusUnits - TILE.thicknessUnits / 2 - WALL.radiusUnits,
+    ).toBeLessThan(1.5);
   });
 
   it('uses the signed-off 40\u00b0 recline with a numeric readability gate', () => {
@@ -199,12 +207,17 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     expect(MELD.rowStartUnits + 4 * MELD.sidewaysPitchUnits).toBeLessThanOrEqual(
       MELD.maxRowUnits,
     );
-    // Successive meld rows stay clear of the wall's outer edge.
+    // Rows step toward the player, so the *first* row is the one nearest the
+    // wall: it must clear the wall's outer face, and the last row must stay on
+    // the mat.
+    expect(MELD.rowRadiusUnits - TILE.heightUnits / 2).toBeGreaterThan(
+      WALL.radiusUnits + TILE.thicknessUnits / 2,
+    );
     expect(
-      MELD.rowRadiusUnits -
-        (MELD.rowCount - 1) * MELD.rowPitchUnits -
+      MELD.rowRadiusUnits +
+        (MELD.rowCount - 1) * MELD.rowPitchUnits +
         TILE.heightUnits / 2,
-    ).toBeGreaterThan(WALL.radiusUnits + TILE.heightUnits / 2);
+    ).toBeLessThanOrEqual(TABLE.matSizeUnits / 2);
   });
 
   it('keeps a point stick between the compass well and the near pond row', () => {

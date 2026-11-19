@@ -25,6 +25,7 @@ import {
   projectToPixels,
   referenceFrame,
   seatPoint,
+  wallTierHeightUnits,
   type BoardTile,
 } from './boardLayout';
 import { boardFixture } from './boardFixture';
@@ -349,10 +350,7 @@ describe('3D board layout: wall, dora and sticks', () => {
         WALL.radiusUnits,
         9,
       );
-      expect(tile.pose.position[1]).toBeCloseTo(
-        TILE.thicknessUnits + WALL.tierStepUnits + TILE.thicknessUnits / 2,
-        9,
-      );
+      expect(tile.pose.position[1]).toBeCloseTo(wallTierHeightUnits(1), 9);
       // Counting in from the draw end: one stack per indicator, no gap.
       const right = seatPoint(farSeat, 1, 0, 0);
       const w =
@@ -494,16 +492,21 @@ describe('3D board layout: camera framing', () => {
     ];
   };
 
-  it('reproduces the committed v13 rig exactly at 16:9', () => {
+  it('keeps the committed lens and pitch, solved closer for the board', () => {
+    // Decision 2 (2026-11-18) adopted the reference's 75 mm lens and 50° pitch;
+    // the board handoff (also 2026-11-18) asked for the camera to come in, so the
+    // distance is the board's own fit, strictly inside the reference's 76 units.
     const frame = frameForAspect(16 / 9, board);
     expect(frame.pitchDeg).toBe(CAMERA.pitchDeg);
-    expect(frame.distanceUnits).toBeCloseTo(CAMERA.distanceUnits, 9);
+    expect(frame.tanHalfHorizontal).toBeCloseTo(18 / 75, 12);
+    expect(frame.distanceUnits).toBeLessThan(CAMERA.distanceUnits);
     expect(frame.eye[0]).toBeCloseTo(0, 12);
+    const pitch = 50 * (Math.PI / 180);
     expect(frame.eye[1]).toBeCloseTo(
-      CAMERA.targetUnits[1] + 76 * Math.sin(50 * (Math.PI / 180)),
+      CAMERA.targetUnits[1] + frame.distanceUnits * Math.sin(pitch),
       9,
     );
-    expect(frame.eye[2]).toBeCloseTo(76 * Math.cos(50 * (Math.PI / 180)), 9);
+    expect(frame.eye[2]).toBeCloseTo(frame.distanceUnits * Math.cos(pitch), 9);
     // The committed Shift Y is the reference's, and the solver only nudges it
     // far enough to reach the safe area.
     expect(frame.shiftNdcY).toBeGreaterThan(committedShiftNdcY(16 / 9));
@@ -535,35 +538,48 @@ describe('3D board layout: camera framing', () => {
     );
   });
 
-  it('keeps the mat and the hand inside the safe area at every aspect', () => {
+  it('frames the board, not the mat, at every aspect', () => {
+    // Since the board handoff the fit subject is the tiles (the felt is a
+    // procedural square that runs off the frame), so the mat corners are allowed
+    // to crop while every tile keeps the committed safe area.
     const height = 1000;
+    let cropped = 0;
     for (const aspect of [...CAMERA.supportedAspects, ...requiredAspects]) {
       const frame = frameForAspect(aspect, board);
       const width = height * aspect;
       const margin = CAMERA.safeAreaMargin;
       for (const corner of matCorners()) {
         const pixel = projectToPixels(corner, frame, width, height);
-        expect(pixel.x / width, `aspect ${aspect} left`).toBeGreaterThanOrEqual(
-          margin,
-        );
-        expect(1 - pixel.x / width, `aspect ${aspect} right`).toBeGreaterThanOrEqual(
-          margin,
-        );
-        expect(pixel.y / height, `aspect ${aspect} top`).toBeGreaterThanOrEqual(
-          margin,
-        );
-        expect(1 - pixel.y / height, `aspect ${aspect} bottom`).toBeGreaterThanOrEqual(
-          margin,
-        );
+        if (pixel.x < 0 || pixel.x > width || pixel.y < 0 || pixel.y > height) {
+          cropped += 1;
+        }
       }
       for (const tile of humanHand(board)) {
         for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
           const ndc = projectPoint(corner, frame);
-          expect(1 - Math.abs(ndc.x) * 0.5).toBeGreaterThanOrEqual(margin);
-          expect(1 - Math.abs(ndc.y) * 0.5).toBeGreaterThanOrEqual(margin);
+          expect(1 - Math.abs(ndc.x) * 0.5, `tile x at ${aspect}`).toBeGreaterThanOrEqual(margin);
+          expect(1 - Math.abs(ndc.y) * 0.5, `tile y at ${aspect}`).toBeGreaterThanOrEqual(margin);
         }
       }
     }
+    // The mat is not framing subject any more: at landscape aspects its corners
+    // leave the frame, which is the "tiles too small" fix.
+    expect(cropped).toBeGreaterThan(0);
+  });
+
+  it('puts the human hand a sliver above the bottom edge at 16:9', () => {
+    const height = 1000;
+    const width = height * (16 / 9);
+    const frame = frameForAspect(16 / 9, board);
+    let bottom = 1;
+    for (const tile of humanHand(board)) {
+      for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+        const pixel = projectToPixels(corner, frame, width, height);
+        bottom = Math.min(bottom, 1 - pixel.y / height);
+      }
+    }
+    expect(bottom).toBeGreaterThanOrEqual(CAMERA.safeAreaMargin - 1e-9);
+    expect(bottom).toBeLessThanOrEqual(0.04);
   });
 
   it('keeps every tile inside the safe area at every aspect', () => {

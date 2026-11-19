@@ -281,7 +281,7 @@ The world-space layout already exists, user-signed-off, in
 | Ponds | 3 rows × 6, nearest row at 4.81, next at 2.7886, 4 overflow anchors on the near row | river layout |
 | Human hand | 13 tiles + a draw slot at +5.5805, reclined about its far bottom edge | hand layout |
 | Compass well | 4 units | compass overlay anchor |
-| Camera | 75 mm on 36 mm, 50° pitch, X = 0, 76 units, negative Shift Y | `cameraRig.ts` |
+| Camera | 75 mm on 36 mm, 50° pitch, X = 0, 76 units, negative Shift Y | reference lens/pitch; the shipped frame solves closer (see the revisions below) |
 
 The 3D chain **mirrors** those constants in `renderers/layoutConstants.ts` and
 owns them: `check-3d-layout.mjs` asserts the internal invariants (counts, framing,
@@ -321,6 +321,38 @@ frame. No view may project through a second camera. *(Landed in 3D-07: the
 solver is gone; `cameraRig.ts` is `applyFrameToCamera` plus pure projection
 helpers, and `cameraRig.test.ts` proves a real `PerspectiveCamera` fed a frame
 projects every sample point exactly as `boardLayout.projectPoint` does.)*
+
+**Board handoff revisions (2026-11-18, after the first full board render).** The
+user's verdict on the 3D-07 board changed four layout numbers; they are binding
+and they supersede the reference values above where they differ.
+
+- **The wall's top tier was wrong in 3D-06.** `WALL.tierStepUnits` already
+  contains the lower tile's thickness plus the tier gap, and the layout added
+  the thickness again, so the top row hovered 16.5 mm above the row it sits on
+  ("the top row is not lined up with the bottom row"). `wallTierHeightUnits(tier)`
+  is the one formula now (`thickness / 2` bottom, `tierStepUnits + thickness / 2`
+  top); the layout, the dora indicators and `hero.ts` all call it.
+- **Hands sit much closer to the wall.** `HAND.backRadiusUnits` 10.6 → **8.35**,
+  i.e. the hand's front edge is 30 mm behind the wall's outer face instead of
+  92 mm. `MELD.rowRadiusUnits` follows the hand, and extra meld rows now step
+  **toward the player** (`+index * rowPitch`) — the doc always said "nearer the
+  player", the code stepped inward, and with the hand at 8.35 that would put rows
+  2–3 inside the wall ring (the overlap the change surfaced).
+- **The fit subject is the board, not the mat.** `framingPoints` is the tile
+  corners; the 25-unit mat is no longer in the fit, so the mat crops and the
+  felt (a procedural square sized from the frame) runs off the edges. The
+  reference's 76-unit distance **floor is deleted**: it existed to keep the
+  reference's mat framing and would pin the camera back, which is exactly the
+  "too far away / tiles too small" the handoff named. The lens (75 mm on 36 mm),
+  the 50°/62° pitch, X = 0 and the Shift Y are unchanged.
+- **Result at 16:9:** solved distance **55.56** (was 76), hand long axis 7.12 %
+  of the frame height (was 5.17 %), the human hand's lowest body point 3.82 %
+  above the bottom edge, and every tile still inside the 2 % safe area. Other
+  aspects: 72.64 at 21:9, 47.05 at 3:2, 44.14 at 4:3 and 1:1, 42.67 in portrait.
+  `check-3d-layout.mjs` prints all of it and gates the hand's bottom sliver.
+- **Side effect, accepted:** the frame is solved against the actual tiles, so a
+  meld-heavy board (which reaches further to the player's right) solves slightly
+  further back. A typical board is stable.
 
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
@@ -1239,8 +1271,10 @@ the committed table geometry.
 - Pond rows start at the far row and fill toward the seat, matching the
   committed convention; the 4 overflow cells are used before any new row.
 - The human hand's face-normal-to-view angle is ≤ 25° at every supported aspect
-  (9:16, 3:4, 1:1, 16:9, 21:9); all mat corners are in frame with ≥ 2 % margin;
-  the hand's tile long axis is ≥ 5 % of viewport height.
+  (9:16, 3:4, 1:1, 16:9, 21:9); ~~all mat corners are in frame with ≥ 2 %
+  margin~~ **every tile is in frame with ≥ 2 % margin** (revised 2026-11-18 after
+  the board handoff: the board is the fit subject, not the mat — see §2.4's
+  revisions); the hand's tile long axis is ≥ 5 % of viewport height.
 - `check-3d-layout.mjs` prints the constant table and the per-zone counts and
   framing numbers for the five aspects, and fails on any internal invariant. Its
   optional `--reference` run compares the constants against
@@ -1351,6 +1385,16 @@ as contact rather than a drop shadow under a floating tile, and does the
 highlight/tsumogiri pair read as distinct without looking like a bug? The
 waterfall/deal-in motion and the perf HUD are 3D-12/3D-13 and are not in this
 unit.
+
+**Board handoff follow-up (2026-11-18, same day).** The first render produced
+three layout corrections, all recorded in §2.4's "Board handoff revisions" and
+landed here: the wall's top tier sits on the bottom tier (the thickness was
+counted twice, so the top row floated), the hands moved from radius 10.6 to 8.35
+(and meld rows step toward the player so they clear the wall), and the camera
+frames the board rather than the mat with the 76-unit floor deleted — 16:9 now
+solves to 55.56, the tiles are ~37 % larger and the human hand sits 3.82 % above
+the bottom edge. `check-3d-layout.mjs` gates all three numbers; the look is
+still the user's call at the same URL.
 
 ---
 
