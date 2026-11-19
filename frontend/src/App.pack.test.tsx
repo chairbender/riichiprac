@@ -68,7 +68,9 @@ const manifestText = readFileSync(join(scenariosDir, 'manifest.json'), 'utf8');
 const fixtureManifest = JSON.parse(manifestText) as {
   packs: Array<{ id: string; path: string }>;
 };
-const fixtureEntry = fixtureManifest.packs[0];
+const fixtureEntry = fixtureManifest.packs.find(
+  (pack) => pack.id === 'replay.ch8-defense.2026-11',
+)!;
 const fixtureBytes = readFileSync(join(scenariosDir, fixtureEntry.path));
 const fixturePack = JSON.parse(gunzipSync(fixtureBytes).toString('utf8')) as {
   scenarios: Array<{

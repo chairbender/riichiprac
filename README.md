@@ -470,17 +470,19 @@ the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
 Scenario packs are separate from the app bundle and from the weights. The
 browser loads a small **same-origin** manifest
 (`/scenarios/manifest.json`) and then only the content-addressed pack body it
-needs; the miner never ships its corpus, databases or model weights. The first
-curated ch. 8 defense pack (`replay.ch8-defense.2026-11`: 1,038 reviewed bases,
-no variants, 1,047 KB) ships in `frontend/public/scenarios/` so the Pages build
-exercises the whole path, and the deploy workflow verifies every body's
-bytes/SHA-256 before upload (`scripts/check-pack-hosting.mjs`); Q2's content
-gate `scripts/check-ch8-pack.mjs --allow-no-variants` proves every scenario is
-a ch. 8 lesson and the source/licence envelope is complete. Variants are
-disabled for this pack by product decision; variety comes from real reviewed
-positions, and a lesson with fewer than five real bases is left out of the
-pack rather than repeating one scenario. See
-[`q2-scale-up-1000.md`](q2-scale-up-1000.md).
+needs; the miner never ships its corpus, databases or model weights. Two
+curated ch. 8 packs ship in `frontend/public/scenarios/`:
+`replay.ch8-defense.2026-11` (2,211 reviewed single-threat bases, 2.26 MB) and
+`replay.ch8-defense-multi-threat.2026-11` (764 reviewed 2+ opponent bases,
+591 KB), both with no variants. The Pages build therefore exercises the whole
+path, and the deploy workflow verifies every body's bytes/SHA-256 before upload
+(`scripts/check-pack-hosting.mjs`); the content gate
+`scripts/check-ch8-pack.mjs --allow-no-variants` proves every scenario is a
+ch. 8 lesson and the source/licence envelope is complete. Variants are disabled
+for both packs by product decision; variety comes from real reviewed positions,
+and a lesson with fewer than four real bases is left out of the pack rather than
+repeating one scenario. See [`q2-scale-up-2000.md`](q2-scale-up-2000.md) and
+[`q2-multi-threat.md`](q2-multi-threat.md).
 Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and

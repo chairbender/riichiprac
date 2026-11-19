@@ -102,6 +102,9 @@ jobs:
       - name: Verify committed ch8 pack content
         run: node scripts/check-ch8-pack.mjs --dir frontend/dist/scenarios --allow-no-variants
 
+      - name: Verify committed multi-threat ch8 pack content
+        run: node scripts/check-ch8-pack.mjs --dir frontend/dist/scenarios --pack replay.ch8-defense-multi-threat.2026-11 --allow-no-variants
+
       - name: Verify pack bodies are served raw
         run: node scripts/check-pack-serving.mjs
 

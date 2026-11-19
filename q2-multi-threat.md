@@ -4,11 +4,12 @@ Follow-on to [`q2-scale-up-2000.md`](q2-scale-up-2000.md). The shipped ch. 8
 pack is 2,211 bases but every one is a **single-threat** position; the new
 [`defense_multi_threat`](multi-threat-defense.md) lesson fills the 2+ opponent
 gap. This run labels the existing corpus with the new classifier, selects a
-lesson-scoped review queue, and stops at human sign-off.
+lesson-scoped review queue, passes mechanical + sampled review, and publishes a
+dedicated pack.
 
-**Status:** review queue built and mechanically clean; **no dispositions
-applied, no pack assembled, nothing published**. The intended pack id is
-`replay.ch8-defense-multi-threat.2026-11`.
+**Shipped artifact:** `frontend/public/scenarios/`, pack
+`replay.ch8-defense-multi-threat.2026-11`, **764 real bases, 0 variants,
+591,096 bytes**, one lesson (`defense_multi_threat`, ch8.2).
 
 ## Why a separate pack
 
@@ -97,10 +98,9 @@ Mechanical review (`scripts/review-q2-queue.py`) checked every item:
 | Sections / lessons | ch8.2 / defense_multi_threat (all) |
 | Decision kinds | self turn (all) |
 
-The bulk verdict document is prepared at
-`reviews/replay.ch8-defense-multi-threat.2026-11/mechanical-verdicts.json` but
-**has not been applied**: `mine_replays review` writes dispositions, and the
-proposal was to stop at the queue for the human sample review.
+The bulk verdicts were applied after sign-off (780 accepted, 0 pending). The
+dispositions live in
+`reviews/replay.ch8-defense-multi-threat.2026-11/dispositions.jsonl`.
 
 The sampled content sheet is
 [`testdata/reports/q2-multi-threat/review-sample.md`](testdata/reports/q2-multi-threat/review-sample.md):
@@ -137,14 +137,60 @@ the riichi count and the source family; the full report stays in the queue.
 3. **Yield is replay-clustered.** 1,153 stable labels produced 780 bases only
    because of the per-replay cap. Raise it if a larger pack is wanted.
 
-## Reproduce / next step
+## Pack
+
+`pack assemble --no-variants --unique-hands --min-bases-per-lesson 3
+--max-scenarios 1000`:
+
+```
+764 scenarios = 764 reviewed bases, 0 variants
+591,096 bytes
+1 lesson: defense_multi_threat 764
+780 reviewed bases -> 16 dropped as duplicate_hand (another base repeats the
+actor hand)
+```
+
+| Measurement | Value |
+| --- | ---: |
+| Body bytes | 591,096 |
+| Manifest bytes | 1,289 (both hosted packs) |
+| Pack SHA-256 | `15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94` |
+| uniq. actor hands | 764 |
+| Largest base share | 1 scenario (0.13 %) |
+| Licence | CC-BY-4.0 |
+| `data_commercial_use` | false (Akochan contributes) |
+| `requires_model` | false |
+
+`pack publish` hosts both this pack and the existing
+`replay.ch8-defense.2026-11`: 2,851,905 body bytes of the 50 MB ceiling.
+The publish output is `frontend/public/scenarios/manifest.json`; the old pack's
+body and hash are unchanged.
+
+The mined bases add table shapes beyond the generator's three: 621 are
+two-Riichi, 111 are Riichi + open hand, 20 are three-Riichi, 10 are
+two-Riichi + open hand, and 2 are two open hands. All are 2+ live opponents,
+which is the lesson's premise.
+
+## Checks
+
+| Gate | Result |
+| --- | --- |
+| Pack hosting | 71/71 PASS, 2 packs |
+| Ch8 content | 23/23 PASS (`--allow-no-variants`) |
+| Audit | clean, 0 findings |
+| Serving | 14/14 PASS (`check-pack-serving.mjs`, both bodies) |
+| Ch8 content (dist, old + new packs) | 23/23 PASS each |
+| Frontend tests | 666 passed, 1 skipped |
+| Frontend build / lint | build pass, lint clean |
+
+## Reproduce
 
 Everything outside git lives under
 `$RIICHI_DATA_DIR` = `~/riichiprac-data/q2-ch8-defense-2026-11`. The pre-run
 snapshot is `snapshots/miner-20261119-134451-pre-multithreat.sqlite`
 (`PRAGMA integrity_check = ok`).
 
-After sample sign-off:
+The reviewed run:
 
 ```bash
 mine_replays --data-dir "$RIICHI_DATA_DIR" review \
@@ -158,8 +204,10 @@ mine_replays --data-dir "$RIICHI_DATA_DIR" pack assemble \
   --generated-at 2026-11-19T00:00:00Z --json
 ```
 
-then audit, publish and run the hosting/content checks as in
-[`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md).
+then `transform` (persists the `selected_scenarios` hand-off; its variants do
+not ship because assembly uses `--no-variants`), `audit`, `pack publish` with
+both pack ids, and the hosting/content/serving checks. The publish manifest now
+lists both packs; the old pack's body and SHA-256 are untouched.
 
 ## Evidence
 
@@ -168,5 +216,12 @@ then audit, publish and run the hosting/content checks as in
 - `label-<family>.json` — the five per-family label reports;
 - `selection-report.json` — the full selection funnel, quotas and queue paths;
 - `mechanical-review.json` — 780 accepted / 0 rejected;
+- `review-report.json` — the applied dispositions (780 accepted, 0 pending);
 - `review-sample.md`, `review-sample.json` — the 200-row sample;
+- `variant-report-disabled.json` — the transform stage (2,739 preserved
+  states, 2,162 variants; none ship);
+- `assembly-report.json`, `audit-report.json`, `publish-report.json` — the
+  pack, audit (clean) and hosting publish;
+- `hosting-check.json`, `ch8-check.json`, `ch8-check-dist*.txt`,
+  `serving-check.txt` — the gates;
 - `measurements.json` — the same numbers in one machine-readable document.

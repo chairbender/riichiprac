@@ -1,0 +1,158 @@
+{
+  "schema": "riichiprac.variant-report",
+  "version": 1,
+  "generated_at": "2026-11-19T00:00:00Z",
+  "pack_id": "replay.ch8-defense-multi-threat.2026-11",
+  "bases": 780,
+  "variants_per_base": 3,
+  "attempts": 4343,
+  "preserved": 2739,
+  "shipped": 2162,
+  "withdrawn_disabled": 287,
+  "dropped_by_cap": 0,
+  "duplicate_states": 290,
+  "rejections": {
+    "answer_changed": 7,
+    "disabled_pair": 287,
+    "duplicate_state": 290,
+    "lesson_missing": 81,
+    "state_unreachable": 1229,
+    "tile_ledger": 50,
+    "transform_noop": 37,
+    "transform_rejected": 200
+  },
+  "pair_yield": [
+    {
+      "lesson": "defense_multi_threat",
+      "transform": "seat_perm",
+      "attempted": 1002,
+      "preserved": 274,
+      "ratio": 0.2734531,
+      "disabled": true,
+      "rejections": {
+        "answer_changed": 7,
+        "lesson_missing": 81,
+        "state_unreachable": 440,
+        "transform_rejected": 200
+      }
+    },
+    {
+      "lesson": "defense_multi_threat",
+      "transform": "suit_perm",
+      "attempted": 1199,
+      "preserved": 978,
+      "ratio": 0.8156797,
+      "disabled": false,
+      "rejections": {
+        "answer_changed": 3,
+        "lesson_missing": 23,
+        "state_unreachable": 113,
+        "tile_ledger": 24,
+        "transform_rejected": 58
+      }
+    },
+    {
+      "lesson": "defense_multi_threat",
+      "transform": "rank_mirror",
+      "attempted": 989,
+      "preserved": 953,
+      "ratio": 0.9635996,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 11,
+        "tile_ledger": 25
+      }
+    },
+    {
+      "lesson": "defense_multi_threat",
+      "transform": "wind_relabel",
+      "attempted": 804,
+      "preserved": 13,
+      "ratio": 0.016169155,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 789,
+        "tile_ledger": 2
+      }
+    },
+    {
+      "lesson": "defense_multi_threat",
+      "transform": "red5_normalize",
+      "attempted": 792,
+      "preserved": 731,
+      "ratio": 0.9229798,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 290,
+        "state_unreachable": 12,
+        "tile_ledger": 12,
+        "transform_noop": 37
+      }
+    }
+  ],
+  "disabled_pairs": [
+    {
+      "lesson": "defense_multi_threat",
+      "transform": "seat_perm",
+      "ratio": 0.2734531,
+      "min_yield": 0.5,
+      "attempted": 1002,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "defense_multi_threat",
+      "transform": "wind_relabel",
+      "ratio": 0.016169155,
+      "min_yield": 0.5,
+      "attempted": 804,
+      "reviewed": false,
+      "reason": "below_threshold"
+    }
+  ],
+  "cap_limited": [],
+  "effective_cap": 8,
+  "cap_cause": "per_base",
+  "min_yield": 0.5,
+  "label_kinds": {
+    "book": 2162
+  },
+  "labels": {
+    "cached": 0,
+    "evaluated": 0,
+    "retried": 0
+  },
+  "share": {
+    "bases": 780,
+    "variants": 2162,
+    "pack_scenarios": 2942,
+    "variant_share": 0.73487425,
+    "largest_base": {
+      "base": "replay.ch8-defense-multi-threat.2026-11-001",
+      "scenarios": 4
+    },
+    "largest_base_share": 0.0013596193,
+    "transform_families": [
+      "rank_mirror",
+      "red5_normalize",
+      "suit_perm"
+    ],
+    "by_family": {
+      "rank_mirror": 768,
+      "red5_normalize": 441,
+      "suit_perm": 953
+    },
+    "by_chain": {
+      "rank_mirror": 768,
+      "red5_normalize": 441,
+      "suit_perm": 768,
+      "suit_perm+rank_mirror": 185
+    }
+  },
+  "workers": 14,
+  "wall_time_ms": 46100,
+  "notes": [
+    "queue: 780 base(s) from `/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense-multi-threat.2026-11/review-queue.jsonl`; 0 held-out item(s) skipped; 0 reviewer-rejected item(s) skipped; 0 unusable item(s)"
+  ],
+  "errors": []
+}

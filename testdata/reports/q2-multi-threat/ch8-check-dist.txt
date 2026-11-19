@@ -1,0 +1,1 @@
+check-ch8-pack: 2211 scenarios (2211 bases + 0 variants, 0.0 %), 2260809 bytes, 7 lesson(s), 0 transform famil(ies), 23/23 checks passed

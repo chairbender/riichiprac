@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "dir": "/home/kylehipke/workspaces/riichiprac-261118-1315/frontend/public/scenarios",
+  "budgetBytes": 50000000,
+  "manifestBytes": 1289,
+  "totalBytes": 2851905,
+  "packs": [
+    {
+      "id": "replay.ch8-defense-multi-threat.2026-11",
+      "bytes": 591096,
+      "scenarios": 764,
+      "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",
+      "lessonIds": [
+        "defense_multi_threat"
+      ]
+    },
+    {
+      "id": "replay.ch8-defense.2026-11",
+      "bytes": 2260809,
+      "scenarios": 2211,
+      "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43",
+      "lessonIds": [
+        "defense_safety_chart",
+        "defense_stuck_heuristic",
+        "fold_to_riichi",
+        "kabe_double_one_chance",
+        "kabe_one_chance",
+        "push_or_fold",
+        "suji_kabe_safety"
+      ]
+    }
+  ],
+  "problems": [],
+  "checks": 71
+}

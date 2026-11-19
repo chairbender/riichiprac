@@ -1,4 +1,27 @@
 {
+  "assembly": {
+    "audit_clean": true,
+    "bases": 764,
+    "bytes": 591096,
+    "drop_counts": {
+      "base_dropped": 47,
+      "duplicate_hand": 445,
+      "variants_disabled": 1686
+    },
+    "scenarios": 764,
+    "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",
+    "variants": 0
+  },
+  "checks": {
+    "ch8_new": 23,
+    "ch8_old": 23,
+    "frontend_build": "pass",
+    "frontend_lint": "clean",
+    "frontend_tests_passed": 666,
+    "frontend_tests_skipped": 1,
+    "hosting": 71,
+    "serving": 14
+  },
   "classifier_version": "2",
   "label": {
     "families": {
@@ -87,6 +110,19 @@
     "contested": 451,
     "stable": 1153
   },
+  "publish": {
+    "packs": [
+      "replay.ch8-defense-multi-threat.2026-11",
+      "replay.ch8-defense.2026-11"
+    ],
+    "total_body_bytes": 2851905
+  },
+  "review": {
+    "accepted": 780,
+    "items": 780,
+    "pending": 0,
+    "rejected": 0
+  },
   "review_sample": {
     "rows": 200,
     "seed": "q2-multithreat-2026-11",
@@ -152,5 +188,22 @@
     "wall_time_ms": 3284720,
     "workers": 14
   },
-  "status": "awaiting human sample review and sign-off; no dispositions applied, no pack assembled, nothing published"
+  "status": "shipped in frontend/public/scenarios and hosted beside the single-threat ch8 pack",
+  "transform": {
+    "attempts": 4343,
+    "bases": 780,
+    "preserved": 2739,
+    "rejections": {
+      "answer_changed": 7,
+      "disabled_pair": 287,
+      "duplicate_state": 290,
+      "lesson_missing": 81,
+      "state_unreachable": 1229,
+      "tile_ledger": 50,
+      "transform_noop": 37,
+      "transform_rejected": 200
+    },
+    "shipped_variants": 2162,
+    "withdrawn_disabled": 287
+  }
 }
