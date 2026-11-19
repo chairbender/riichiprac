@@ -103,14 +103,10 @@ function measure(image) {
   const alpha = alphaOf(image);
   let peak = 0;
   let support = 0;
-  let opaque = 0;
-  let partial = 0;
   let inkRgb = 0;
   for (let i = 0; i < alpha.length; i += 1) {
     if (alpha[i] > peak) peak = alpha[i];
     if (alpha[i] > 0) support += 1;
-    if (alpha[i] === 255) opaque += 1;
-    else if (alpha[i] > 0) partial += 1;
     if (
       image.data[i * 4] !== 0 ||
       image.data[i * 4 + 1] !== 0 ||
@@ -119,7 +115,7 @@ function measure(image) {
       inkRgb += 1;
     }
   }
-  return { alpha, peak, support, opaque, partial, inkRgb };
+  return { alpha, peak, support, inkRgb };
 }
 
 function borderMax(alpha, width, height) {
