@@ -1,0 +1,198 @@
+/**
+ * A deterministic, legal-shaped {@link TableSnapshot} for the layout tests and
+ * the layout gate (3D-06).
+ *
+ * The fixture is not produced by `snapshotFromGameState`: the layout unit owns
+ * no game rules, and the gate script must be able to run without a `GameState`.
+ * It builds the same shapes the adapter produces (a full 132-tile decorative
+ * wall, 13 - 3·melds concealed tiles per seat, a draw, melds, rivers up to the
+ * 18 + 4 overflow capacity, dora on the far wall) so the layout is exercised at
+ * its widest and deepest.
+ *
+ * Pure data: no DOM, no three.js, no randomness.
+ */
+
+import type {
+  Seat,
+  SnapshotMeld,
+  SnapshotSeat,
+  SnapshotTile,
+  TableSnapshot,
+  TileFaceId,
+} from '../contract';
+import { WALL } from '../layoutConstants';
+
+/** Options for {@link boardFixture}; every field has a realistic default. */
+export interface FixtureOptions {
+  /** Which absolute seat is the human; the others are face-down opponents. */
+  readonly humanSeat?: Seat;
+  /** Discards per absolute seat, oldest first. Defaults to [22, 18, 14, 10]. */
+  readonly riverCounts?: readonly [number, number, number, number];
+  /** Open melds per absolute seat (0–4). Defaults to one per seat. */
+  readonly meldCounts?: readonly [number, number, number, number];
+  /** Make the first meld of every seat a four-tile kan. Defaults to false. */
+  readonly kan?: boolean;
+  /** Dora indicators, 0–5. Defaults to 3. */
+  readonly doraCount?: number;
+  /** Point sticks next to the compass. Defaults to 2. */
+  readonly riichiSticks?: number;
+  /** Whether every seat has an active draw. Defaults to true. */
+  readonly draw?: boolean;
+}
+
+/** A rotating face sequence, so the same snapshot always holds the same faces. */
+const FACE_ORDER: readonly TileFaceId[] = [
+  '1m',
+  '2m',
+  '3m',
+  '4m',
+  '5mr',
+  '6m',
+  '7m',
+  '8m',
+  '9m',
+  '1p',
+  '2p',
+  '3p',
+  '4p',
+  '5pr',
+  '6p',
+  '7p',
+  '8p',
+  '9p',
+  '1s',
+  '2s',
+  '3s',
+  '4s',
+  '5sr',
+  '6s',
+  '7s',
+  '8s',
+  '9s',
+  '1z',
+  '2z',
+  '3z',
+  '4z',
+  '5z',
+  '6z',
+  '7z',
+];
+
+function face(index: number): TileFaceId {
+  return FACE_ORDER[index % FACE_ORDER.length];
+}
+
+function tile(
+  zone: SnapshotTile['zone'],
+  slot: number,
+  index: number,
+  extra: Partial<SnapshotTile> = {},
+): SnapshotTile {
+  return {
+    face: face(index),
+    zone,
+    slot,
+    faceUp: true,
+    sideways: false,
+    ...extra,
+  };
+}
+
+/** The fixed decorative wall: four runs, two tiers, minus every draw-end top. */
+function buildWall(): SnapshotTile[] {
+  const wall: SnapshotTile[] = [];
+  for (let run = 0; run < WALL.runs; run += 1) {
+    for (let stack = 0; stack < WALL.stacksPerRun; stack += 1) {
+      for (let tier = 0; tier < WALL.tiers; tier += 1) {
+        if (stack === WALL.drawEndSlot && tier >= WALL.drawEndTiers) continue;
+        wall.push({
+          face: 'blank',
+          zone: 'wall',
+          slot: run * WALL.slotsPerRun + stack * WALL.tiers + tier,
+          faceUp: false,
+          sideways: false,
+        });
+      }
+    }
+  }
+  return wall;
+}
+
+/**
+ * The fixture snapshot.
+ *
+ * Every seat's river holds a riichi discard (sideways) at index 5 and a
+ * tsumogiri discard (dimmed) at index 11 when the river is long enough, so the
+ * turned footprint and the dim flag are both exercised.
+ */
+export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
+  const humanSeat = options.humanSeat ?? 0;
+  const riverCounts = options.riverCounts ?? ([22, 18, 14, 10] as const);
+  const meldCounts = options.meldCounts ?? ([1, 1, 1, 1] as const);
+  const doraCount = options.doraCount ?? 3;
+  const riichiSticks = options.riichiSticks ?? 2;
+  const draw = options.draw ?? true;
+
+  const seats = ([0, 1, 2, 3] as const).map((seat): SnapshotSeat => {
+    const meldCount = meldCounts[seat];
+    const concealedCount = 13 - 3 * meldCount;
+
+    const concealed: SnapshotTile[] = Array.from(
+      { length: concealedCount },
+      (_, index) => tile('hand', index, seat * 14 + index),
+    );
+
+    const melds: SnapshotMeld[] = Array.from({ length: meldCount }, (_, index) => {
+      const size = options.kan && index === 0 ? 4 : 3;
+      return {
+        kind: size === 4 ? 'Kan' : 'Pon',
+        tiles: Array.from({ length: size }, (_, slot) =>
+          tile('meld', slot, seat * 14 + index * size + slot, {
+            sideways: slot === 1,
+          }),
+        ),
+        calledFrom: ((seat + 3) % 4) as Seat,
+      };
+    });
+
+    const riverCount = Math.min(riverCounts[seat], 18 + 4);
+    const river: SnapshotTile[] = Array.from({ length: riverCount }, (_, index) =>
+      tile('river', index, seat * 14 + index, {
+        sideways: index === 5,
+        dimmed: index === 11,
+      }),
+    );
+
+    return {
+      seat,
+      wind: (['East', 'South', 'West', 'North'] as const)[seat],
+      score: 25000,
+      concealed,
+      draw: draw ? tile('draw', concealed.length, seat * 14 + 13) : null,
+      melds,
+      river,
+      riichi: riverCount > 5,
+      riichiDiscardIndex: riverCount > 5 ? 5 : null,
+    };
+  });
+
+  return {
+    revision: 1,
+    humanSeat,
+    seats: seats as unknown as TableSnapshot['seats'],
+    wall: buildWall(),
+    dora: Array.from({ length: doraCount }, (_, index) =>
+      tile('dora', index, 27 + index),
+    ),
+    compass: {
+      roundWind: 'East',
+      handNumber: 1,
+      honba: 1,
+      riichiSticks,
+      tilesRemaining: 42,
+    },
+    highlightDiscard:
+      riverCounts[0] > 0 ? { seat: 0, index: riverCounts[0] - 1 } : null,
+    locked: false,
+  };
+}

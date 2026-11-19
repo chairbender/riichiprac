@@ -244,8 +244,12 @@ async function checkManifest() {
     const hashes = hashesByFaceSurface.get(group) ?? new Set();
     hashes.add(record.sha256.decodedRgba);
     hashesByFaceSurface.set(group, hashes);
+    // Placement is a geometry contract: use the alpha (carve) bbox, not the
+    // ink bbox. A specular highlight can change the ink classification at an
+    // edge by a pixel or two, which is the light doing its job, not a symbol
+    // shift. The carve silhouette is identical across light rotations.
     const bboxes = bboxesByFaceSurface.get(group) ?? [];
-    if (stats.inkBBox) bboxes.push(stats.inkBBox);
+    if (stats.alphaBBox) bboxes.push(stats.alphaBBox);
     bboxesByFaceSurface.set(group, bboxes);
   }
 
@@ -331,7 +335,18 @@ function checkBudgets() {
     statSync(join(tableDir, 'faces.json')).size +
     statSync(join(tableDir, 'decals.json')).size;
   const feltBytes = statSync(join(tableDir, 'felt.png')).size;
-  const total = shellsBytes + facesBytes + decalsBytes + manifestBytes + feltBytes;
+  // Task 4B relief atlases: committed for the Task 5A compositor and not fetched
+// by the decal board, but counted in the committed-asset total.
+const reliefManifestPath = join(tableDir, 'relief.json');
+let reliefBytes = 0;
+if (existsSync(reliefManifestPath)) {
+  reliefBytes = statSync(reliefManifestPath).size;
+  for (const record of Object.values(readJson(reliefManifestPath).atlases ?? {})) {
+    const reliefFile = join(tableDir, record.file);
+    if (existsSync(reliefFile)) reliefBytes += statSync(reliefFile).size;
+  }
+}
+const total = shellsBytes + facesBytes + decalsBytes + manifestBytes + feltBytes + reliefBytes;
   budgetCheck(
     total <= TOTAL_BUDGET,
     `committed table assets are ${total} B (${(total / 1024 / 1024).toFixed(2)} MiB, limit 8 MiB)`,

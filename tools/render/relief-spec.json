@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "name": "riichiprac 2.5D orthographic carved relief maps",
+  "purpose": "Bake three pixel-aligned orthographic atlas maps - face_albedo (pigment RGB + paint-mask alpha), face_normal_depth (tangent normal RGB + normalized height alpha) and face_ao_roughness (cavity AO in R, specular roughness in G) - from true 3D carved tile-face geometry. These are the input of the Task 5A orientation-aware carved-relief shading; the Task 4 flat glyphs remain the runtime fallback until Task 5A lands. Nothing here is a per-orientation sprite: one master face per tile id, lit in world space at runtime.",
+  "status": "Task 4B: 37 faces (34 standard + 3 red fives) baked at 256 x 340 px into three 1536 x 2380 atlases. Geometry is a displaced face plate (engrave inward, no boolean) with the glyph floor at 0.55 mm and a 40 degree V-carve bevel outside the glyph outline, plus a small hand-carve rounding and depth variation. Maps are rendered by Cycles from an orthographic camera, one master render pass per data group, then packed cell-for-cell into the atlases.",
+  "blender": {
+    "requiredVersion": "4.5.9"
+  },
+  "source": {
+    "facesSpec": "faces-spec.json",
+    "shellSpec": "shell-spec.json",
+    "maskDir": "build/relief/masks",
+    "maskWidth": 1200,
+    "notes": "The carve artwork is the same public-domain symbol-only SVG set that faces.json publishes (each face's `source` path under tools/render), rasterised at 1200 x 1600 (57 px/mm on the face plate, ~4.7x the bake resolution) by scripts/bake-relief-masks.mjs with the pinned resvg and the same red recolour as bake-faces.mjs. The glyph's full 300 x 400 canvas maps onto the inset face plate exactly as the flat glyph and the carved decals do, so the relief paint silhouette matches the runtime fallback. The masks are build artifacts, not committed assets."
+  },
+  "raster": {
+    "cellWidth": 256,
+    "cellHeight": 340,
+    "columns": 6,
+    "rows": 7,
+    "format": "8-bit RGBA PNG",
+    "samples": 16,
+    "aoSamples": 24,
+    "meshSamplesPerTexel": 2,
+    "viewTransform": "Raw",
+    "colorViewTransform": "Standard",
+    "notes": "One cell per face, 6 x 7 = 42 cells for 37 faces (the five unused cells are transparent/neutral in every atlas). The cell maps the inset face plate: width 21 - 2x0.055 = 20.89 mm and height 28 - 2x0.055 = 27.89 mm, so the texel is 0.0816 mm wide x 0.0820 mm tall (0.5% anisotropy, recorded in the manifest rather than hidden). Data passes render with the Raw view transform so an 8-bit byte is round(value x 255) with no sRGB curve; the pigment pass renders with Standard so its bytes are the sRGB pigment the flat glyphs carry. samples is the Cycles camera AA sample count; aoSamples is the Ambient Occlusion node's own ray count."
+  },
+  "carve": {
+    "depthMm": 0.55,
+    "depthRangeMm": [
+      0.45,
+      0.65
+    ],
+    "wallAngleDeg": 40,
+    "wallAngleRangeDeg": [
+      35,
+      45
+    ],
+    "bevelSide": "outside-glyph",
+    "roundingSigmaMm": 0.04,
+    "handCarve": {
+      "depthVariation": 0.05,
+      "wavelengthMm": [
+        12.6,
+        9.3
+      ],
+      "phase": [
+        0.31,
+        0.77
+      ],
+      "notes": "A deterministic two-axis sinusoid in millimetres multiplies the engraving depth by 1 - depthVariation/2 .. 1, so the deepest point is exactly the nominal depth and shallow strokes vary like hand carving. roundingSigmaMm is a separable Gaussian on the millimetre height field, which rounds the lip and stroke-junction creases."
+    },
+    "notes": "The groove floor is the glyph area displaced inward by depthMm with a flat bottom; the V-carve bevel sits OUTSIDE the glyph outline over a horizontal run of depth / tan(wallAngle) = 0.655 mm, so the painted silhouette is identical to the flat glyph and the bevel is pure carved ivory that catches the world-locked key light. Height is the union of the carve contributions, i.e. the signed distance to the glyph union drives one ramp, so two strokes closer together than 2x the run merge into a shallow V valley instead of over-cutting."
+  },
+  "paint": {
+    "mask": "glyph alpha",
+    "pigment": "glyph RGB (same a60c0c crimson recolour as faces.json; the art's own emerald, prussian and carbon fills are kept)",
+    "roughness": {
+      "open": 0.45,
+      "paint": 0.12,
+      "notes": "0.45 semi-matte melamine on the un-carved face, 0.12 glossy lacquer inside the painted grooves."
+    },
+    "notes": "Albedo RGB is the pure pigment with no baked lighting so Task 5A multiplies it onto the lit blank body; it is set to #FFFFFF wherever the paint mask is exactly 0, so un-carved ivory carries neutral white. Albedo alpha is the paint mask, 0.0 on un-carved resin and 1.0 inside painted enamel grooves."
+  },
+  "ao": {
+    "distanceMm": 1.2,
+    "remap": {
+      "floor": 0.25,
+      "low": 0.55,
+      "gamma": 2.0,
+      "notes": "t = clamp((raw - low) / (1 - low), 0, 1); R = floor + (1 - floor) * t^gamma. The raw Cycles visibility only reaches about 0.68-0.85 in these shallow 0.5 mm engravings, so the remap is what turns it into a readable cavity term: the planar open face stays exactly 1.0, a tight stroke junction lands near 0.45-0.50, and the deepest V-corner floors out at 0.25 instead of going black."
+    },
+    "notes": "Cycles Ambient Occlusion node, only local, 24 rays at 1.2 mm. The baked R channel is the remapped value; the manifest records the raw and mapped min/mean/max it measured. A 3x3 median on the raw visibility removes single-ray self-intersection speckle on the open face (the plate is a single-sided sheet, so grazing rays occasionally clip it)."
+  },
+  "output": {
+    "dir": "../../frontend/public/table/relief",
+    "manifest": "../../frontend/public/table/relief.json",
+    "buildDir": "build/relief",
+    "buildManifest": "build/relief/preview.json",
+    "bytesBudget": 4194304,
+    "buildBytesBudget": 4194304
+  }
+}

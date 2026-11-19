@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Exported review artifacts (3D-05 hero captures and the like): regenerate with
+# the debug view's export button, never commit pixels as source.
+scripts/out
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

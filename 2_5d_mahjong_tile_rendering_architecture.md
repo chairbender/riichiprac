@@ -1120,7 +1120,9 @@ for a focused preview or a device with the headroom. The review sheets and
 leaving ~0.55 MB. A decal-based initial @1x board is **3,834,658 B** of the 4
 MiB initial-load limit; the flat glyph PNGs are build/fallback assets and are
 not fetched when every inked face has a carved decal. The atlas is composed
-locally, not downloaded. Byte budgets are advisory during active development
+locally, not downloaded. The Task 4B relief maps (§12b) add **3,551,251 B** of
+committed atlases plus a 77,431 B manifest; nothing fetches them until the
+Task 5A compositor lands. Byte budgets are advisory during active development
 (AGENTS.md §1c); they are measured, not a reason to shrink the art.
 
 **Carved decals (Phase 2b).** The flat glyphs above remain the Phase 2
@@ -1249,12 +1251,109 @@ the flat glyph, and still composites one `BakedTileSprite` per
 `requireDecals: true` makes a missing decal a hard error. No per-frame
 compositing is added.
 
+**Final approved revision (2026-11-18).** Three changes landed after the
+original Phase 2b rig:
+1. **White-fill islands.** Pure-white glyph fills (the white interiors in
+   pinzu and souzu) are the tile's own ivory, not white enamel. They are
+   excluded from the carve mask (`carve.whiteFillUncarved`, threshold 0.9) so
+   the field is 0 there, and kept in the decal as **opaque ivory at the
+   original surface** — a raised island inside the recessed glyph. A
+   transparent hole would have exposed the dark standing-hand shell.
+2. **Lying rig v2.** The lying face-normal rig now carries the approved
+   upright parlour angles: key `around 0 / tilt 52.6` (was 23.34), the second
+   tube behind the face as a rim, the green bounce and the behind rim. Lying
+   decal contrast now tracks the upright.
+3. **Glare spot.** A **specular-only** head-on spot (`tilt 0`, `around 0`,
+   0.9° cone, 0.45 kW, `diffuseFactor 0`, `specularFactor 1`) gives a small
+   white flat-face reflection without flattening the carve. The larger 1.2° /
+   0.6 kW version, a 20° angled light (the mirror point leaves the tile), an
+   80° grazing wall light, and a radial baked stamp were all evaluated; the
+   head-on 0.9° spot is the approved one. Settings are saved as
+   `decal-profiles/approved-lying-v3-glare.json`; use
+   `node tools/render/scripts/decal-profile.mjs use approved-lying-v3-glare`
+   to restore, then re-bake.
+
 **Review.** `cd frontend && npm run atlas:review:carved` writes
 `carved-compare-4x.png` (flat vs carved), `carved-variants-1x.png`,
 `carved-hand-fan-1x.png` and `carved-numbers.json` under
 `tools/render/build/review/`; the lying tuner writes
 `tools/render/build/tune/preview/flat-{0,90,180,270}.png`. The user signs off
 the look; the agent does not (AGENTS.md §6).
+
+## 12b. Task 4B: orthographic carved relief maps (2026-11-17)
+
+The plan's three ways to get carved faces were: batch 612 rendered sprites, a 2D
+emboss filter, or **orthographic PBR relief maps lit in world space** (chosen).
+**Status (2026-11-18): retired as a runtime input.** Task 5A lit these maps on
+the CPU, but the result was rejected: the screen-locked version blew out the
+highlights, the white-in-shape details were not represented as bumps, and with
+screen-locked lighting there was no per-slot benefit left. The three atlases and
+`relief.json` were **removed from `frontend/public/table/`** to stop shipping
+3.4 MiB of unused assets; the bake tooling and this record remain if the
+approach is ever revived. The Phase 2b carved decals are the runtime path.
+
+**Three atlases, one cell per face.** 37 faces (34 standard + the three red
+fives) at **256 × 340 px** in a 6 × 7 = 42-cell atlas (**1536 × 2380**; the five
+unused cells carry neutral flat-ivory values):
+
+| Atlas | Channels |
+| --- | --- |
+| `face_albedo.png` | RGB pure pigment, no baked lighting, `#FFFFFF` on un-carved ivory; A paint mask (0.0 resin, 1.0 enamel groove) |
+| `face_normal_depth.png` | RGB tangent normal, x right / y down / z out; A normalized height (1.0 un-carved, 0.0 deepest engraving) |
+| `face_ao_roughness.png` | R remapped Cycles cavity AO (1.0 open face, ~0.45 tight junction); G roughness (0.45 resin, 0.12 lacquer) |
+
+A cell maps the **inset face plate** the same way `faces.json` maps the flat
+glyph (17.92 × 24.92 mm = 0.64 × 0.89 tile units), so replacing the fallback
+glyph never moves the symbol: the checker measures a worst-case paint-silhouette
+IoU of **0.9928** against the committed flat glyphs. The fixed 256 × 340 cell
+gives 14.286 px/mm across and 13.643 px/mm down (4.7% texel anisotropy), so the
+orthographic camera sets `pixel_aspect_y` and the geometry is not squashed.
+
+**Geometry, not a filter.** `scripts/bake-relief-masks.mjs` rasterises the same
+public-domain symbol SVGs at 1200 × 1600 (57 px/mm) and computes the exact
+signed distance to the glyph outline (per-axis weighted Felzenszwalb). The
+Blender half samples it onto a plate grid at 2× the cell resolution and builds a
+real displaced mesh: the glyph floor is engraved inward 0.55 mm; a 40° V-carve
+bevel sits **outside** the glyph outline over a 0.655 mm run (the painted
+silhouette is exactly the glyph, and the bevel is bare ivory that catches the
+key light); a 0.04 mm Gaussian rounds the lip and stroke-junction creases; a
+deterministic two-axis sinusoid varies the depth by up to 5% like hand carving,
+normalized per face so the deepest point is exactly 0.55 mm. Four orthographic
+Cycles passes read the true mesh — pigment emission, object-space normal,
+height/AO/roughness (Raw view transform, dithering off) and the paint mask — and
+the three atlases pack the cells. A two-texel bleed keeps every frame pixel fully
+covered, so the cell border is not averaged with the transparent background.
+
+**Cavity AO.** Cycles' Ambient Occlusion node (`only_local`, 24 rays, 1.2 mm)
+plus a 3×3 median for single-ray self-intersection speckle, remapped to
+`floor + (1 - floor) · t^γ` with `t = clamp((raw - low)/(1 - low))` and
+`floor 0.25 / low 0.55 / γ 2`. Raw visibility in a 0.5 mm engraving only reaches
+~0.68-0.85, so the remap is what makes it read as a cavity term: the open face
+stays exactly 1.0, a tight junction lands at ~0.45-0.52, and the deepest V-corner
+floors at 0.25 instead of black. The manifest records the raw and mapped
+min/mean/max.
+
+**Numbers (when regenerated into `build/`).** `bash tools/render/bake-relief.sh
+--bake` runs the Node artwork pass and 37 × 4 Cycles passes in **331 s**. Atlas
+bytes: **948,566 + 1,645,011 + 957,674 = 3,551,251 B (3.39 MiB)**; a manifest
+with per-face measurements and decoded-RGBA hashes is 77,431 B.
+`scripts/check-relief.mjs` (dependency-free; no longer a CI gate because the
+outputs are not committed) prints **770 checks** in ~1 s: spec contract,
+cell rects, atlas hashes, the channel contract per face, un-carved albedo
+exactly `#FFFFFF` with alpha 0, painted floors at the engraving depth with flat
+normals and 0.12 roughness, open faces at depth 1 / flat normal / AO 1.0 / 0.45
+roughness, the measured V-carve wall median **37.31-39.21°** (inside the 35-45°
+band), the paint silhouette IoU against the flat glyph, cavity AO **darkest
+0.380**, and cross-atlas alignment (paint mask vs roughness gate within 2 px;
+every non-flat normal and non-1 depth pixel inside the paint's wall band).
+Budgets stay advisory (AGENTS.md §1c).
+
+**Review.** A local bake writes build-only sheets under
+`tools/render/build/relief/review/`: a contact sheet with albedo-over-ivory,
+normal, AO and roughness panels per face and its measured numbers; a 4× zoom
+(the same crop through all four panels); and an alignment sheet that draws the
+paint silhouette in red over each map at 4×. The user signs off the look; the
+agent does not (AGENTS.md §6).
 
 ## 13. Phase 3: the zone layout engine (landed 2026-11-16)
 

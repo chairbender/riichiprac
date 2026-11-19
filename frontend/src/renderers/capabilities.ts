@@ -1,0 +1,196 @@
+/**
+ * Capability probe, backing-store cap and the 3D feature gate (3D-01).
+ *
+ * Everything here is a pure input to the host's decision, not the decision
+ * itself: `RendererHost` (3D-02) mounts the view, and the View control gains a
+ * fourth value only in 3D-14. This module exists so the gate is testable
+ * without a GPU, a browser or three.js.
+ *
+ * The probe never keeps a live WebGL2 context: it creates one, reads the two
+ * facts it needs, asks the `WEBGL_lose_context` extension to release it, and
+ * drops its reference. In a browser this matters because a leaked probing
+ * context counts against the page's (small) WebGL context budget.
+ */
+
+import type { DebugMode, QualityTier, RendererCapabilities } from './contract';
+
+/**
+ * Whether the 3D view may be offered from the persistent View control.
+ *
+ * Decision 1 (2026-11-18): the view stays reachable only by `?renderer=3d`
+ * until 3D-15 signs it off. Nothing may flip this except that sign-off, and the
+ * view is never the default even then.
+ */
+export const RENDERED3D_EXPOSED = false;
+
+/** The device-pixel-ratio ceiling before the area cap applies. */
+export const MAX_DEVICE_PIXEL_RATIO = 2;
+
+/**
+ * The backing-store area ceiling: 8.29 MP (the plan's "3840 x 2160" cap).
+ * A 4K display therefore renders at DPR 1, not at the 33.2 MP a raw DPR-2
+ * `devicePixelRatio` would ask for.
+ */
+export const BACKING_STORE_MAX_PIXELS = 8_290_000;
+
+/** The query-selected debug view list, in the plan's order. */
+export const DEBUG_MODES: readonly DebugMode[] = [
+  'albedo',
+  'height',
+  'normal',
+  'steps',
+  'pom-off',
+  'wireframe',
+  'hero',
+];
+
+/** The quality tiers a user may pin with `?quality=`. */
+const QUALITY_TIERS: readonly QualityTier[] = ['high', 'balanced', 'compat'];
+
+/** Narrow an arbitrary value to a {@link QualityTier}. */
+export function isQualityTier(value: unknown): value is QualityTier {
+  return (
+    typeof value === 'string' &&
+    (QUALITY_TIERS as readonly string[]).includes(value)
+  );
+}
+
+/** Narrow an arbitrary value to a {@link DebugMode}. */
+export function isDebugMode(value: unknown): value is DebugMode {
+  return (
+    typeof value === 'string' &&
+    (DEBUG_MODES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * What `?renderer=3d&quality=…&debug=…&perf` asks for.
+ *
+ * Every field rejects unknown values independently: `?renderer=4d` leaves
+ * `renderer` null rather than enabling a different renderer, and a typo in
+ * `quality` must not silently pin a tier. Absent `quality` means "let the
+ * capability probe and viewport choose" (3D-11).
+ */
+export interface RendererQuery {
+  readonly renderer: '3d' | null;
+  readonly quality: QualityTier | null;
+  readonly debug: DebugMode | null;
+  /** True for a bare `?perf`, `?perf=1` or `?perf=true`; every other value is off. */
+  readonly perf: boolean;
+}
+
+/**
+ * Parse the URL search string (with or without its leading `?`).
+ *
+ * Strict and non-throwing: this runs before the app decides whether to draw a
+ * table, so a bad link must fall back to the default view, never crash it.
+ */
+export function parseRendererQuery(search: string): RendererQuery {
+  const params = new URLSearchParams(
+    search.startsWith('?') ? search.slice(1) : search,
+  );
+
+  const renderer = params.get('renderer');
+  const quality = params.get('quality');
+  const debug = params.get('debug');
+  const perf = params.get('perf');
+
+  return {
+    renderer: renderer === '3d' ? '3d' : null,
+    quality: isQualityTier(quality) ? quality : null,
+    debug: isDebugMode(debug) ? debug : null,
+    perf:
+      perf !== null && (perf === '' || perf === '1' || perf === 'true'),
+  };
+}
+
+/** `devicePixelRatio`, defaulting to 1 where the browser does not expose one. */
+function readDevicePixelRatio(): number {
+  const value = (globalThis as { devicePixelRatio?: unknown }).devicePixelRatio;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : 1;
+}
+
+/**
+ * The effective device pixel ratio for a CSS viewport, per §2.8:
+ *
+ * `dpr_eff = clamp(min(dpr, 2), 1, sqrt(8.29e6 / (cssW * cssH)))`
+ *
+ * A nonsensical viewport (zero, negative or non-finite) falls back to 1 rather
+ * than producing `Infinity` or `NaN` for the renderer.
+ */
+export function effectiveDevicePixelRatio(
+  cssWidth: number,
+  cssHeight: number,
+  devicePixelRatio: number,
+): number {
+  if (
+    !Number.isFinite(cssWidth) ||
+    !Number.isFinite(cssHeight) ||
+    cssWidth <= 0 ||
+    cssHeight <= 0
+  ) {
+    return 1;
+  }
+  const dpr =
+    Number.isFinite(devicePixelRatio) && devicePixelRatio > 0
+      ? devicePixelRatio
+      : 1;
+  const areaCap = Math.sqrt(BACKING_STORE_MAX_PIXELS / (cssWidth * cssHeight));
+  return Math.max(1, Math.min(Math.min(dpr, MAX_DEVICE_PIXEL_RATIO), areaCap));
+}
+
+/**
+ * Probe what the current browser can do, without leaking a WebGL2 context.
+ *
+ * `doc` is injectable so Node tests can run the probe without a DOM; production
+ * callers pass nothing. The function never throws: a missing DOM, a browser
+ * that refuses a context, or a throwing fake all become
+ * `{ webgl2: false }` with a reason in `unavailable`.
+ */
+export function probeCapabilities(
+  doc: Document | null = typeof document === 'undefined' ? null : document,
+): RendererCapabilities {
+  const devicePixelRatio = readDevicePixelRatio();
+  const unsupported = (unavailable: string): RendererCapabilities => ({
+    webgl2: false,
+    maxTextureSize: 0,
+    devicePixelRatio,
+    unavailable,
+  });
+
+  if (!doc || typeof doc.createElement !== 'function') {
+    return unsupported('WebGL2 is not available in this environment');
+  }
+
+  let gl: WebGL2RenderingContext | null = null;
+  try {
+    const canvas = doc.createElement('canvas');
+    gl = canvas.getContext('webgl2');
+  } catch {
+    gl = null;
+  }
+  if (!gl) {
+    return unsupported('WebGL2 is not available in this browser');
+  }
+
+  let maxTextureSize = 0;
+  try {
+    const reported = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    if (typeof reported === 'number' && Number.isFinite(reported)) {
+      maxTextureSize = reported;
+    }
+  } catch {
+    maxTextureSize = 0;
+  }
+
+  // Release the probing context: it was only ever asked for two numbers.
+  try {
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  } catch {
+    // A driver that refuses the extension still lets the context be collected.
+  }
+
+  return { webgl2: true, maxTextureSize, devicePixelRatio, unavailable: null };
+}

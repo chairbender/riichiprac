@@ -1,0 +1,259 @@
+{
+  "version": 1,
+  "name": "riichiprac 2.5D carved face decals",
+  "purpose": "Bake the carved, painted, separately lit tile face decals that are pasted into the current shells' faceQuad. This restores only the retired pipeline's carve/paint/light decal step; it does not bring back the full-scene table, body sprites, fixed camera or scene manifest. The decal is a transparent carve/paint overlay (option A): the shell keeps its own lighting everywhere except the recessed lip and the paint.",
+  "status": "Phase 2b: carved face decals with separate upright (world-frame parlour) and lying (face-normal frame) light rigs. 180 decals (36 upright + 144 lying) are baked at 2x, with the full 300x400 glyph canvas mapped to the inset face plate so symbols keep the flat-glyph sizing and no pinzu/manzu strokes are cut. Committed as AVIF q60 with alpha. The redundant @2x shadow sprites were removed; byte budgets are advisory during development (AGENTS.md 1c).",
+  "blender": {
+    "requiredVersion": "4.5.9"
+  },
+  "source": {
+    "facesSpec": "faces-spec.json",
+    "shellSpec": "shell-spec.json",
+    "symbolDir": "../../frontend/public/table/faces",
+    "notes": "The symbol source is the committed flat glyph PNG for each face (already recoloured by bake-faces.mjs). The decal baker uses its alpha as the carve mask and its colour as the paint. The tile proportions, faceInset and materials come from shell-spec.json, so the decal cannot drift from the shells."
+  },
+  "raster": {
+    "scale": 2,
+    "width": 158,
+    "height": 216,
+    "paddingPixels": 4,
+    "format": "8-bit RGBA PNG",
+    "notes": "The face plate is the inset face at @2x: 150 x 208 px (0.64 x 0.89 tile units, aspect 0.72). A 4 px transparent safety ring surrounds it, so a symbol that reaches the face edge is not clipped by the image border; the manifest's facePlateRect maps the inner 150 x 208 rect to the shell's faceQuad. The 90-degree rotation is not baked into the image: the symbol stays upright in face-local space and the shell's faceQuad applies the tile's rotation. The four images differ only in the baked light direction.",
+    "glyphMapping": "full 300x400 upstream glyph canvas -> inset face plate (no faceInset UV crop)"
+  },
+  "carve": {
+    "depthFractionOfThickness": 0.03,
+    "profile": {
+      "topSpread": 0.6,
+      "bottomSpread": 0.8
+    },
+    "gridScale": 1,
+    "occlusionDistance": 0.2,
+    "occlusionStrength": 0.75,
+    "occlusionSamples": 16,
+    "blurUnits": 0.004285714285714286,
+    "transitionUnits": 0.010714285714285714,
+    "paintEdge": 0.18,
+    "alphaRamp": 0.08,
+    "notes": "Ported unchanged from the retired full-scene pipeline (scene-spec.json at commit e39d92e) so the engraving keeps the look the user approved then. alphaRamp is the new transparent-overlay feather: the decal alpha ramps 0..1 over the first 8% of the carve transition, so the outer lip fades into the shell face instead of ending on a hard rectangle.",
+    "whiteFillUncarved": true,
+    "whiteFillThreshold": 0.9,
+    "whiteFillNote": "Pure-white symbol fills (the white islands in pinzu and souzu) are the tile's own ivory showing through the paint, not white enamel. They are excluded from the carve mask and stay transparent in the decal, so the shell face remains at its original height as a raised island inside the recessed glyph."
+  },
+  "lighting": {
+    "upright": {
+      "preset": "parlor",
+      "rotationConvention": "lightRotationDeg is a counter-clockwise rotation of the whole rig about the face normal. The atlas picks -screenRotationOfQuad so the baked light ends up top-left on screen after the shell quad rotates the decal. 0/90/180/270 is therefore a screen-locked carve light, not a rotating tile light.",
+      "world": {
+        "hex": "#b9c6d6",
+        "strength": 0.4
+      },
+      "translation": {
+        "fromSlotY": -11.7,
+        "cameraDistance": 5,
+        "notes": "The retired parlor rig was tuned around the hand slot at y=-11.7. The canonical decal is at the origin, so the whole rig is translated by +11.7 in y. This preserves the old incidence angles instead of re-aiming the lights. The camera sits 5 units in front of the face, as in the retired decal rig."
+      },
+      "lights": [
+        {
+          "id": "tube-0",
+          "group": "tube",
+          "target": [
+            0,
+            -8.5,
+            0
+          ],
+          "azimuthDeg": 0,
+          "elevationDeg": 50,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 85000,
+          "hex": "#fdf9f1"
+        },
+        {
+          "id": "tube-1",
+          "group": "tube",
+          "target": [
+            -2,
+            3,
+            0
+          ],
+          "azimuthDeg": 90,
+          "elevationDeg": 58,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 65000,
+          "hex": "#fdf9f1"
+        },
+        {
+          "id": "bounce",
+          "group": "bounce",
+          "target": [
+            0,
+            -1,
+            0.3
+          ],
+          "azimuthDeg": 30,
+          "elevationDeg": 10,
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "rollDeg": 0,
+          "energyW": 2500,
+          "hex": "#cfe4d3"
+        },
+        {
+          "id": "rim",
+          "group": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 170,
+          "elevationDeg": 45,
+          "distance": 40,
+          "size": 28,
+          "sizeY": 20,
+          "rollDeg": 0,
+          "energyW": 6000,
+          "hex": "#ffffff"
+        }
+      ],
+      "frame": "world"
+    },
+    "lying": {
+      "preset": "lying-parlor-v2",
+      "rotationConvention": "aroundDeg rotates the whole rig around the tile's face normal (0 = tile-up, 90 = right, 180 = down, 270 = left); tiltDeg is the angle from the face normal (0 = head-on, 90 = grazing, 180 = behind). The atlas adds -quadRotation so the room light stays fixed while the tile turns.",
+      "world": {
+        "hex": "#b9c6d6",
+        "strength": 0.4
+      },
+      "translation": {
+        "fromSlotY": 0,
+        "cameraDistance": 5,
+        "notes": "The lying rig is defined in the face-normal frame: the light direction is (sin tilt * sin around, -cos tilt, sin tilt * cos around) with the face normal at -Y and the face up at +Z. This is the room light on a horizontal tile; aroundDeg rotates it around the tile without changing its incidence, so the carve highlights orbit instead of the whole decal dimming."
+      },
+      "lights": [
+        {
+          "id": "key",
+          "group": "key",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "distance": 55,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 90000,
+          "hex": "#fff4e4",
+          "aroundDeg": 0,
+          "tiltDeg": 52.6
+        },
+        {
+          "id": "fill",
+          "group": "fill",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 65000,
+          "hex": "#fdf9f1",
+          "aroundDeg": 30.2,
+          "tiltDeg": 104.9
+        },
+        {
+          "id": "bounce",
+          "group": "bounce",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "rollDeg": 0,
+          "energyW": 2500,
+          "hex": "#cfe4d3",
+          "aroundDeg": 69.7,
+          "tiltDeg": 44.4
+        },
+        {
+          "id": "rim",
+          "group": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "distance": 45,
+          "size": 28,
+          "sizeY": 20,
+          "rollDeg": 0,
+          "energyW": 6000,
+          "hex": "#ffffff",
+          "aroundDeg": 9.8,
+          "tiltDeg": 144
+        }
+      ],
+      "tunable": true,
+      "tuner": "cd frontend && npm run tune:carved  # http://localhost:7458",
+      "frame": "face-normal",
+      "notes": "Ported from the approved upright parlour rig into the face-normal frame. The old 23.34 deg key was too head-on and washed out the V-carve; the upright key is ~52.6 deg off the face normal, with the second tube behind the face as a rim, the soft green bounce, and the white behind rim. Keep the upright rig unchanged."
+    }
+  },
+  "surfaceRotations": {
+    "upright": [
+      0
+    ],
+    "lying": [
+      0,
+      90,
+      180,
+      270
+    ]
+  },
+  "rotations": [
+    0,
+    90,
+    180,
+    270
+  ],
+  "symbolRotations": [
+    0
+  ],
+  "spike": {
+    "faces": [
+      "1m",
+      "5p",
+      "7z",
+      "5mr"
+    ],
+    "notes": "Spike output goes to tools/render/build/decals and build/decals.json (gitignored). Do not commit a carved decal set until the user has reviewed the sheets."
+  },
+  "output": {
+    "dir": "../../frontend/public/table/decals",
+    "manifest": "../../frontend/public/table/decals.json",
+    "buildDir": "build/decals",
+    "buildManifest": "build/decals.json",
+    "bytesBudget": 2097152,
+    "buildBytesBudget": 12582912,
+    "format": "avif",
+    "quality": 60
+  },
+  "surfaces": [
+    "upright",
+    "lying"
+  ]
+}

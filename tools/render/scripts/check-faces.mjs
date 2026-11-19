@@ -306,10 +306,28 @@ function checkBudgets() {
       decalsBytes += statSync(join(tableDir, record.textureFile)).size;
     }
   }
+  // Task 4B relief atlases are committed for the Task 5A compositor; they are
+  // measured here so the total-asset number stays honest. Nothing fetches them
+  // until Task 5A lands.
+  const reliefManifestPath = join(tableDir, 'relief.json');
+  let reliefBytes = 0;
+  if (existsSync(reliefManifestPath)) {
+    reliefBytes = statSync(reliefManifestPath).size;
+    for (const record of Object.values(readJson(reliefManifestPath).atlases ?? {})) {
+      const file = join(tableDir, record.file);
+      if (existsSync(file)) reliefBytes += statSync(file).size;
+    }
+  }
   const manifestBytes = statSync(shellsManifestPath).size + statSync(facesManifestPath).size;
   const feltBytes = statSync(feltPath).size;
   const total =
-    shellsBytes + manifestBytes + feltBytes + facesBytes + decalsBytes + decalsManifestBytes;
+    shellsBytes +
+    manifestBytes +
+    feltBytes +
+    facesBytes +
+    decalsBytes +
+    decalsManifestBytes +
+    reliefBytes;
   budget(
     total <= TOTAL_BUDGET,
     `committed table assets are ${total} B (${(total / 1024 / 1024).toFixed(2)} MiB, limit 8 MiB)`,
@@ -327,7 +345,10 @@ function checkBudgets() {
   note(
     `Phase 2 face-up shells: ${faceUpBody1xBytes} B bodies + ${faceUpShadow1xBytes} B shadow sprites @1x`,
   );
-  note(`shell textures ${shellsBytes} B, faces ${facesBytes} B, manifests ${manifestBytes} B, felt ${feltBytes} B`);
+  note(
+    `shell textures ${shellsBytes} B, faces ${facesBytes} B, manifests ${manifestBytes} B, ` +
+      `felt ${feltBytes} B, carved decals ${decalsBytes} B, relief atlases ${reliefBytes} B`,
+  );
 }
 
 /** Mirror of the runtime per-shell page layout (TileAtlasBuilder). */

@@ -2,7 +2,7 @@
   "version": 1,
   "name": "riichiprac 2.5D carved face decals",
   "purpose": "Bake the carved, painted, separately lit tile face decals that are pasted into the current shells' faceQuad. This restores only the retired pipeline's carve/paint/light decal step; it does not bring back the full-scene table, body sprites, fixed camera or scene manifest. The decal is a transparent carve/paint overlay (option A): the shell keeps its own lighting everywhere except the recessed lip and the paint.",
-  "status": "Phase 2b: carved face decals with separate upright (world-frame parlour) and lying (face-normal frame) light rigs. 180 decals (36 upright + 144 lying) are baked at 2x, with the full 300x400 glyph canvas mapped to the inset face plate so symbols keep the flat-glyph sizing and no pinzu/manzu strokes are cut. Committed as AVIF q60 with alpha. The redundant @2x shadow sprites were removed; byte budgets are advisory during development (AGENTS.md 1c).",
+  "status": "Phase 2b: carved face decals with separate upright (world-frame parlour) and lying (face-normal frame) light rigs. 180 decals (36 upright + 144 lying) are baked at 2x, with the full 300x400 glyph canvas mapped to the inset face plate so symbols keep the flat-glyph sizing and no pinzu/manzu strokes are cut. Pure-white glyph fills (pinzu/souzu) are excluded from the carve mask and kept as opaque ivory islands at the original surface. The lying rig is the upright parlour rig translated into the face frame plus a specular-only head-on glare spot (0.9 deg cone, 0.45 kW). Approved profile: approved-lying-v3-glare. Committed as AVIF q60 with alpha; byte budgets are advisory during development (AGENTS.md 1c).",
   "blender": {
     "requiredVersion": "4.5.9"
   },
@@ -35,7 +35,10 @@
     "transitionUnits": 0.010714285714285714,
     "paintEdge": 0.18,
     "alphaRamp": 0.08,
-    "notes": "Ported unchanged from the retired full-scene pipeline (scene-spec.json at commit e39d92e) so the engraving keeps the look the user approved then. alphaRamp is the new transparent-overlay feather: the decal alpha ramps 0..1 over the first 8% of the carve transition, so the outer lip fades into the shell face instead of ending on a hard rectangle."
+    "notes": "Ported unchanged from the retired full-scene pipeline (scene-spec.json at commit e39d92e) so the engraving keeps the look the user approved then. alphaRamp is the new transparent-overlay feather: the decal alpha ramps 0..1 over the first 8% of the carve transition, so the outer lip fades into the shell face instead of ending on a hard rectangle.",
+    "whiteFillUncarved": true,
+    "whiteFillThreshold": 0.9,
+    "whiteFillNote": "Pure-white symbol fills (the white islands in pinzu and souzu) are the tile's own ivory showing through the paint, not white enamel. They are excluded from the carve mask and stay transparent in the decal, so the shell face remains at its original height as a raised island inside the recessed glyph."
   },
   "lighting": {
     "upright": {
@@ -123,7 +126,7 @@
       "frame": "world"
     },
     "lying": {
-      "preset": "lying-parlor",
+      "preset": "lying-parlor-v2",
       "rotationConvention": "aroundDeg rotates the whole rig around the tile's face normal (0 = tile-up, 90 = right, 180 = down, 270 = left); tiltDeg is the angle from the face normal (0 = head-on, 90 = grazing, 180 = behind). The atlas adds -quadRotation so the room light stays fixed while the tile turns.",
       "world": {
         "hex": "#b9c6d6",
@@ -144,13 +147,13 @@
             0
           ],
           "distance": 55,
-          "size": 22,
-          "sizeY": 18,
+          "size": 40,
+          "sizeY": 2.5,
           "rollDeg": 0,
           "energyW": 90000,
           "hex": "#fff4e4",
           "aroundDeg": 0,
-          "tiltDeg": 23.34
+          "tiltDeg": 52.6
         },
         {
           "id": "fill",
@@ -160,14 +163,14 @@
             0,
             0
           ],
-          "distance": 45,
-          "size": 30,
-          "sizeY": 24,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
           "rollDeg": 0,
-          "energyW": 12000,
-          "hex": "#dfe9ff",
-          "aroundDeg": 56.6,
-          "tiltDeg": 50.14
+          "energyW": 65000,
+          "hex": "#fdf9f1",
+          "aroundDeg": 30.2,
+          "tiltDeg": 104.9
         },
         {
           "id": "bounce",
@@ -183,8 +186,8 @@
           "rollDeg": 0,
           "energyW": 2500,
           "hex": "#cfe4d3",
-          "aroundDeg": 70.57,
-          "tiltDeg": 31.47
+          "aroundDeg": 69.7,
+          "tiltDeg": 44.4
         },
         {
           "id": "rim",
@@ -200,13 +203,34 @@
           "rollDeg": 0,
           "energyW": 6000,
           "hex": "#ffffff",
-          "aroundDeg": 9.85,
-          "tiltDeg": 134.14
+          "aroundDeg": 9.8,
+          "tiltDeg": 144
+        },
+        {
+          "id": "glare-spot",
+          "group": "glare",
+          "type": "SPOT",
+          "target": [
+            0.08,
+            0,
+            0.1
+          ],
+          "distance": 6,
+          "aroundDeg": 0,
+          "tiltDeg": 0,
+          "spotSizeDeg": 0.9,
+          "spotBlend": 0.3,
+          "energyW": 450,
+          "hex": "#ffffff",
+          "shadowSoftSize": 0.06,
+          "diffuseFactor": 0,
+          "specularFactor": 1
         }
       ],
       "tunable": true,
       "tuner": "cd frontend && npm run tune:carved  # http://localhost:7458",
-      "frame": "face-normal"
+      "frame": "face-normal",
+      "notes": "Ported from the approved upright parlour rig into the face-normal frame. The old 23.34 deg key was too head-on and washed out the V-carve; the upright key is ~52.6 deg off the face normal, with the second tube behind the face as a rim, the soft green bounce, and the white behind rim. Keep the upright rig unchanged. A specular-only narrow spot (4.5 deg cone) at 6 units gives a small white hotspot instead of a whole-face wash."
     }
   },
   "surfaceRotations": {
