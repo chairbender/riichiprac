@@ -1,46 +1,15 @@
 {
-  "name": "riichiprac-render",
+  "name": "riichiprac-glyph-masters",
   "private": true,
   "version": "1.0.0",
-  "description": "Offline 2.5D tile-shell and felt asset pipeline (Blender + resvg). Never bundled or shipped to the frontend.",
+  "description": "The retained glyph-master baker (public-domain SVG -> 300x400 PNG) that feeds the 3D carve bake. Not the retired 2.5D render pipeline; never bundled or shipped.",
   "type": "module",
   "scripts": {
-    "shells": "bash bake-shells.sh",
-    "shells:dry": "bash bake-shells.sh --dry-run",
-    "shells:bake": "bash bake-shells.sh --bake",
-    "shells:verify": "bash bake-shells.sh --bake --verify-determinism",
-    "shells:audition": "bash bake-shells.sh --audition",
-    "check": "node scripts/check-shells.mjs",
-    "check:audition": "node scripts/check-shells.mjs --audition",
-    "review": "node scripts/review-shells.mjs",
-    "felt": "bash bake-felt.sh",
-    "rasterize": "node scripts/rasterize-face.mjs",
     "faces": "node scripts/bake-faces.mjs",
     "faces:verify": "node scripts/bake-faces.mjs --verify-determinism",
-    "check:faces": "node scripts/check-faces.mjs",
-    "decals": "bash bake-decals.sh --bake",
-    "decals:build": "bash bake-decals.sh --build",
-    "decals:spike": "bash bake-decals.sh --spike",
-    "check:decals": "node scripts/check-decals.mjs",
-    "decals:encode": "node scripts/encode-decals.mjs --format avif --quality 60",
-    "check:decals:committed": "node scripts/check-decals.mjs --committed",
-    "relief": "bash bake-relief.sh --bake",
-    "relief:preview": "bash bake-relief.sh --preview --only",
-    "relief:masks": "node scripts/bake-relief-masks.mjs",
-    "check:relief": "node scripts/check-relief.mjs",
-    "board": "bash bake-board-assets.sh --bake",
-    "board:dry": "bash bake-board-assets.sh",
-    "board:atlas": "node scripts/bake-tile-faces-atlas.mjs",
-    "board:shadows": "bash bake-board-assets.sh --shadows",
-    "board:seams": "node scripts/bake-shadow-seams.mjs",
-    "board:review": "node scripts/review-shadow-assets.mjs",
-    "check:board": "node scripts/check-board-assets.mjs",
-    "check:shadows": "node scripts/check-shadow-assets.mjs"
+    "check:faces": "node scripts/check-faces.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"
-  },
-  "devDependencies": {
-    "@napi-rs/canvas": "^1.1.1"
   }
 }
