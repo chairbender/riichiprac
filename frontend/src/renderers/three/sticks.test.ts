@@ -185,16 +185,40 @@ describe('the stick geometry', () => {
     }
     expect(onCentreRing).toBe(STICK.aroundSegments);
 
-    // The plan ends are rounded (the sprite's semicircles): beyond the
-    // straight middle the cross-section shrinks, and the tips are poles.
-    const straightHalf = STICK_SIZE.lengthUnits / 2 - semiWidth;
-    let maxWidthAtCap = 0;
+    // The top view is a rectangle: the sides hold their full width for the
+    // whole straight length, and the ends are flat cuts (abrupt) with only a
+    // 0.4 mm round on the four corners.
+    const half = STICK_SIZE.lengthUnits / 2;
+    const endRound = STICK.endRoundUnits;
     for (let index = 0; index < position.count; index += 1) {
-      if (Math.abs(position.getX(index)) <= straightHalf + 1e-6) continue;
-      maxWidthAtCap = Math.max(maxWidthAtCap, Math.abs(position.getZ(index)));
+      const x = Math.abs(position.getX(index));
+      expect(x).toBeLessThanOrEqual(half + 1e-6);
+      if (x <= half - endRound - 1e-6) {
+        // Full width somewhere on every such ring.
+        expect(Math.abs(position.getZ(index))).toBeLessThanOrEqual(semiWidth + 1e-6);
+      }
     }
-    expect(maxWidthAtCap).toBeGreaterThan(0);
-    expect(maxWidthAtCap).toBeLessThan(semiWidth);
+    // Full width still occurs right up to where the end round starts.
+    let fullWidthBeforeEnd = false;
+    let endFaceWidth = 0;
+    let endFaceVertices = 0;
+    for (let index = 0; index < position.count; index += 1) {
+      const x = Math.abs(position.getX(index));
+      const z = Math.abs(position.getZ(index));
+      if (x <= half - endRound && z > semiWidth - 1e-6) {
+        fullWidthBeforeEnd = true;
+      }
+      if (Math.abs(x - half) < 1e-6) {
+        endFaceVertices += 1;
+        endFaceWidth = Math.max(endFaceWidth, z);
+      }
+    }
+    expect(fullWidthBeforeEnd).toBe(true);
+    // The end face is a flat ellipse: it exists at both tips and is only a hair
+    // narrower than the body (the 0.4 mm round), so the ends read as abrupt.
+    expect(endFaceVertices).toBeGreaterThan(0);
+    expect(endFaceWidth).toBeLessThan(semiWidth);
+    expect(semiWidth - endFaceWidth).toBeLessThan(semiWidth * 0.15);
   });
 
   it('projects the plan UVs across the elliptical surface', () => {

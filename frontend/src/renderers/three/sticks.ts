@@ -4,13 +4,15 @@
  *
  * **The model.** A 1000-point stick is a polystyrene bar: 65 mm long, 7 mm wide
  * and 3.5 mm thick, with a painted red pip in the middle and a soft sheen. The
- * user's last shape note (2026-11-19) is the one that decides the form: "looking
- * at the stick from the long end, the cross-sectional profile of the stick
- * should be an ellipse." The bar is therefore a **swept ellipse** — every
- * cross-section is a 7 × 3.5 mm ellipse (uniformly scaled toward the rounded
- * plan ends, which follow the score sprite's semicircles) — not an extrusion
- * with a bevel, which has flat faces and a sharp-ish edge. That ellipse is what
- * gives the continuous round on the long edges.
+ * user's last two shape notes (2026-11-19) decide the form: "looking at the
+ * stick from the long end, the cross-sectional profile of the stick should be
+ * an ellipse", and "looking down on the stick like we do on the table, the
+ * profile should be a rectangle (with only very very slightly rounded corners),
+ * so the ends should terminate abruptly rather than being semi-ovals." The bar
+ * is therefore a **swept ellipse** (every cross-section is a 7 × 3.5 mm
+ * ellipse) with **flat ends** and a 0.4 mm round on the end rim. The top view
+ * is a 65 × 7 mm rectangle; only its four corners are eased, and the long edges
+ * are continuously round because the cross-section is an ellipse.
  *
  * **The pip is carved, not printed.** The red centre is a painted recess: the
  * albedo, tangent normal, cavity and roughness come from
@@ -36,7 +38,7 @@ import {
   SRGBColorSpace,
   Vector3,
 } from 'three';
-import { STICK as STICK_LAYOUT } from '../layoutConstants';
+import { STICK as STICK_LAYOUT, UNIT_MM } from '../layoutConstants';
 import type { BoardStick } from './boardLayout';
 import {
   STICK_CARVE,
@@ -51,10 +53,18 @@ export const STICK = {
   capacity: 32,
   /** Rings around the elliptical cross-section (smooth shading). */
   aroundSegments: 40,
-  /** Rings along the straight middle of the bar. */
-  straightSegments: 24,
-  /** Rings in each rounded plan end. */
-  capSegments: 12,
+  /** Rings along the straight length of the bar. */
+  straightSegments: 28,
+  /** Rings across the tiny end-rim round. */
+  rimSegments: 4,
+  /**
+   * The very slight round on the plan corners: the user's 0.4 mm. The top view
+   * is otherwise a hard rectangle with abrupt, flat ends (2026-11-19: "the
+   * profile should be a rectangle (with only very very slightly rounded
+   * corners), so the ends should terminate abruptly rather than being
+   * semi-ovals").
+   */
+  endRoundUnits: 0.4 / UNIT_MM,
   /** Polystyrene under the key light: a satin body with a lacquered clear coat. */
   roughness: 0.24,
   metalness: 0,
@@ -86,16 +96,19 @@ const DEG = Math.PI / 180;
 
 /**
  * The shared bar geometry: an elliptical cross-section swept along the length,
- * with semicircular *plan* ends (the sprite's outline).
+ * with flat ends and a very slight round on the end rim.
  *
- * Every cross-section is the same 7 x 3.5 mm ellipse (the end caps scale it
- * uniformly to a point), which is the user's "looking at the stick from the
- * long end, the cross-sectional profile … should be an ellipse". No bevel is
- * involved: the ellipse is the edge.
+ * Every cross-section is the same 7 x 3.5 mm ellipse (the user's "looking at the
+ * stick from the long end, the cross-sectional profile … should be an ellipse"),
+ * so the long edges are continuously round. Looking down, the silhouette is a
+ * **rectangle**: the sides stay at full width for the whole straight length and
+ * the 65 mm ends are flat cuts, with only a 0.4 mm round easing the four corners
+ * (the user's "very very slightly rounded corners … ends should terminate
+ * abruptly rather than being semi-ovals").
  *
  * UVs are the plan projection — `u` along the bar, `v` across it — so the pip
- * sits at the top's centre (both ends of the ellipse map to the plain ivory
- * border of the atlas).
+ * sits at the top centre and the end faces, which are tiny, sample the plain
+ * ivory edge of the atlas.
  */
 export function createStickGeometry(): BufferGeometry {
   const length = STICK_SIZE.lengthUnits;
@@ -103,31 +116,35 @@ export function createStickGeometry(): BufferGeometry {
   const height = STICK_SIZE.heightUnits;
   const semiWidth = width / 2;
   const semiHeight = height / 2;
-  const endRadius = semiWidth;
-  const straightHalf = length / 2 - endRadius;
+  const endRound = STICK.endRoundUnits;
+  const half = length / 2;
 
-  // Rings along the bar: two rounded plan ends and the straight middle. Each
-  // carries its longitudinal position and a uniform scale of the cross-section
-  // (1 in the middle, 0 at the tips). The s = 0 rings are replaced by poles.
+  // Rings from the left end to the right end. The body's sides are full width
+  // until `endRound` from each tip; over that last sliver the ellipse is scaled
+  // down to `endScale`, which rounds the plan corner without turning the end
+  // into a dome.
   const rings: { x: number; scale: number }[] = [];
-  for (let i = STICK.capSegments - 1; i >= 1; i -= 1) {
-    const phi = (i / STICK.capSegments) * (Math.PI / 2);
+  for (let i = STICK.rimSegments; i >= 0; i -= 1) {
+    const phi = (i / STICK.rimSegments) * (Math.PI / 2);
     rings.push({
-      x: -(straightHalf + endRadius * Math.sin(phi)),
-      scale: Math.cos(phi),
+      x: -(half - endRound + endRound * Math.sin(phi)),
+      scale: 1 - (endRound / semiWidth) * (1 - Math.cos(phi)),
     });
   }
-  for (let i = 0; i <= STICK.straightSegments; i += 1) {
+  for (let i = 1; i <= STICK.straightSegments; i += 1) {
     rings.push({
-      x: -straightHalf + (2 * straightHalf * i) / STICK.straightSegments,
+      x:
+        -half +
+        endRound +
+        (i * (length - 2 * endRound)) / STICK.straightSegments,
       scale: 1,
     });
   }
-  for (let i = 1; i <= STICK.capSegments - 1; i += 1) {
-    const phi = (i / STICK.capSegments) * (Math.PI / 2);
+  for (let i = 1; i <= STICK.rimSegments; i += 1) {
+    const phi = (i / STICK.rimSegments) * (Math.PI / 2);
     rings.push({
-      x: straightHalf + endRadius * Math.sin(phi),
-      scale: Math.cos(phi),
+      x: half - endRound + endRound * Math.sin(phi),
+      scale: 1 - (endRound / semiWidth) * (1 - Math.cos(phi)),
     });
   }
 
@@ -144,7 +161,7 @@ export function createStickGeometry(): BufferGeometry {
       const y = semiHeight * ring.scale * Math.sin(theta);
       const z = semiWidth * ring.scale * Math.cos(theta);
       positions.push(ring.x, y, z);
-      uvs.push((ring.x + length / 2) / length, 0.5 + z / width);
+      uvs.push((ring.x + half) / length, 0.5 + z / width);
     }
   }
 
@@ -162,28 +179,20 @@ export function createStickGeometry(): BufferGeometry {
     }
   }
 
-  // The two tips: a pole at each end, fanned to its nearest ring.
-  const tipUv = (x: number): [number, number] => [
-    (x + length / 2) / length,
-    0.5,
-  ];
+  // The ends are flat elliptical caps (abrupt), each with its outward normal.
   const leftPole = positions.length / 3;
-  positions.push(-length / 2, 0, 0);
-  uvs.push(...tipUv(-length / 2));
+  positions.push(-half, 0, 0);
+  uvs.push(0, 0.5);
   const firstRing = ringStart[0];
   for (let j = 0; j < around; j += 1) {
     indices.push(leftPole, firstRing + j, firstRing + ((j + 1) % around));
   }
   const rightPole = positions.length / 3;
-  positions.push(length / 2, 0, 0);
-  uvs.push(...tipUv(length / 2));
+  positions.push(half, 0, 0);
+  uvs.push(1, 0.5);
   const lastRing = ringStart[rings.length - 1];
   for (let j = 0; j < around; j += 1) {
-    indices.push(
-      rightPole,
-      lastRing + ((j + 1) % around),
-      lastRing + j,
-    );
+    indices.push(rightPole, lastRing + ((j + 1) % around), lastRing + j);
   }
 
   const geometry = new BufferGeometry();

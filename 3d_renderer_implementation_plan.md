@@ -1669,12 +1669,15 @@ out' and then painted on … use the same approach we used with the tiles."
 - **Dimensions and shape.** `STICK_MM` is 65 × 7 × 3.5 mm, so the layout bar is
   2.321 × 0.25 × 0.125 units. The user's final shape note — "looking at the
   stick from the long end, the cross-sectional profile of the stick should be
-  an ellipse" — replaces the earlier 0.4 mm bevel: the mesh is now a **swept
-  ellipse**, every cross-section the same 7 × 3.5 mm ellipse, uniformly scaled
-  toward the score sprite's semicircular *plan* ends. That is what gives the
-  continuous round on the long edges (an extruded flat-topped slab could not).
-  It is one instanced `BufferGeometry` built in core three (40 segments around,
-  24 along the straight middle, 12 per end). The material is
+  an ellipse, and "looking down on the stick like we do on the table, the
+  profile should be a rectangle (with only very very slightly rounded corners),
+  so the ends should terminate abruptly rather than being semi-ovals" — replaces
+  the earlier 0.4 mm bevel. The mesh is a **swept ellipse**, every cross-section
+  the same 7 × 3.5 mm ellipse, with **flat ends** and a 0.4 mm round easing only
+  the four plan corners: the top view is a 65 × 7 mm rectangle with abrupt ends.
+  That is what gives the continuous round on the long edges (an extruded
+  flat-topped slab could not). It is one instanced `BufferGeometry` built in
+  core three (40 segments around, 28 along the length, 4 across each end rim). The material is
   `MeshPhysicalMaterial` (polystyrene `ior` 1.59) with a **clear coat** 0.5 at
   roughness 0.07 and a per-texel roughness map, so it has the sheen the flat
   matte box lacked. The grey end bands are gone; the only decoration is the

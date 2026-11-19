@@ -71,8 +71,9 @@ export const TABLE = {
  * commercial tenbo is 69 x 7 x 3 mm; the user's 65 x 7 x 3.5 is the model's
  * spec. Its cross-section — looking down the long axis — is an **ellipse**
  * (the user's final shape note), so the long edges have no flat band and no
- * separate round-over; `three/sticks.ts` sweeps that ellipse along the length,
- * with the score sprite's semicircular plan ends.
+ * separate round-over; `three/sticks.ts` sweeps that ellipse along the length
+ * and cuts it off flat, so the top view is a rectangle whose only easing is a
+ * 0.4 mm round on the four end corners.
  */
 export const STICK_MM = {
   length: 65,
