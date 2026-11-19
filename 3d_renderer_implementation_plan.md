@@ -1892,9 +1892,10 @@ a shadow on the felt.
 
 - `shadows.SHADOW.cast` (the numbers) and one `bandQuad` helper shared with the
   human hand's band.
-- `shadowInstances`: one radial band per **opponent hand** (row + draw unioned)
-  and one per **wall run**; the human's hand keeps its own signed-off band
-  untouched; ponds, melds, dora keep their contact blobs.
+- `shadowInstances`: one radial band per **opponent hand** (row + draw unioned),
+  one per **wall run**, and one per **side run's player-facing end**; the human's
+  hand keeps its own signed-off band untouched; ponds, melds, dora keep their
+  contact blobs.
 
 **Acceptance criteria**
 
@@ -1920,13 +1921,14 @@ past the object's base, with the core dark at the foot:
 | `wall-cast-0` (near run) | the felt strip between the near wall (outer face 6.46) and the human's hand (7.76) |
 | `wall-cast-1/3` (side runs) | sideways past the side walls' outer face (7.5) |
 | `wall-cast-2` (far run) | up-screen past the far wall (6.46) to 7.66 |
+| `wall-end-cast-1/3` (side runs' ends) | +Z off each side run's end face, 1.0 wide (the wall's own thickness), to 7.66 — fills the notch where the near run's band stops at x ±6.46 |
 | `hand-cast-1` (right seat) | +X from its base, to +10.35 |
 | `hand-cast-2` (across) | -Z from its outer base edge, to -9.55 (partly near the top edge) |
 | `hand-cast-3` (left seat) | -X from its base |
 | `hand-group-0` (the human) | **unchanged** |
 
-182 quads in total on the fixture board (177 tile blobs + 4 wall casts + the
-human's band + 3 hand casts), one instanced draw. The near wall's cast and the
+184 quads in total on the fixture board (177 tile blobs + 4 wall casts + 2 side
+end casts + the human's band + 3 hand casts), one instanced draw. The near wall's cast and the
 human's band overlap between 6.8 and 7.7 units from the centre — physically where
 a centre lamp's wall shadow would fall — so that strip reads darker than either
 alone; the hand's own band is untouched.

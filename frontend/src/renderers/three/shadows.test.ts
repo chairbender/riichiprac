@@ -55,10 +55,17 @@ describe('contact quad placement', () => {
   it('unions every hand into one band, and gives the wall ring one per run', () => {
     const bands = shadows.filter((instance) => instance.kind === SHADOW_KIND.band);
     const blobs = shadows.filter((instance) => instance.kind === SHADOW_KIND.blob);
+    // One band per hand group, one per wall run, and one per side run's
+    // player-facing end.
+    const sideRuns = [0, 1, 2, 3].filter((seat) => {
+      const { right } = seatBasis(seat as 0 | 1 | 2 | 3);
+      return Math.abs(right[0]) <= Math.abs(right[2]);
+    });
     expect(bands.map((band) => band.id).sort()).toEqual(
       [
         `hand-group-${layout.humanSeat}`,
         ...[0, 1, 2, 3].map((seat) => `wall-cast-${seat}`),
+        ...sideRuns.map((seat) => `wall-end-cast-${seat}`),
         ...[0, 1, 2, 3]
           .filter((seat) => seat !== layout.humanSeat)
           .map((seat) => `hand-cast-${seat}`),
@@ -96,6 +103,10 @@ describe('contact quad placement', () => {
         'wall-cast-1',
         'wall-cast-2',
         'wall-cast-3',
+        // The side runs are the ones at +/-X whatever the human seat is, and
+        // only those two have a player-facing end.
+        'wall-end-cast-1',
+        'wall-end-cast-3',
       ].sort(),
     );
   });
@@ -242,6 +253,36 @@ describe('contact quad placement', () => {
       const rowHalf = rowIsX ? band.innerHalfUnits[0] : band.innerHalfUnits[1];
       expect(rowHalf).toBeCloseTo(WALL.runHalfLengthUnits, 9);
     }
+  });
+
+  it('casts the side runs\u2019 player-facing ends like the near wall', () => {
+    // A side run's outward band goes sideways, which leaves the strip of felt in
+    // front of its end face unshadowed; the end band fills that notch, exactly
+    // as long as the near run's cast and exactly as wide as the wall is thick.
+    const sideRuns = [1, 3];
+    for (const run of sideRuns) {
+      const band = shadows.find((instance) => instance.id === `wall-end-cast-${run}`);
+      expect(band, `run ${run}`).toBeDefined();
+      if (!band) continue;
+      // Its visible reach is `cast.lengthUnits` beyond the run's end, toward +Z.
+      const south = band.centre[2] + band.innerHalfUnits[1] + band.sigmaUnits[1];
+      expect(south).toBeCloseTo(
+        WALL.runHalfLengthUnits + SHADOW.cast.lengthUnits,
+        9,
+      );
+      // Its width is the run's own radial footprint (28 mm), no spread.
+      expect(band.innerHalfUnits[0] * 2).toBeCloseTo(TILE.heightUnits, 9);
+      // It meets the near run's band: the near band ends at the run end in X,
+      // this one starts at the side run's inner face.
+      const { outward } = seatBasis(run as 1 | 3);
+      const sign = Math.sign(outward[0]);
+      const inner = band.centre[0] - sign * band.innerHalfUnits[0];
+      expect(Math.abs(inner)).toBeCloseTo(wallRunRadius(run as 1 | 3, layout.humanSeat) - TILE.heightUnits / 2, 9);
+    }
+    // The near and far runs need no end band: their outward cast already covers
+    // the player-facing side.
+    expect(shadows.some((instance) => instance.id === 'wall-end-cast-0')).toBe(false);
+    expect(shadows.some((instance) => instance.id === 'wall-end-cast-2')).toBe(false);
   });
 
   it('assigns the sigmas across and along the human band', () => {

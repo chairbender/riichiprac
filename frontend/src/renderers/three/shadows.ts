@@ -387,19 +387,23 @@ function castQuad(id: string, span: GroupSpan, seat: Seat): ShadowInstance {
 
 /**
  * The wall ring's cast: one band per run, thrown outward from the wall's outer
- * face across the strip of felt that separates it from the hands.
+ * face, plus — for the two side runs — one band off the **player-facing end**.
  *
  * The wall is the tallest thing on the table (two tiers, 1.18 units), so its
  * shadow is what makes the hands read as *behind* it rather than merely darker.
+ * The side runs' outward bands go sideways, which leaves the 1-unit-wide strip of
+ * felt in front of each end face unshadowed — a notch in the ring's shadow right
+ * where the near wall's band stops. Those two ends face the human, so they get
+ * the same outward cast as the near run's long face.
  */
 function wallCastQuads(layout: BoardLayout): ShadowInstance[] {
   const { lengthUnits, overlapUnits, sigmaAcrossUnits, sigmaAlongUnits } = SHADOW.cast;
   const bands: ShadowInstance[] = [];
   for (let run = 0; run < WALL.runs; run += 1) {
     const seat = run as Seat;
-    const { right } = seatBasis(seat);
+    const { outward, right } = seatBasis(seat);
     const rowIsX = Math.abs(right[0]) > Math.abs(right[2]);
-    const sign = outwardSign(seat, rowIsX);
+    const sign = rowIsX ? Math.sign(outward[2]) : Math.sign(outward[0]);
     const outerFace =
       sign * (wallRunRadius(seat, layout.humanSeat) + TILE.heightUnits / 2);
     const inner = outerFace - sign * overlapUnits;
@@ -413,6 +417,26 @@ function wallCastQuads(layout: BoardLayout): ShadowInstance[] {
         depthMin: Math.min(inner, outer),
         depthMax: Math.max(inner, outer),
         sigmaUnits: bandSigmas(rowIsX, sigmaAlongUnits, sigmaAcrossUnits),
+      }),
+    );
+    if (rowIsX) continue;
+    // A side run's player-facing end: its end face points at the human (+Z), and
+    // the band spans the run's own radial footprint so it meets the near wall's
+    // band instead of leaving a gap at the corner.
+    const endFace = WALL.runHalfLengthUnits;
+    const radialInner = sign * (wallRunRadius(seat, layout.humanSeat) - TILE.heightUnits / 2);
+    const radialOuter = sign * (wallRunRadius(seat, layout.humanSeat) + TILE.heightUnits / 2);
+    const endInner = endFace - overlapUnits;
+    const endOuter = endFace + (lengthUnits - sigmaAcrossUnits);
+    bands.push(
+      bandQuad({
+        id: `wall-end-cast-${run}`,
+        rowIsX: true,
+        rowMin: Math.min(radialInner, radialOuter),
+        rowMax: Math.max(radialInner, radialOuter),
+        depthMin: endInner,
+        depthMax: endOuter,
+        sigmaUnits: bandSigmas(true, sigmaAlongUnits, sigmaAcrossUnits),
       }),
     );
   }
