@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "generatedBy": "tools/render/scripts/bake-shadow-seams.mjs",
+  "task": "4A",
+  "tile": {
+    "widthMm": 21,
+    "heightMm": 28,
+    "bevelWidthUnits": 0.055
+  },
+  "profile": "raised-cosine",
+  "peakAlpha": 0.35,
+  "resolution": {
+    "width": 512,
+    "height": 512
+  },
+  "coordinateSpace": "Normalized face UV: (0,0) is the face quad's top-left corner and (1,1) its bottom-right, exactly like the face atlas cell mapped onto a blank's faceQuad. Each mask is a full square with the gradient along one edge, so the runtime maps the whole image onto faceQuad and never needs a per-bucket variant.",
+  "runtime": "Draw for each occupied orthogonal neighbour (hasLeft/hasRight/hasTop/hasBottom) at 50-70 % of the mask's own alpha; open edges draw nothing so the lit bevel stays bright (Task 6A pass 3).",
+  "seams": {
+    "left": {
+      "edge": "left",
+      "axis": "u",
+      "side": "low",
+      "textureFile": "shadows/ao_seam_left.png",
+      "width": 512,
+      "height": 512,
+      "channels": "RGBA",
+      "ink": "black",
+      "alphaChannel": "occlusion",
+      "profile": "raised-cosine",
+      "fadeFractionOfAxis": 0.1,
+      "source": {
+        "widthMm": 21,
+        "heightMm": 28,
+        "note": "The fade is authored per axis so the physical band matches the 1.54 mm bevel on both axes."
+      },
+      "measured": {
+        "edgeAlpha": 0.349,
+        "peakAlpha": 0.35,
+        "fadeAxisFraction": 0.0957,
+        "fadeFractionOfTileWidth": 0.0957,
+        "firstNonZero": 0,
+        "lastNonZero": 48,
+        "monotonic": true,
+        "edgeConstancy": 0
+      },
+      "bytes": 2433,
+      "sha256": {
+        "decodedRgba": "1eefacbf13e7cd74086be51ed8e8cde2c2db69a810aea100b4784a985f73f0bb"
+      }
+    },
+    "right": {
+      "edge": "right",
+      "axis": "u",
+      "side": "high",
+      "textureFile": "shadows/ao_seam_right.png",
+      "width": 512,
+      "height": 512,
+      "channels": "RGBA",
+      "ink": "black",
+      "alphaChannel": "occlusion",
+      "profile": "raised-cosine",
+      "fadeFractionOfAxis": 0.1,
+      "source": {
+        "widthMm": 21,
+        "heightMm": 28,
+        "note": "The fade is authored per axis so the physical band matches the 1.54 mm bevel on both axes."
+      },
+      "measured": {
+        "edgeAlpha": 0.349,
+        "peakAlpha": 0.35,
+        "fadeAxisFraction": 0.0957,
+        "fadeFractionOfTileWidth": 0.0957,
+        "firstNonZero": 0,
+        "lastNonZero": 48,
+        "monotonic": true,
+        "edgeConstancy": 0
+      },
+      "bytes": 2438,
+      "sha256": {
+        "decodedRgba": "8ad5f15a6e4cae39170df742b1dd0ffd13e50e36a5db76132f7c3c7abb018438"
+      }
+    },
+    "top": {
+      "edge": "top",
+      "axis": "v",
+      "side": "low",
+      "textureFile": "shadows/ao_seam_top.png",
+      "width": 512,
+      "height": 512,
+      "channels": "RGBA",
+      "ink": "black",
+      "alphaChannel": "occlusion",
+      "profile": "raised-cosine",
+      "fadeFractionOfAxis": 0.075,
+      "source": {
+        "widthMm": 21,
+        "heightMm": 28,
+        "note": "The fade is authored per axis so the physical band matches the 1.54 mm bevel on both axes."
+      },
+      "measured": {
+        "edgeAlpha": 0.349,
+        "peakAlpha": 0.35,
+        "fadeAxisFraction": 0.0723,
+        "fadeFractionOfTileWidth": 0.0964,
+        "firstNonZero": 0,
+        "lastNonZero": 36,
+        "monotonic": true,
+        "edgeConstancy": 0
+      },
+      "bytes": 1246,
+      "sha256": {
+        "decodedRgba": "be72c09a02ba23715c402fb099495e2d4aad26fecdff53cec8979cbd5e89fd67"
+      }
+    },
+    "bottom": {
+      "edge": "bottom",
+      "axis": "v",
+      "side": "high",
+      "textureFile": "shadows/ao_seam_bottom.png",
+      "width": 512,
+      "height": 512,
+      "channels": "RGBA",
+      "ink": "black",
+      "alphaChannel": "occlusion",
+      "profile": "raised-cosine",
+      "fadeFractionOfAxis": 0.075,
+      "source": {
+        "widthMm": 21,
+        "heightMm": 28,
+        "note": "The fade is authored per axis so the physical band matches the 1.54 mm bevel on both axes."
+      },
+      "measured": {
+        "edgeAlpha": 0.349,
+        "peakAlpha": 0.35,
+        "fadeAxisFraction": 0.0723,
+        "fadeFractionOfTileWidth": 0.0964,
+        "firstNonZero": 0,
+        "lastNonZero": 36,
+        "monotonic": true,
+        "edgeConstancy": 0
+      },
+      "bytes": 1244,
+      "sha256": {
+        "decodedRgba": "33fa805a71945541de4535c4d4d12fe618599f759cbb73177d7aad015cfdf01c"
+      }
+    }
+  },
+  "totals": {
+    "masks": 4,
+    "bytes": 7361
+  }
+}

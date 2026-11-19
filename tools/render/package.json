@@ -31,7 +31,11 @@
     "board": "bash bake-board-assets.sh --bake",
     "board:dry": "bash bake-board-assets.sh",
     "board:atlas": "node scripts/bake-tile-faces-atlas.mjs",
-    "check:board": "node scripts/check-board-assets.mjs"
+    "board:shadows": "bash bake-board-assets.sh --shadows",
+    "board:seams": "node scripts/bake-shadow-seams.mjs",
+    "board:review": "node scripts/review-shadow-assets.mjs",
+    "check:board": "node scripts/check-board-assets.mjs",
+    "check:shadows": "node scripts/check-shadow-assets.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"

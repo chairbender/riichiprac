@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "name": "2.5D Task 4 — board background, bucketed blank tile bodies and the face atlas",
-  "status": "Task 4 of 2_5d_implementation_plan.md, on the Task 3 runtime layout. Writes only the static 2D assets the Task 5/6 compositor reconstructs the table from: one empty-board render, exactly one perspective blank body per bucket the layout emitted, and one flat 37-face atlas. The blanks carry no external drop shadows; Task 4A owns the mat shadows and the crevice seam masks, so nothing baked here has to be stripped again.",
+  "name": "2.5D Task 4 / 4A — board background, bucketed blank bodies, the face atlas, and the decoupled shadow assets",
+  "status": "Tasks 4 and 4A of 2_5d_implementation_plan.md, on the Task 3 runtime layout. Writes the static 2D assets the Task 5/6 compositor reconstructs the table from: one empty-board render, exactly one perspective blank body per bucket the layout emitted, one flat 37-face atlas (Task 4), plus the per-bucket cast mat shadows, the wall-stack contact decal and the four normalized crevice masks (Task 4A). The blanks carry no external drop shadows: the shadow assets are separate sprites the runtime draws from the live board state, so nothing baked into a body has to be stripped again.",
   "blender": {
     "requiredVersion": "4.5.9"
   },
@@ -42,6 +42,59 @@
     "rows": 7,
     "order": "34 standard faces (1m-9m, 1p-9p, 1s-9s, 1z-7z) then the three red fives (5mr, 5pr, 5sr, with the task's 0m/0p/0s aliases), row-major. The order and the cell rects are the stable contract Task 4B's carved bake and Task 5's flat compositor both reference; append new faces after the reds, never re-sort the existing 37.",
     "note": "Flat orthographic glyphs on transparent cells, rasterised by the same pinned resvg configuration as faces.json: one 288 x 384 master per face, the upstream symbol-only SVG's uniform 0.96 scale and 300 x 400 canvas margins, red fills recoloured with faces-spec.json's paint pair. No perspective, no body shading, and no per-bucket variants. 6 x 7 cells holds the 37 faces in the same 6-column arrangement as the Task 4B relief atlas; the empty cells stay fully transparent."
+  },
+  "shadows": {
+    "dir": "../../frontend/public/table/shadows",
+    "manifest": "../../frontend/public/table/shadows.json",
+    "matSamples": 160,
+    "stackSamples": 160,
+    "renderMarginPx": 128,
+    "noiseFloor": 5,
+    "paddingPx": 2,
+    "matPlane": {
+      "sizeUnits": 30.0,
+      "zUnits": 0.0,
+      "hex": "#8a8a8a",
+      "roughness": 0.92,
+      "note": "A 30-unit neutral plane at the mat's z (0) is the only geometry besides the one caster: the mat, rim, floor, other tiles and the rig's hand-shadow helpers are hidden, so the recorded darkening is the tile's own. It is a plain diffuse plane, not Blender's shadow-catcher pass, because the bake needs an interpretable alpha it can measure (the ratio of lit to shadowed luma) rather than a special-case render output."
+    },
+    "note": "Task 4A: one cast shadow per sprite bucket plus the wall-stack contact decal. alpha = 1 - shadowedLuma/litLuma, published as black ink so source-over reproduces a multiply. A wall bucket's representative is a top-tier tile, so its shadow is measured from the same body dropped onto z = 0 and is drawn at the stack's bottom-tier anchor; layer 1 never draws a mat shadow (its occlusion of the tile under it is the stack decal). noiseFloor is 5/255: below 2 % the ratio is the two renders' residual difference (bounce light and the denoiser), not shadow, and a 2 % multiplier is invisible on the felt. --bake needs Blender 4.5.9; --check does not.",
+    "crevices": {
+      "dir": "../../frontend/public/table/shadows",
+      "manifest": "../../frontend/public/table/ao_seams.json",
+      "size": 512,
+      "edges": [
+        "left",
+        "right",
+        "top",
+        "bottom"
+      ],
+      "peakAlpha": 0.35,
+      "fadeFractionOfAxis": {
+        "left": 0.1,
+        "right": 0.1,
+        "top": 0.075,
+        "bottom": 0.075
+      },
+      "profile": "raised-cosine",
+      "note": "The four inter-tile bevel-crevice masks, authored in normalized face UV (0..1 square) so one mask maps onto any bucket's faceQuad. Grayscale black ink with the AO in alpha, written by scripts/bake-shadow-seams.mjs with no Blender. The profile is a raised cosine from peakAlpha at the outer bevel edge to 0 at the fade width: no hard cut, no banding. The fade is set per axis so the physical band is the bevel's own width on all four edges (0.10 of the 21 mm width along u, 0.075 of the 28 mm height along v = the same 0.10 of tile width)."
+    },
+    "checks": {
+      "minMatPeakAlpha": 0.2,
+      "minMatSupportPx": 400,
+      "minMatPenumbraPx": 2,
+      "minMatPenumbraSides": 2,
+      "minStackPeakAlpha": 0.05,
+      "minStackSupportPx": 200,
+      "seamPeakAlphaTolerance": 0.02,
+      "seamFadeFractionOfTileWidth": [
+        0.08,
+        0.12
+      ],
+      "seamFadeMonotonicTolerance": 0.004,
+      "seamEdgeSymmetryTolerance": 0.01,
+      "note": "Task 4A's acceptance in numbers: every mat shadow has a real darkening core, a support area big enough to be a cast shadow and a penumbra outside the body footprint on at least two sides; the wall decal has a contact core; each seam mask peaks at about 35% black on the outer edge, falls monotonically to zero within 8-12% of the tile width, and is constant along its own edge."
+    }
   },
   "checks": {
     "maxBlankSprites": 20,

@@ -117,6 +117,13 @@ Steps:
 4. Generate bevel crevice AO overlays (`ao_seam_left.png`, `ao_seam_right.png`, `ao_seam_top.png`, `ao_seam_bottom.png`) authored in normalized UV space ([0,1] x [0,1]): the narrow occlusion that forms in the beveled valley when another tile sits flush against that edge.
 5. Acceptance: blank sprites have crisp edges and zero external halo; every bucket has a matching shadow sprite at the same pivot; seam masks fade from about 35% black at the outer bevel edge to 0% within 8% to 12% of the tile width.
 
+**Landed (2026-11-18, task 261117-0041).** The delivered set and its contract are recorded in `tools/render/README.md` (§"Task 4A"). Two decisions came from the bake's own measurements rather than the letter of the steps above:
+
+* **A wall bucket's mat shadow is grounded.** The representatives of `wall_horiz_center`, `wall_horiz_left`, `wall_horiz_right` and `wall_left_side` are *top-tier* tiles, and the rig's key light is nearly overhead (az 315 deg, el 55 deg, 22 units up), so a shadow rendered at that pose is a floating tile's shadow: the felt under a raised tile is barely occluded (measured peak alpha 0.05, against 1.00 for a grounded tile). The bake drops the same body onto `z = 0`, asserts the drop equals the spec's tier step, and publishes the shadow at the stack's **bottom-tier** anchor; the gate proves the shadow anchor differs from the blank's top-tier anchor. Consequence for Task 6A: pass 1 draws one mat shadow per wall *stack*, at `layer_0`; `layer_1` gets none, and its occlusion of the tile below is the stack decal.
+* **The wall-stack decal is per seat.** `shadows.json`'s `wallStack.seatAgreement` compares the four seats in frame space and the measured worst-case alpha difference is 1.0: a wall run's tiles face a different way, so both the projected footprint and the contact band differ. Four decals ship as `shadow_wall_stack_<seat>.png` and each is drawn at its stack's `layer_0` anchor; the gate fails if a future change makes the seats agree (one shared `shadow_wall_stack.png` would be valid then).
+* The crevice masks measure a 9.6 %-of-tile-width fade on all four edges (acceptance 8-12 %), authored per axis (0.10 of width along u, 0.075 of height along v) so the physical band matches the 1.54 mm bevel on both axes.
+* Signed off by the user on 2026-11-18 after reviewing `tools/render/build/review/shadows/task4a-contact-sheet.png`, including the wall-stack crevice band.
+
 ## Task 4B: Bake Orthographic Carved Relief Maps from 3D Tile Faces
 
 Objective: generate physically accurate normal, depth, cavity ambient occlusion and enamel paint masks for all 34 tiles plus red fives, using an orthographic bake from true 3D carved geometry.
