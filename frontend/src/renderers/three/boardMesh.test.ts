@@ -236,6 +236,25 @@ describe('board instances', () => {
         },
       ]),
     ).toThrow(/non-finite matrix/);
+    expect(() =>
+      packBoardInstances([{ ...instances[0], contact: 64 }]),
+    ).toThrow(/outside the six-edge range/);
+    expect(() =>
+      packBoardInstances([{ ...instances[0], contact: 0.5 }]),
+    ).toThrow(/outside the six-edge range/);
+  });
+
+  it('packs each tile\u2019s six-bit contact mask for the crevice shader (3D-20)', () => {
+    const packed = packBoardInstances(instances);
+    expect(packed.contacts).toHaveLength(instances.length);
+    instances.forEach((_instance, index) => {
+      expect(packed.contacts[index]).toBe(layout.tiles[index].contact);
+    });
+    // The fixture must exercise both sides of the feature: tiles with a
+    // neighbour on every lateral edge, and tiles with nothing against them.
+    expect(packed.contacts.some((mask) => mask === 0)).toBe(true);
+    expect(packed.contacts.some((mask) => (mask & 0b11) === 0b11)).toBe(true);
+    expect(packed.contacts.every((mask) => mask >= 0 && mask <= 63)).toBe(true);
   });
 });
 

@@ -237,6 +237,7 @@ describe('RendererHost lifecycle', () => {
       debug: 'height',
       perfHud: true,
       reducedMotion: true,
+      antialias: true,
     });
   });
 

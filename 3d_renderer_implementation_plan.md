@@ -470,9 +470,15 @@ match, so no flip is applied to the row and the tangent basis (`x` right,
 - `outputColorSpace = SRGBColorSpace`, `toneMapping = NoToneMapping`. The 2.5D
   shells were baked through AgX; the 3D view is not required to match them
   pixel-for-pixel, only to be a plausible sibling. Matching is a user call.
-- Context: `antialias: false`, `alpha: false`, `powerPreference:
-  'high-performance'`, `preserveDrawingBuffer: false`. At an 8.3 MP backing
-  store, 4× MSAA is a fill-rate and memory cost with nothing to buy.
+- Context: `alpha: false`, `powerPreference: 'high-performance'`,
+  `preserveDrawingBuffer: false`. **MSAA is on above the `compat` tier** since
+  3D-20 (see §3D-20's "Landed" record), which reverses this section's original
+  `antialias: false`: the committed 0.055-unit bevel and the 0.0107-unit groove
+  are 1-4 px at the reference solve, so without it every silhouette, bevel and
+  groove edge was a hard step. The 3D-20 measurement is the justification (the
+  hand's outer silhouette's largest one-pixel luma step falls 48 % at 1920 x 1080
+  with MSAA on), and the cost is buffers only (+174 MB at the 8.29 MP cap) since
+  MSAA does not multiply the per-pixel POM march.
 
 ### 2.7 Interaction and accessibility
 
@@ -515,6 +521,13 @@ expressed as `min(devicePixelRatio, 2)` **and** an area limit:
 | high (desktop) | ≤ 8.29 MP | 12 | 3 | 2.0 | 60 fps (16.7 ms) |
 | balanced | ≤ 4.67 MP | 8 | 2 | 1.5 | 60 fps |
 | compat (mobile / weak) | ≤ 2.07 MP | 0 (normal + AO only) | 0 | 1.0 | 30 fps floor (33 ms) |
+
+**MSAA (3D-20).** `high` and `balanced` ask for a 4x context; `compat` does not.
+The tiers above are *resolved* (resolved-buffer) areas; the sample buffers they
+imply at the cap are 4 x (colour 4 B + depth 3 B) = 232 MB against 58 MB, i.e.
++174 MB — buffers, not fill: the fragment shader (and so the POM march) still
+runs once per pixel. `capabilities.backingStoreBytes(pixels, antialias)` states
+the numbers and a unit test pins them.
 
 Draw calls: **4 in steady state** (tiles, contact shadows, riichi sticks, felt)
 and a hard ceiling of **12** including debug. Instances: one tile mesh with
@@ -1950,6 +1963,76 @@ this plan does not duplicate a spec that is still being refined. The plan-level
 constraints bind: no 2.5D-pipeline diff, `drawCalls ≤ 4` in the default scene,
 `measure()` reporting intact, `check-3d-layout.mjs` green, and AGENTS.md §6 (a
 numeric probe or the user's verdict, never an agent's look).
+
+**Landed 2026-11-19 (task 261118-2243).** The unit found the cause, fixed it in
+the tile shader and turned on MSAA; the visual sign-off is still the user's.
+
+*What the white line actually was — measured, not assumed.*
+`frontend/scripts/check-3d-seams.mjs` renders the fixture board in headless
+Chrome (SwiftShader WebGL2; the numbers are driver-independent) and reads a
+`readPixels` scanline across four known grooves: the human hand row, the human's
+nearest pond row, the near wall's front wall, and one wall stack's tier line.
+Every seam reports the **colour** of its brightest groove pixel, which is what
+attributes the cause:
+
+| seam | brightest groove pixel (before) | verdict |
+| --- | --- | --- |
+| hand row (13-tile row, 0.0107 u groove) | rgb 239,232,226 → luma 233 | tile ivory bevel |
+| pond row (0.0071 u groove) | rgb 243,237,232 → luma 238 | tile ivory bevel |
+| wall front (0.0107 u groove) | rgb 214,208,201 → luma 209 | tile ivory side wall |
+| wall tier line | rgb 19,39,129 → luma 41 | the blue backing |
+
+The felt (green, `#1a5038`) and the scene's clear colour (`#0b1116`) appear in
+**none** of them, at any of the three sizes the gate measures (1920 x 1080,
+1366 x 768, 820 x 1180 at DPR 2). So the camera is not seeing *through* the
+groove, and there is no sub-pixel gap: the seams still measure 0.0107 units (a
+row groove) and 0.0071 (the pond's) to 1e-9, and their bodies never intersect
+(the layout gate is unchanged). What shows in the groove is the two tiles' own
+**bevels and side walls, fully lit**: the 3D bevel renders at the brightness of
+the plate it frames (pond: 235 against a 241 face), because the 2.5D shells bake
+that bevel's shading and the 3D chain does not. Measured at 1920 x 1080 the
+groove's core was at face brightness — hand row 185.2 against 237.8, pond row
+200.0 against 241.0, wall front 176.5 against 195.7, i.e. a 13-luma *bright* band
+— and the 0.0107-unit groove projects to 0.6-0.8 px (sub-pixel), so a lit surface
+inside it reads as a one-pixel line instead of a groove. MSAA was absent, so that
+line had nothing to blend it: the hand's silhouette showed a 163.7-luma one-pixel
+step at 1920.
+
+*The fix.* `frontend/src/renderers/three/contact.ts` derives a six-bit contact
+mask per tile (which of the six body edges touch another tile, six bits because a
+wall's two tiers touch along local Z), attached to every `BoardTile` and packed
+into a new `aContact` instance attribute. The carved-face shader darkens exactly
+those edges with the approved 2.5D recipe, evaluated analytically in the tile's
+own frame: near-black at the crease (apparent 0.85 — no light reaches a 0.3 mm
+slot), 0.40 apparent at the plateau edge (the mask's 0.21 over the shell's baked
+bevel shading), fading to 0 over the mask's own 9.6 %-of-width band (2.0 mm)
+inside the plate, and applied to the *final* colour so a specular line cannot
+survive it. Open edges keep their lit bevel, as the 2.5D rule requires. The
+alphas are sRGB-composited values converted to linear light with `(1 - a)^2.2`.
+
+*MSAA.* `capabilities.antiAliasFor(tier)` now asks for a 4x context above the
+`compat` tier (off at `compat`), which **reverses plan §2.6's original
+`antialias: false`**. The cost is buffers, not shader work: MSAA runs the
+fragment shader once per pixel, so the 12-step POM march is not multiplied, and
+at the 8.29 MP cap the backing store goes from 58 MB (colour 33.2 + depth 24.9)
+to 232 MB (132.6 + 99.5), i.e. +174 MB, which is why `compat` keeps it off.
+
+*After.* The same four seams at 1920 x 1080 (MSAA on): hand row contrast
+145.3 / depth 154.8, pond row 124.8 / 135.4, wall front 109.5 / 129.0, wall tier
+86.7 / 87.1 — every groove's core now 19-62 luma against 106-198-luma faces, and
+no groove pixel brighter than the faces it separates. Aliasing on the human hand's
+outer silhouette, as the largest one-pixel luma step, MSAA off → on: 237.1 → 124.0
+(1920), 188.9 → 166.8 (1366), 177.1 → 151.6 (portrait).
+
+*Gate.* `node frontend/scripts/check-3d-seams.mjs` (or `npm run seams:check` in
+`frontend/`) prints all of it and requires **9/9** variants to meet their
+expected verdict: at each of three sizes the pre-3D-20 body (crevice off) must
+*fail* the seam rule — that is what makes the numbers evidence rather than a
+claim — and both crevice-on variants must pass, with the MSAA-on run at least
+10 % smoother on the silhouette. It needs Chrome/Chromium on `PATH`. The
+in-page probe is `scripts/seam-probe.html` (`?aa=`, `?crevice=`, `?debug=`,
+`?png=`), which mounts the real `TableScene`; `TableScene.seamReport()` is the
+read-back. `drawCalls` stays 4 and `measure()` is unchanged.
 
 ---
 

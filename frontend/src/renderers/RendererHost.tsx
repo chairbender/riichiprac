@@ -21,7 +21,7 @@
 
 import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { probeCapabilities } from './capabilities';
+import { antiAliasFor, probeCapabilities } from './capabilities';
 import type { DebugMode, HeroReport, QualityTier, TableRenderer, TableSnapshot } from './contract';
 import {
   BOARD_FAILED_EVENT,
@@ -409,6 +409,8 @@ export function RendererHost({
           debug,
           perfHud,
           reducedMotion,
+          // 3D-20: MSAA above the compat tier; see `capabilities.MSAA_SAMPLES`.
+          antialias: antiAliasFor(resolvedTier),
         });
         rendererRef.current = renderer;
         renderer.syncState(snapshotRef.current);

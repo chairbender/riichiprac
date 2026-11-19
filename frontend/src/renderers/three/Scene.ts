@@ -59,6 +59,7 @@ import type {
   QualityTier,
   RendererOptions,
   RendererStats,
+  SeamReport,
   TableRenderer,
   TableSnapshot,
   TileFaceId,
@@ -85,6 +86,8 @@ import { loadReliefAssets } from './reliefAssets';
 import type { ReliefAssets } from './reliefAssets';
 import { createReliefTextureFactory } from './reliefTextures';
 import type { ReliefGpuTexture } from './reliefTextures';
+import { edgeScan, readEdge, readSeam, seamRasters } from './seamProbe';
+import type { SeamPixelSource } from './seamProbe';
 import { createShadowLayer, shadowInstances } from './shadows';
 import type { ShadowLayer } from './shadows';
 import { createStickMesh } from './sticks';
@@ -220,7 +223,7 @@ export class TableScene implements TableRenderer {
     this.canvas = canvas;
 
     const context = canvas.getContext('webgl2', {
-      antialias: false,
+      antialias: options.antialias,
       alpha: false,
       depth: true,
       stencil: false,
@@ -232,11 +235,13 @@ export class TableScene implements TableRenderer {
     }
 
     // three's parameter is typed for WebGL1; a WebGL2 context is what it wants
-    // and what decision D2 requires.
+    // and what decision D2 requires. 3D-20: `antialias` follows the resolved
+    // option, and the buffers genuinely carry it (the seam gate reads
+    // `getContextAttributes().antialias` back rather than trusting this line).
     this.renderer = new WebGLRenderer({
       canvas,
       context: context as unknown as WebGLRenderingContext,
-      antialias: false,
+      antialias: options.antialias,
       alpha: false,
     });
     this.renderer.outputColorSpace = SRGBColorSpace;
@@ -333,6 +338,19 @@ export class TableScene implements TableRenderer {
     this.requestFrame();
   }
 
+  /**
+   * 3D-20's before/after switch for the seam handoff: `1` is the committed
+   * crevice profile, `0` leaves the tile body exactly as it was before it.
+   * Debug-only: the app always draws the committed profile;
+   * `scripts/seam-probe.ts` drives this to measure the defect and the fix from
+   * one build.
+   */
+  setCreviceScale(scale: number): void {
+    this.hero?.material.setCreviceScale(scale);
+    this.board?.material.setCreviceScale(scale);
+    this.requestFrame();
+  }
+
   /** No interactive tiles exist before 3D-08. */
   hitRects(): readonly HitRect[] {
     return [];
@@ -403,6 +421,65 @@ export class TableScene implements TableRenderer {
       probes,
       allProbesPass: allProbesPass(probes),
       pomOff,
+    };
+  }
+
+  /**
+   * The seam probe (3D-20): read a scanline across four known inter-tile
+   * grooves and report the numbers the white-seam defect is made of.
+   *
+   * Re-draws first (`preserveDrawingBuffer` is false), then for each seam reads
+   * the samples `seamProbe.ts` projected and reduces them to a contrast and a
+   * depth. Nothing here decides whether the table "looks right"; it prints
+   * whether any groove pixel is brighter than the face beside it, which is the
+   * defect, and what colour the brightest one is, which is the cause.
+   *
+   * Returns null before the board is mounted (or in the hero view, which draws
+   * no seams).
+   */
+  seamReport(): SeamReport | null {
+    if (!this.board || this.disposed) return null;
+    this.draw();
+    const gl = this.renderer.getContext();
+    const size = this.renderer.getDrawingBufferSize(new Vector2());
+    const attributes = gl.getContextAttributes();
+    const antialias = attributes ? attributes.antialias !== false : false;
+
+    const source: SeamPixelSource = {
+      width: size.x,
+      height: size.y,
+      read(x, y, width, height) {
+        const pixels = new Uint8Array(width * height * 4);
+        // `readPixels` is bottom-up; the probe's samples are y-down, so read
+        // the flipped block and flip it back here.
+        gl.readPixels(x, size.y - (y + height), width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        const flipped = new Uint8Array(pixels.length);
+        const rowBytes = width * 4;
+        for (let row = 0; row < height; row += 1) {
+          flipped.set(
+            pixels.subarray((height - 1 - row) * rowBytes, (height - row) * rowBytes),
+            row * rowBytes,
+          );
+        }
+        return flipped;
+      },
+    };
+
+    const rasters = this.layout
+      ? seamRasters(this.layout, this.frame, size.x, size.y)
+      : [];
+    const seams = rasters.map((raster) => readSeam(source, raster));
+    const scan = this.layout ? edgeScan(this.layout, this.frame, size.x, size.y) : null;
+    const edge = scan ? readEdge(source, scan) : null;
+    return {
+      antialias,
+      widthPx: size.x,
+      heightPx: size.y,
+      drawCalls: this.renderer.info.render.calls,
+      creviceScale: this.board.material.creviceScale(),
+      seams,
+      allSeamsPass: seams.length > 0 && seams.every((seam) => seam.pass),
+      edge,
     };
   }
 
@@ -632,6 +709,9 @@ export class TableScene implements TableRenderer {
           highlighted: false,
           dimmed: false,
         }),
+        // The hero view shows four isolated tiles: nothing touches, so no
+        // crevice darkening (3D-20).
+        contact: 0,
         face: instance.slot.face,
       })),
       material,

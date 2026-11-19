@@ -176,6 +176,15 @@ export interface RendererOptions {
   readonly debug: DebugMode | null;
   readonly perfHud: boolean;
   readonly reducedMotion: boolean;
+  /**
+   * Whether the WebGL2 context is created with 4× MSAA (3D-20).
+   *
+   * Resolved by `capabilities.antiAliasFor(tier)`: on above the `compat` tier,
+   * off at `compat`. Plan §2.6 originally committed `antialias: false`; 3D-20
+   * measured the bevel/plateau edges and reversed that for the higher tiers —
+   * see the plan's §2.6 note and the seam gate's numbers.
+   */
+  readonly antialias: boolean;
 }
 
 /** Reserved for a future live/replay source. Not called in v1. */
@@ -275,6 +284,92 @@ export interface HeroCapture {
 }
 
 /**
+ * One inter-tile seam's measured numbers (3D-20).
+ *
+ * Every field is a pixel reading reduced to a number, never an impression: the
+ * per-offset luma scanline across the groove, the adjacent face's luma, the
+ * groove's brightest sample (with its RGB, which is what attributes the cause),
+ * and the two figures the gate checks — `contrast` (does any groove pixel read
+ * brighter than the face?) and `depth` (is it still a groove?).
+ */
+export interface SeamReadingNumber {
+  /** The seam family: `hand-row`, `pond-row`, `wall-stack` or `wall-tier`. */
+  readonly id: string;
+  readonly aId: string;
+  readonly bId: string;
+  /** Pixels between the two face plateaus' edges. */
+  readonly spanPx: number;
+  /** The body-to-body separation, in tile units (0.0107 for a row groove). */
+  readonly gapUnits: number;
+  /** Median luma per sample offset, in step order (face, groove, face). */
+  readonly luma: readonly number[];
+  readonly offsetsPx: readonly number[];
+  /** The two adjacent faces' median luma, and the darker of the two. */
+  readonly faceALuma: number;
+  readonly faceBLuma: number;
+  readonly faceLuma: number;
+  /** The groove's **core** (its middle third), where the bodies meet. */
+  readonly coreMinLuma: number;
+  readonly coreMaxLuma: number;
+  readonly coreMeanLuma: number;
+  /** The groove's outer thirds: the two lit bevels. */
+  readonly rimMaxLuma: number;
+  /** Every core column's offset, luma and colour (cause attribution). */
+  readonly coreColumns: readonly {
+    readonly offsetPx: number;
+    readonly luma: number;
+    readonly rgb: readonly [number, number, number];
+  }[];
+  /** The brightest core sample's 8-bit sRGB. */
+  readonly brightestRgb: readonly [number, number, number];
+  /** What that pixel's colour is: ivory body, felt, background or other. */
+  readonly brightestClass: 'body' | 'felt' | 'background' | 'other';
+  /** `faceLuma - coreMaxLuma`: positive means the groove's core is not bright. */
+  readonly contrast: number;
+  /** `faceLuma - coreMeanLuma`. */
+  readonly depth: number;
+  readonly pass: boolean;
+  readonly detail: string | null;
+}
+
+/**
+ * One silhouette's anti-aliasing reading (3D-20).
+ *
+ * `intermediates` is the number of scanline columns whose luma lies strictly
+ * between the two surfaces: without MSAA a silhouette is a hard step and that
+ * count is 0; with 4x MSAA the partial-coverage boundary pixel puts it at 1-2.
+ * `maxStep` is the largest jump between adjacent columns, which is the edge's
+ * aliasing in luma terms.
+ */
+export interface EdgeReadingNumber {
+  readonly id: string;
+  /** Pixels from inside the face to the felt outside the silhouette. */
+  readonly spanPx: number;
+  readonly luma: readonly number[];
+  readonly offsetsPx: readonly number[];
+  readonly lightLuma: number;
+  readonly darkLuma: number;
+  readonly intermediates: number;
+  readonly maxStep: number;
+  readonly pass: boolean;
+}
+
+/** The seam probe's whole report (3D-20), as `Scene.seamReport()` returns it. */
+export interface SeamReport {
+  /** Whether the context was created with MSAA (3D-20's alias decision). */
+  readonly antialias: boolean;
+  readonly widthPx: number;
+  readonly heightPx: number;
+  readonly drawCalls: number;
+  /** The live crevice scale the frame was drawn with (1 = the committed profile). */
+  readonly creviceScale: number;
+  readonly seams: readonly SeamReadingNumber[];
+  readonly allSeamsPass: boolean;
+  /** The anti-aliasing reading on the human hand's outer silhouette, or null. */
+  readonly edge: EdgeReadingNumber | null;
+}
+
+/**
  * The hero view's ready/failed notifications, dispatched by the scene on the
  * canvas (3D-05). Strings live here so the host can listen without importing
  * the lazy three.js chunk.
@@ -317,6 +412,11 @@ export interface TableRenderer {
    * unit's user handoff. Debug-only, so it is optional on the interface.
    */
   heroCaptures?(): readonly HeroCapture[];
+  /**
+   * 3D-20's seam probe: the measured numbers of four inter-tile grooves, or
+   * null outside the board view. Debug-only, so it is optional.
+   */
+  seamReport?(): SeamReport | null;
   dispose(): void;
 }
 

@@ -74,6 +74,7 @@ import {
   TILE,
   WALL,
 } from '../layoutConstants';
+import { contactMasks } from './contact';
 
 /** A point or vector in world space, in tile units. */
 export type Vec3 = readonly [number, number, number];
@@ -127,6 +128,13 @@ export interface BoardTile {
   readonly sideways: boolean;
   readonly highlighted: boolean;
   readonly dimmed: boolean;
+  /**
+   * Which of its six body edges touch another tile (3D-20), as
+   * `contact.CONTACT_EDGE` bits. The renderer darkens only these edges, so a
+   * groove between two tiles reads as a groove while an open edge keeps its lit
+   * bevel — the 2.5D pipeline's approved crevice rule.
+   */
+  readonly contact: number;
   readonly pose: TilePose;
 }
 
@@ -415,6 +423,7 @@ function boardTile(
     sideways: tile.sideways,
     highlighted: tile.highlighted === true,
     dimmed: tile.dimmed === true,
+    contact: 0,
     pose,
   };
 }
@@ -764,11 +773,18 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
     },
   );
 
+  // 3D-20: which edges touch another tile. Derived after every tile is placed,
+  // because contact is a relation between poses, not a property of a zone.
+  const masks = contactMasks(tiles);
+  const placed: BoardTile[] = tiles.map((tile, index) =>
+    masks[index] === 0 ? tile : { ...tile, contact: masks[index] },
+  );
+
   return {
     humanSeat,
-    tiles,
-    wall,
-    foreground: tiles.filter((tile) => tile.zone !== 'wall'),
+    tiles: placed,
+    wall: placed.filter((tile) => tile.zone === 'wall'),
+    foreground: placed.filter((tile) => tile.zone !== 'wall'),
     sticks,
   };
 }

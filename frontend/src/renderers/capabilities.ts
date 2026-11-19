@@ -33,6 +33,43 @@ export const MAX_DEVICE_PIXEL_RATIO = 2;
  */
 export const BACKING_STORE_MAX_PIXELS = 8_290_000;
 
+/**
+ * The multisample count the context asks for (3D-20), and what it costs.
+ *
+ * Plan §2.6 originally committed `antialias: false` because "4× MSAA at an
+ * 8.3 MP backing store is a fill-rate and memory cost with nothing to buy".
+ * 3D-20 measured the thing it buys: the tile's committed bevel is 0.055 units
+ * (4.1 px at the reference 16:9 solve) and a groove's face plateau edges land
+ * 0.0604 units apart each side — so without MSAA every silhouette and plateau
+ * edge is a hard 1-px step and the groove is a single unblended pixel row. The
+ * cost is buffers, not shader work: MSAA runs the fragment shader once per
+ * *pixel* (per-sample coverage only), so the 12-step POM march is not
+ * multiplied. At the 8.29 MP cap that is
+ *
+ *   colour   4 B x 8.29 MP x 4 = 132.6 MB (vs 33.2 MB)
+ *   depth   3 B x 8.29 MP x 4 =  99.5 MB (vs 24.9 MB)
+ *   total                         232.1 MB (vs 58.1 MB), +174 MB
+ *
+ * which is why the `compat` tier (phones, weak GPUs) keeps `antialias: false`.
+ */
+export const MSAA_SAMPLES = 4;
+
+/** Whether a tier asks the WebGL2 context for MSAA (see {@link MSAA_SAMPLES}). */
+export function antiAliasFor(tier: QualityTier): boolean {
+  return tier !== 'compat';
+}
+
+/** The colour+depth bytes a backing store of `pixels` costs, with/without MSAA. */
+export function backingStoreBytes(
+  pixels: number,
+  antialias: boolean,
+): { readonly colour: number; readonly depth: number; readonly total: number } {
+  const samples = antialias ? MSAA_SAMPLES : 1;
+  const colour = pixels * 4 * samples;
+  const depth = pixels * 3 * samples;
+  return { colour, depth, total: colour + depth };
+}
+
 /** The query-selected debug view list, in the plan's order. */
 export const DEBUG_MODES: readonly DebugMode[] = [
   'albedo',

@@ -165,9 +165,77 @@ export const TILE_HIGHLIGHT = {
 } as const;
 
 /**
- * Debug-mode codes the shader branches on. `hero` selects a *view* (the scene
- * composition), and `pom-off` is a step count of 0, so neither has a code here;
- * `wireframe` is a material flag rather than a fragment output.
+ * The inter-tile crevice profile (3D-20).
+ *
+ * The 2.5D pipeline's approved seam is a **composite of two things**: the four
+ * crevice masks (`ao_seams.json`) — `peakAlpha` 0.35 on the outer bevel edge,
+ * fading to 0 within 9.6 % of the tile width, drawn at 50-70 % for an occupied
+ * neighbour — *and* the shell sprite's own baked bevel shading, which is why
+ * `2_5d_implementation_plan.md` Task 4A says the blank bodies "retain only
+ * subtle self-shading within each tile's own beveled edges". The mask sits on
+ * the plate and never darkens the bevel at all.
+ *
+ * The 3D chain has neither: one shared shader has no mask asset, and its bevel is
+ * **not** pre-shaded — measured through the seam gate, the pond row's bevel band
+ * renders at 235 luma against a 241 face, i.e. the bevel is as bright as the
+ * plate it frames. So one profile has to supply the mask's band *and* the baked
+ * bevel's shading, and it has to reach the crease itself: a 0.3 mm groove is
+ * sub-pixel at 1920 x 1080, so what actually shows between two touching tiles is
+ * their two side walls, fully lit until something darkens them.
+ *
+ * The profile, from the body silhouette inward:
+ *
+ *     occluded(inset) = fade(inset) x mix(plateauAlpha, creaseAlpha, crease(inset))
+ *
+ * - `creaseAlpha` 0.85 at the silhouette. At the crease the two bodies are
+ *   0.0107 units (0.3 mm) apart, so essentially no light reaches them; a real
+ *   tile pair shows a near-black line there. This is the part the shipped shells
+ *   bake into their bodies and the part the 2.5D masks never cover.
+ * - `plateauAlpha` 0.40 at the plateau edge, one bevel in — derived from the
+ *   2.5D composite: its mask's 0.21 apparent darkening over a bevel the bake has
+ *   already taken 25-30 % below the face is ~0.40 apparent.
+ * - `fadeUnits` then runs the occlusion to 0 over the mask's own
+ *   9.6 %-of-width band (2.0 mm) inside the plate edge.
+ *
+ * **Apparent vs linear.** The 2.5D composites its mask in sRGB (a canvas alpha
+ * over a baked sprite) and these alphas are apparent (sRGB) values; the shader
+ * multiplies linear light, so it converts with `gain = (1 - alpha)^2.2`, the
+ * same conversion the shell baker uses. {@link CREVICE_ALPHAS} is what a person
+ * would describe; {@link creviceGainAt} is what the shader applies at a given
+ * occlusion.
+ *
+ * Every number here is measured by `node frontend/scripts/check-3d-seams.mjs`
+ * (3D-20's before/after scanlines); the look is the user's call.
+ */
+export const CREVICE = {
+  /**
+   * The fade's length inside the plate edge, in tile units: the mask's 9.6 % of
+   * the 21 mm tile width (`ao_seams.json` `fadeFractionOfTileWidth` 0.0957).
+   */
+  fadeUnits: 0.0957 * TILE.widthUnits,
+  /** Apparent occlusion at the plateau edge (one bevel in from the silhouette). */
+  plateauAlpha: 0.4,
+  /** Apparent occlusion at the silhouette, where the two bodies almost touch. */
+  creaseAlpha: 0.85,
+  /** The exponent the apparent alphas convert to linear light with. */
+  srgbExponent: 2.2,
+} as const;
+
+/** The apparent occlusions, as the shader's uniforms receive them. */
+export const CREVICE_ALPHAS = {
+  plateau: CREVICE.plateauAlpha,
+  crease: CREVICE.creaseAlpha,
+} as const;
+
+/** The linear-light colour multiplier for one apparent occlusion. */
+export function creviceGainAt(alpha: number): number {
+  return Math.pow(1 - Math.min(1, Math.max(0, alpha)), CREVICE.srgbExponent);
+}
+
+/**
+ * The debug-mode codes the shader branches on. `hero` selects a *view* (the
+ * scene composition), and `pom-off` is a step count of 0, so neither has a code
+ * here; `wireframe` is a material flag rather than a fragment output.
  */
 export const DEBUG_MODE_CODE = {
   none: 0,
@@ -226,6 +294,13 @@ export interface TileMaterialHandle {
   /** The live displacement scale (1 = the full physical 0.55 mm groove). */
   heightScale(): number;
   setHeightScale(scale: number): void;
+  /**
+   * The live inter-tile crevice scale (3D-20): 1 is the committed profile, 0
+   * leaves the tile body exactly as it was before 3D-20. The seam probe's
+   * before/after switch; the app never calls it.
+   */
+  creviceScale(): number;
+  setCreviceScale(scale: number): void;
   setTier(tier: QualityTier): void;
   setDebug(debug: DebugMode | null): void;
   dispose(): void;
@@ -257,6 +332,15 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     uBodyBlueRoughness: { value: TILE_LIGHTING_UNIFORMS.bodyBlueRoughness },
     uBackEdgeFraction: { value: TILE_LIGHTING_UNIFORMS.backEdgeFraction },
     uThicknessUnits: { value: TILE_LIGHTING_UNIFORMS.thicknessUnits },
+    uHalfSizeUnits: {
+      value: [TILE.widthUnits / 2, TILE.heightUnits / 2, TILE.thicknessUnits / 2],
+    },
+    uCreviceBevelUnits: { value: TILE.bevelUnits },
+    uCreviceFadeUnits: { value: CREVICE.fadeUnits },
+    uCrevicePlateauAlpha: { value: CREVICE_ALPHAS.plateau },
+    uCreviceCreaseAlpha: { value: CREVICE_ALPHAS.crease },
+    uCreviceExponent: { value: CREVICE.srgbExponent },
+    uCreviceScale: { value: 1 },
     uCoatFace: { value: TILE_LIGHTING_UNIFORMS.coatFace },
     uCoatBack: { value: TILE_LIGHTING_UNIFORMS.coatBack },
     uCoatRoughness: { value: TILE_LIGHTING_UNIFORMS.coatRoughness },
@@ -305,6 +389,11 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     setHeightScale(scale: number) {
       const value = Number.isFinite(scale) ? scale : POM_HEIGHT_SCALE;
       uniforms.uHeightScale.value = Math.min(1, Math.max(0, value));
+    },
+    creviceScale: () => uniforms.uCreviceScale.value as number,
+    setCreviceScale(scale: number) {
+      const value = Number.isFinite(scale) ? scale : 1;
+      uniforms.uCreviceScale.value = Math.min(1, Math.max(0, value));
     },
     setTier(next: QualityTier) {
       tier = next;
