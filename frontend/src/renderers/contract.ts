@@ -4,7 +4,7 @@
  * This module is the only coupling between the app's serialized Rust state, the
  * snapshot adapter and the renderer, and it owns the 3D chain's face
  * vocabulary. It deliberately does **not** import anything from
- * `frontend/src/table/*`: the parallel 2.5D pipeline owns its own face ids, and
+ * `frontend/src/table/*`: the retired 2.5D pipeline owned its own face ids, and
  * the two chains must not be able to break each other by editing a type. The
  * relief manifest's own `faces` keys are the runtime cross-check (3D-03): every
  * id below must resolve to a baked cell, and a manifest that disagrees is a

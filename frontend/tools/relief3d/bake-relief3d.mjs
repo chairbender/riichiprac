@@ -16,9 +16,9 @@
  * it must stay at the uncarved surface and read as a raised island. `1m` has no
  * white, which is why treating the alpha as the carve mask worked there and
  * turned `1p` into one recessed disc. The rule is the 2.5D chain's own published
- * one (`tools/render/decal-spec.json`: `whiteFillUncarved` with
- * `whiteFillThreshold` 0.9): a pixel is bare tile when every channel is at least
- * 90 % white. Keeping the two chains on the same threshold is what makes the 3D
+ * one (the retired 2.5D decal spec's `whiteFillUncarved` with
+ * `whiteFillThreshold` 0.9, in git history): a pixel is bare tile when every
+ * channel is at least 90 % white. Keeping the two chains on the same threshold is what makes the 3D
  * islands and the decal islands identical.
  *
  * Inputs are the committed flat glyph masters (`frontend/public/table/faces/`,
@@ -60,7 +60,7 @@ const frontendDir = resolve(scriptDir, '../..');
 const tableDir = join(frontendDir, 'public/table');
 const relief3dDir = join(tableDir, 'relief3d');
 
-/** The decal's carve parameters (`tools/render/decal-spec.json`), in units. */
+/** The approved decal carve parameters (retired 2.5D spec, in git history), in units. */
 const CARVE = {
   /** `depthFractionOfThickness` x 16.5 mm = 0.495 mm. */
   depthMm: 0.03 * 16.5,
@@ -82,7 +82,7 @@ const CARVE = {
 };
 
 /**
- * The 2.5D chain's published white-island rule (`decal-spec.json`'s
+ * The 2.5D chain's published white-island rule (its decal spec's
  * `whiteFillThreshold`): a pixel whose every channel is at least this fraction
  * white is the bare tile showing through the artwork, not white enamel.
  */
@@ -555,9 +555,9 @@ async function bake() {
     source: {
       glyphs: 'frontend/public/table/faces/<id>.png (committed flat masters, 300 x 400, public domain)',
       albedo: 'sampled from the committed glyph masters; the relief3d alpha drops the artwork white (whiteFillThreshold 0.9) so it stays uncarved',
-      geometry: 'tools/render/decal-spec.json carve block (the approved 2.5D engraving)',
+      geometry: 'the approved 2.5D decal carve (retired spec; constants in this file)',
       generator: 'frontend/tools/relief3d/bake-relief3d.mjs',
-      note: 'Nothing under tools/render is written; the 2.5D pipeline is read for its published carve numbers only.',
+      note: 'The committed glyph masters under frontend/public/table/faces are the only input; the retired 2.5D pipeline is not read or written.',
     },
     coordinateSpace:
       'Cell top-left is the plate top-left, y down. Tangent normal x right, y down, z out. Height alpha is 1 on the uncarved face and 0 at the engraving floor.',

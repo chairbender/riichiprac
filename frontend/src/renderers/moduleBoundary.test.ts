@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
  * Structural guards for the 3D chain's boundaries (3D-01 acceptance):
  *
  * - the chain owns its face vocabulary and never imports `frontend/src/table/*`
- *   (the parallel 2.5D pipeline);
+ *   (the 2.5D pipeline, removed 2026-11-19);
  * - three.js stays behind the lazy `import('./three')` (3D-02), so no 3D byte
  *   can reach the entry chunk before a user asks for the view; and
  * - the snapshot adapter and the shared contracts carry no DOM and no renderer
@@ -34,7 +34,7 @@ function source(file: (typeof FILES)[number]): string {
 }
 
 describe('3D renderer module boundaries', () => {
-  it('never imports the 2.5D table pipeline or its face vocabulary', () => {
+  it('never imports the retired 2.5D table pipeline or its face vocabulary', () => {
     for (const file of FILES) {
       const text = source(file);
       expect(text, file).not.toMatch(/from\s+['"][^'"]*\/table\//);

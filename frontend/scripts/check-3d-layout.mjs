@@ -27,19 +27,13 @@
  *    at every supported aspect, the hand's face-to-view angle is within the
  *    25° gate, and its long axis stays readable at the reference aspect.
  *
- * `--reference` is an optional local run: it also compares the constants with
- * `tools/render/table-reference-spec.json` and prints both values. It never
- * changes the exit code, because the constants are 3D-owned (plan §9).
+ * The constants are 3D-owned (plan §9); the 2.5D whole-table spec they were
+ * first compared against was retired in task 261119-1637 and is in git history.
  */
 
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const FRONTEND_ROOT = fileURLToPath(new URL('..', import.meta.url));
-const REFERENCE_SPEC = fileURLToPath(
-  new URL('../../tools/render/table-reference-spec.json', import.meta.url),
-);
-const WITH_REFERENCE = process.argv.includes('--reference');
 
 const failures = [];
 
@@ -720,11 +714,6 @@ async function main() {
   );
   console.log();
 
-  /* --------------------------- reference ----------------------------- */
-  if (WITH_REFERENCE) {
-    runReferenceComparison(C);
-  }
-
   console.log();
   if (failures.length) {
     console.log(`FAILED ${failures.length} invariant(s):`);
@@ -733,119 +722,6 @@ async function main() {
     return;
   }
   console.log('all 3D layout invariants pass');
-}
-
-/* -------------------------------------------------------------------------- */
-/* Optional local comparison with the 2.5D calibration spec                   */
-/* -------------------------------------------------------------------------- */
-
-function deepMerge(target, source) {
-  for (const [key, value] of Object.entries(source ?? {})) {
-    if (
-      value &&
-      typeof value === 'object' &&
-      !Array.isArray(value) &&
-      target[key] &&
-      typeof target[key] === 'object' &&
-      !Array.isArray(target[key])
-    ) {
-      deepMerge(target[key], value);
-    } else {
-      target[key] = value;
-    }
-  }
-  return target;
-}
-
-/** Flatten a `rig.variants` extends chain, so v13's hand tilt resolves to v2's. */
-function resolvedVariant(spec, name) {
-  const chain = [];
-  let current = name;
-  while (current && spec.rig.variants[current]) {
-    chain.unshift(spec.rig.variants[current]);
-    current = spec.rig.variants[current].extends;
-  }
-  const merged = {};
-  for (const entry of chain) deepMerge(merged, entry);
-  return merged;
-}
-
-function valueAt(object, path) {
-  return path
-    .split('.')
-    .reduce((value, key) => (value == null ? undefined : value[key]), object);
-}
-
-function runReferenceComparison(C) {
-  console.log('\nreference comparison (optional, not a gate)');
-  let spec;
-  try {
-    spec = JSON.parse(readFileSync(REFERENCE_SPEC, 'utf8'));
-  } catch (error) {
-    console.log(`  could not read the reference spec: ${error.message}`);
-    return;
-  }
-  const variantName = spec.rig.defaultVariant;
-  const variant = resolvedVariant(spec, variantName);
-  console.log(`  compared with ${variantName} (the rig\u2019s default variant)`);
-
-  const comparisons = [
-    ['mat size', C.TABLE.matSizeUnits, 'table.playingMat.sizeUnits', spec],
-    ['compass well', C.TABLE.compassWellUnits, 'table.compassWell.halfUnits', spec, (value) => value * 2],
-    ['wall radius', C.WALL.radiusUnits, 'table.wall.radiusUnits', spec],
-    ['wall stacks', C.WALL.stacksPerRun, 'table.wall.stacksPerRun', spec],
-    ['wall tiers', C.WALL.tiers, 'table.wall.tiers', spec],
-    ['wall stack pitch', C.WALL.stackPitchUnits, 'table.wall.stackPitchUnits', spec],
-    ['wall tier step', C.WALL.tierStepUnits, 'table.wall.tierStepUnits', spec],
-    ['wall draw-end slot', C.WALL.drawEndSlot, 'table.wall.drawEndSlot', spec],
-    ['pond columns', C.POND.columns, 'table.pond.columns', spec],
-    ['pond rows', C.POND.rows, 'table.pond.rows', spec],
-    ['pond column pitch', C.POND.columnPitchUnits, 'table.pond.columnPitchUnits', spec],
-    ['pond row pitch', C.POND.rowPitchUnits, 'table.pond.rowPitchUnits', spec],
-    ['pond centre offset', C.POND.columnCentreOffsetUnits, 'table.pond.columnCentreOffsetUnits', spec],
-    ['overflow starts at column', C.POND.columns, 'table.pond.overflowColumns', spec],
-    ['hand count', C.HAND.concealedCount, 'table.hand.count', spec],
-    ['hand pitch', C.HAND.pitchUnits, 'table.hand.pitchUnits', spec],
-    ['hand draw offset', C.HAND.drawOffsetUnits, 'table.hand.drawnOffsetUnits', spec],
-    ['hand draw gap', C.HAND.drawGapUnits, 'table.hand.drawnGapUnits', spec],
-    ['hand back radius', C.HAND.backRadiusUnits, 'table.hand.backRadiusUnits', spec],
-    ['hand recline (rig v13)', C.HAND.reclineDeg, 'table.hand.tiltDeg', variant],
-    ['meld row start', C.MELD.rowStartUnits, 'table.meld.startXUnits', spec],
-    ['meld row radius', C.MELD.rowRadiusUnits, 'table.meld.rowRadiusUnits', spec],
-    ['meld slots', C.MELD.slots, 'table.meld.slots', spec],
-    ['meld upright width', C.MELD.uprightPitchUnits, 'table.meld.uprightWidthUnits', spec],
-    ['meld called width', C.MELD.sidewaysPitchUnits, 'table.meld.calledWidthUnits', spec],
-    ['camera lens', C.CAMERA.lensMm, 'rig.camera.lensMm', spec],
-    ['camera sensor width', C.CAMERA.sensorWidthMm, 'rig.camera.sensorWidthMm', spec],
-    ['camera pitch', C.CAMERA.pitchDeg, 'rig.camera.elevationDeg', spec],
-    ['camera distance', C.CAMERA.distanceUnits, 'rig.camera.distanceUnits', spec],
-    ['camera shift Y', C.CAMERA.shiftY, 'rig.camera.shiftY', spec],
-    ['camera clip start', C.CAMERA.clipStartUnits, 'rig.camera.clipStart', spec],
-    ['camera clip end', C.CAMERA.clipEndUnits, 'rig.camera.clipEnd', spec],
-    ['camera target height', C.CAMERA.targetUnits[1], 'rig.camera.target.2', spec],
-  ];
-
-  let differences = 0;
-  for (const [label, actual, path, source, transform] of comparisons) {
-    const raw = valueAt(source, path);
-    if (raw === undefined) {
-      console.log(`  ${label.padEnd(28, '.')} 3D ${actual}  reference (missing ${path})`);
-      differences += 1;
-      continue;
-    }
-    const expected = transform ? transform(raw) : raw;
-    const same =
-      typeof expected === 'number' && typeof actual === 'number'
-        ? Math.abs(expected - actual) <= Math.max(1e-6, Math.abs(expected) * 1e-6)
-        : expected === actual;
-    if (!same) differences += 1;
-    console.log(
-      `  ${label.padEnd(28, '.')} 3D ${formatValue(actual).padEnd(16)} reference ${formatValue(expected).padEnd(16)} ${same ? 'match' : 'DIFF'}`,
-    );
-  }
-  console.log(
-    `  ${differences === 0 ? 'every compared constant matches' : `${differences} value(s) differ (informational; the 3D chain owns them)`}`,
-  );
 }
 
 main().catch((error) => {

@@ -23,9 +23,9 @@
  *   `dispose`). That keeps the bridge testable in Node with no GPU and keeps
  *   the relief contract independent of renderer internals.
  * - **No 2.5D import.** Face ids come from `../contract`; the manifest's own
- *   `faces` keys are the runtime cross-check, so a 2.5D rebake either matches
- *   the pin or degrades to the neutral cell. It cannot break the 3D view
- *   silently, and it cannot make the 3D view depend on 2.5D code.
+ *   `faces` keys are the runtime cross-check, so a glyph-master re-bake either
+ *   matches the pin or degrades to the neutral cell. It cannot break the 3D
+ *   view silently, and it cannot make the 3D view depend on 2.5D code.
  *
  * Pinning is by byte length *and* SHA-256 of the PNGs. The pins in
  * {@link PINNED_RELIEF_ATLASES} are copied from the committed manifest; the

@@ -11,8 +11,8 @@
  * raster has a vignette baked into screen space and must not be wrapped onto a
  * 3D plane).
  *
- * The noise is generated in code rather than read from `felt.png` so the plane
- * tiles seamlessly and the 3D view keeps D11's "no new committed runtime
+ * The noise is generated in code rather than loaded from a baked felt raster so
+ * the plane tiles seamlessly and the view keeps D11's "no new committed runtime
  * assets". It is a pure function of pixel and seed, so a unit test can compare
  * two runs byte for byte; {@link createFelt} is the only part that needs a
  * canvas, and it runs in the lazy three.js chunk.
