@@ -287,14 +287,19 @@
 
 .renderer-3d-compass-seat--right {
   grid-area: 2 / 3 / 3 / 4;
+  /* The opponents' scores sit a little further out; the player's (bottom) does
+     not move. (User, 2026-11-19.) */
+  transform: translateX(0.5em);
 }
 
 .renderer-3d-compass-seat--top {
   grid-area: 1 / 2 / 2 / 3;
+  transform: translateY(-0.5em);
 }
 
 .renderer-3d-compass-seat--left {
   grid-area: 2 / 1 / 3 / 2;
+  transform: translateX(-0.5em);
 }
 
 /*

@@ -1705,7 +1705,10 @@ out' and then painted on … use the same approach we used with the tiles."
   (~1.21 out). The earlier revision had pushed the top/bottom score rows out to
   the plate edge to make room for the full-size bar, which put them over the
   discards; that is reverted, so the rows are centred in their thirds again and
-  the scores have a 0.46-unit margin to the plate's edge. The layout gate checks
+  the scores have a 0.46-unit margin to the plate's edge. One further user note
+  (2026-11-19) puts the **three opponents' scores** a little further out
+  (`translateX/translateY` of 0.5 em on the top/left/right seat groups) while
+  the human's bottom row stays where it is. The layout gate checks
   stick-to-stick clearance as well as tile clearance.
 - **No DOM stick icon.** The user asked for the 3D model alone, so the 3D
   compass's corner row is only the grey wind and the score; the corner's
