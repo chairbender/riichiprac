@@ -408,17 +408,15 @@ pub(super) fn build(category: &str) -> Result<GameState, String> {
     // river.
     let mut hand = vec![plan.answer, plan.trap];
     while hand.len() < HAND_SIZE {
-        let Some(tile) = pick_filler(&deck, &state, &threats, &hand, plan.answer, &excluded)?
-        else {
-            return Err("no dangerous filler tile is left".to_string());
-        };
+        let tile = pick_filler(&deck, &state, &threats, &hand, plan.answer, &excluded)
+            .ok_or_else(|| "no dangerous filler tile is left".to_string())?;
         state.players[0].hand = hand.iter().map(ToString::to_string).collect();
         deck.take(tile)?;
         hand.push(tile);
     }
     state.players[0].hand = hand.iter().map(ToString::to_string).collect();
 
-    let draw = pick_filler(&deck, &state, &threats, &hand, plan.answer, &excluded)?
+    let draw = pick_filler(&deck, &state, &threats, &hand, plan.answer, &excluded)
         .ok_or_else(|| "no dangerous draw tile is left".to_string())?;
     deck.take(draw)?;
     state.players[0].draw = Some(draw.to_string());
@@ -801,7 +799,7 @@ fn pick_filler(
     hand: &[Tile],
     answer: Tile,
     excluded: &[Tile],
-) -> Result<Option<Tile>, String> {
+) -> Option<Tile> {
     let mut pool: Vec<Tile> = ALL_TILES
         .iter()
         .copied()
@@ -810,12 +808,8 @@ fn pick_filler(
         .collect();
     shuffle(&mut pool);
 
-    for tile in pool {
-        if filler_is_legal(state, threats, hand, answer, tile) {
-            return Ok(Some(tile));
-        }
-    }
-    Ok(None)
+    pool.into_iter()
+        .find(|tile| filler_is_legal(state, threats, hand, answer, *tile))
 }
 
 /// True when adding `tile` to `hand` leaves exactly one certain-safe tile, the
