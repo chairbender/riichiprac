@@ -286,8 +286,16 @@ export function TableCompass({ snapshot, rect }: TableCompassProps) {
                 aria-hidden="true"
                 focusable="false"
               />
-              <span className="renderer-3d-compass-score">
-                {seat.score.toLocaleString('en-US')}
+              <span
+                className="renderer-3d-compass-score"
+                data-score={seat.score}
+              >
+                <span className="renderer-3d-compass-score-lead">
+                  {seat.scoreText.lead}
+                </span>
+                <span className="renderer-3d-compass-score-tail">
+                  {seat.scoreText.tail}
+                </span>
               </span>
               {seat.riichi && <RiichiStick className="renderer-3d-compass-stick" />}
             </div>

@@ -11,6 +11,11 @@
  * the centre is "Round East 1, 60 tiles remaining". `overlay.test.tsx` compares
  * the rendered labels of the two views for the same state rather than trusting
  * this file to stay in step.
+ *
+ * The *visible* score is Tenhou's split: the hundreds in full type and the last
+ * two digits small and grey (`25000` → `250` + `00`). The accessible name keeps
+ * the full score, so the presentation can change without changing what a screen
+ * reader hears.
  */
 
 import type { Seat, TableSnapshot } from './contract';
@@ -61,12 +66,44 @@ export interface CompassSeatView {
   readonly side: CompassSide;
   readonly wind: Wind;
   readonly score: number;
+  /**
+   * The score as the 3D compass prints it: the three-digit hundreds group in
+   * full size and the trailing two digits small and grey (Tenhou's display).
+   * Every legal riichi score is a multiple of 100, so the tail reads `00`.
+   */
+  readonly scoreText: CompassScoreText;
   readonly riichi: boolean;
   readonly isHuman: boolean;
   /** The corner's accessible name, exactly as `PhysicalTable` writes it. */
   readonly label: string;
   /** Clockwise turn of the whole stack, in degrees. */
   readonly rotationDeg: number;
+}
+
+/**
+ * A score split for display: `lead` is the hundreds, `tail` the last two
+ * digits. `25000` prints as `250` + `00`.
+ */
+export interface CompassScoreText {
+  readonly lead: string;
+  readonly tail: string;
+}
+
+/**
+ * Split a score the way the 3D compass shows it (Tenhou's score plate): the
+ * hundreds in full type and the remaining two digits small. The split is
+ * lossless — `lead + tail` is the score — so the visible plate and the
+ * accessible name can never disagree, and a tournament score above 99,900
+ * simply grows the lead rather than being rounded.
+ */
+export function formatCompassScore(score: number): CompassScoreText {
+  const value = Math.max(0, Math.trunc(Number.isFinite(score) ? score : 0));
+  const hundreds = Math.floor(value / 100);
+  const tail = value % 100;
+  return {
+    lead: String(hundreds).padStart(3, '0'),
+    tail: String(tail).padStart(2, '0'),
+  };
 }
 
 /** The whole compass: four corners plus the round / tiles-left centre. */
@@ -97,6 +134,7 @@ export function compassView(snapshot: TableSnapshot): CompassView {
       side,
       wind: seatState.wind,
       score,
+      scoreText: formatCompassScore(score),
       riichi: seatState.riichi,
       isHuman: seatState.seat === snapshot.humanSeat,
       label: `${seatState.wind} wind, ${score} points${

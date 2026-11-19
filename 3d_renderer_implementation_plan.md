@@ -491,7 +491,12 @@ The canvas is an image. Everything a user can do or must hear is DOM:
 - The compass (four seats: wind symbol, score, riichi marker; centre: round and
   tiles left; honba stays in the existing stage status line) is a DOM overlay
   with the same group/role/label structure as `PhysicalTable`'s compass, and a
-  drift test compares the accessible names.
+  drift test compares the accessible names. Its **square** is real 3D table
+  furniture laid on the felt (`three/compassPlate.ts`, one draw) so it obeys the
+  camera; only its numbers and glyphs are DOM, superimposed in screen space and
+  therefore never foreshortened. The visible score is Tenhou's split plate (the
+  hundreds large, the trailing two digits small and grey) while the accessible
+  name keeps the full score.
 - Hover/focus lifts the tile in 3D (bounded, reduced-motion aware) and never
   moves the button.
 - Tile faces, rivers, melds and walls are decorative and not individually
@@ -530,9 +535,10 @@ imply at the cap are 4 x (colour 4 B + depth 3 B) = 232 MB against 58 MB, i.e.
 runs once per pixel. `capabilities.backingStoreBytes(pixels, antialias)` states
 the numbers and a unit test pins them.
 
-Draw calls: **4 in steady state** (tiles, contact shadows, riichi sticks, felt)
-and a hard ceiling of **12** including debug. Instances: one tile mesh with
-capacity **320**. Triangles ≤ 200 k (320 × ≤ 600 tris + environment).
+Draw calls: **5 in steady state** (tiles, contact shadows, riichi sticks, the
+physical compass plate, felt) and a hard ceiling of **12** including debug.
+Instances: one tile mesh with capacity **320**. Triangles ≤ 200 k (320 × ≤ 600
+tris + environment).
 
 The instance count is worth stating because the starting proposal assumed 136:
 the wall alone is 4 × 17 × 2 = 136 tiles, and it is decorative but drawn full
@@ -1381,7 +1387,8 @@ and one fixture change (`boardFixture` flags the newest discard its
 
 *Draw shape.* The whole board is one `InstancedMesh` (capacity 320, count live),
 the contact shadows one instanced quad layer, the sticks one instanced box layer,
-and the felt one plane: **4 draw calls**, invariant to tile count. The fixture
+and the felt one plane: **4 draw calls**, invariant to tile count. (3D-09 added
+the physical compass plate as a fifth; see §2.8 and its own record.) The fixture
 board is 252 tiles / 203 grounded shadows; the widest board the layout gate
 builds is 280 tiles, so the capacity is a malformed-snapshot guard, not a
 budget. `boardMesh.test.ts` fails on > 320 instances or a non-finite matrix
@@ -1568,18 +1575,38 @@ accessible marker on that seat.
 
 **Gate:** frontend gate.
 
-**As landed (3D-09, 2026-11-19).** Files: new `renderers/compassOverlay.ts`
-(pure compass model and box math), `renderers/overlay.tsx` (`TableCompass`
-beside the unchanged hand overlay), `renderers/RendererHost.tsx` (reads and
-clears the projected well, mounts the compass whenever the scene is ready and
-not in the hero debug view), `renderers/RendererHost.css` (the compass layer),
-`renderers/contract.ts` (`CompassRect`, optional `TableRenderer.compassRect()`),
-`renderers/three/hitTest.ts` (`compassWellRect` + `compassWellCorners`),
-`renderers/three/Scene.ts` (`compassRect()` on the same solved frame),
+**As landed (3D-09, 2026-11-19; revised the same day after user review).**
+Files: new `renderers/compassOverlay.ts` (pure compass model and box math) and
+`renderers/three/compassPlate.ts` (the physical square), `renderers/overlay.tsx`
+(`TableCompass` beside the unchanged hand overlay), `renderers/RendererHost.tsx`
+(reads and clears the projected well, mounts the compass whenever the scene is
+ready and not in the hero debug view), `renderers/RendererHost.css` (the
+screen-space number layer), `renderers/contract.ts` (`CompassRect`, optional
+`TableRenderer.compassRect()`), `renderers/three/hitTest.ts`
+(`compassWellRect` + `compassWellCorners`), `renderers/three/Scene.ts`
+(`compassRect()` on the same solved frame, and the plate in `buildBoard`),
 `renderers/three/{boardLayout,boardFixture,sticks}.ts` and
 `layoutConstants.ts` (per-seat sticks), `scripts/check-3d-layout.mjs`, and the
-tests `compassOverlay.test.ts`, `overlay.test.tsx`, `RendererHost.test.tsx`,
+tests `compassOverlay.test.ts`, `three/compassPlate.test.ts`,
+`overlay.test.tsx`, `RendererHost.test.tsx`, `three/drawCalls.test.ts`,
 `boardLayout.test.ts`, `sticks.test.ts` and `layoutConstants.test.ts`.
+
+*The square is 3D, the numbers are not.* User review (2026-11-19) rejected the
+first take, where the panel was a DOM box with a background: "the square needs
+to be an actual physical square that sits on the table, not something that
+floats over the 3d scene. The numbers / text themselves SHOULD be superimposed
+over the 3d scene, so they don't have perspective distortion, but the square
+itself should." The plate is therefore one real mesh on the felt: a rounded
+(0.28-unit corners), bevelled, 4 × 4-unit slab 0.08 units (2.24 mm) proud at the
+compass well, extruded from a `Shape` in core three with the 2.5D panel's dark
+face (`#151b23`), and it foreshortens with the camera like the felt and the
+ponds. The DOM layer lost its background, border and radius, and is now only
+the numbers, wind glyphs and riichi markers, positioned in the frame as before
+(an inscribed square of the well's projected rectangle, `MIN_COMPASS_PX`
+floor), so nothing in the text is skewed. The plate is a fifth steady-state
+draw (§2.8), asserted by `drawCalls.test.ts`; `three/compassPlate.test.ts` pins
+its footprint, height, one-mesh cost and that no tile on a full board can meet
+it.
 
 *Anchor.* The compass adds no second camera: `compassWellRect` projects the
 committed 4-unit well's four corners through the same `frameForAspect` frame
@@ -1598,11 +1625,15 @@ the square also stays inside the well's rectangle.
 *Labels and structure.* `compassOverlay.ts` derives each corner from the
 snapshot using the human-anchored turn order the plan view uses, and
 `overlay.test.tsx` renders `PhysicalTable` and `TableCompass` for one state and
-compares the accessible names **in DOM order** — including the side group names,
-the visible score text and the round/tiles-left string — rather than restating
-them. The corner's accessible name keeps `PhysicalTable`'s raw integer score
-("South wind, 26000 points, riichi") while the visible score is grouped
-("26,000"), which the drift test caught. The corner stack turns with its seat
+compares the accessible names **in DOM order** — including the side group names
+and the round/tiles-left string — rather than restating them. The corner's
+accessible name keeps `PhysicalTable`'s raw integer score ("South wind, 26000
+points, riichi") while the visible plate uses Tenhou's split: the hundreds at
+1.3 em and the trailing two digits at 0.6 em in grey (`25000` → `250` + `00`),
+which is lossless and gives the digits room without shrinking them. The drift
+test compares the plates' **values** (the scene's `data-score` against the plan's
+rendered digits) and asserts each split recombines to its score, so the two
+presentations cannot disagree. The corner stack turns with its seat
 (`SIDE_ROTATION`'s 0/270/180/90), and the wind glyph, score and `RiichiStick`
 are the same components the 2D compass uses.
 
@@ -1621,9 +1652,11 @@ felt and the hand buttons stay reachable. It renders whether or not a hand
 handler is supplied, and is removed while the scene is loading, unsupported,
 failed or in the hero debug view.
 
-**Visual sign-off:** not claimed here (AGENTS.md §6). The compass, its type size
-and its panel over the felt are handed to the user with 3D-15's whole-board
-check.
+**Visual sign-off:** the first pass was reviewed by the user on 2026-11-19 and
+the two changes above follow that review (physical square, Tenhou score plate).
+The revised look still needs the user's verdict — the plate's colour and
+thickness, the split's proportions, and the compass's readability at 16:9 and on
+a phone — which is handed over with 3D-15's whole-board check (AGENTS.md §6).
 
 ---
 

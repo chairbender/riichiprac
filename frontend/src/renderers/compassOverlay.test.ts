@@ -20,6 +20,7 @@ import {
   compassBox,
   compassFontPx,
   compassView,
+  formatCompassScore,
 } from './compassOverlay';
 import type { TableSnapshot } from './contract';
 
@@ -82,6 +83,22 @@ describe('compass model', () => {
     expect(view.round).toBe('South 3');
     expect(view.tilesRemaining).toBe(42);
     expect(view.label).toBe('Round South 3, 42 tiles remaining');
+    // Tenhou's split plate, lossless: lead + tail is the score.
+    expect(
+      view.seats.map((seat) => `${seat.scoreText.lead}${seat.scoreText.tail}`),
+    ).toEqual(['25000', '26000', '27000', '28000']);
+    expect(view.seats.map((seat) => seat.scoreText.lead)).toEqual([
+      '250',
+      '260',
+      '270',
+      '280',
+    ]);
+    expect(view.seats.map((seat) => seat.scoreText.tail)).toEqual([
+      '00',
+      '00',
+      '00',
+      '00',
+    ]);
     expect(COMPASS_SIDE_LABELS).toEqual({
       bottom: 'your seat, at the bottom',
       right: 'right side, shimocha',
@@ -97,6 +114,19 @@ describe('compass model', () => {
     expect(view.seats.filter((seat) => seat.riichi).map((seat) => seat.seat)).toEqual([
       1, 2,
     ]);
+  });
+
+  it('splits a score into large hundreds and a small trailing pair', () => {
+    expect(formatCompassScore(25000)).toEqual({ lead: '250', tail: '00' });
+    expect(formatCompassScore(12300)).toEqual({ lead: '123', tail: '00' });
+    expect(formatCompassScore(500)).toEqual({ lead: '005', tail: '00' });
+    expect(formatCompassScore(0)).toEqual({ lead: '000', tail: '00' });
+    // Not a legal riichi score, but the split must stay lossless for any input.
+    expect(formatCompassScore(12345)).toEqual({ lead: '123', tail: '45' });
+    // Above 99,900 the lead grows instead of the score being rounded away.
+    expect(formatCompassScore(103000)).toEqual({ lead: '1030', tail: '00' });
+    expect(formatCompassScore(-100)).toEqual({ lead: '000', tail: '00' });
+    expect(formatCompassScore(Number.NaN)).toEqual({ lead: '000', tail: '00' });
   });
 
   it('sizes the DOM square from the well, centred on it', () => {

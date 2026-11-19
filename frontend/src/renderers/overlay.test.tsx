@@ -407,7 +407,7 @@ describe('3D overlay: compass (3D-09)', () => {
     if (!planCompass) throw new Error('PhysicalTable has no compass');
     const planNames = accessibleNames(planCompass);
     const planScores = Array.from(planCompass.querySelectorAll('.compass-score')).map(
-      (element) => element.textContent,
+      (element) => (element.textContent ?? '').replace(/\D/g, ''),
     );
     const planWallText = planCompass
       .querySelector('.compass-wall')
@@ -423,11 +423,18 @@ describe('3D overlay: compass (3D-09)', () => {
 
     // A drift test, not a copy: the two views agree for the same state.
     expect(accessibleNames(sceneCompass)).toEqual(planNames);
-    expect(
-      Array.from(sceneCompass.querySelectorAll('.renderer-3d-compass-score')).map(
-        (element) => element.textContent,
-      ),
-    ).toEqual(planScores);
+    // The plate prints `250` + small `00`; the value is still the same score,
+    // and the accessible name above already carries it in full.
+    const sceneScores = Array.from(
+      sceneCompass.querySelectorAll<HTMLElement>('.renderer-3d-compass-score'),
+    );
+    expect(sceneScores.map((element) => element.dataset.score)).toEqual(planScores);
+    for (const score of sceneScores) {
+      const lead = score.querySelector('.renderer-3d-compass-score-lead')?.textContent;
+      const tail = score.querySelector('.renderer-3d-compass-score-tail')?.textContent;
+      expect(`${lead}${tail}`).toBe(score.dataset.score);
+      expect(tail).toBe('00');
+    }
     expect(
       sceneCompass.querySelector('.renderer-3d-compass-wall')?.textContent?.replace(
         /\s+/g,

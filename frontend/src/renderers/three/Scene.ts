@@ -79,6 +79,8 @@ import {
 } from './boardMesh';
 import type { BoardInstance, BoardMeshHandle } from './boardMesh';
 import { applyFrameToCamera, frameVerticalFieldOfViewDeg } from './cameraRig';
+import { createCompassPlate } from './compassPlate';
+import type { CompassPlate } from './compassPlate';
 import { createFelt, feltSizeForFrame } from './felt';
 import type { FeltSurface } from './felt';
 import { heroInstances, heroParallaxAt, probeWorldPoint } from './hero';
@@ -158,6 +160,7 @@ interface BoardView {
   readonly tiles: BoardMeshHandle;
   readonly shadows: ShadowLayer;
   readonly sticks: StickMesh;
+  readonly plate: CompassPlate;
 }
 
 /** The macro capture's square edge, in pixels. */
@@ -170,20 +173,23 @@ const HERO_CAPTURE_FILL = 0.72;
 const HERO_CAPTURE_FRAME_UNITS = 1.15;
 
 /**
- * The default debug-off scene's draw-call plan (3D-07, §2.8).
+ * The default debug-off scene's draw-call plan (3D-07, §2.8; 3D-09 adds the
+ * compass plate).
  *
- * Four draws, regardless of the snapshot: the felt plane, the contact-shadow
- * quads (one instanced layer), the whole tile board (one instanced mesh) and the
- * riichi sticks (one instanced layer). The board's lights cast no shadow maps, so
- * there is no extra depth pass. `measure().drawCalls` reports what the renderer
- * actually issued; the gate test builds the three board layers headlessly,
- * counts their meshes, and checks this plan against the 4-call budget.
+ * Five draws, regardless of the snapshot: the felt plane, the contact-shadow
+ * quads (one instanced layer), the whole tile board (one instanced mesh), the
+ * riichi sticks (one instanced layer) and the physical compass plate. The
+ * board's lights cast no shadow maps, so there is no extra depth pass.
+ * `measure().drawCalls` reports what the renderer actually issued; the gate test
+ * builds the board layers headlessly, counts their meshes, and checks this plan
+ * against the 5-call budget.
  */
 export const SCENE_DRAW_CALLS = {
   felt: 1,
   shadows: 1,
   tiles: 1,
   sticks: 1,
+  compassPlate: 1,
 } as const;
 
 /** How many draw calls the default scene plans for. */
@@ -885,7 +891,11 @@ export class TableScene implements TableRenderer {
     );
     const shadows = createShadowLayer(layout ? shadowInstances(layout) : []);
     const sticks = createStickMesh(layout?.sticks ?? []);
+    // The compass square is table furniture (3D-09): real geometry in
+    // perspective, with only its numbers as screen-space DOM over it.
+    const plate = createCompassPlate();
 
+    this.scene.add(plate.mesh);
     this.scene.add(shadows.mesh);
     this.scene.add(tiles.mesh);
     this.scene.add(sticks.mesh);
@@ -895,7 +905,8 @@ export class TableScene implements TableRenderer {
     this.registry.add(tiles);
     this.registry.add(shadows);
     this.registry.add(sticks);
-    this.board = { assets, material, tiles, shadows, sticks };
+    this.registry.add(plate);
+    this.board = { assets, material, tiles, shadows, sticks, plate };
 
     // A snapshot that arrived before the atlases is already laid out; frame it
     // now so the camera and the felt match the board.
