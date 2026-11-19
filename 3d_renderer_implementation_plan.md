@@ -492,11 +492,13 @@ The canvas is an image. Everything a user can do or must hear is DOM:
   tiles left; honba stays in the existing stage status line) is a DOM overlay
   with the same group/role/label structure as `PhysicalTable`'s compass, and a
   drift test compares the accessible names. Its **square** is real 3D table
-  furniture laid on the felt (`three/compassPlate.ts`, one draw) so it obeys the
-  camera; only its numbers and glyphs are DOM, superimposed in screen space and
-  therefore never foreshortened. The visible score is Tenhou's split plate (the
-  hundreds large, the trailing two digits small and grey) while the accessible
-  name keeps the full score.
+  furniture laid on the felt (`three/compassPlate.ts`, one draw, sized to touch
+  the innermost discard row on all four sides) so it obeys the camera; only its
+  numbers and glyphs are DOM, superimposed in screen space and therefore never
+  foreshortened. Each seat is one row with the wind glyph greyed to the left of
+  the score; the visible score is Tenhou's split plate (the hundreds large, the
+  trailing two digits small and grey) while the accessible name keeps the full
+  score.
 - Hover/focus lifts the tile in 3D (bounded, reduced-motion aware) and never
   moves the button.
 - Tile faces, rivers, melds and walls are decorative and not individually
@@ -1583,7 +1585,7 @@ Files: new `renderers/compassOverlay.ts` (pure compass model and box math) and
 ready and not in the hero debug view), `renderers/RendererHost.css` (the
 screen-space number layer), `renderers/contract.ts` (`CompassRect`, optional
 `TableRenderer.compassRect()`), `renderers/three/hitTest.ts`
-(`compassWellRect` + `compassWellCorners`), `renderers/three/Scene.ts`
+(`compassPlateRect` + `compassPlateCorners`), `renderers/three/Scene.ts`
 (`compassRect()` on the same solved frame, and the plate in `buildBoard`),
 `renderers/three/{boardLayout,boardFixture,sticks}.ts` and
 `layoutConstants.ts` (per-seat sticks), `scripts/check-3d-layout.mjs`, and the
@@ -1597,30 +1599,36 @@ to be an actual physical square that sits on the table, not something that
 floats over the 3d scene. The numbers / text themselves SHOULD be superimposed
 over the 3d scene, so they don't have perspective distortion, but the square
 itself should." The plate is therefore one real mesh on the felt: a rounded
-(0.28-unit corners), bevelled, 4 × 4-unit slab 0.08 units (2.24 mm) proud at the
-compass well, extruded from a `Shape` in core three with the 2.5D panel's dark
-face (`#151b23`), and it foreshortens with the camera like the felt and the
-ponds. The DOM layer lost its background, border and radius, and is now only
-the numbers, wind glyphs and riichi markers, positioned in the frame as before
-(an inscribed square of the well's projected rectangle, `MIN_COMPASS_PX`
-floor), so nothing in the text is skewed. The plate is a fifth steady-state
-draw (§2.8), asserted by `drawCalls.test.ts`; `three/compassPlate.test.ts` pins
-its footprint, height, one-mesh cost and that no tile on a full board can meet
-it.
+(0.28-unit corners), bevelled slab 0.08 units (2.24 mm) proud, extruded from a
+`Shape` in core three with the 2.5D panel's dark face (`#151b23`), and it
+foreshortens with the camera like the felt and the ponds. A second user
+revision the same day widened it: "the compass should extend out so it's
+touching the top row of discards for each player (the discards are placed right
+up against it)." `COMPASS_PLATE.sizeUnits` is therefore derived, not authored —
+the innermost pond row's inner edge on all four sides, less the chamfer and a
+0.004-unit hair of felt (4.58 units square; the physical edge stops 0.004 units
+short of a discard). The DOM layer lost its background, border and radius and
+is now only the numbers, wind glyphs and riichi markers, laid over an inscribed
+square of the plate's projected rectangle (`MIN_COMPASS_PX` floor), so nothing
+in the text is skewed. The plate is a fifth steady-state draw (§2.8), asserted
+by `drawCalls.test.ts`; `three/compassPlate.test.ts` pins its footprint, height,
+touch distance, one-mesh cost and that no tile on a full board can meet it. The
+per-seat riichi sticks now stand on its top face (`COMPASS_PLATE.topUnits +
+STICK.heightUnits / 2`) instead of the felt.
 
-*Anchor.* The compass adds no second camera: `compassWellRect` projects the
-committed 4-unit well's four corners through the same `frameForAspect` frame
-`hitRects()` uses, publishes their bounding rectangle plus its centre, and the
-DOM square takes the rectangle's shorter side centred on that centre (floor
-`MIN_COMPASS_PX` = 132 px, so a stage whose well projects smaller still reads).
-Measured: 309 × 232 px well at 16:9 (1920 × 1080) → a 232 px square at font
-14.4 px; seven supported aspects plus 390 × 844 and 320 × 568 phones are all
+*Anchor.* The compass adds no second camera: `compassPlateRect` projects the
+plate's four corners through the same `frameForAspect` frame `hitRects()` uses,
+publishes their bounding rectangle plus its centre, and the DOM square takes the
+rectangle's shorter side centred on that centre (floor `MIN_COMPASS_PX` = 132 px,
+so a stage whose plate projects smaller still reads). Measured: 355.7 × 266.1 px
+plate at 16:9 (1920 × 1080) → a 266 px square at font 21.3 px (score lead 1.5 em
+= 32 px); seven supported aspects plus 390 × 844 and 320 × 568 phones are all
 asserted. At each, the compass centre is within 0.4 % of the window of the
 independently projected world origin (gate: 2 %), the projected origin lies
 inside the square, and **no hand or draw button intersects it** — the human's
-topmost button is ≥ 289 px below the compass at 16:9, 56 px at 390 × 844 (a
-68 px well, grown to the 132 px floor) and 34 px at 320 × 568. Above the floor
-the square also stays inside the well's rectangle.
+topmost button is ≥ 271 px below the compass at 16:9, 56 px at 390 × 844 (a 90 px
+plate, grown to the 132 px floor) and 34 px at 320 × 568. Above the floor the
+square also stays inside the plate's rectangle.
 
 *Labels and structure.* `compassOverlay.ts` derives each corner from the
 snapshot using the human-anchored turn order the plan view uses, and
@@ -1629,13 +1637,15 @@ compares the accessible names **in DOM order** — including the side group name
 and the round/tiles-left string — rather than restating them. The corner's
 accessible name keeps `PhysicalTable`'s raw integer score ("South wind, 26000
 points, riichi") while the visible plate uses Tenhou's split: the hundreds at
-1.3 em and the trailing two digits at 0.6 em in grey (`25000` → `250` + `00`),
-which is lossless and gives the digits room without shrinking them. The drift
+1.5 em and the trailing two digits at 0.58 em in grey (`25000` → `250` + `00`),
+which is lossless and gives the digits room without shrinking them. Under it is
+the user's second-revision layout: one **row** per seat, with the wind glyph
+greyed (42 % opacity) to the LEFT of the score and the riichi marker after it;
+the row turns with its seat (`SIDE_ROTATION`'s 0/270/180/90), and the wind glyph,
+score and `RiichiStick` are the same components the 2D compass uses. The drift
 test compares the plates' **values** (the scene's `data-score` against the plan's
 rendered digits) and asserts each split recombines to its score, so the two
-presentations cannot disagree. The corner stack turns with its seat
-(`SIDE_ROTATION`'s 0/270/180/90), and the wind glyph, score and `RiichiStick`
-are the same components the 2D compass uses.
+presentations cannot disagree.
 
 *Riichi sticks.* `layoutBoard` now draws **one 3D stick per seat whose `riichi`
 flag is true**, on that seat's own side of the well at `STICK.radiusUnits`,
@@ -1651,6 +1661,16 @@ layer is `pointer-events: none` with only its labels re-enabling them, so the
 felt and the hand buttons stay reachable. It renders whether or not a hand
 handler is supplied, and is removed while the scene is loading, unsupported,
 failed or in the hero debug view.
+
+*Previewing the sticks.* A real hand often has nobody in riichi, so a reviewer
+could not see the per-seat felt sticks at all. `?preview=sticks` (added
+2026-11-19 at the user's request, alongside `?renderer=3d`) marks every seat
+riichi in the **3D view's copy** of the snapshot only: `withPreviewRiichi` in
+`snapshot.ts` copies the snapshot and flips each seat's flag, leaving every
+other field (including the recorded riichi discard) untouched; the store, the
+2D views and the answer never see it. The query parser tests the flag and the
+adapter tests the copy. It is review-only and disappears with the rest of the
+preview chrome at 3D-15 sign-off.
 
 **Visual sign-off:** the first pass was reviewed by the user on 2026-11-19 and
 the two changes above follow that review (physical square, Tenhou score plate).

@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { POND, TABLE, TILE } from '../layoutConstants';
+import { POND, TILE } from '../layoutConstants';
 import { boardFixture } from './boardFixture';
 import { layoutBoard, orientedBox, orientedBoxesIntersect } from './boardLayout';
 import {
@@ -27,29 +27,17 @@ function meshBox(plate: ReturnType<typeof createCompassPlate>) {
 describe('the compass plate', () => {
   it('is a rounded square the size of the well, lying flat on the felt', () => {
     // The outline is centred and exactly the well in both directions.
+    const half = COMPASS_PLATE.sizeUnits / 2;
     const points = compassPlateShape().getPoints(24);
-    expect(Math.min(...points.map((point) => point.x))).toBeCloseTo(
-      -TABLE.compassWellUnits / 2,
-      9,
-    );
-    expect(Math.max(...points.map((point) => point.x))).toBeCloseTo(
-      TABLE.compassWellUnits / 2,
-      9,
-    );
-    expect(Math.min(...points.map((point) => point.y))).toBeCloseTo(
-      -TABLE.compassWellUnits / 2,
-      9,
-    );
-    expect(Math.max(...points.map((point) => point.y))).toBeCloseTo(
-      TABLE.compassWellUnits / 2,
-      9,
-    );
+    expect(Math.min(...points.map((point) => point.x))).toBeCloseTo(-half, 9);
+    expect(Math.max(...points.map((point) => point.x))).toBeCloseTo(half, 9);
+    expect(Math.min(...points.map((point) => point.y))).toBeCloseTo(-half, 9);
+    expect(Math.max(...points.map((point) => point.y))).toBeCloseTo(half, 9);
     // The corners are rounded: the outline never reaches the square corner.
     expect(
       points.some(
         (point) =>
-          Math.abs(point.x) > TABLE.compassWellUnits / 2 - 1e-9 &&
-          Math.abs(point.y) > TABLE.compassWellUnits / 2 - 1e-9,
+          Math.abs(point.x) > half - 1e-9 && Math.abs(point.y) > half - 1e-9,
       ),
     ).toBe(false);
 
@@ -65,17 +53,17 @@ describe('the compass plate', () => {
     // A real square in perspective: centred on the table's origin, no lean.
     expect(box.min.x + box.max.x).toBeCloseTo(0, 9);
     expect(box.min.z + box.max.z).toBeCloseTo(0, 9);
-    expect(box.max.x).toBeCloseTo(
-      TABLE.compassWellUnits / 2 + COMPASS_PLATE.bevelUnits,
-      6,
-    );
+    expect(box.max.x).toBeCloseTo(half + COMPASS_PLATE.bevelUnits, 6);
     expect(box.max.z).toBeCloseTo(box.max.x, 6);
 
-    // Below every tile and inside the well's clearance to the nearest pond row.
+    // Below every tile, and the physical edge touches the innermost discard row
+    // (within a hair of felt) on all four sides.
     expect(box.max.y).toBeLessThan(TILE.thicknessUnits);
-    expect(box.max.x).toBeLessThan(
-      POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2,
-    );
+    const pondInnerEdge =
+      POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
+    expect(box.max.x).toBeLessThan(pondInnerEdge);
+    expect(pondInnerEdge - box.max.x).toBeGreaterThan(0);
+    expect(pondInnerEdge - box.max.x).toBeLessThan(0.01);
     plate.dispose();
   });
 

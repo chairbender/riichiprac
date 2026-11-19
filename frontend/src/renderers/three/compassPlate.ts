@@ -8,11 +8,10 @@
  * space so they never foreshorten. The 2.5D compass panel's own dark face is
  * what this plate reproduces in 3D, so the two views still read as siblings.
  *
- * It is one mesh and one draw call: a rounded, slightly bevelled slab whose
- * footprint is exactly the 4-unit compass well, built from an extruded `Shape`
- * in core three (no addons, no new asset, no texture). Its top is 2.2 mm above
- * the felt, low enough to read as an inlay and low enough that no pond tile can
- * meet it.
+ * The plate is one mesh and one draw call: a rounded, slightly bevelled slab
+ * built from an extruded `Shape` in core three (no addons, no new asset, no
+ * texture). Its committed size lives with the layout constants because the
+ * board's sticks stand on its top face and the DOM box is sized from it.
  */
 
 import {
@@ -21,23 +20,11 @@ import {
   MeshStandardMaterial,
   Shape,
 } from 'three';
-import { TABLE } from '../layoutConstants';
+import { COMPASS_PLATE } from '../layoutConstants';
 
-/** The plate's committed numbers. */
-export const COMPASS_PLATE = {
-  /** Exactly the compass well: the square the text is laid over. */
-  sizeUnits: TABLE.compassWellUnits,
-  /** Rounded corners, so it reads as a finished panel rather than a cut slab. */
-  cornerRadiusUnits: 0.28,
-  /** 2.24 mm proud of the felt: an inlay, not a tray. */
-  thicknessUnits: 0.08,
-  /** The small chamfer on both faces. */
-  bevelUnits: 0.015,
-  /** Lacquer face: the 2.5D compass panel's colour (`#171c24`), a shade deeper. */
-  topColor: '#151b23',
-  roughness: 0.46,
-  metalness: 0,
-} as const;
+// One definition, in `layoutConstants.ts`; re-exported so the three layer and
+// its tests keep importing the plate's numbers from this module.
+export { COMPASS_PLATE };
 
 /**
  * The plate's outline as a rounded square centred on the origin, in the shape

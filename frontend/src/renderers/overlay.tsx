@@ -226,9 +226,9 @@ export interface TableCompassProps {
 }
 
 /**
- * The compass over the 3D table (3D-09): four seat groups (wind, score, riichi
- * marker) round the projected compass well, plus the round and tiles-left in
- * the middle.
+ * The compass over the 3D table (3D-09): four score rows (grey wind glyph, big
+ * Tenhou-split score and a riichi marker) around the projected physical plate,
+ * plus the round and tiles-left in the middle.
  *
  * It mirrors `PhysicalTable`'s compass structure so the two views read
  * identically to a screen reader: a "Compass" group, one side-labelled group per
@@ -276,9 +276,9 @@ export function TableCompass({ snapshot, rect }: TableCompassProps) {
                 seat.isHuman ? ' renderer-3d-compass-player--human' : ''
               }`}
               aria-label={seat.label}
-              // The stack turns with its seat, like the tiles on that edge: the
-              // wind nearest the middle, the score next, the stick closest to
-              // the player.
+              // One row in the seat's own frame: the wind glyph greyed to the
+              // left of the score, then the riichi marker. The row turns with
+              // its seat, so every player reads it upright.
               style={{ transform: `rotate(${seat.rotationDeg}deg)` }}
             >
               <WindGlyph

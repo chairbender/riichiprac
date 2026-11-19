@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { STICK as STICK_CONSTANTS } from '../layoutConstants';
+import { COMPASS_PLATE, STICK as STICK_CONSTANTS } from '../layoutConstants';
 import { boardFixture } from './boardFixture';
 import { layoutBoard, seatBasis } from './boardLayout';
 import { STICK, createStickMesh, stickTexturePixels } from './sticks';
@@ -81,8 +81,11 @@ describe('the stick layer', () => {
       expect(stick.sizeUnits[0]).toBe(STICK_CONSTANTS.lengthUnits);
       expect(stick.sizeUnits[1]).toBe(STICK_CONSTANTS.heightUnits);
       expect(stick.sizeUnits[2]).toBe(STICK_CONSTANTS.widthUnits);
-      // Lying flat on the felt: the box's bottom is at y = 0.
-      expect(stick.position[1]).toBeCloseTo(STICK_CONSTANTS.heightUnits / 2, 9);
+      // Standing on the compass plate: its bottom is the plate's top face.
+      expect(stick.position[1]).toBeCloseTo(
+        COMPASS_PLATE.topUnits + STICK_CONSTANTS.heightUnits / 2,
+        9,
+      );
     });
     layer.dispose();
   });

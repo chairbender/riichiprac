@@ -64,6 +64,7 @@ import type {
 } from '../contract';
 import {
   CAMERA,
+  COMPASS_PLATE,
   DORA,
   HAND,
   MELD,
@@ -763,7 +764,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
         seatState.seat,
         0,
         STICK.radiusUnits,
-        STICK.heightUnits / 2,
+        COMPASS_PLATE.topUnits + STICK.heightUnits / 2,
       ),
       yawDeg: seatYawDeg(seatState.seat),
       sizeUnits: [

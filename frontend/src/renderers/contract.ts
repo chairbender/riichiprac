@@ -237,13 +237,14 @@ export interface HandTileRef {
 }
 
 /**
- * The projected compass well (3D-09), in CSS pixels of the full-screen stage.
+ * The projected compass square (3D-09), in CSS pixels of the full-screen stage.
  *
- * The well is the empty square at the table's centre. `left/top/width/height`
- * are the bounding box of its four projected corners (the perspective outline
- * is a trapezoid, so a DOM box can only cover it); `centreX/centreY` is that
- * box's centre, which is where the DOM compass sits. The overlay is a picture,
- * so it is DOM, never 3D text (plan §2.7).
+ * The square is the physical plate laid on the felt, sized to touch the
+ * innermost discard row on all four sides. `left/top/width/height` are the
+ * bounding box of its four projected corners (the perspective outline is a
+ * trapezoid, so a DOM box can only cover it); `centreX/centreY` is that box's
+ * centre, which is where the DOM compass sits. The plate is a picture, so the
+ * numbers over it are DOM, never 3D text (plan §2.7).
  */
 export interface CompassRect {
   readonly left: number;

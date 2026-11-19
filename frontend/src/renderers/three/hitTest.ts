@@ -27,7 +27,7 @@
  */
 
 import type { CompassRect, HitRect } from '../contract';
-import { HAND, TABLE, TILE } from '../layoutConstants';
+import { COMPASS_PLATE, HAND, TILE } from '../layoutConstants';
 import {
   orientedBox,
   orientedBoxCorners,
@@ -293,15 +293,16 @@ export function hitRects(
 }
 
 /**
- * The compass well's four corners on the felt: a square of
- * `TABLE.compassWellUnits` centred on the table's origin (3D-06's world), at
- * floor level.
+ * The compass plate's four corners on the felt: its square footprint, centred
+ * on the table's origin (3D-06's world), at floor level.
  *
- * Exported so a test can project the well independently of the rect helper
+ * Sized from `COMPASS_PLATE`, whose edges touch the innermost pond row on all
+ * four sides, so the DOM numbers above it span the same square the user sees.
+ * Exported so a test can project the plate independently of the rect helper
  * and compare, the same way 3D-08's drift test re-projects the hand's OBBs.
  */
-export function compassWellCorners(): readonly Vec3[] {
-  const half = TABLE.compassWellUnits / 2;
+export function compassPlateCorners(): readonly Vec3[] {
+  const half = COMPASS_PLATE.sizeUnits / 2;
   return [
     [-half, 0, -half],
     [half, 0, -half],
@@ -311,15 +312,15 @@ export function compassWellCorners(): readonly Vec3[] {
 }
 
 /**
- * Project the compass well to the CSS box the DOM compass anchors to (3D-09).
+ * Project the compass plate to the CSS box the DOM compass anchors to (3D-09).
  *
  * The four corners of a perspective square form a trapezoid, so the box is
- * their bounding rectangle and the compass square sits at its centre. Like
+ * their bounding rectangle and the compass text sits at its centre. Like
  * {@link hitRects}, this is pure: the renderer owns the camera, the overlay owns
  * the DOM. A corner at or behind the camera returns null (no shipped frame puts
  * one there; skipping beats placing the compass across the screen).
  */
-export function compassWellRect(
+export function compassPlateRect(
   frame: CameraFrame,
   viewport: HitTestViewport,
 ): CompassRect | null {
@@ -329,7 +330,7 @@ export function compassWellRect(
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
-  for (const corner of compassWellCorners()) {
+  for (const corner of compassPlateCorners()) {
     if (!(projectPoint(corner, frame).depth > 0)) return null;
     const pixel = projectToPixels(
       corner,

@@ -86,7 +86,7 @@ import type { FeltSurface } from './felt';
 import { heroInstances, heroParallaxAt, probeWorldPoint } from './hero';
 import type { HeroInstance, HeroSlot } from './hero';
 import { withHoverLift } from './hover';
-import { compassWellRect, hitRects as projectHitRects } from './hitTest';
+import { compassPlateRect, hitRects as projectHitRects } from './hitTest';
 import { sceneLightSpecs } from './lighting';
 import { allProbesPass, readProbes } from './probes';
 import type { ProbePixelSource, ProbeProjector } from './probes';
@@ -383,15 +383,15 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * The projected compass well, for the DOM compass (3D-09).
+   * The projected compass plate, for the DOM compass (3D-09).
    *
    * The same solved frame and CSS stage `hitRects()` uses, so the seat groups
-   * and the round/tiles-left group sit on the rendered well and cannot drift
+   * and the round/tiles-left group sit on the rendered square and cannot drift
    * from the camera (plan §2.4/§2.7). Pure: it creates no DOM and draws nothing.
    */
   compassRect(): CompassRect | null {
     if (this.disposed || !this.layout) return null;
-    return compassWellRect(this.frame, {
+    return compassPlateRect(this.frame, {
       widthPx: this.cssWidth,
       heightPx: this.cssHeight,
     });

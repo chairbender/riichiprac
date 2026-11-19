@@ -9,10 +9,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { CAMERA } from './layoutConstants';
+import { CAMERA, COMPASS_PLATE } from './layoutConstants';
 import { boardFixture } from './three/boardFixture';
 import { frameForAspect, layoutBoard, projectToPixels } from './three/boardLayout';
-import { compassWellCorners, compassWellRect, hitRects } from './three/hitTest';
+import { compassPlateCorners, compassPlateRect, hitRects } from './three/hitTest';
 import {
   COMPASS_SIDES,
   COMPASS_SIDE_LABELS,
@@ -142,9 +142,9 @@ describe('compass model', () => {
     expect(box.left + box.width / 2).toBe(250);
     expect(box.top + box.height / 2).toBe(130);
     // The type follows the square, inside a legible pair of bounds.
-    expect(compassFontPx(box)).toBeCloseTo(180 * 0.062, 9);
-    expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(10);
-    expect(compassFontPx({ ...box, width: 2000, height: 2000 })).toBe(22);
+    expect(compassFontPx(box)).toBeCloseTo(180 * 0.08, 9);
+    expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(11);
+    expect(compassFontPx({ ...box, width: 2000, height: 2000 })).toBe(30);
 
     // A stage whose well projects below the floor keeps a legible square,
     // still centred on the well (a 390 x 844 phone's 78 x 68 well).
@@ -166,12 +166,13 @@ describe('compass model', () => {
 describe('compass projection', () => {
   const layout = layoutBoard(boardFixture());
 
-  it('projects the committed square well', () => {
-    expect(compassWellCorners()).toEqual([
-      [-2, 0, -2],
-      [2, 0, -2],
-      [2, 0, 2],
-      [-2, 0, 2],
+  it('projects the physical compass plate', () => {
+    const half = COMPASS_PLATE.sizeUnits / 2;
+    expect(compassPlateCorners()).toEqual([
+      [-half, 0, -half],
+      [half, 0, -half],
+      [half, 0, half],
+      [-half, 0, half],
     ]);
   });
 
@@ -184,7 +185,7 @@ describe('compass projection', () => {
       const { width, height } = viewport;
       const aspect = width / height;
       const frame = frameForAspect(aspect, layout);
-      const well = compassWellRect(frame, { widthPx: width, heightPx: height });
+      const well = compassPlateRect(frame, { widthPx: width, heightPx: height });
       if (!well) throw new Error(`no compass rect at ${viewport.name}`);
       const box = compassBox(well);
 
@@ -237,7 +238,7 @@ describe('compass projection', () => {
     for (const viewport of VIEWPORTS) {
       const { width, height } = viewport;
       const frame = frameForAspect(width / height, layout);
-      const well = compassWellRect(frame, { widthPx: width, heightPx: height });
+      const well = compassPlateRect(frame, { widthPx: width, heightPx: height });
       if (!well) throw new Error(`no compass rect at ${viewport.name}`);
       const box = compassBox(well);
       const right = box.left + box.width;
@@ -258,10 +259,10 @@ describe('compass projection', () => {
 
   it('is deterministic and empty before the stage has a size', () => {
     const frame = frameForAspect(16 / 9, layout);
-    expect(compassWellRect(frame, { widthPx: 0, heightPx: 1080 })).toBeNull();
-    expect(compassWellRect(frame, { widthPx: 1920, heightPx: 0 })).toBeNull();
-    expect(compassWellRect(frame, { widthPx: 1920, heightPx: 1080 })).toEqual(
-      compassWellRect(frame, { widthPx: 1920, heightPx: 1080 }),
+    expect(compassPlateRect(frame, { widthPx: 0, heightPx: 1080 })).toBeNull();
+    expect(compassPlateRect(frame, { widthPx: 1920, heightPx: 0 })).toBeNull();
+    expect(compassPlateRect(frame, { widthPx: 1920, heightPx: 1080 })).toEqual(
+      compassPlateRect(frame, { widthPx: 1920, heightPx: 1080 }),
     );
   });
 });

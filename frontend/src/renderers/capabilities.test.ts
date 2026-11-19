@@ -107,8 +107,19 @@ describe('3D feature gate', () => {
       quality: 'compat',
       debug: 'albedo',
       perf: true,
+      preview: null,
     });
     expect(parseRendererQuery('?renderer=3d&renderer=25d').renderer).toBe('3d');
+  });
+
+  it('reads the sticks preview flag, and nothing else, as a preview', () => {
+    expect(parseRendererQuery('?renderer=3d&preview=sticks').preview).toBe(
+      'sticks',
+    );
+    expect(parseRendererQuery('?preview=sticks').preview).toBe('sticks');
+    expect(parseRendererQuery('?preview=all').preview).toBeNull();
+    expect(parseRendererQuery('?preview=').preview).toBeNull();
+    expect(parseRendererQuery('').preview).toBeNull();
   });
 
   it('rejects unknown values independently instead of throwing', () => {
@@ -119,6 +130,7 @@ describe('3D feature gate', () => {
       quality: null,
       debug: null,
       perf: false,
+      preview: null,
     });
   });
 });

@@ -102,7 +102,7 @@ export function isDebugMode(value: unknown): value is DebugMode {
 }
 
 /**
- * What `?renderer=3d&quality=…&debug=…&perf` asks for.
+ * What `?renderer=3d&quality=…&debug=…&perf&preview=…` asks for.
  *
  * Every field rejects unknown values independently: `?renderer=4d` leaves
  * `renderer` null rather than enabling a different renderer, and a typo in
@@ -115,6 +115,13 @@ export interface RendererQuery {
   readonly debug: DebugMode | null;
   /** True for a bare `?perf`, `?perf=1` or `?perf=true`; every other value is off. */
   readonly perf: boolean;
+  /**
+   * A debug-only preview of a state the current hand may not contain, for
+   * visual inspection (3D-09). `sticks` marks every seat riichi so the per-seat
+   * felt sticks and compass markers can be reviewed on any hand; null is the
+   * real state. It never changes the game state or the answer.
+   */
+  readonly preview: 'sticks' | null;
 }
 
 /**
@@ -132,6 +139,7 @@ export function parseRendererQuery(search: string): RendererQuery {
   const quality = params.get('quality');
   const debug = params.get('debug');
   const perf = params.get('perf');
+  const preview = params.get('preview');
 
   return {
     renderer: renderer === '3d' ? '3d' : null,
@@ -139,6 +147,7 @@ export function parseRendererQuery(search: string): RendererQuery {
     debug: isDebugMode(debug) ? debug : null,
     perf:
       perf !== null && (perf === '' || perf === '1' || perf === 'true'),
+    preview: preview === 'sticks' ? 'sticks' : null,
   };
 }
 

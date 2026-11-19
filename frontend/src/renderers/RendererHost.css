@@ -297,27 +297,29 @@
   grid-area: 2 / 1 / 3 / 2;
 }
 
-/* One player's corner, read from the middle outwards: wind, score, stick. */
+/*
+ * One player's corner (user revision 2026-11-19): a single row with the wind
+ * glyph greyed to the LEFT of the score, then the riichi marker. The row turns
+ * with its seat, so every player reads it upright.
+ */
 .renderer-3d-compass-player {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: baseline;
   justify-content: center;
-  gap: 0.3em;
+  gap: 0.28em;
   pointer-events: auto;
 }
 
-/* The symbol alone; the filter clears the glyph's own blue and turns it white. */
+/* The symbol alone; the filter clears the glyph's own blue and turns it white,
+   and the opacity greys it back so the numbers carry the emphasis. */
 .renderer-3d-compass-wind {
   display: block;
-  width: 2.6em;
-  height: 2.6em;
+  width: 1.15em;
+  height: 1.15em;
+  transform: translateY(0.08em);
   filter: brightness(0) invert(1);
-}
-
-.renderer-3d-compass-player--human .renderer-3d-compass-wind {
-  filter: brightness(0) invert(1)
-    drop-shadow(0 0 1px rgba(165, 216, 255, 0.55));
+  opacity: 0.42;
 }
 
 /*
@@ -329,7 +331,7 @@
   display: inline-flex;
   align-items: baseline;
   color: #e7ecf3;
-  font-size: 1.3em;
+  font-size: 1.5em;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -337,9 +339,9 @@
 }
 
 .renderer-3d-compass-score-tail {
-  margin-left: 0.06em;
+  margin-left: 0.05em;
   color: #8b94a7;
-  font-size: 0.6em;
+  font-size: 0.58em;
   font-weight: 600;
   letter-spacing: 0.04em;
 }

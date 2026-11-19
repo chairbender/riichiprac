@@ -195,6 +195,8 @@ async function main() {
     ['tile body (w x h x t)', `${formatNumber(C.TILE.widthUnits)} x ${formatNumber(C.TILE.heightUnits)} x ${formatNumber(C.TILE.thicknessUnits)}`],
     ['row gap / bevel', `${formatNumber(C.TILE.gapUnits, 4)} / ${formatNumber(C.TILE.bevelUnits)}`],
     ['mat / compass well', `${C.TABLE.matSizeUnits} / ${C.TABLE.compassWellUnits}`],
+    ['compass plate size / top', `${formatNumber(C.COMPASS_PLATE.sizeUnits, 4)} / ${formatNumber(C.COMPASS_PLATE.topUnits, 4)}`],
+    ['plate edge to innermost discard', formatNumber((C.POND.rowRadiiUnits[C.POND.rows - 1] - C.TILE.heightUnits / 2) - (C.COMPASS_PLATE.sizeUnits / 2 + C.COMPASS_PLATE.bevelUnits), 4)],
     ['wall runs x stacks x tiers', `${C.WALL.runs} x ${C.WALL.stacksPerRun} x ${C.WALL.tiers}`],
     ['wall ring radius / end-run radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.endRunRadiusUnits, 6)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
     ['wall draw end (slot, tiers at seat right)', `${C.WALL.drawEndSlot}, ${C.WALL.drawEndTiers} (${C.WALL.drawEndIsSeatRight})`],
@@ -484,7 +486,12 @@ async function main() {
         declarers.some((seat) => seat.seat === stick.seat) &&
         close(radial, C.STICK.radiusUnits) &&
         close(tangential, 0) &&
-        radial - C.STICK.widthUnits / 2 > C.TABLE.compassWellUnits / 2 &&
+        // Standing on the compass plate, inside its footprint.
+        close(
+          stick.position[1] - C.STICK.heightUnits / 2,
+          C.COMPASS_PLATE.topUnits,
+        ) &&
+        radial + C.STICK.widthUnits / 2 < C.COMPASS_PLATE.sizeUnits / 2 &&
         board.tiles.every(
           (tile) => !L.orientedBoxesIntersect(box, L.orientedBox(tile.pose)),
         )

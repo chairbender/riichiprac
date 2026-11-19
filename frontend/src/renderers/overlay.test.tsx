@@ -20,7 +20,7 @@ import { TableCompass, TableOverlay } from './overlay';
 import type { TableOverlayProps } from './overlay';
 import { compassBox } from './compassOverlay';
 import { frameForAspect, layoutBoard } from './three/boardLayout';
-import { compassWellRect, hitRects } from './three/hitTest';
+import { compassPlateRect, hitRects } from './three/hitTest';
 import type { TableSnapshot } from './contract';
 import type { GameState, PlayerState } from '../types/game';
 
@@ -394,7 +394,7 @@ function accessibleNames(view: ParentNode): string[] {
 
 function compassRectFor(table: TableSnapshot) {
   const frame = frameForAspect(VIEWPORT.widthPx / VIEWPORT.heightPx, layoutBoard(table));
-  return compassWellRect(frame, VIEWPORT);
+  return compassPlateRect(frame, VIEWPORT);
 }
 
 describe('3D overlay: compass (3D-09)', () => {

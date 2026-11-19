@@ -20,7 +20,7 @@ describe('resolveTableMount', () => {
     expect(resolveTableMount('', 'topdown')).toEqual({
       kind: '2d',
       view: 'topdown',
-      query: { renderer: null, quality: null, debug: null, perf: false },
+      query: { renderer: null, quality: null, debug: null, perf: false, preview: null },
     });
     expect(resolveTableMount('', 'stacked')).toMatchObject({
       kind: '2d',
@@ -47,6 +47,19 @@ describe('resolveTableMount', () => {
     expect(mount.query.quality).toBe('balanced');
     expect(mount.query.debug).toBe('height');
     expect(mount.query.perf).toBe(true);
+  });
+
+  it('carries the sticks preview flag through the 3D mount', () => {
+    const mount = resolveTableMount(
+      '?renderer=3d&preview=sticks',
+      'stacked',
+    );
+    if (mount.kind !== 'three') throw new Error('expected a 3D mount');
+    expect(mount.query.preview).toBe('sticks');
+    expect(resolveTableMount('?renderer=3d&preview=nope', 'stacked')).toMatchObject({
+      kind: 'three',
+      query: { preview: null },
+    });
   });
 
   it('rejects an unknown tier and debug mode in the same URL', () => {

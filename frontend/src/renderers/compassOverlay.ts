@@ -170,22 +170,22 @@ export interface CompassBox {
 /**
  * The smallest compass the DOM draws.
  *
- * A stage whose well projects smaller than this (a 390 × 844 phone projects it
- * at 68 px) would put the four stacks on top of each other, so the square stops
- * shrinking here and simply overhangs the well's projected corners. It is still
- * centred on the well and still clear of the hand: at that phone size the
- * compass ends 57 px above the human's buttons. 132 px is the 2D plan's own
- * phone-scale compass (~108–120 px) with a little room for legibility.
+ * A stage whose plate projects smaller than this (a 390 × 844 phone projects it
+ * at 78 px) would put the four score rows on top of each other, so the square
+ * stops shrinking here and simply overhangs the plate's projected corners. It
+ * is still centred on the plate and still clear of the hand: at that phone size
+ * the compass ends ~56 px above the human's buttons. 132 px is the 2D plan's
+ * own phone-scale compass (~108–120 px) with a little room for legibility.
  */
 export const MIN_COMPASS_PX = 132;
 
 /**
- * The DOM compass square, centred on the projected compass well.
+ * The DOM compass square, centred on the projected plate.
  *
- * The projected well is a trapezoid (a perspective square), so its stated box is
- * a bounding rectangle. The compass is square — the same 3×3 grid as
+ * The projected plate is a trapezoid (a perspective square), so its stated box
+ * is a bounding rectangle. The compass text is square — the same 3×3 grid as
  * `PhysicalTable`'s — and takes the rectangle's **shorter** side, so it cannot
- * spill past the well on either axis, centred on the rectangle so the table's
+ * spill past the plate on either axis, centred on the rectangle so the table's
  * centre stays at the middle of the display. Below {@link MIN_COMPASS_PX} it
  * stops shrinking rather than becoming unreadable.
  */
@@ -214,10 +214,12 @@ export function compassBox(rect: {
  *
  * Every part of the display is sized in `em` from this one number, the way
  * `PhysicalTable` sizes its compass from the plan's lane width, so the whole
- * overlay grows and shrinks with the projected well instead of staying a fixed
- * stamp. The floor keeps the smallest supported stage legible; the ceiling keeps
- * a very large stage from turning the centre of the table into a billboard.
+ * overlay grows and shrinks with the projected plate instead of staying a fixed
+ * stamp. The user asked for the numbers to be bigger (2026-11-19), so this base
+ * is 8 % of the square and the score lead is 1.5 em on top of it. The floor
+ * keeps the smallest supported stage legible; the ceiling keeps a very large
+ * stage from turning the centre of the table into a billboard.
  */
 export function compassFontPx(box: CompassBox): number {
-  return Math.min(22, Math.max(10, box.width * 0.062));
+  return Math.min(30, Math.max(11, box.width * 0.08));
 }

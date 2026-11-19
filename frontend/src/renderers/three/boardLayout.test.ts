@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Seat, TableSnapshot } from '../contract';
 import {
   CAMERA,
+  COMPASS_PLATE,
   DORA,
   HAND,
   MELD,
@@ -449,7 +450,11 @@ describe('3D board layout: wall, dora and sticks', () => {
     for (const stick of board.sticks) {
       // The declarer's own side of the compass, lengthways along its edge.
       expect(stick.yawDeg).toBe(seatYawDeg(stick.seat));
-      expect(stick.position[1]).toBeCloseTo(STICK.heightUnits / 2, 9);
+      // Standing on the compass plate, not on the felt (3D-09 revision).
+      expect(stick.position[1]).toBeCloseTo(
+        COMPASS_PLATE.topUnits + STICK.heightUnits / 2,
+        9,
+      );
       const { outward, right } = seatBasis(stick.seat);
       const radial =
         stick.position[0] * outward[0] + stick.position[2] * outward[2];
@@ -457,11 +462,11 @@ describe('3D board layout: wall, dora and sticks', () => {
         stick.position[0] * right[0] + stick.position[2] * right[2];
       expect(radial).toBeCloseTo(STICK.radiusUnits, 9);
       expect(tangential).toBeCloseTo(0, 9);
-      // Between the compass well and the nearest pond row.
-      expect(radial - STICK.widthUnits / 2).toBeGreaterThan(
-        TABLE.compassWellUnits / 2,
-      );
+      // Inside the plate, whose edge touches the innermost pond row.
       expect(radial + STICK.widthUnits / 2).toBeLessThan(
+        COMPASS_PLATE.sizeUnits / 2,
+      );
+      expect(COMPASS_PLATE.sizeUnits / 2).toBeLessThan(
         POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2,
       );
 
