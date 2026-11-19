@@ -1810,13 +1810,20 @@ Two crossing 0.55 shadows therefore peak at 0.55 rather than 0.80; the review
 script measures 0.00 luma of extra darkening across an 18-tile river's 181,719
 shadowed pixels.
 
-**Adjacency is logical; the edge is geometric.** Neighbours come from the live
-cells (`row/column`, `column`, `slot/tier`, hand row slot), so no overlay is
-drawn on an open edge: the newest discard, the end of a broken wall, the
-separated drawn tile. The mask for an occupied edge is chosen through the tile's
-own plate axes, so a sideways riichi tile or an opposite seat's reversed quad
-still darkens the bevel that faces its neighbour. The wall stack's tier crevice
-is the Task 4A stack decal instead of a second AO mask.
+**Adjacency is logical; the band is the sprite's own chamfer.** Neighbours come
+from the live cells (`row/column`, `column`, `slot/tier`, hand row slot), so no
+band is drawn on an open edge: the newest discard, the end of a broken wall,
+the separated drawn tile. A band is the ring between the sprite's opaque body
+edge and its face plate — 5.4 px for a flat bucket, the 1.54 mm bevel — and it
+is composed once per (shell, side) in `seamOverlays.ts`: the `ao_seam_*` mask's
+fade sub-rect stretched across the ring's width, clipped to the sprite's own
+alpha so it cannot ink the felt even on an oblique side wall. Each joint draws
+**one** band, on the brighter of its two facing edges (measured from the sprite
+pixels), because a shaded edge has no highlight to remove: an earlier take that
+mapped the mask onto `faceQuad` on both tiles drew an ~11 px smudge across the
+painted faces, which is exactly what this avoids. The scripted gate proves it —
+on a 5-tile river, pass 3 changes 2.28 % of the panel at most 37.7 luma, with
+zero changed pixels outside a band.
 
 The rendered view (task 261118-1657) still owns the frame loop and is parked;
 until it lands, the proof renders come from `npm run shadows:review` in

@@ -19,10 +19,11 @@
  *    layer-0 anchor, then the upper body covers it. Draw a tile off the wall
  *    and the decal disappears with the tier; it is keyed off the live cells.
  * 3. **Bevel crevices** — after each body, for every occupied orthogonal
- *    neighbour, map the matching `ao_seam_*` mask onto that tile's own
- *    `faceQuad` at {@link SEAM_OPACITY} of its authored alpha. An open edge
- *    (the newest river tile, the end of a broken wall, the separated drawn
- *    tile) draws nothing, so its lit bevel stays bright.
+ *    neighbour, darken the narrow ring between that tile's sprite silhouette
+ *    and its face plate, on the one edge of the pair that is actually lit (see
+ *    `seamOverlays.ts`; the band never reaches the painted face or the felt).
+ *    An open edge — the newest river tile, the end of a broken wall, the
+ *    separated drawn tile — draws nothing, so its lit bevel stays bright.
  * 4. **Interactive elevation** — a lifted `hand_south` tile keeps its mat
  *    shadow at the resting anchor, shrunk to {@link LIFTED_SHADOW_SCALE} and
  *    faded to {@link LIFTED_SHADOW_OPACITY}, and the left/right crevices on the
@@ -60,10 +61,11 @@
  * sprites; nothing here performs a fetch, and the rendered view's asset loader
  * is the one place that owns URLs.
  */
-import type { FaceQuad, ShellsManifest, ShellStats } from './shellManifest';
-import { screenRotationOfQuad } from './shellManifest';
-import type { AoSeamSide, MatShadowRecord, AoSeamsManifest, ShadowsManifest } from './shadowManifest';
+import type { ShellsManifest, ShellStats } from './shellManifest';
+import type { AoSeamSide, MatShadowRecord, ShadowsManifest } from './shadowManifest';
 import { AO_SEAM_SIDES, matShadowBucketFor, wallSeatOf } from './shadowManifest';
+import type { SeamBand, SeamOverlay, SpriteSide } from './seamOverlays';
+import { SEAM_MIN_RING_LUMA } from './seamOverlays';
 import type { AtlasCanvas } from './TileAtlasBuilder';
 import type { LayoutZone, PlacedTile } from './zoneLayout';
 
@@ -110,12 +112,6 @@ export const HAND_LIFT_PX = HAND_LIFT_UNITS * REFERENCE_FRAME_HEIGHT;
 export const LIFTED_SHADOW_SCALE = 0.92;
 /** …and fades to this fraction of its resting darkness. */
 export const LIFTED_SHADOW_OPACITY = 0.75;
-/**
- * The AO masks are drawn at this share of their authored 35 % peak, inside the
- * 50-70 % band `ao_seams.json` asks for.
- */
-export const SEAM_OPACITY = 0.6;
-
 /** The four orthogonal neighbours of a tile, by face-local side. */
 export interface TileNeighbours {
   readonly left: number | null;
@@ -156,13 +152,11 @@ export interface StackShadowDraw {
   readonly height: number;
 }
 
-/** One crevice mask, drawn after `bodyIndex`. */
+/** One crevice band, drawn after `bodyIndex` on the given sprite edge. */
 export interface SeamDraw {
   readonly zoneIndex: number;
   readonly bodyIndex: number;
   readonly side: AoSeamSide;
-  readonly textureFile: string;
-  readonly opacity: number;
 }
 
 export interface ShadowPlan {
@@ -174,37 +168,18 @@ export interface ShadowPlan {
   readonly lifted: (LiftedTile & { readonly zoneIndex: number }) | null;
 }
 
-/** The face-local axis vectors of a shell's plate, as screen unit vectors. */
-export function faceAxes(shell: ShellStats): {
-  readonly right: readonly [number, number];
-  readonly down: readonly [number, number];
-} {
-  // `screenRotationOfQuad` is the angle that maps the glyph's own top edge onto
-  // the quad's first edge: 0 right, 90 up, 180 left, 270 down. That is the
-  // face-local +u direction in screen terms; +v is a quarter turn clockwise
-  // from it (screen y grows downward).
-  switch (screenRotationOfQuad(shell.faceQuad)) {
-    case 0:
-      return { right: [1, 0], down: [0, 1] };
-    case 90:
-      return { right: [0, -1], down: [1, 0] };
-    case 180:
-      return { right: [-1, 0], down: [0, -1] };
-    case 270:
-      return { right: [0, 1], down: [-1, 0] };
-  }
-}
-
-/** Which face-local edge a screen-space direction points at. */
-export function faceSideOf(
-  axes: { readonly right: readonly [number, number]; readonly down: readonly [number, number] },
-  dx: number,
-  dy: number,
-): AoSeamSide {
-  const alongU = dx * axes.right[0] + dy * axes.right[1];
-  const alongV = dx * axes.down[0] + dy * axes.down[1];
-  if (Math.abs(alongU) >= Math.abs(alongV)) return alongU >= 0 ? 'right' : 'left';
-  return alongV >= 0 ? 'bottom' : 'top';
+/**
+ * Which edge of a tile's *sprite* a neighbour sits against.
+ *
+ * The boards are drawn axis-aligned in sprite space: `shells.json` bakes every
+ * pose (rotation, oblique side wall, standing hand) into the texture, and the
+ * compositor only translates it. So the joint between two tiles is always on
+ * the edge the neighbour is on screen — no face-plate axis has to be unwound,
+ * and a sideways riichi tile's long edge is simply its horizontal one.
+ */
+export function screenSideOf(dx: number, dy: number): SpriteSide {
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left';
+  return dy >= 0 ? 'bottom' : 'top';
 }
 
 /** The side facing back across an edge. */
@@ -303,17 +278,17 @@ export function buildZoneAdjacency(
     if (key !== null) byKey.set(key, index);
   });
 
+  void shells;
   const result: TileNeighbours[] = zone.bodies.map(() => NO_NEIGHBOURS);
   zone.bodies.forEach((tile, index) => {
     const key = gridKey(zone, tile, shells[index]);
     if (key === null) return;
-    const axes = faceAxes(shells[index]);
     const sides: Partial<Record<AoSeamSide, number>> = {};
     for (const neighbourKey of neighbourKeys(zone, key)) {
       const neighbourIndex = byKey.get(neighbourKey);
       if (neighbourIndex === undefined || neighbourIndex === index) continue;
       const other = zone.bodies[neighbourIndex];
-      const side = faceSideOf(axes, other.gridX - tile.gridX, other.gridY - tile.gridY);
+      const side = screenSideOf(other.gridX - tile.gridX, other.gridY - tile.gridY);
       // Two cells cannot share one edge; a keep-first rule keeps the plan
       // deterministic if a layout ever reports a duplicate.
       if (sides[side] === undefined) sides[side] = neighbourIndex;
@@ -357,6 +332,13 @@ function sameBody(left: PlacedTile, right: PlacedTile): boolean {
 export interface ShadowPlanOptions {
   /** The hovered/selected hand tile, if any. */
   readonly lifted?: LiftedTile | null;
+  /**
+   * The bevel ring of one sprite edge, with the luma the tile's own pixels have
+   * there (see `SeamOverlayCache`). A joint is darkened on the brighter of its
+   * two facing edges only, so a band never lands on an already-shaded bevel and
+   * never on two sprites at once.
+   */
+  readonly seamBands: (shell: ShellStats, side: SpriteSide) => SeamBand | null;
 }
 
 /**
@@ -369,9 +351,8 @@ export interface ShadowPlanOptions {
 export function planShadows(
   manifest: ShellsManifest,
   shadows: ShadowsManifest,
-  seams: AoSeamsManifest,
   board: ShadowBoard,
-  options: ShadowPlanOptions = {},
+  options: ShadowPlanOptions,
 ): ShadowPlan {
   const adjacency = board.zones.map((placement) => buildZoneAdjacency(manifest, placement.zone));
   const requested = options.lifted ?? null;
@@ -476,20 +457,41 @@ export function planShadows(
       }
     }
 
-    // ---- pass 3: bevel crevices, one mask per occupied orthogonal neighbour
+    // ---- pass 3: bevel crevices, one band per joint on its lit edge
     zone.bodies.forEach((_tile, bodyIndex) => {
       const neighbours = adjacency[zoneIndex][bodyIndex];
-      const suppressedSides = suppressed.get(`${zoneIndex}:${bodyIndex}`);
       for (const side of AO_SEAM_SIDES) {
-        if (neighbours[side] === null) continue;
-        if (suppressedSides?.has(side)) continue;
-        seamDraws.push({
-          zoneIndex,
-          bodyIndex,
-          side,
-          textureFile: seams.seams[side].textureFile,
-          opacity: SEAM_OPACITY,
-        });
+        const otherIndex = neighbours[side];
+        if (otherIndex === null || otherIndex <= bodyIndex) continue;
+        const pairs: ReadonlyArray<readonly [number, AoSeamSide]> = [
+          [bodyIndex, side],
+          [otherIndex, oppositeSide(side)],
+        ];
+        // A lifted tile raises the crevice at both its joints: if either facing
+        // edge is suppressed the joint draws nothing, rather than falling back
+        // to the neighbour's shaded side.
+        if (
+          pairs.some(([candidateIndex, candidateSide]) =>
+            suppressed.get(`${zoneIndex}:${candidateIndex}`)?.has(candidateSide),
+          )
+        ) {
+          continue;
+        }
+        const candidates: Array<{ bodyIndex: number; side: AoSeamSide; luma: number }> = [];
+        for (const [candidateIndex, candidateSide] of pairs) {
+          const band = options.seamBands(
+            shellOf(manifest, zone.bodies[candidateIndex]),
+            candidateSide,
+          );
+          if (!band) continue;
+          candidates.push({ bodyIndex: candidateIndex, side: candidateSide, luma: band.ringLuma });
+        }
+        if (candidates.length === 0) continue;
+        // The brighter facing edge takes the joint: the other one is already in
+        // shade, and darkening both would smear the crease across two sprites.
+        const chosen = candidates.reduce((best, entry) => (entry.luma > best.luma ? entry : best));
+        if (!(chosen.luma >= SEAM_MIN_RING_LUMA)) continue;
+        seamDraws.push({ zoneIndex, bodyIndex: chosen.bodyIndex, side: chosen.side });
       }
     });
   });
@@ -626,7 +628,14 @@ export interface BoardShadowRendererOptions {
   readonly board: ShadowBoard;
   readonly manifest: ShellsManifest;
   readonly shadows: ShadowsManifest;
-  readonly seams: AoSeamsManifest;
+  /**
+   * Where the crevice bands come from: the per-(shell, side) bevel rings and
+   * their composed overlays. `SeamOverlayCache` is the shipped implementation.
+   */
+  readonly seamOverlays: {
+    bandFor(shell: ShellStats, side: SpriteSide): SeamBand | null;
+    overlayFor(shell: ShellStats, side: SpriteSide): SeamOverlay | null;
+  };
   /** Resolve one manifest-relative sprite path to a decoded image, or null. */
   readonly imageFor: (file: string) => ShadowImage | null;
   /**
@@ -635,6 +644,12 @@ export interface BoardShadowRendererOptions {
    * the penumbra crisp on a large screen.
    */
   readonly pixelRatio?: 1 | 2;
+}
+
+/** What a redraw may change; the band geometry is a property of the shells. */
+export interface LiftOptions {
+  /** The hovered/selected hand tile, if any. */
+  readonly lifted?: LiftedTile | null;
 }
 
 export interface BoardShadowStats {
@@ -692,7 +707,7 @@ export class BoardShadowRenderer {
   }
 
   /** Replace the placed board (a re-deal, a resize) and re-plan. */
-  setBoard(board: ShadowBoard, options: ShadowPlanOptions = {}): ShadowPlan {
+  setBoard(board: ShadowBoard, options: LiftOptions = {}): ShadowPlan {
     this.board = board;
     const width = Math.max(1, Math.ceil(board.width * this.pixelRatio));
     const height = Math.max(1, Math.ceil(board.height * this.pixelRatio));
@@ -718,14 +733,11 @@ export class BoardShadowRenderer {
   }
 
   /** Re-plan and repaint only the zone masks that changed. */
-  update(options: ShadowPlanOptions = {}): ShadowPlan {
-    const plan = planShadows(
-      this.options.manifest,
-      this.options.shadows,
-      this.options.seams,
-      this.board,
-      options,
-    );
+  update(options: LiftOptions = {}): ShadowPlan {
+    const plan = planShadows(this.options.manifest, this.options.shadows, this.board, {
+      ...options,
+      seamBands: (shell, side) => this.options.seamOverlays.bandFor(shell, side),
+    });
     this.plan = plan;
     const masks = zoneShadowMasks(plan, this.board);
     const live = new Set<number>();
@@ -897,7 +909,7 @@ export class BoardShadowRenderer {
     }
   }
 
-  /** Pass 3. Draw every crevice mask attached to this body. */
+  /** Pass 3. Draw every crevice band attached to this body. */
   drawCreviceSeams(ctx: ShadowContext2D, zoneIndex: number, bodyIndex: number): void {
     const plan = this.plan;
     if (!plan) return;
@@ -907,77 +919,23 @@ export class BoardShadowRenderer {
     if (!tile) return;
     const shell = this.options.manifest.shells[tile.shell];
     if (!shell) return;
-    const quad = boardQuad(placement, tile, shell.faceQuad);
     const rotation = zoneRotation(placement);
     for (const draw of plan.seams) {
       if (draw.zoneIndex !== zoneIndex || draw.bodyIndex !== bodyIndex) continue;
-      const image = this.options.imageFor(draw.textureFile);
-      if (!image) continue;
+      const overlay = this.options.seamOverlays.overlayFor(shell, draw.side);
+      if (!overlay) continue;
       withZoneRotation(ctx, rotation, () => {
-        drawMaskOnQuad(ctx, image, quad, draw.side, draw.opacity);
+        ctx.save();
+        ctx.globalAlpha = 1;
+        ctx.drawImage(
+          overlay.canvas as unknown as CanvasImageSource,
+          placement.x + tile.drawX * placement.scale,
+          placement.y + tile.drawY * placement.scale,
+          shell.texWidth * placement.scale,
+          shell.texHeight * placement.scale,
+        );
+        ctx.restore();
       });
     }
   }
-}
-
-/** A shell's face plate in board @1x px. */
-export function boardQuad(
-  placement: ShadowZonePlacement,
-  tile: PlacedTile,
-  faceQuad: FaceQuad,
-): FaceQuad {
-  const { x, y, scale } = placement;
-  const map = ([qx, qy]: readonly [number, number]): readonly [number, number] => [
-    x + (tile.drawX + qx) * scale,
-    y + (tile.drawY + qy) * scale,
-  ];
-  return [map(faceQuad[0]), map(faceQuad[1]), map(faceQuad[2]), map(faceQuad[3])];
-}
-
-/**
- * Map one square crevice mask onto a face plate.
- *
- * The masks are authored in the plate's own normalized UV: `left` carries its
- * band at `u = 0`, `right` at `u = 1`, `top` at `v = 0`, `bottom` at `v = 1`
- * (`ao_seams.json`'s `axis`/`side` records). The plate's published `faceQuad`
- * is in the same face-local order, so the whole image maps straight onto it —
- * the mapping places all four bands on their own edges and needs no rotation,
- * which is also what keeps each mask on the axis it was authored on (u fades
- * over 0.10 of the short side, v over 0.075 of the long one). The clip keeps
- * the affine approximation inside the perspective plate, exactly like the
- * atlas's decal blit.
- */
-export function drawMaskOnQuad(
-  ctx: ShadowContext2D,
-  image: ShadowImage,
-  quad: FaceQuad,
-  side: AoSeamSide,
-  opacity: number,
-): void {
-  const source = image as unknown as CanvasImageSource;
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(quad[0][0], quad[0][1]);
-  ctx.lineTo(quad[1][0], quad[1][1]);
-  ctx.lineTo(quad[2][0], quad[2][1]);
-  ctx.lineTo(quad[3][0], quad[3][1]);
-  ctx.closePath();
-  ctx.clip();
-  const widthPx = image.width;
-  const heightPx = image.height;
-  const destTL = quad[0];
-  const destTR = quad[1];
-  const destBL = quad[3];
-  const a = (destTR[0] - destTL[0]) / widthPx;
-  const b = (destTR[1] - destTL[1]) / widthPx;
-  const c = (destBL[0] - destTL[0]) / heightPx;
-  const d = (destBL[1] - destTL[1]) / heightPx;
-  // `side` selects the mask (each image already carries its band on its own
-  // edge), so the mapping is the same for all four; the parameter keeps the
-  // call site honest about which edge it is drawing.
-  void side;
-  ctx.globalAlpha = opacity;
-  ctx.setTransform(a, b, c, d, destTL[0], destTL[1]);
-  ctx.drawImage(source, 0, 0, widthPx, heightPx);
-  ctx.restore();
 }

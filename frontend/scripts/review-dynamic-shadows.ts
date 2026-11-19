@@ -26,6 +26,12 @@ import {
   zoneShadowMasks,
 } from '../src/table/boardShadows';
 import type { ShadowBoard, ShadowContext2D, ShadowImage } from '../src/table/boardShadows';
+import {
+  SEAM_BAND_MAX_PX,
+  SEAM_MIN_RING_LUMA,
+  SEAM_OPACITY,
+  SeamOverlayCache,
+} from '../src/table/seamOverlays';
 import { parseAoSeamsManifest, parseShadowsManifest } from '../src/table/shadowManifest';
 import type { ShadowsManifest } from '../src/table/shadowManifest';
 import { parseShellsManifest } from '../src/table/shellManifest';
@@ -90,6 +96,18 @@ const imageFor = (file: string): ShadowImage | null => {
 const createShadowCanvas = (width: number, height: number): AtlasCanvas =>
   createCanvas(width, height) as unknown as AtlasCanvas;
 
+/** The per-(shell, side) bevel rings and their composed band overlays. */
+const seamOverlays = new SeamOverlayCache({
+  createCanvas: createShadowCanvas,
+  seams,
+  imageFor,
+});
+const planOfBoard = (board: ShadowBoard, lifted?: { zoneId: string; bodyIndex: number } | null) =>
+  planShadows(manifest, shadows, board, {
+    lifted: lifted ?? null,
+    seamBands: (shell, side) => seamOverlays.bandFor(shell, side),
+  });
+
 type Panel = {
   readonly label: string;
   readonly note: string;
@@ -105,6 +123,8 @@ interface PanelOptions {
   readonly bodies?: boolean;
   /** Draw the pass-2 stack decal (false isolates its darkening). */
   readonly stackDecal?: boolean;
+  /** Draw the pass-3 bevel bands (false isolates their contribution). */
+  readonly crevices?: boolean;
   readonly lifted?: { zoneId: string; bodyIndex: number } | null;
   readonly label: string;
   readonly note: string;
@@ -161,7 +181,7 @@ async function composePanel(zone: LayoutZone, options: PanelOptions): Promise<Pa
     board,
     manifest,
     shadows,
-    seams,
+    seamOverlays,
     imageFor,
     pixelRatio: 1,
   });
@@ -189,7 +209,9 @@ async function composePanel(zone: LayoutZone, options: PanelOptions): Promise<Pa
       renderer.drawWallStackShadow(context, 0, index);
     }
     await drawTile(context, body.shell, body.face, PAD + body.drawX, drawY);
-    if (options.passes) renderer.drawCreviceSeams(context, 0, index);
+    if (options.passes && options.crevices !== false) {
+      renderer.drawCreviceSeams(context, 0, index);
+    }
   }
 
   const luma = (x: number, y: number): number => {
@@ -282,6 +304,12 @@ const panels = {
     label: 'B1 · wall, both tiers',
     note: 'one mat shadow per stack + the seat’s stack decal',
   }),
+  river5NoSeams: await composePanel(river5, {
+    passes: true,
+    crevices: false,
+    label: 'A3b · river of 5, bands suppressed',
+    note: 'identical except pass 3: the mat layer only',
+  }),
   wallNoDecal: await composePanel(wall, {
     passes: true,
     stackDecal: false,
@@ -297,6 +325,12 @@ const panels = {
     passes: true,
     label: 'C1 · hand at rest',
     note: 'crevices between every pair of slots',
+  }),
+  handRestNoSeams: await composePanel(hand, {
+    passes: true,
+    crevices: false,
+    label: 'C1b · hand at rest, bands suppressed',
+    note: 'identical except pass 3',
   }),
   handLifted: await composePanel(hand, {
     passes: true,
@@ -317,7 +351,7 @@ const numbers: Record<string, unknown> = {
 };
 
 function planOf(panel: Panel): ReturnType<typeof planShadows> {
-  return planShadows(manifest, shadows, seams, panel.board);
+  return planOfBoard(panel.board);
 }
 
 const river1Plan = planOf(panels.river1);
@@ -418,6 +452,29 @@ console.log(
 );
 numbers.matMerge = { comparedPixels: compared, worstDarkeningPastSingleLuma: Number(worstCompound.toFixed(3)) };
 
+// Where the crevice bands land, and how wide they are: only the chamfer, one
+// band per joint, on the lit edge of the pair.
+const flatSides = (['left', 'right', 'top', 'bottom'] as const).map((side) => {
+  const band = seamOverlays.bandFor(manifest.shells.shell_flat_upright, side);
+  return `${side}:${band ? `${band.ringLuma.toFixed(0)}luma/${Math.min(band.width, band.height).toFixed(1)}px` : 'none'}`;
+});
+const seamShape = {
+  total: planOf(panels.river5).seams.length,
+  bySide: Object.fromEntries(
+    (['left', 'right', 'top', 'bottom'] as const).map((side) => [
+      side,
+      planOf(panels.river18).seams.filter((draw) => draw.side === side).length,
+    ]),
+  ),
+  shellFlatUprightBands: flatSides,
+  bandMaxPx: SEAM_BAND_MAX_PX,
+  minRingLuma: SEAM_MIN_RING_LUMA,
+  opacity: SEAM_OPACITY,
+};
+console.log(
+  `[seams] flat_upright rings ${flatSides.join(' ')} · 18-tile river bands ${JSON.stringify(seamShape.bySide)}`,
+);
+
 // The open edge of the newest tile stays at felt luma.
 const newestTile = river5.bodies[newest];
 const outsideX = PAD + newestTile.drawX + manifest.shells[newestTile.shell].texWidth + 3;
@@ -479,6 +536,7 @@ console.log(
   `[hand] beside the lifted tile: ${creviceBrightened} px brighten, most by ` +
     `${creviceBrightest} luma at ${creviceAt.join(',')} (its bevel crease is gone)`,
 );
+numbers.seams = seamShape;
 numbers.handLift = {
   panelChanged: liftDiff.changed,
   darkestExposedLuma: Number(liftDiff.maxDrop.toFixed(2)),
@@ -486,13 +544,72 @@ numbers.handLift = {
   neighbourPixelsBrightened: creviceBrightened,
   neighbourBrightestLuma: creviceBrightest,
   seamsResting: planOf(panels.handRest).seams.length,
-  seamsLifted: planShadows(manifest, shadows, seams, panels.handLifted.board, {
-    lifted: { zoneId: 'hand-bottom', bodyIndex: HAND_LIFTED_INDEX },
+  seamsLifted: planOfBoard(panels.handLifted.board, {
+    zoneId: 'hand-bottom',
+    bodyIndex: HAND_LIFTED_INDEX,
   }).seams.length,
 };
 console.log(
   `[hand] seams: ${numbers.handLift.seamsResting} at rest, ${numbers.handLift.seamsLifted} lifted`,
 );
+
+// What pass 3 alone contributes, and whether it stays on the chamfer.
+const seamDiff = comparePanels(panels.river5NoSeams, panels.river5);
+const boardPx = (panel: Panel): number => panel.canvas.width * panel.canvas.height;
+const bandRects = planOf(panels.river5).seams.map((draw) => {
+  const tile = river5.bodies[draw.bodyIndex];
+  const shell = manifest.shells[tile.shell];
+  const band = seamOverlays.bandFor(shell, draw.side)!;
+  return {
+    left: panels.river5.board.zones[0].x + tile.drawX + band.x,
+    top: panels.river5.board.zones[0].y + tile.drawY + band.y,
+    right: panels.river5.board.zones[0].x + tile.drawX + band.x + band.width,
+    bottom: panels.river5.board.zones[0].y + tile.drawY + band.y + band.height,
+  };
+});
+const changedPixels = (before: Panel, after: Panel): Array<[number, number]> => {
+  const width = before.canvas.width;
+  const a = (before.canvas.getContext('2d') as unknown as ShadowContext2D).getImageData(0, 0, width, before.canvas.height).data;
+  const b = (after.canvas.getContext('2d') as unknown as ShadowContext2D).getImageData(0, 0, width, after.canvas.height).data;
+  const points: Array<[number, number]> = [];
+  for (let pixel = 0; pixel < a.length / 4; pixel += 1) {
+    const offset = pixel * 4;
+    if (a[offset] === b[offset] && a[offset + 1] === b[offset + 1] && a[offset + 2] === b[offset + 2]) continue;
+    points.push([pixel % width, Math.floor(pixel / width)]);
+  }
+  return points;
+};
+const seamPoints = changedPixels(panels.river5NoSeams, panels.river5);
+let outsideBands = 0;
+for (const [x, y] of seamPoints) {
+  const inside = bandRects.some(
+    (rect) => x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom,
+  );
+  if (!inside) outsideBands += 1;
+}
+console.log(
+  `[seams] pass 3 on vs off, same river: ${seamPoints.length} px change ` +
+    `(${((seamPoints.length / boardPx(panels.river5)) * 100).toFixed(2)}% of the panel), ` +
+    `darkest ${seamDiff.maxDrop.toFixed(1)} luma, ${outsideBands} px outside a bevel band`,
+);
+numbers.seams = {
+  ...seamShape,
+  changedPx: seamPoints.length,
+  changedShareOfPanel: Number(((seamPoints.length / boardPx(panels.river5)) * 100).toFixed(3)),
+  maxDarkeningLuma: Number(seamDiff.maxDrop.toFixed(2)),
+  pixelsOutsideBand: outsideBands,
+};
+
+const handSeamDiff = comparePanels(panels.handRestNoSeams, panels.handRest);
+console.log(
+  `[seams] hand at rest: ${handSeamDiff.changed} px change, darkest ${handSeamDiff.maxDrop.toFixed(1)} luma, ` +
+    `brightest ${handSeamDiff.maxRise.toFixed(1)} luma`,
+);
+numbers.handSeams = {
+  changedPx: handSeamDiff.changed,
+  maxDarkeningLuma: Number(handSeamDiff.maxDrop.toFixed(2)),
+  maxBrighteningLuma: Number(handSeamDiff.maxRise.toFixed(2)),
+};
 
 const beforeDiff = comparePanels(panels.riverBefore, panels.river5);
 console.log(
@@ -506,10 +623,10 @@ const title = 64;
 const gap = 22;
 const caption = 44;
 const panelsByRow: Panel[][] = [
-  [panels.river1, panels.river5, panels.riverBefore],
+  [panels.river1, panels.river5, panels.river5NoSeams],
   [panels.river18],
   [panels.wallFull, panels.wallNoDecal, panels.wallBroken],
-  [panels.handRest, panels.handLifted],
+  [panels.handRest, panels.handRestNoSeams, panels.handLifted],
 ];
 const sheetWidth = Math.max(
   ...panelsByRow.map((row) => row.reduce((total, panel) => total + panel.canvas.width + gap, gap)),

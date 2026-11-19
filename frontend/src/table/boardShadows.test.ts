@@ -8,15 +8,22 @@ import {
   HAND_LIFT_PX,
   LIFTED_SHADOW_OPACITY,
   LIFTED_SHADOW_SCALE,
-  SEAM_OPACITY,
   buildZoneAdjacency,
-  drawMaskOnQuad,
-  faceAxes,
-  faceSideOf,
   planShadows,
+  screenSideOf,
   zoneShadowMasks,
 } from './boardShadows';
 import type { ShadowBoard, ShadowContext2D, ShadowImage, ShadowZonePlacement } from './boardShadows';
+import {
+  SEAM_BAND_MAX_PX,
+  SEAM_BAND_MIN_PX,
+  SEAM_MIN_RING_LUMA,
+  SEAM_OPACITY,
+  SeamOverlayCache,
+  drawMaskInBand,
+  seamBandRect,
+} from './seamOverlays';
+import type { SpriteSide } from './seamOverlays';
 import { parseAoSeamsManifest, parseShadowsManifest } from './shadowManifest';
 import type { AoSeamsManifest, ShadowsManifest } from './shadowManifest';
 import { parseShellsManifest } from './shellManifest';
@@ -28,6 +35,7 @@ import {
   layoutWall,
 } from './zoneLayout';
 import type { LayoutZone, PondDiscard } from './zoneLayout';
+import type { TileFaceId } from './tiles';
 import type { AtlasCanvas } from './TileAtlasBuilder';
 
 /**
@@ -63,6 +71,17 @@ const imageFor = (file: string): ShadowImage | null => {
   }
 };
 
+const seamOverlays = new SeamOverlayCache({
+  createCanvas: createShadowCanvas,
+  seams,
+  imageFor,
+});
+const planOf = (board: ShadowBoard, lifted?: { zoneId: string; bodyIndex: number } | null) =>
+  planShadows(shells, shadows, board, {
+    lifted: lifted ?? null,
+    seamBands: (shell, side) => seamOverlays.bandFor(shell, side),
+  });
+
 function boardOf(zones: LayoutZone[], scale = 1): ShadowBoard {
   let x = 0;
   const placements: ShadowZonePlacement[] = zones.map((zone) => {
@@ -76,6 +95,12 @@ function boardOf(zones: LayoutZone[], scale = 1): ShadowBoard {
     height: Math.max(1, Math.ceil(Math.max(...zones.map((zone) => zone.height + 40)))),
   };
 }
+
+const HAND_FACES: TileFaceId[] = [
+  '1m', '2m', '3m', '4m', '5m', '6m', '7m', '8m', '9m', '1p', '2p', '3p', '4p',
+];
+const hand13 = (draw: TileFaceId | null = null): LayoutZone =>
+  layoutHand(shells, { faces: HAND_FACES, draw });
 
 const discards = (count: number): PondDiscard[] =>
   Array.from({ length: count }, (_, index) => ({ face: '1m' as const, riichi: index === 6 }));
@@ -117,7 +142,7 @@ function render(
     board,
     manifest: shells,
     shadows,
-    seams,
+    seamOverlays,
     imageFor,
     pixelRatio: options.ratio ?? 1,
   });
@@ -127,24 +152,14 @@ function render(
   return { renderer, ctx, luma };
 }
 
-describe('face axes and sides', () => {
-  it('reads a shell plate’s local axes from its quad', () => {
-    expect(faceAxes(shells.shells.shell_flat_upright)).toEqual({ right: [1, 0], down: [0, 1] });
-    // A 90° counter-clockwise plate: local +u points up the screen.
-    expect(faceAxes(shells.shells.shell_flat_sideways)).toEqual({ right: [0, -1], down: [1, 0] });
-    expect(faceAxes(shells.shells.shell_flat_sideways_270)).toEqual({ right: [0, 1], down: [-1, 0] });
-  });
-
-  it('maps a screen direction onto the plate edge it faces', () => {
-    const upright = { right: [1, 0] as const, down: [0, 1] as const };
-    expect(faceSideOf(upright, 50, 0)).toBe('right');
-    expect(faceSideOf(upright, -50, 4)).toBe('left');
-    expect(faceSideOf(upright, 0, 50)).toBe('bottom');
-    expect(faceSideOf(upright, 3, -50)).toBe('top');
-    const sideways = { right: [0, -1] as const, down: [1, 0] as const };
-    expect(faceSideOf(sideways, 0, -50)).toBe('right');
-    expect(faceSideOf(sideways, 0, 50)).toBe('left');
-    expect(faceSideOf(sideways, 50, 0)).toBe('bottom');
+describe('sprite sides', () => {
+  it('puts a neighbour on the sprite edge it is drawn against', () => {
+    // The sprite is axis-aligned whatever the baked pose: a sideways riichi
+    // tile's joint is still on its screen edge, not on a plate axis.
+    expect(screenSideOf(50, 0)).toBe('right');
+    expect(screenSideOf(-50, 4)).toBe('left');
+    expect(screenSideOf(0, 50)).toBe('bottom');
+    expect(screenSideOf(3, -50)).toBe('top');
   });
 });
 
@@ -237,7 +252,7 @@ describe('shadow plan', () => {
   it('draws one mat shadow per occupied slot, not one per tier', () => {
     const wall = layoutWall(shells, { wall: 'front', count: 17 });
     const board = boardOf([wall]);
-    const plan = planShadows(shells, shadows, seams, board);
+    const plan = planOf(board);
     expect(wall.bodies).toHaveLength(34);
     expect(plan.mat).toHaveLength(17);
     expect(plan.mat.every((draw) => draw.bucket.startsWith('wall_horiz_'))).toBe(true);
@@ -245,7 +260,7 @@ describe('shadow plan', () => {
 
   it('draws a stack decal only while the upper tier is present', () => {
     const wall = layoutWall(shells, { wall: 'back', count: 3, startIndex: 7 });
-    const withTier = planShadows(shells, shadows, seams, boardOf([wall]));
+    const withTier = planOf(boardOf([wall]));
     expect(withTier.stacks).toHaveLength(3);
     expect(new Set(withTier.stacks.map((draw) => draw.seat))).toEqual(new Set(['north']));
     expect(withTier.stacks.every((draw) => draw.textureFile === 'shadows/shadow_wall_stack_north.png')).toBe(true);
@@ -256,7 +271,7 @@ describe('shadow plan', () => {
       ...wall,
       bodies: wall.bodies.filter((tile) => !(tile.cell?.tier === 1 && tile.cell.slot === 8)),
     };
-    const without = planShadows(shells, shadows, seams, boardOf([broken]));
+    const without = planOf(boardOf([broken]));
     expect(without.stacks).toHaveLength(2);
     expect(without.stacks.some((draw) => draw.bodyIndex === 2)).toBe(false);
   });
@@ -264,7 +279,7 @@ describe('shadow plan', () => {
   it('anchors a wall stack decal at the lower tier, under the upper body', () => {
     const wall = layoutWall(shells, { wall: 'front', count: 1, startIndex: 8 });
     const board = boardOf([wall]);
-    const plan = planShadows(shells, shadows, seams, board);
+    const plan = planOf(board);
     const lower = wall.bodies.find((tile) => tile.cell?.tier === 0);
     const stack = plan.stacks[0];
     const record = shadows.wallStack.seats.south;
@@ -274,20 +289,34 @@ describe('shadow plan', () => {
     expect(stack.y).toBeCloseTo(lower!.gridY - record.pivot.y / record.pixelRatio, 6);
   });
 
-  it('reports open edges as no crevice and occupied edges as one', () => {
-    const pond = layoutPond(shells, { side: 'bottom', discards: discards(1) });
-    const board = boardOf([pond]);
-    const plan = planShadows(shells, shadows, seams, board);
-    expect(plan.seams).toHaveLength(0);
+  it('draws one crevice band per joint, on the lit edge of the pair', () => {
+    const one = planOf(boardOf([layoutPond(shells, { side: 'bottom', discards: discards(1) })]));
+    expect(one.seams).toHaveLength(0);
 
     const row = layoutPond(shells, { side: 'bottom', discards: discards(5) });
-    const grown = planShadows(shells, shadows, seams, boardOf([row]));
-    // Five in a row: four gaps, two masks each.
-    expect(grown.seams).toHaveLength(8);
-    expect(grown.seams.every((draw) => draw.opacity === SEAM_OPACITY)).toBe(true);
-    expect(new Set(grown.seams.map((draw) => draw.textureFile))).toEqual(
-      new Set(['shadows/ao_seam_left.png', 'shadows/ao_seam_right.png']),
-    );
+    const grown = planOf(boardOf([row]));
+    // Five in a row: four joints, one band each — never two on the same seam.
+    expect(grown.seams).toHaveLength(4);
+    // The flat bucket's left ring is the bright one (measured 219 vs 187 on the
+    // right), so the tile that has a neighbour to its left takes the band.
+    expect(grown.seams.every((draw) => draw.side === 'left')).toBe(true);
+    const bodies = new Set(grown.seams.map((draw) => draw.bodyIndex));
+    expect(bodies.has(4)).toBe(false); // the row's left end has no left neighbour
+    expect(bodies.size).toBe(4);
+    // One band per joint: no body+side pair repeats.
+    const keys = new Set(grown.seams.map((draw) => `${draw.zoneIndex}:${draw.bodyIndex}:${draw.side}`));
+    expect(keys.size).toBe(grown.seams.length);
+
+    // A whole pond: 15 in-row joints + 2 row gaps x 6 columns.
+    const full = planOf(boardOf([layoutPond(shells, { side: 'bottom', discards: discards(18) })]));
+    expect(full.seams).toHaveLength(27);
+    // Vertical joints land on the tile below (its top ring is lit, the upper
+    // tile's bottom ring measures 10 luma).
+    expect(full.seams.filter((draw) => draw.side === 'top').length).toBe(12);
+
+    // Hands and melds pair the same way: 13 tiles -> 12 joints.
+    expect(planOf(boardOf([hand13()])).seams).toHaveLength(12);
+    expect(planOf(boardOf([layoutMeld(shells, { faces: ['1m', '2m', '3m'], calledIndex: 2 })])).seams).toHaveLength(2);
   });
 
   it('lifts a hand tile’s shadow without moving it and drops its crevices', () => {
@@ -296,10 +325,8 @@ describe('shadow plan', () => {
       draw: '5p',
     });
     const board = boardOf([hand]);
-    const resting = planShadows(shells, shadows, seams, board);
-    const lifted = planShadows(shells, shadows, seams, board, {
-      lifted: { zoneId: 'hand-bottom', bodyIndex: 4 },
-    });
+    const resting = planOf(board);
+    const lifted = planOf(board, { zoneId: 'hand-bottom', bodyIndex: 4 });
 
     const tile = hand.bodies[4];
     const restingDraw = resting.mat.find((draw) => draw.bodyIndex === 4 && draw.zoneIndex === 0)!;
@@ -331,14 +358,17 @@ describe('shadow plan', () => {
         .map((draw) => draw.side)
         .sort()
         .join(',');
-    expect(seamsOf(resting, 4)).toBe('left,right');
+    // At rest every body to the right of a neighbour carries that joint's band.
+    expect(resting.seams).toHaveLength(12);
+    expect(seamsOf(resting, 4)).toBe('left');
+    // Lifted: its own two joints vanish (12 -> 10) and no neighbour takes over
+    // the shaded side of those joints.
+    expect(lifted.seams).toHaveLength(10);
     expect(seamsOf(lifted, 4)).toBe('');
-    // Its immediate neighbours lose the crevice facing it, and keep the other:
-    // body 2 sits left of the lifted tile, body 6 to its right.
     expect(seamsOf(lifted, 2)).toBe('left');
-    expect(seamsOf(lifted, 6)).toBe('right');
+    expect(seamsOf(lifted, 6)).toBe('');
     // A tile two slots away is untouched.
-    expect(seamsOf(lifted, 0)).toBe('right');
+    expect(seamsOf(lifted, 0)).toBe('');
   });
 
   it('fails loudly when a bucket has no baked mat shadow', () => {
@@ -348,7 +378,11 @@ describe('shadow plan', () => {
     };
     delete (broken.matShadows as Record<string, unknown>).flat_center;
     const board = boardOf([layoutPond(shells, { side: 'bottom', discards: discards(1) })]);
-    expect(() => planShadows(shells, broken, seams, board)).toThrow(/no mat shadow for bucket flat_center/);
+    expect(() =>
+      planShadows(shells, broken, board, {
+        seamBands: (shell, side) => seamOverlays.bandFor(shell, side),
+      }),
+    ).toThrow(/no mat shadow for bucket flat_center/);
   });
 });
 
@@ -458,7 +492,7 @@ describe('mat shadow compositing', () => {
       board,
       manifest: shells,
       shadows,
-      seams,
+      seamOverlays,
       imageFor,
     });
     renderer.update();
@@ -493,7 +527,7 @@ describe('mat shadow compositing', () => {
       board: grown,
       manifest: shells,
       shadows,
-      seams,
+      seamOverlays,
       imageFor,
     });
     fresh.update();
@@ -524,7 +558,7 @@ describe('mat shadow compositing', () => {
       board,
       manifest: shells,
       shadows,
-      seams,
+      seamOverlays,
       imageFor,
     });
     renderer.update();
@@ -544,55 +578,209 @@ describe('mat shadow compositing', () => {
   });
 });
 
-describe('crevice mask mapping', () => {
-  const quad: readonly [readonly [number, number], readonly [number, number], readonly [number, number], readonly [number, number]] = [
-    [10, 10],
-    [70, 10],
-    [70, 130],
-    [10, 130],
-  ];
+describe('bevel bands', () => {
+  const flat = shells.shells.shell_flat_upright;
 
-  function draw(side: 'left' | 'right' | 'top' | 'bottom'): ReturnType<typeof boardCanvas> {
-    const canvas = createShadowCanvas(80, 140);
-    const ctx = canvas.getContext('2d') as unknown as ShadowContext2D;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, 80, 140);
-    const mask = imageFor(seams.seams[side].textureFile);
-    expect(mask).not.toBeNull();
-    drawMaskOnQuad(ctx, mask!, quad as never, side, 1);
-    const luma = (x: number, y: number): number => {
-      const data = ctx.getImageData(x, y, 1, 1).data;
-      return Math.round((data[0] + data[1] + data[2]) / 3);
-    };
-    return { canvas, ctx, luma };
-  }
-
-  it('puts each band on the plate edge it names and leaves the rest white', () => {
-    const left = draw('left');
-    expect(left.luma(11, 70)).toBeLessThan(240);
-    expect(left.luma(66, 70)).toBe(255);
-    const right = draw('right');
-    expect(right.luma(69, 70)).toBeLessThan(240);
-    expect(right.luma(14, 70)).toBe(255);
-    const top = draw('top');
-    expect(top.luma(40, 11)).toBeLessThan(240);
-    expect(top.luma(40, 126)).toBe(255);
-    const bottom = draw('bottom');
-    expect(bottom.luma(40, 129)).toBeLessThan(240);
-    expect(bottom.luma(40, 14)).toBe(255);
+  it('reads each ring from the sprite edge to the face plate', () => {
+    const left = seamBandRect(flat, 'left');
+    const right = seamBandRect(flat, 'right');
+    const top = seamBandRect(flat, 'top');
+    expect(left.x).toBe(flat.padding.left + 1);
+    // Starts one pixel in from the silhouette's anti-aliasing, ends at the plate.
+    expect(left.width).toBeCloseTo(flat.faceQuad[0][0] - flat.padding.left - 1, 6);
+    expect(right.x + right.width).toBe(flat.texWidth - flat.padding.right - 1);
+    // The near reveal is 41 px; a contact only shades the chamfer, so it trims.
+    expect(seamBandRect(flat, 'bottom').height).toBe(SEAM_BAND_MAX_PX);
+    // The top ring is thinner than the minimum band, so it takes the floor.
+    expect(top.height).toBe(SEAM_BAND_MIN_PX);
+    // Every ring is narrow: a band can never reach the middle of the face.
+    for (const side of ['left', 'right', 'top', 'bottom'] as SpriteSide[]) {
+      const rect = seamBandRect(flat, side);
+      expect(Math.min(rect.width, rect.height)).toBeLessThanOrEqual(SEAM_BAND_MAX_PX);
+    }
   });
 
-  it('uses the mask’s own 35 % ink at the requested share', () => {
-    const canvas = createShadowCanvas(80, 140);
-    const ctx = canvas.getContext('2d') as unknown as ShadowContext2D;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, 80, 140);
-    drawMaskOnQuad(ctx, imageFor(seams.seams.left.textureFile)!, quad as never, 'left', SEAM_OPACITY);
-    const pixel = ctx.getImageData(11, 70, 1, 1).data;
-    const luma = (pixel[0] + pixel[1] + pixel[2]) / 3;
-    // 35 % ink at 60 % share ≈ 21 % darkening.
-    expect(luma).toBeGreaterThan(255 * (1 - 0.35 * 0.8));
-    expect(luma).toBeLessThan(255 * (1 - 0.35 * 0.4));
+  it('measures the lit edge, so a joint has one bright side to darken', () => {
+    const leftBand = seamOverlays.bandFor(flat, 'left');
+    const rightBand = seamOverlays.bandFor(flat, 'right');
+    expect(leftBand).not.toBeNull();
+    expect(rightBand).not.toBeNull();
+    // The committed shell lights the left chamfer; the right one is in shade.
+    expect(leftBand!.ringLuma).toBeGreaterThan(rightBand!.ringLuma);
+    expect(leftBand!.ringLuma).toBeGreaterThan(SEAM_MIN_RING_LUMA);
+    expect(leftBand!.ringCoverage).toBeGreaterThan(0.5);
+    // A side wall seen edge-on has no axis-aligned ring on its long edge, so
+    // that side yields no band at all instead of inking the transparent margin.
+    expect(seamOverlays.bandFor(shells.shells.shell_wall_side_left, 'left')).toBeNull();
+  });
+
+  it('maps the mask across the band, band outward and fade inward', () => {
+    // One realistic band per side: a thin strip along the edge it names.
+    const rects: Record<SpriteSide, { x: number; y: number; width: number; height: number }> = {
+      left: { x: 2, y: 2, width: 6, height: 40 },
+      right: { x: 32, y: 2, width: 6, height: 40 },
+      top: { x: 2, y: 2, width: 40, height: 6 },
+      bottom: { x: 2, y: 32, width: 40, height: 6 },
+    };
+    const shade = (side: SpriteSide): ((x: number, y: number) => number) => {
+      const canvas = createShadowCanvas(60, 60);
+      const ctx = canvas.getContext('2d') as unknown as ShadowContext2D;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, 60, 60);
+      const record = seams.seams[side];
+      drawMaskInBand(ctx, record, imageFor(record.textureFile)!, rects[side], side, SEAM_OPACITY);
+      return (x, y) => {
+        const data = ctx.getImageData(x, y, 1, 1).data;
+        return Math.round((data[0] + data[1] + data[2]) / 3);
+      };
+    };
+    // Each band is darkest at its outer edge and gone at its inner one.
+    const left = shade('left');
+    expect(left(2, 20)).toBeLessThan(245);
+    expect(left(9, 20)).toBe(255);
+    const right = shade('right');
+    expect(right(37, 20)).toBeLessThan(245);
+    expect(right(30, 20)).toBe(255);
+    const top = shade('top');
+    expect(top(20, 2)).toBeLessThan(245);
+    expect(top(20, 9)).toBe(255);
+    const bottom = shade('bottom');
+    expect(bottom(20, 37)).toBeLessThan(245);
+    expect(bottom(20, 30)).toBe(255);
+  });
+
+  it('keeps every band pixel inside the tile’s own silhouette', () => {
+    for (const shellId of [
+      'shell_flat_upright',
+      'shell_flat_sideways',
+      'shell_hand_slot_06',
+      'shell_wall_side_left',
+      'shell_hand_side_left',
+    ] as const) {
+      const shell = shells.shells[shellId];
+      const sprite = imageFor(shell.textureFile)!;
+      for (const side of ['left', 'right', 'top', 'bottom'] as SpriteSide[]) {
+        const overlay = seamOverlays.overlayFor(shell, side);
+        if (!overlay) continue;
+        const ctx = overlay!.canvas.getContext('2d') as unknown as ShadowContext2D;
+        const band = ctx.getImageData(0, 0, overlay!.canvas.width, overlay!.canvas.height).data;
+        const source = createShadowCanvas(shell.texWidth, shell.texHeight);
+        const sourceCtx = source.getContext('2d') as unknown as ShadowContext2D;
+        sourceCtx.drawImage(sprite as never, 0, 0, shell.texWidth, shell.texHeight);
+        const alpha = sourceCtx.getImageData(0, 0, shell.texWidth, shell.texHeight).data;
+        let inkPixels = 0;
+        let outsideBody = 0;
+        let peak = 0;
+        let inkOnBody = 0;
+        for (let index = 0; index < band.length; index += 4) {
+          if (band[index + 3] === 0) continue;
+          inkPixels += 1;
+          inkOnBody += alpha[index + 3];
+          // Nothing may land where the tile is not: the band has to sit on the
+          // sprite's own pixels, never on the felt around them.
+          if (alpha[index + 3] === 0) outsideBody += 1;
+          peak = Math.max(peak, band[index + 3]);
+        }
+        expect(inkPixels, `${shellId} ${side} drew nothing`).toBeGreaterThan(40);
+        expect(outsideBody, `${shellId} ${side} spilled off the body`).toBe(0);
+        // …the ink sits on pixels the tile actually covers. A lying tile's top
+        // edge is only a couple of pixels of silhouette anti-aliasing, so this
+        // is a mean, not a promise that every inked pixel is fully opaque.
+        expect(inkOnBody / inkPixels, `${shellId} ${side} sits on the fringe`).toBeGreaterThan(200);
+        // …and it is dark enough to be a change at all.
+        expect(peak, `${shellId} ${side} is a no-op`).toBeGreaterThan(12);
+      }
+    }
+  });
+});
+
+describe('crevice acceptance', () => {
+  it('changes nothing outside the bevel band — the face and the felt stay put', () => {
+    const row = layoutPond(shells, { side: 'bottom', discards: discards(5) });
+    const board = boardOf([row]);
+    const plan = planOf(board);
+    expect(plan.seams.length).toBeGreaterThan(0);
+
+    /** Bodies + (optionally) their bands, on one canvas. */
+    const compose = (withSeams: boolean): Uint8ClampedArray => {
+      const canvas = createShadowCanvas(Math.ceil(board.width), Math.ceil(board.height));
+      const ctx = canvas.getContext('2d') as unknown as ShadowContext2D;
+      ctx.fillStyle = '#8a8a8a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const placement = board.zones[0];
+      row.bodies.forEach((tile, index) => {
+        const shell = shells.shells[tile.shell];
+        const image = imageFor(shell.textureFile)!;
+        ctx.drawImage(
+          image as never,
+          placement.x + tile.drawX,
+          placement.y + tile.drawY,
+          shell.texWidth,
+          shell.texHeight,
+        );
+        if (!withSeams) return;
+        for (const draw of plan.seams) {
+          if (draw.zoneIndex !== 0 || draw.bodyIndex !== index) continue;
+          const overlay = seamOverlays.overlayFor(shell, draw.side)!;
+          ctx.drawImage(
+            overlay.canvas as never,
+            placement.x + tile.drawX,
+            placement.y + tile.drawY,
+            shell.texWidth,
+            shell.texHeight,
+          );
+        }
+      });
+      return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    };
+
+    const before = compose(false);
+    const after = compose(true);
+
+    // Every changed pixel must sit inside a drawn band, and every band must be
+    // narrower than SEAM_BAND_MAX_PX.
+    let changed = 0;
+    let outsideBands = 0;
+    for (let y = 0; y < board.height; y += 1) {
+      for (let x = 0; x < board.width; x += 1) {
+        const offset = (y * Math.floor(board.width) + x) * 4;
+        if (before[offset] === after[offset]) continue;
+        changed += 1;
+        let inBand = false;
+        for (const draw of plan.seams) {
+          const tile = row.bodies[draw.bodyIndex];
+          const shell = shells.shells[tile.shell];
+          const band = seamOverlays.bandFor(shell, draw.side)!;
+          const left = board.zones[0].x + tile.drawX + band.x;
+          const top = board.zones[0].y + tile.drawY + band.y;
+          if (x < left || x >= left + band.width || y < top || y >= top + band.height) continue;
+          inBand = true;
+          break;
+        }
+        if (!inBand) outsideBands += 1;
+      }
+    }
+    expect(changed).toBeGreaterThan(200);
+    expect(outsideBands).toBe(0);
+
+    // The painted face is untouched: no changed pixel inside any plate.
+    let insideFace = 0;
+    for (let y = 0; y < board.height; y += 1) {
+      for (let x = 0; x < board.width; x += 1) {
+        const offset = (y * Math.floor(board.width) + x) * 4;
+        if (before[offset] === after[offset]) continue;
+        for (const tile of row.bodies) {
+          const shell = shells.shells[tile.shell];
+          const [tl, , , bl] = shell.faceQuad;
+          const x0 = board.zones[0].x + tile.drawX + Math.min(tl[0], bl[0]) + 1;
+          const x1 = board.zones[0].x + tile.drawX + Math.max(...shell.faceQuad.map((c) => c[0])) - 1;
+          const y0 = board.zones[0].y + tile.drawY + Math.min(...shell.faceQuad.map((c) => c[1])) + 1;
+          const y1 = board.zones[0].y + tile.drawY + Math.max(...shell.faceQuad.map((c) => c[1])) - 1;
+          if (x > x0 && x < x1 && y > y0 && y < y1) insideFace += 1;
+        }
+      }
+    }
+    expect(insideFace).toBe(0);
   });
 });
 
@@ -601,7 +789,7 @@ describe('zone masks', () => {
     const pond = layoutPond(shells, { side: 'bottom', discards: discards(3) });
     const wall = layoutWall(shells, { wall: 'front', count: 2, startIndex: 8 });
     const board = boardOf([pond, wall]);
-    const plan = planShadows(shells, shadows, seams, board);
+    const plan = planOf(board);
     const masks = zoneShadowMasks(plan, board);
     expect(masks).toHaveLength(2);
     for (const mask of masks) {

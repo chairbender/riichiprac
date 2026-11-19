@@ -593,10 +593,14 @@ checks, Task 4A reports 575 checks, both 0 failures.
 **The runtime consumer (Task 6A, landed 2026-11-18).**
 `frontend/src/table/boardShadows.ts` draws these four asset families from the
 live board state; `shadowManifest.ts` parses both manifests and decides which
-bucket a placed tile uses. The mat pass merges penumbras at MAX alpha by
-flattening each sprite onto white (`b = 1 - alpha`) and merging with `darken`,
-then composites the merged layer once with `multiply` — the manifest's model —
-so a growing river never double-darkens. Proof sheet:
+bucket a placed tile uses; `seamOverlays.ts` turns a mask into one bevel band
+per (shell, side). The mat pass merges penumbras at MAX alpha by flattening each
+sprite onto white (`b = 1 - alpha`) and merging with `darken`, then composites
+the merged layer once with `multiply` — the manifest's model — so a growing
+river never double-darkens. A crevice mask is *not* mapped onto `faceQuad`: it
+is stretched across the 2-8 px ring between the sprite's silhouette and its
+plate and clipped to the sprite's alpha, and a joint draws exactly one band, on
+the lit edge — no change reaches the painted face or the felt. Proof sheet:
 `cd frontend && npm run shadows:review` →
 `tools/render/build/review/shadows/task6a-dynamic-shadows.png` (gitignored).
 The 4A bakes are unchanged by it: no asset was re-rendered, and
