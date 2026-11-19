@@ -1666,23 +1666,28 @@ stick has rounded long edges, about .4mm … there should only be a center pip,
 not those weird grey lines on the sides … the center pip is actually 'carved
 out' and then painted on … use the same approach we used with the tiles."
 
-- **Dimensions and finish.** `STICK_MM` is 65 × 7 × 3.5 mm, so the layout bar is
-  2.321 × 0.25 × 0.125 units. The mesh is still one instanced extruded
-  **stadium** (semicircular ends, as the sprite draws it) but now with the
-  user's **0.4 mm (0.0143-unit) round-over** on every longitudinal edge
-  (`bevelSegments` 5), authored inset by the bevel so the finished bar is
-  exactly the spec. The material is `MeshPhysicalMaterial` (polystyrene `ior`
-  1.59) with a **clear coat** 0.5 at roughness 0.07 and a per-texel roughness
-  map, so it has the sheen the flat matte box lacked. The grey end bands are
-  gone; the only decoration is the centre pip.
+- **Dimensions and shape.** `STICK_MM` is 65 × 7 × 3.5 mm, so the layout bar is
+  2.321 × 0.25 × 0.125 units. The user's final shape note — "looking at the
+  stick from the long end, the cross-sectional profile of the stick should be
+  an ellipse" — replaces the earlier 0.4 mm bevel: the mesh is now a **swept
+  ellipse**, every cross-section the same 7 × 3.5 mm ellipse, uniformly scaled
+  toward the score sprite's semicircular *plan* ends. That is what gives the
+  continuous round on the long edges (an extruded flat-topped slab could not).
+  It is one instanced `BufferGeometry` built in core three (40 segments around,
+  24 along the straight middle, 12 per end). The material is
+  `MeshPhysicalMaterial` (polystyrene `ior` 1.59) with a **clear coat** 0.5 at
+  roughness 0.07 and a per-texel roughness map, so it has the sheen the flat
+  matte box lacked. The grey end bands are gone; the only decoration is the
+  centre pip.
 - **The pip is carved and painted.** `three/stickMaps.ts` generates the same
   three-part face the tiles use for their engraving — albedo with the paint
   mixed in, a tangent normal of the recess wall and a roughness map — for a
   3 mm pip (42 % of the bar's width, the sprite's own proportion) sunk 0.4 mm
   through a 0.5 mm wall, with a baked 22 % cavity darkening (0.25 mm would be
   sub-pixel at the stick's ~19 px on-screen width). The face is the
-  atlas's top half and the rounded side wall its plain-ivory bottom half, so
-  one material and one instanced draw still cover the whole bar. There is no
+  bar's plan projection (u along the length, v across the ellipse) maps the
+  pip to the top centre and the curved sides to the atlas's plain-ivory border,
+  so one material and one instanced draw still cover the whole bar. There is no
   POM march: the pip is 0.4 mm deep, which is under half a pixel of parallax at
   the reference angle, and the normal map carries the carve; the tiles' 0.55 mm
   glyph wall is a different scale. `sticks.test.ts` pins the bar's extents, the
@@ -1718,13 +1723,13 @@ adapter tests the copy. It is review-only and disappears with the rest of the
 preview chrome at 3D-15 sign-off.
 
 **Visual sign-off:** the first pass was reviewed by the user on 2026-11-19 and
-three further rounds of feedback followed the same day (physical square and
+four further rounds of feedback followed the same day (physical square and
 Tenhou score plate; the discards-touching size, bigger numbers with a grey wind
-at the left; then the real 65 × 7 × 3.5 mm polystyrene bar with its 0.4 mm
-edges, carved pip and no DOM icon). The revised look still needs the user's
-verdict — the plate's colour and thickness, the score and wind proportions, the
-split's size, and the stick's profile, sheen and carved pip — which is handed
-over with 3D-15's whole-board check (AGENTS.md §6).
+at the left; the real 65 × 7 × 3.5 mm polystyrene bar with a carved pip and no
+DOM icon; then the elliptical cross-section). The revised look still needs the
+user's verdict — the plate's colour and thickness, the score and wind
+proportions, the split's size, and the stick's elliptical profile, sheen and
+carved pip — which is handed over with 3D-15's whole-board check (AGENTS.md §6).
 
 ---
 

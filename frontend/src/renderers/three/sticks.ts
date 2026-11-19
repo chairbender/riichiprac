@@ -3,12 +3,14 @@
  * point sticks standing on the compass plate.
  *
  * **The model.** A 1000-point stick is a polystyrene bar: 65 mm long, 7 mm wide
- * and 3.5 mm thick, with 0.4 mm round-overs along its long edges, a painted red
- * pip in the middle, and a soft sheen. That is the user's spec (2026-11-19) and
- * the shape the score sprite shows (`components/RiichiStick.tsx`): a stadium
- * (semicircular ends), a rounded top edge, one red dot, no end bands. A 3D box
- * with a texture on it is not that shape, which is why this is a capsule
- * extruded from a `Shape` in core three (no addons) with a bevel on both faces.
+ * and 3.5 mm thick, with a painted red pip in the middle and a soft sheen. The
+ * user's last shape note (2026-11-19) is the one that decides the form: "looking
+ * at the stick from the long end, the cross-sectional profile of the stick
+ * should be an ellipse." The bar is therefore a **swept ellipse** — every
+ * cross-section is a 7 × 3.5 mm ellipse (uniformly scaled toward the rounded
+ * plan ends, which follow the score sprite's semicircles) — not an extrusion
+ * with a bevel, which has flat faces and a sharp-ish edge. That ellipse is what
+ * gives the continuous round on the long edges.
  *
  * **The pip is carved, not printed.** The red centre is a painted recess: the
  * albedo, tangent normal, cavity and roughness come from
@@ -23,18 +25,18 @@
  */
 
 import {
+  BufferGeometry,
   DataTexture,
-  ExtrudeGeometry,
+  Float32BufferAttribute,
   InstancedMesh,
   Matrix4,
   MeshPhysicalMaterial,
   Quaternion,
   RGBAFormat,
-  Shape,
   SRGBColorSpace,
   Vector3,
 } from 'three';
-import { STICK as STICK_LAYOUT, UNIT_MM } from '../layoutConstants';
+import { STICK as STICK_LAYOUT } from '../layoutConstants';
 import type { BoardStick } from './boardLayout';
 import {
   STICK_CARVE,
@@ -47,14 +49,12 @@ import {
 export const STICK = {
   /** The visible point sticks; a hand rarely has more than a few on the table. */
   capacity: 32,
-  /**
-   * The round-over on every long edge: the user's 0.4 mm. `ExtrudeGeometry`
-   * grows the outline by the bevel, so the shape is authored inset and the
-   * finished bar measures the layout's exact 65 x 3.5 x 7 mm.
-   */
-  bevelUnits: 0.4 / UNIT_MM,
-  bevelSegments: 5,
-  curveSegments: 16,
+  /** Rings around the elliptical cross-section (smooth shading). */
+  aroundSegments: 40,
+  /** Rings along the straight middle of the bar. */
+  straightSegments: 24,
+  /** Rings in each rounded plan end. */
+  capSegments: 12,
   /** Polystyrene under the key light: a satin body with a lacquered clear coat. */
   roughness: 0.24,
   metalness: 0,
@@ -71,33 +71,6 @@ export const STICK_SIZE = {
   heightUnits: STICK_LAYOUT.heightUnits,
 } as const;
 
-/**
- * A stadium outline: the plan view of a point stick, with semicircular ends.
- *
- * Authored inset by the bevel, because `ExtrudeGeometry` grows an outline by
- * `bevelSize` on every side; the finished bar therefore measures exactly
- * {@link STICK_SIZE}.
- */
-export function stickShape(
-  lengthUnits: number = STICK_SIZE.lengthUnits - 2 * STICK.bevelUnits,
-  widthUnits: number = STICK_SIZE.widthUnits - 2 * STICK.bevelUnits,
-): Shape {
-  const halfLength = lengthUnits / 2;
-  const halfWidth = widthUnits / 2;
-  const radius = Math.min(halfWidth, halfLength);
-  const shape = new Shape();
-  shape.moveTo(-halfLength + radius, -halfWidth);
-  shape.lineTo(halfLength - radius, -halfWidth);
-  shape.quadraticCurveTo(halfLength, -halfWidth, halfLength, -halfWidth + radius);
-  shape.lineTo(halfLength, halfWidth - radius);
-  shape.quadraticCurveTo(halfLength, halfWidth, halfLength - radius, halfWidth);
-  shape.lineTo(-halfLength + radius, halfWidth);
-  shape.quadraticCurveTo(-halfLength, halfWidth, -halfLength, halfWidth - radius);
-  shape.lineTo(-halfLength, -halfWidth + radius);
-  shape.quadraticCurveTo(-halfLength, -halfWidth, -halfLength + radius, -halfWidth);
-  return shape;
-}
-
 /** The live stick layer. */
 export interface StickMesh {
   readonly mesh: InstancedMesh;
@@ -112,56 +85,112 @@ const ONE = new Vector3(1, 1, 1);
 const DEG = Math.PI / 180;
 
 /**
- * The shared capsule geometry: a stadium extruded to the bar's height, turned
- * flat, with its centre at the origin and its long axis along +X.
+ * The shared bar geometry: an elliptical cross-section swept along the length,
+ * with semicircular *plan* ends (the sprite's outline).
  *
- * The cap is UV-mapped onto the top half of the carve atlas (u along the bar,
- * v across it) so the pip sits in the middle; the rounded side wall maps onto
- * the atlas's plain-ivory bottom half. Both UVs vary across each surface, which
- * keeps the tangent-space normal map well-conditioned everywhere.
+ * Every cross-section is the same 7 x 3.5 mm ellipse (the end caps scale it
+ * uniformly to a point), which is the user's "looking at the stick from the
+ * long end, the cross-sectional profile … should be an ellipse". No bevel is
+ * involved: the ellipse is the edge.
+ *
+ * UVs are the plan projection — `u` along the bar, `v` across it — so the pip
+ * sits at the top's centre (both ends of the ellipse map to the plain ivory
+ * border of the atlas).
  */
-export function createStickGeometry(): ExtrudeGeometry {
-  const geometry = new ExtrudeGeometry(stickShape(), {
-    depth: STICK_SIZE.heightUnits - 2 * STICK.bevelUnits,
-    bevelEnabled: true,
-    bevelThickness: STICK.bevelUnits,
-    bevelSize: STICK.bevelUnits,
-    bevelSegments: STICK.bevelSegments,
-    curveSegments: STICK.curveSegments,
-  });
-  // The shape is authored in XY and extruded along +Z: lay it on the table.
-  geometry.rotateX(-Math.PI / 2);
-  geometry.computeBoundingBox();
+export function createStickGeometry(): BufferGeometry {
+  const length = STICK_SIZE.lengthUnits;
+  const width = STICK_SIZE.widthUnits;
+  const height = STICK_SIZE.heightUnits;
+  const semiWidth = width / 2;
+  const semiHeight = height / 2;
+  const endRadius = semiWidth;
+  const straightHalf = length / 2 - endRadius;
 
-  // Centre the body on the origin, so an instance's position is its centre.
-  const box = geometry.boundingBox;
-  if (box) {
-    geometry.translate(
-      -(box.min.x + box.max.x) / 2,
-      -(box.min.y + box.max.y) / 2,
-      -(box.min.z + box.max.z) / 2,
+  // Rings along the bar: two rounded plan ends and the straight middle. Each
+  // carries its longitudinal position and a uniform scale of the cross-section
+  // (1 in the middle, 0 at the tips). The s = 0 rings are replaced by poles.
+  const rings: { x: number; scale: number }[] = [];
+  for (let i = STICK.capSegments - 1; i >= 1; i -= 1) {
+    const phi = (i / STICK.capSegments) * (Math.PI / 2);
+    rings.push({
+      x: -(straightHalf + endRadius * Math.sin(phi)),
+      scale: Math.cos(phi),
+    });
+  }
+  for (let i = 0; i <= STICK.straightSegments; i += 1) {
+    rings.push({
+      x: -straightHalf + (2 * straightHalf * i) / STICK.straightSegments,
+      scale: 1,
+    });
+  }
+  for (let i = 1; i <= STICK.capSegments - 1; i += 1) {
+    const phi = (i / STICK.capSegments) * (Math.PI / 2);
+    rings.push({
+      x: straightHalf + endRadius * Math.sin(phi),
+      scale: Math.cos(phi),
+    });
+  }
+
+  const around = STICK.aroundSegments;
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const ringStart: number[] = [];
+
+  for (const ring of rings) {
+    ringStart.push(positions.length / 3);
+    for (let j = 0; j < around; j += 1) {
+      const theta = (j / around) * Math.PI * 2;
+      const y = semiHeight * ring.scale * Math.sin(theta);
+      const z = semiWidth * ring.scale * Math.cos(theta);
+      positions.push(ring.x, y, z);
+      uvs.push((ring.x + length / 2) / length, 0.5 + z / width);
+    }
+  }
+
+  // Quads between consecutive rings, wrapping around the seam.
+  for (let r = 0; r + 1 < rings.length; r += 1) {
+    const first = ringStart[r];
+    const next = ringStart[r + 1];
+    for (let j = 0; j < around; j += 1) {
+      const j2 = (j + 1) % around;
+      const a = first + j;
+      const b = first + j2;
+      const c = next + j2;
+      const d = next + j;
+      indices.push(a, c, b, a, d, c);
+    }
+  }
+
+  // The two tips: a pole at each end, fanned to its nearest ring.
+  const tipUv = (x: number): [number, number] => [
+    (x + length / 2) / length,
+    0.5,
+  ];
+  const leftPole = positions.length / 3;
+  positions.push(-length / 2, 0, 0);
+  uvs.push(...tipUv(-length / 2));
+  const firstRing = ringStart[0];
+  for (let j = 0; j < around; j += 1) {
+    indices.push(leftPole, firstRing + j, firstRing + ((j + 1) % around));
+  }
+  const rightPole = positions.length / 3;
+  positions.push(length / 2, 0, 0);
+  uvs.push(...tipUv(length / 2));
+  const lastRing = ringStart[rings.length - 1];
+  for (let j = 0; j < around; j += 1) {
+    indices.push(
+      rightPole,
+      lastRing + ((j + 1) % around),
+      lastRing + j,
     );
   }
 
-  const position = geometry.getAttribute('position');
-  const normal = geometry.getAttribute('normal');
-  const uv = geometry.getAttribute('uv');
-  const halfLength = STICK_SIZE.lengthUnits / 2;
-  const halfWidth = STICK_SIZE.widthUnits / 2;
-  for (let index = 0; index < uv.count; index += 1) {
-    const u = (position.getX(index) + halfLength) / STICK_SIZE.lengthUnits;
-    const v = (position.getZ(index) + halfWidth) / STICK_SIZE.widthUnits;
-    if (Math.abs(normal.getY(index)) > 0.9) {
-      // The printed face: the atlas's top half, u along the bar.
-      uv.setXY(index, u, v * STICK_CARVE.capUvMaxV);
-    } else {
-      // The rounded wall: a varying u keeps the normal-map tangent defined,
-      // while v stays inside the plain-ivory half of the atlas.
-      uv.setXY(index, (u + v) / 2, STICK_CARVE.sideUv);
-    }
-  }
-  uv.needsUpdate = true;
-
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
   return geometry;
 }
 

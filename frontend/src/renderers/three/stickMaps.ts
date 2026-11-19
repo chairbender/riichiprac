@@ -16,11 +16,11 @@
  * committed asset, deterministic bytes, and a Node test can assert the pip, the
  * wall slope and the paint as numbers.
  *
- * **Atlas layout.** The stick's UVs are rewritten by `sticks.ts` to use this
- * atlas the way the tiles use their atlas: the cap (the printed face) occupies
- * the top half, `v` in 0..0.5, and the rounded side wall occupies the bottom
- * half, sampled at a plain ivory texel. One material therefore covers the whole
- * bar without wrapping the pip around its edge.
+ * **Atlas layout.** The bar's UVs are a plan projection: `u` runs along the
+ * length and `v` across the elliptical cross-section, so the pip sits on the
+ * top centre of the bar and the sides sample the plain ivory border of the
+ * map. One material therefore covers the whole bar without wrapping the pip
+ * around its curved side.
  *
  * **No parallax march.** The pip is 0.4 mm deep on a 3.5 mm bar. At the
  * reference camera's ~40° the displacement of a surface point is
@@ -59,9 +59,6 @@ export const STICK_CARVE = {
   /** The procedural atlas, in texels (power of two for mipmaps). */
   textureWidth: 256,
   textureHeight: 256,
-  /** The cap is the top half of the atlas; the wall samples the bottom half. */
-  capUvMaxV: 0.5,
-  sideUv: 0.75,
   /** The stick's dims, in units, for the analytic circle in UV space. */
   lengthUnits: 65 / UNIT_MM,
   widthUnits: 7 / UNIT_MM,
@@ -76,17 +73,14 @@ function recessSlope(distanceUnits: number): number {
   return (6 * t * (1 - t)) / STICK_CARVE.wallUnits;
 }
 
-/** Where an atlas texel sits on the stick's face, or null in the wall region. */
-function capPoint(
+/** Where an atlas texel sits on the bar's plan-projected face. */
+function facePoint(
   x: number,
   y: number,
-): { readonly u: number; readonly v: number } | null {
-  const v = (y + 0.5) / STICK_CARVE.textureHeight;
-  if (v >= STICK_CARVE.capUvMaxV) return null;
+): { readonly u: number; readonly v: number } {
   return {
     u: (x + 0.5) / STICK_CARVE.textureWidth,
-    // The cap's UV v runs 0..0.5 across the bar's width.
-    v: v / STICK_CARVE.capUvMaxV,
+    v: (y + 0.5) / STICK_CARVE.textureHeight,
   };
 }
 
@@ -129,22 +123,22 @@ export function stickAlbedoPixels(
   const edge = STICK_CARVE.wallUnits * 0.12;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const cap = capPoint(x, y);
+      const { u, v } = facePoint(x, y);
       let rgb: readonly [number, number, number] = STICK_CARVE.bodyRgb;
-      if (cap) {
-        const d = pipDistance(cap.u, cap.v);
-        // Paint fills the recess's floor (a crisp, 0.12-wall anti-aliased edge).
-        const paint = 1 - Math.min(1, Math.max(0, (d - floor + edge) / (2 * edge)));
-        rgb = mix(STICK_CARVE.bodyRgb, STICK_CARVE.paintRgb, paint);
-        // Baked cavity: the wall's middle is 18 % darker than the open face.
-        const wallT = Math.min(1, Math.max(0, (d - floor) / STICK_CARVE.wallUnits));
-        const cavity =
-          1 -
-          STICK_CARVE.cavityStrength *
-            Math.sin(Math.PI * wallT) *
-            (d >= floor && d < rim ? 1 : 0);
-        rgb = [rgb[0] * cavity, rgb[1] * cavity, rgb[2] * cavity];
-      }
+      const d = pipDistance(u, v);
+      // Paint fills the recess's floor (a crisp, 0.12-wall anti-aliased edge).
+      const paint = 1 - Math.min(1, Math.max(0, (d - floor + edge) / (2 * edge)));
+      if (paint > 0) rgb = mix(STICK_CARVE.bodyRgb, STICK_CARVE.paintRgb, paint);
+      // Baked cavity: the wall's middle is 22 % darker than the open face.
+      // The plan projection puts the pip on the underside too; that half is
+      // hidden by the bar itself, so the same map can serve both.
+      const wallT = Math.min(1, Math.max(0, (d - floor) / STICK_CARVE.wallUnits));
+      const cavity =
+        1 -
+        STICK_CARVE.cavityStrength *
+          Math.sin(Math.PI * wallT) *
+          (d >= floor && d < rim ? 1 : 0);
+      if (cavity !== 1) rgb = [rgb[0] * cavity, rgb[1] * cavity, rgb[2] * cavity];
       const index = (y * width + x) * 4;
       pixels[index] = clampByte(rgb[0]);
       pixels[index + 1] = clampByte(rgb[1]);
@@ -170,19 +164,17 @@ export function stickNormalPixels(
   const rim = floor + STICK_CARVE.wallUnits;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const cap = capPoint(x, y);
+      const { u, v } = facePoint(x, y);
+      const dx = (u - 0.5) * STICK_CARVE.lengthUnits;
+      const dz = (v - 0.5) * STICK_CARVE.widthUnits;
+      const d = Math.hypot(dx, dz);
       let nx = 0;
       let nz = 0;
-      if (cap) {
-        const dx = (cap.u - 0.5) * STICK_CARVE.lengthUnits;
-        const dz = (cap.v - 0.5) * STICK_CARVE.widthUnits;
-        const d = Math.hypot(dx, dz);
-        if (d > floor && d < rim) {
-          // y(x,z) = -depth * (1 - h(d)); the normal is (-dy/dx, 1, -dy/dz).
-          const slope = STICK_CARVE.depthUnits * recessSlope(d);
-          nx = (-slope * dx) / d;
-          nz = (-slope * dz) / d;
-        }
+      if (d > floor && d < rim) {
+        // y(x,z) = -depth * (1 - h(d)); the normal is (-dy/dx, 1, -dy/dz).
+        const slope = STICK_CARVE.depthUnits * recessSlope(d);
+        nx = (-slope * dx) / d;
+        nz = (-slope * dz) / d;
       }
       const length = Math.hypot(nx, 1, nz);
       const index = (y * width + x) * 4;
@@ -210,13 +202,11 @@ export function stickRoughnessPixels(
   const rim = floor + STICK_CARVE.wallUnits;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const cap = capPoint(x, y);
+      const { u, v } = facePoint(x, y);
+      const d = pipDistance(u, v);
       let roughness: number = STICK_CARVE.bodyRoughness;
-      if (cap) {
-        const d = pipDistance(cap.u, cap.v);
-        if (d < floor) roughness = STICK_CARVE.paintRoughness;
-        else if (d < rim) roughness = STICK_CARVE.wallRoughness;
-      }
+      if (d < floor) roughness = STICK_CARVE.paintRoughness;
+      else if (d < rim) roughness = STICK_CARVE.wallRoughness;
       const value = clampByte(roughness * 255);
       const index = (y * width + x) * 4;
       pixels[index] = value;

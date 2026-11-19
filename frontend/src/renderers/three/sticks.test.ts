@@ -41,8 +41,8 @@ function pixel(
   ];
 }
 
-/** One texel of the cap, given its own 0..1 face coordinates. */
-function capPixel(
+/** One texel of the plan-projected face map. */
+function facePixel(
   pixels: Uint8Array,
   u: number,
   v: number,
@@ -51,7 +51,7 @@ function capPixel(
     pixels,
     STICK_CARVE.textureWidth,
     Math.floor(u * STICK_CARVE.textureWidth),
-    Math.floor(v * STICK_CARVE.capUvMaxV * STICK_CARVE.textureHeight),
+    Math.floor(v * STICK_CARVE.textureHeight),
   );
 }
 
@@ -74,27 +74,22 @@ describe('the carved pip', () => {
   it('paints one red pip on a white body, with no end bands', () => {
     const pixels = stickAlbedoPixels();
     // The pip: red at the face's centre.
-    const [r, g, b, a] = capPixel(pixels, 0.5, 0.5);
+    const [r, g, b, a] = facePixel(pixels, 0.5, 0.5);
     expect(r).toBeGreaterThan(180);
     expect(g).toBeLessThan(90);
     expect(b).toBeLessThan(90);
     expect(a).toBe(255);
     // The body: white both near the ends and mid-bar.
     for (const u of [0.08, 0.25, 0.75, 0.92]) {
-      const [bodyR, bodyG, bodyB] = capPixel(pixels, u, 0.5);
+      const [bodyR, bodyG, bodyB] = facePixel(pixels, u, 0.5);
       expect(bodyR, `body at ${u}`).toBeGreaterThan(225);
       expect(bodyG, `body at ${u}`).toBeGreaterThan(225);
       expect(bodyB, `body at ${u}`).toBeGreaterThan(225);
       // No grey bands: the three channels stay close to each other and bright.
       expect(Math.abs(bodyR - bodyG), `body at ${u}`).toBeLessThan(8);
     }
-    // The side-wall region of the atlas is plain ivory too.
-    const side = pixel(
-      pixels,
-      STICK_CARVE.textureWidth,
-      20,
-      Math.floor(STICK_CARVE.sideUv * STICK_CARVE.textureHeight),
-    );
+    // The border of the map (the bar's curved sides) is plain ivory too.
+    const side = facePixel(pixels, 0.2, 0.98);
     expect(side[0]).toBeGreaterThan(225);
     expect(side[1]).toBeGreaterThan(225);
     // Opaque everywhere, deterministic bytes.
@@ -108,23 +103,17 @@ describe('the carved pip', () => {
     const pixels = stickNormalPixels();
     const flat: [number, number, number, number] = [128, 128, 255, 255];
     // Flat on the pip's floor, on the open face and on the side wall.
-    expect(capPixel(pixels, 0.5, 0.5)).toEqual(flat);
-    expect(capPixel(pixels, 0.2, 0.5)).toEqual(flat);
-    const side = pixel(
-      pixels,
-      STICK_CARVE.textureWidth,
-      20,
-      Math.floor(STICK_CARVE.sideUv * STICK_CARVE.textureHeight),
-    );
-    expect(side).toEqual(flat);
+    expect(facePixel(pixels, 0.5, 0.5)).toEqual(flat);
+    expect(facePixel(pixels, 0.2, 0.5)).toEqual(flat);
+    expect(facePixel(pixels, 0.2, 0.98)).toEqual(flat);
 
     // On the +u wall the normal tilts toward the centre (R < 128); on the -u
     // wall it tilts the other way (R > 128). The bar's length is much larger
     // than its width, so the u offset is in face units through `pipDistance`.
     const lengthUnits = STICK_SIZE.lengthUnits;
     const wallU = 0.5 + (STICK_CARVE.pipRadiusUnits + STICK_CARVE.wallUnits * 0.5) / lengthUnits;
-    const plus = capPixel(pixels, wallU, 0.5);
-    const minus = capPixel(pixels, 1 - wallU, 0.5);
+    const plus = facePixel(pixels, wallU, 0.5);
+    const minus = facePixel(pixels, 1 - wallU, 0.5);
     expect(plus[0]).toBeLessThan(126);
     expect(minus[0]).toBeGreaterThan(130);
     expect(plus[2]).toBeGreaterThan(128);
@@ -133,17 +122,12 @@ describe('the carved pip', () => {
 
   it('makes the lacquered pip glossier than the moulded body', () => {
     const pixels = stickRoughnessPixels();
-    const [pip] = capPixel(pixels, 0.5, 0.5);
-    const [body] = capPixel(pixels, 0.2, 0.5);
+    const [pip] = facePixel(pixels, 0.5, 0.5);
+    const [body] = facePixel(pixels, 0.2, 0.5);
     expect(pip).toBe(Math.round(STICK_CARVE.paintRoughness * 255));
     expect(body).toBe(Math.round(STICK_CARVE.bodyRoughness * 255));
     expect(pip).toBeLessThan(body);
-    const [side] = pixel(
-      pixels,
-      STICK_CARVE.textureWidth,
-      20,
-      Math.floor(STICK_CARVE.sideUv * STICK_CARVE.textureHeight),
-    );
+    const [side] = facePixel(pixels, 0.2, 0.98);
     expect(side).toBe(Math.round(STICK_CARVE.bodyRoughness * 255));
   });
 });
@@ -165,66 +149,74 @@ describe('the stick geometry', () => {
     expect(box.max.z + box.min.z).toBeCloseTo(0, 6);
   });
 
-  it('rounds every long edge by 0.4 mm', () => {
+  it('has an elliptical 7 x 3.5 mm cross-section at every point', () => {
     const geometry = createStickGeometry();
     geometry.computeBoundingBox();
     const box = geometry.boundingBox;
     if (!box) throw new Error('the stick has no bounding box');
     const position = geometry.getAttribute('position');
-    const bevel = STICK.bevelUnits;
-    expect(bevel).toBeCloseTo(0.4 / UNIT_MM, 12);
+    const semiWidth = STICK_SIZE.widthUnits / 2;
+    const semiHeight = STICK_SIZE.heightUnits / 2;
 
-    // The top and bottom faces are inset by the bevel, so no vertex at the
-    // body's height extreme also reaches the full length or width: that is the
-    // round-over, and it is what the previous box lacked.
-    let squareEdge = false;
+    // The user's shape rule: looking down the long axis, the outline is an
+    // ellipse. Every surface point must sit on (or inside) that ellipse — no
+    // flat face, no square edge — and the widest/tallest points must reach it.
+    let reachesTop = false;
+    let reachesSide = false;
     for (let index = 0; index < position.count; index += 1) {
-      const y = position.getY(index);
-      const x = Math.abs(position.getX(index));
-      const z = Math.abs(position.getZ(index));
-      if (
-        Math.abs(Math.abs(y) - box.max.y) < 1e-6 &&
-        (x > box.max.x - bevel * 0.5 || z > box.max.z - bevel * 0.5)
-      ) {
-        squareEdge = true;
-      }
+      const y = position.getY(index) / semiHeight;
+      const z = position.getZ(index) / semiWidth;
+      expect(y * y + z * z, `vertex ${index}`).toBeLessThanOrEqual(1 + 1e-6);
+      if (Math.abs(y) > 0.999) reachesTop = true;
+      if (Math.abs(z) > 0.999) reachesSide = true;
     }
-    expect(squareEdge).toBe(false);
+    expect(reachesTop).toBe(true);
+    expect(reachesSide).toBe(true);
 
-    // The widest silhouette sits at mid-height (the side wall), not at the top.
-    let widestY = 0;
-    let widestX = 0;
+    // The cross-section is the same ellipse along the straight middle: take a
+    // ring near the centre and check each of its vertices is exactly on it.
+    let onCentreRing = 0;
     for (let index = 0; index < position.count; index += 1) {
-      const x = Math.abs(position.getX(index));
-      if (x > widestX) {
-        widestX = x;
-        widestY = Math.abs(position.getY(index));
-      }
+      if (Math.abs(position.getX(index)) > 1e-6) continue;
+      const y = position.getY(index) / semiHeight;
+      const z = position.getZ(index) / semiWidth;
+      expect(y * y + z * z).toBeCloseTo(1, 5);
+      onCentreRing += 1;
     }
-    expect(widestX).toBeCloseTo(box.max.x, 6);
-    expect(widestY).toBeLessThan(box.max.y - bevel * 0.5);
+    expect(onCentreRing).toBe(STICK.aroundSegments);
+
+    // The plan ends are rounded (the sprite's semicircles): beyond the
+    // straight middle the cross-section shrinks, and the tips are poles.
+    const straightHalf = STICK_SIZE.lengthUnits / 2 - semiWidth;
+    let maxWidthAtCap = 0;
+    for (let index = 0; index < position.count; index += 1) {
+      if (Math.abs(position.getX(index)) <= straightHalf + 1e-6) continue;
+      maxWidthAtCap = Math.max(maxWidthAtCap, Math.abs(position.getZ(index)));
+    }
+    expect(maxWidthAtCap).toBeGreaterThan(0);
+    expect(maxWidthAtCap).toBeLessThan(semiWidth);
   });
 
-  it('maps the cap to the carve atlas and the wall to plain ivory', () => {
+  it('projects the plan UVs across the elliptical surface', () => {
     const geometry = createStickGeometry();
     const uv = geometry.getAttribute('uv');
-    const normal = geometry.getAttribute('normal');
-    let capVertices = 0;
-    let sideVertices = 0;
+    const position = geometry.getAttribute('position');
+    const length = STICK_SIZE.lengthUnits;
+    const width = STICK_SIZE.widthUnits;
     for (let index = 0; index < uv.count; index += 1) {
-      if (Math.abs(normal.getY(index)) > 0.9) {
-        capVertices += 1;
-        expect(uv.getX(index)).toBeGreaterThanOrEqual(0);
-        expect(uv.getX(index)).toBeLessThanOrEqual(1);
-        expect(uv.getY(index)).toBeGreaterThanOrEqual(0);
-        expect(uv.getY(index)).toBeLessThanOrEqual(STICK_CARVE.capUvMaxV);
-      } else {
-        sideVertices += 1;
-        expect(uv.getY(index)).toBeCloseTo(STICK_CARVE.sideUv, 6);
-      }
+      expect(uv.getX(index)).toBeCloseTo(
+        (position.getX(index) + length / 2) / length,
+        5,
+      );
+      expect(uv.getY(index)).toBeCloseTo(
+        0.5 + position.getZ(index) / width,
+        5,
+      );
+      expect(uv.getX(index)).toBeGreaterThanOrEqual(0);
+      expect(uv.getX(index)).toBeLessThanOrEqual(1);
+      expect(uv.getY(index)).toBeGreaterThanOrEqual(0);
+      expect(uv.getY(index)).toBeLessThanOrEqual(1);
     }
-    expect(capVertices).toBeGreaterThan(0);
-    expect(sideVertices).toBeGreaterThan(0);
   });
 });
 

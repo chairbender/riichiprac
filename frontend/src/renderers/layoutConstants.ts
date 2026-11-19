@@ -69,8 +69,10 @@ export const TABLE = {
  * The real 1000-point stick, in millimetres (user revision 2026-11-19):
  * 65 mm long, 7 mm wide and 3.5 mm thick, made of polystyrene resin. A common
  * commercial tenbo is 69 x 7 x 3 mm; the user's 65 x 7 x 3.5 is the model's
- * spec. Its longitudinal edges carry a 0.4 mm round-over (rendered in
- * `three/sticks.ts`).
+ * spec. Its cross-section — looking down the long axis — is an **ellipse**
+ * (the user's final shape note), so the long edges have no flat band and no
+ * separate round-over; `three/sticks.ts` sweeps that ellipse along the length,
+ * with the score sprite's semicircular plan ends.
  */
 export const STICK_MM = {
   length: 65,
