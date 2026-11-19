@@ -465,3 +465,182 @@ fn a_trigger_prefilter_skips_the_forward_pass_for_untriggered_decisions() {
         "every triggered decision is a book hit in this filter"
     );
 }
+
+/// Q2p: the same shard must produce the same rows and the same report on one
+/// worker and on many. Extract runs first so the label pass has `decisions` rows
+/// to write onto, which is the real pipeline order.
+#[test]
+fn parallel_and_serial_label_runs_write_the_same_rows_and_report() {
+    let serial = label_shard(1);
+    let parallel = label_shard(4);
+
+    assert_eq!(serial.report.workers, 1);
+    assert_eq!(parallel.report.workers, 4);
+    assert!(serial.report.decisions_labelled > 0);
+    assert_eq!(
+        serial.report.decisions_failed, 0,
+        "{:?}",
+        serial.report.errors
+    );
+    assert_eq!(
+        serial.report.decisions_labelled
+            + serial.report.decisions_cached
+            + serial.report.decisions_retried,
+        serial.report.decisions_seen,
+        "every decision is labelled, cached or retried"
+    );
+    assert_eq!(
+        serial.evaluator.calls(),
+        serial.report.decisions_labelled,
+        "a duplicate state shares one evaluation, as in the serial pass"
+    );
+    assert_eq!(
+        parallel.evaluator.calls(),
+        parallel.report.decisions_labelled,
+        "the flight map keeps one evaluation per state on many workers"
+    );
+
+    for field in [
+        "replays_found",
+        "replays_walked",
+        "replays_failed",
+        "decisions_seen",
+        "decisions_dropped",
+        "decisions_cached",
+        "decisions_labelled",
+        "decisions_retried",
+        "decisions_failed",
+        "decisions_triggered",
+        "decisions_filtered_out",
+        "book_labels",
+        "stable",
+        "contested",
+        "mortal_only",
+        "book_conflicts",
+    ] {
+        assert_eq!(
+            report_field(&serial.report, field),
+            report_field(&parallel.report, field),
+            "`{field}` must not depend on the worker count"
+        );
+    }
+    assert_eq!(serial.report.trigger_hits, parallel.report.trigger_hits);
+    assert_eq!(serial.report.errors, parallel.report.errors);
+    assert_eq!(serial.report.labelers, parallel.report.labelers);
+    assert_eq!(serial.rows, parallel.rows, "same `decisions` rows");
+    assert_eq!(serial.cache_rows, parallel.cache_rows, "same cache rows");
+}
+
+/// One seeded data root, extracted, then labelled on `workers` threads.
+struct LabelShardRun {
+    report: LabelRunReport,
+    evaluator: CannedEvaluator,
+    rows: Vec<(String, String, String, String)>,
+    cache_rows: Vec<(String, String)>,
+}
+
+fn label_shard(workers: usize) -> LabelShardRun {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let root = DataRoot::new(temp.path().join("data")).expect("data root");
+    let mut first: Option<Vec<u8>> = None;
+    for events in [
+        fixtures::all_events_game(),
+        fixtures::exhaustive_game(3),
+        fixtures::two_kyoku_game(),
+        fixtures::chankan_game(),
+        fixtures::furiten_ron_game(),
+    ] {
+        let bytes = write_replay(&root, "mortal_mirror", &events);
+        first.get_or_insert(bytes);
+    }
+    let first = ReplayId::from_bytes(&first.expect("a seeded replay"));
+    // The first file's replay row exercises the generator-identity path.
+    let connection = open_miner_db(&root).expect("miner db");
+    connection
+        .execute(
+            "INSERT INTO replays (
+                replay_id, source, licence, attribution, format, rule,
+                rule_config_hash, generated_at, model, model_sha256, seed,
+                log_path, log_bytes, log_sha256, validation_status,
+                ingested_at, corpus_id, family, match_plan_id,
+                match_plan_sha256, agents, provenance_json
+             ) VALUES (?1, 'ai_selfplay', 'CC-BY-4.0', 'fixture', 'mjai',
+                'tenhou-4p-hanchan', ?2, '2026-11-16T00:00:00Z',
+                'akochan-1.0', ?3, '0x01', ?4, 1, ?5, 'ok',
+                '2026-11-16T00:01:00Z', 'mixed-2026-11', 'mortal_mirror',
+                'm1', ?6, '[]', '{}')",
+            params![
+                first.as_str(),
+                "b".repeat(64),
+                "e".repeat(64),
+                format!("replays/mortal_mirror/{}.jsonl.gz", first.as_str()),
+                "f".repeat(64),
+                "0".repeat(64),
+            ],
+        )
+        .expect("replay row");
+    drop(connection);
+
+    let extraction = crate::miner::extract::run_extraction(
+        &root,
+        &crate::miner::extract::ExtractOptions {
+            workers,
+            ..Default::default()
+        },
+    )
+    .expect("extract");
+    assert!(extraction.decisions_inserted > 0);
+
+    let evaluator = CannedEvaluator::new(|info| -(info.tile_index.unwrap_or(0) as f32) * 0.1);
+    let mut options = LabelRunOptions::new("unused.safetensors");
+    options.workers = workers;
+    let report = run_shard(&root, &options, &evaluator).expect("shard run");
+
+    let connection = open_miner_db(&root).expect("miner db");
+    let mut statement = connection
+        .prepare(
+            "SELECT decision_id, label_json, label_kind, label_source
+               FROM decisions ORDER BY decision_id",
+        )
+        .expect("statement");
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        })
+        .expect("rows")
+        .map(|row| row.expect("row"))
+        .collect();
+    let mut statement = connection
+        .prepare("SELECT state_hash, label_json FROM model_labels ORDER BY state_hash")
+        .expect("statement");
+    let cache_rows = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .expect("rows")
+        .map(|row| row.expect("row"))
+        .collect();
+    LabelShardRun {
+        report,
+        evaluator,
+        rows,
+        cache_rows,
+    }
+}
+
+/// Read one numeric report field by name, so a new counter cannot silently drop
+/// out of the comparison above.
+fn report_field(report: &LabelRunReport, field: &str) -> usize {
+    let value = serde_json::to_value(report).expect("report json");
+    value
+        .get(field)
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or_else(|| panic!("`{field}` is not a numeric report field"))
+        .try_into()
+        .expect("fits in usize")
+}

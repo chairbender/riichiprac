@@ -141,6 +141,12 @@ pub struct SelectionReport {
     pub held_out_queue: String,
     /// Relative path of this report.
     pub report_path: String,
+    /// Resolved worker threads this run used (`0` was requested as every core).
+    #[serde(default)]
+    pub workers: usize,
+    /// Wall time of the whole run, in milliseconds.
+    #[serde(default)]
+    pub wall_time_ms: u64,
     /// Operator-facing notes (non-failures).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub notes: Vec<String>,

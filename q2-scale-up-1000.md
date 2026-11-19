@@ -92,15 +92,102 @@ pre-existing 100-run generator timing assertion
 (`test_pair_count_open_constraints_100_runs`); it passes alone (5.18 s) and is
 not related to the miner. Run performance tests on an otherwise idle machine.
 
-## Compute policy note
+## Compute policy note (Q2p, 2026-11-18)
 
-Selection and review-report building now use `--workers 0` (every core; 14
-threads here) and print measured progress. The **extraction and labelling**
-stages used by the corpus expansion are still serial; that is the next pipeline
-throughput fix and is recorded as remaining work, not accepted default
-behaviour, in `AGENTS.md` §5b and `replay-implementation-plan.md` §7.1. The
-corpus generator already had per-family workers; the mining stages are catching
-up.
+Selection and review-report building use `--workers 0` (every core) and print
+measured progress. **Extraction, labelling and transform now do too**: each
+takes `--workers N` (default `0` = every available core) and `--progress`,
+parallelises per replay file (extract, label) or per base scenario (transform),
+merges the per-unit results in the serial order, and records the resolved
+`workers` and `wall_time_ms` in its report. `src/miner/parallel.rs` holds the
+shared pool, progress and single-writer connection helpers. See
+[`replay-miner-operations.md`](replay-miner-operations.md) "Parallel execution
+(Q2p)" for the contract and the two documented cache-sharing caveats.
+
+### Measured passes
+
+The Q2 corpus (544 games / 278,517 decisions in five families) was re-extracted
+and re-labelled from a copy of the same replay files into a scratch data root
+that was seeded with the reference `replays` rows, so the output can be compared
+row for row against the serial Q2 pass in
+`~/riichiprac-data/q2-ch8-defense-2026-11`.
+
+```bash
+BIN=./target/release/mine_replays
+$BIN --data-dir /tmp/opencode/q2p-bench extract --workers 0 --progress --json
+$BIN --data-dir /tmp/opencode/q2p-bench label \
+  --weights frontend/public/models/mortal_298k.safetensors \
+  --trigger book --workers 0 --progress --json
+```
+
+| Pass | Output | Wall time | Worker threads | Notes |
+| --- | --- | ---: | ---: | --- |
+| `extract --workers 0` | 278,517 decisions, 544 replays | 12 min 28 s | 14 | 9.5 cores of CPU on average (`ps %cpu`) |
+| `label --trigger book --workers 0` | 41,009 labels (40,429 evaluations, 580 in-run cache reuses) | 9 min 26 s | 14 | 6,412 s user+sys ⇒ 11.3 cores of useful work |
+| `extract` (serial, Q2) | the reference rows | not recorded | 1 | the comparison baseline |
+| `label` (serial, Q2) | 40,429 cached labels | not recorded | 1 | the comparison baseline |
+| `transform --rehearsal 100` | 265 shipped variants from 590 attempts | 4.96 s | 1 | pinned stamp/pack id |
+| `transform --rehearsal 100 --workers 0` | the same 265 variants | 3.37 s | 14 | report identical to the serial run |
+
+`--progress` printed the phase header (`extract: 544 replay file(s), 14 worker
+thread(s)`) and one line per tenth of the shard (`walk 54/544`, `108/544`, ...),
+so the run's progress was measured rather than guessed. The recorded report
+fields are `workers: 14`, `wall_time_ms: 748350` (extract) and `wall_time_ms:
+565535` (label).
+
+The host was shared while these ran (a Blender bake from another worktree held
+8–10 cores for part of the extract pass, load average 2.4–32), so the wall times
+understate a clean machine's throughput. The label pass's own accounting
+(6,346.8 s user + 64.9 s sys against 565.6 s wall) shows 11.3 cores busy on
+average; the extract pass averaged 9.5 cores (`ps %cpu`) under heavier
+contention.
+
+### Identical output to the serial pass
+
+Extraction was compared with the serial Q2 database, row for row, over every
+column extract owns:
+
+```
+rows_here|278517      only_here|0      only_ref|0
+differing|0           (family, kyoku, honba, event_index, turn, seat,
+                       decision_kind, state_hash, visible_info_hash,
+                       played_action, legal_actions, state_json)
+```
+
+The label pass produced the same 40,429 cache rows (no key missing, none extra),
+the same 41,009 labels, and the same per-decision `label_kind`/`label_source`
+split as the serial pass (24,808 `book`, 16,201 `contested`, 0 unresolved). 281
+cache payloads (0.7 %) and the 562 decisions that share those states (1.4 %)
+differ in exactly one field: `generator`, the provenance line that names the
+*source replay's* engine. Two replays from different engine families can reach
+the same model-visible position; the observation does not carry the generator,
+so the cache keeps whichever claimant recorded it first, and with 14 workers that
+claimant need not be the serial order's. Every answer-bearing field
+(`top_action`, `ranking`, `q_values`, `q_gap_*`, the book half, `stability`,
+`label_kind`) is identical in all 41,009 labels. This is the documented
+`label` caveat (see `replay-miner-operations.md`), and the cache-row count and
+the report's answer counts are unaffected.
+
+Unit coverage for the same property is in the Rust suite:
+`miner::extract::tests::parallel_and_serial_extraction_write_the_same_rows_and_report`,
+`miner::label::run::tests::parallel_and_serial_label_runs_write_the_same_rows_and_report`
+and `miner::variant::tests::a_parallel_stage_matches_the_serial_stage`, plus the
+`--workers`/`--progress` CLI parse test in `src/bin/mine_replays.rs`.
+
+The transform stage's rehearsal was also compared end to end with a pinned
+stamp and pack id:
+
+```bash
+$BIN --data-dir /tmp/opencode/tx-bench transform --rehearsal 100 --workers 1 \
+  --dry-run --generated-at 2026-11-18T00:00:00Z --pack-id q2p-tx-bench --json
+$BIN --data-dir /tmp/opencode/tx-bench transform --rehearsal 100 --workers 0 \
+  --dry-run --generated-at 2026-11-18T00:00:00Z --pack-id q2p-tx-bench --json
+```
+
+Both runs report 100 bases, 590 attempts, 284 preserved, 265 shipped, and the
+two reports are equal with only `workers` and `wall_time_ms` removed. A book-only
+rehearsal has little model work, so the gain there is modest (4.96 s → 3.37 s);
+a Mortal-base queue run parallelises the label re-run as well.
 
 ## What is next
 
@@ -108,7 +195,5 @@ up.
 - 2,000 bases needs more labelled games (544 games yielded 1,038 after the
   hand/lesson filters) and a proper review tool; one-at-a-time app review does
   not scale past about 1k.
-- Parallelise extraction and labelling with the same `--workers`/progress
-  contract, then transform.
 - Variants stay disabled; a future design must change the decision, not just
   relabel the tiles.

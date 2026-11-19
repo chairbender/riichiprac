@@ -26,8 +26,8 @@ use crate::ai::finalize::{action_info, correct_action_from_info, normalize_morta
 use crate::classifier::{self, Match};
 use crate::generator::ScenarioId;
 use crate::generator::support::state_validation::validate_reachable_state;
-use crate::miner::label::cache::LabelCache;
-use crate::miner::label::{LabelDisposition, ModelLabel, label_state};
+use crate::miner::label::cache::{CacheClaim, LabelCache, LabelKey};
+use crate::miner::label::{LabelDisposition, ModelLabel};
 use crate::miner::pack::{LabelCheck, LabelCheckKind, accepted_for, is_tile_code};
 use crate::miner::select::gate::check_answer_legal;
 use crate::miner::transform::{InverseChain, TileLedger, TransformChain};
@@ -78,11 +78,16 @@ pub enum LabelUse {
 }
 
 /// A model labeler the gate can call, with the L1 cache.
+///
+/// The database is the stage's [`SharedDb`]: the gate runs inside the parallel
+/// variant stage, so the cache lookup and the cache write happen under the
+/// stage's connection lock while the forward pass runs outside it.
 pub struct VariantLabeler<'a> {
     /// The checkpoint (or a test evaluator) that scores a state.
     pub evaluator: &'a dyn crate::miner::label::StateEvaluator,
-    /// The cache shared with L1; the key is the transformed state's hash.
-    pub cache: &'a LabelCache<'a>,
+    /// The miner database shared with L1; the key is the transformed state's
+    /// hash.
+    pub db: &'a crate::miner::parallel::SharedDb,
     /// Label options (`q_values`, `safe_gap`), part of the cache key.
     pub options: crate::miner::label::LabelOptions,
 }
@@ -94,19 +99,34 @@ impl VariantLabeler<'_> {
         state: &GameState,
         classifier_version: &str,
     ) -> Result<(ModelLabel, LabelUse), Reject> {
+        let key = LabelKey::new(
+            state,
+            self.evaluator.identity(),
+            classifier_version,
+            &self.options,
+        );
+        let claim = self
+            .db
+            .with(|connection| LabelCache::new(connection).claim(&key))
+            .map_err(|err| Reject::new("labeler_error", err.to_string()))?;
+        if let CacheClaim::Hit(label) = &claim {
+            return Ok((label.as_ref().clone(), LabelUse::Cached));
+        }
         // The base's furiten flag is invariant under every catalogue transform
         // (the actor's river and waits are relabelled together), so a base that
         // the walker admitted cannot become furiten by relabelling.
-        let disposition = label_state(
-            self.cache,
+        let built = crate::miner::label::build_label_for_state(
             self.evaluator,
             state,
             false,
             &self.options,
             classifier_version,
             None,
-        )
-        .map_err(|err| Reject::new("labeler_error", err.to_string()))?;
+        );
+        let disposition = self
+            .db
+            .with(|connection| LabelCache::new(connection).settle(&key, &claim, built))
+            .map_err(|err| Reject::new("labeler_error", err.to_string()))?;
         let use_ = match &disposition {
             LabelDisposition::Cached(_) => LabelUse::Cached,
             LabelDisposition::Labelled(_) => LabelUse::Evaluated,

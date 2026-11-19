@@ -24,11 +24,14 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use rayon::prelude::*;
+
 use crate::miner::label::CLASSIFIER_VERSION;
 use crate::miner::pack::{
     LabelCheck, Pack, PackGenerator, PackId, PackPlayed, PackScenario, PackSource, PackValidation,
     ScenarioKey, find_spoiler,
 };
+use crate::miner::parallel::{Progress, resolve_workers, worker_pool};
 use crate::miner::provenance::GameProvenance;
 use crate::miner::select::dedupe::exact_state_hash;
 use crate::miner::transform::TransformChain;
@@ -111,9 +114,118 @@ struct PairCounters {
     rejections: BTreeMap<String, u64>,
 }
 
+/// One planned attempt's outcome, computed off the main thread.
+enum AttemptOutcome {
+    /// The planned chain is invalid for this base (a report error).
+    Invalid(String),
+    /// The gate rejected the chain.
+    Rejected(gate::Reject),
+    /// The gate preserved the label.
+    Gated(Box<GatedState>),
+}
+
+/// One plan of one base: the chain and its gate outcome.
+struct Attempt {
+    chain: TransformChain,
+    families: Vec<TransformFamily>,
+    outcome: AttemptOutcome,
+}
+
+/// Everything one base contributes, computed by a worker and merged in base
+/// order.
+struct BaseRun {
+    /// The base failed its own validation; the message is the report error.
+    invalid: Option<String>,
+    /// The base's yield-report key (`lesson`, or `mortal_best`).
+    lesson_key: String,
+    /// Families the base's policy allows.
+    policy_families: BTreeSet<TransformFamily>,
+    /// The planned attempts, in plan order.
+    attempts: Vec<Attempt>,
+}
+
+impl BaseRun {
+    /// Plan and gate every attempt for one base.
+    ///
+    /// The gate is the expensive part (the transform plus the label re-run), and
+    /// it depends only on the base, its chain and the label cache, so a worker
+    /// can compute it. Which attempts the serial run actually *uses* is decided
+    /// during the merge: a duplicate or a failed gate can end a base early, and
+    /// an attempt after that point is simply dropped, exactly as the serial loop
+    /// would never have planned it. Computing it is bounded wasted work
+    /// (`attempts_per_base` at most).
+    fn of(
+        base: &BaseScenario,
+        stage: &VariantStage<'_>,
+        seed: &str,
+        attempts_per_base: usize,
+    ) -> Self {
+        if let Err(err) = base.validate() {
+            return Self {
+                invalid: Some(err.to_string()),
+                lesson_key: String::new(),
+                policy_families: BTreeSet::new(),
+                attempts: Vec::new(),
+            };
+        }
+        let policy = base.policy(stage.config.mortal_policy.to_policy());
+        let plans = plan_for(base.id().as_str(), policy, seed, attempts_per_base);
+        let attempts = plans
+            .into_iter()
+            .map(|plan| {
+                let outcome = match super::plan::plan_is_valid(&plan) {
+                    Err(err) => AttemptOutcome::Invalid(format!(
+                        "planned chain for `{}` is invalid: {err}",
+                        base.id()
+                    )),
+                    Ok(()) => match gate::check(base, &plan.chain, &stage.deps) {
+                        Ok(gated) => AttemptOutcome::Gated(Box::new(gated)),
+                        Err(reject) => AttemptOutcome::Rejected(reject),
+                    },
+                };
+                Attempt {
+                    chain: plan.chain,
+                    families: plan.families,
+                    outcome,
+                }
+            })
+            .collect();
+        Self {
+            invalid: None,
+            lesson_key: base.label.key(),
+            policy_families: super::plan::allowed_families(policy).into_iter().collect(),
+            attempts,
+        }
+    }
+}
+
 impl<'a> VariantStage<'a> {
-    /// Run the stage over `bases`.
+    /// Run the stage over `bases` on one thread (the bounded mode).
     pub fn run(&self, bases: &[BaseScenario]) -> Result<StageOutcome, VariantError> {
+        self.run_with(bases, 1, false)
+    }
+
+    /// Run the stage over `bases`, planning and gating on `workers` threads.
+    ///
+    /// Bases are independent until their results are merged, so the transform
+    /// and its label re-run run on every available core (`workers = 0`). The
+    /// merge then applies the serial order's rules — dedupe against everything
+    /// already seen, the early stop once a base has its target, the per-pair
+    /// yield, the per-base cap — in base and plan order, so the shipped set and
+    /// the report do not depend on the worker count.
+    ///
+    /// One caveat is recorded rather than hidden: the gate re-runs the labeler,
+    /// and two bases whose chains produce the *same* transformed state share one
+    /// cache row. In a serial run the earlier base evaluates it and the later one
+    /// reports `cached` (and is then dropped as a duplicate); with more than one
+    /// worker the later base may evaluate it first, so `labels.evaluated` and
+    /// `labels.cached` can differ by that overlap. The shipped set is unaffected.
+    pub fn run_with(
+        &self,
+        bases: &[BaseScenario],
+        workers: usize,
+        progress: bool,
+    ) -> Result<StageOutcome, VariantError> {
         self.config.validate()?;
         validate_bases(bases)?;
 
@@ -137,138 +249,157 @@ impl<'a> VariantStage<'a> {
         let mut label_activity = LabelActivity::default();
         let mut withdrawn = 0_u64;
 
-        for base in bases {
-            if let Err(err) = base.validate() {
-                report.errors.push(err.to_string());
+        let resolved = resolve_workers(workers);
+        report.workers = resolved;
+        let progress_bar = Progress::new(
+            "transform",
+            "gate",
+            "base scenario(s)",
+            bases.len(),
+            progress,
+        );
+        progress_bar.announce(resolved);
+        let plan = |base: &BaseScenario| {
+            progress_bar.tick();
+            BaseRun::of(base, self, seed, attempts_per_base)
+        };
+        let planned: Vec<BaseRun> = if resolved == 1 {
+            bases.iter().map(plan).collect()
+        } else {
+            let pool = worker_pool(resolved).map_err(VariantError::Workers)?;
+            pool.install(|| bases.par_iter().map(plan).collect())
+        };
+
+        for (base, prepared) in bases.iter().zip(planned) {
+            if let Some(error) = prepared.invalid {
+                report.errors.push(error);
                 continue;
             }
-            let policy = base.policy(self.config.mortal_policy.to_policy());
-            let plans = plan_for(base.id().as_str(), policy, seed, attempts_per_base);
-            if plans.is_empty() {
+            if prepared.attempts.is_empty() {
                 *report
                     .rejections
                     .entry("policy_denies_all".to_string())
                     .or_insert(0) += 1;
                 continue;
             }
-            let lesson_key = base.label.key();
-            let policy_families = super::plan::allowed_families(policy);
+            let lesson_key = prepared.lesson_key;
+            let policy_families = prepared.policy_families;
             let mut attempted_families: BTreeSet<TransformFamily> = BTreeSet::new();
             let mut kept_for_base = 0_usize;
-            for (index, plan) in plans.iter().enumerate() {
+            for (index, attempt) in prepared.attempts.into_iter().enumerate() {
                 report.attempts += 1;
-                attempted_families.extend(plan.families.iter().copied());
+                attempted_families.extend(attempt.families.iter().copied());
+                let families = &attempt.families;
+                let chain = &attempt.chain;
+                let outcome = attempt.outcome;
                 'attempt: {
-                    if let Err(err) = super::plan::plan_is_valid(plan) {
-                        report.errors.push(format!(
-                            "planned chain for `{}` is invalid: {err}",
-                            base.id()
-                        ));
+                    if let AttemptOutcome::Invalid(error) = &outcome {
+                        report.errors.push(error.clone());
                         break 'attempt;
                     }
-                    for family in &plan.families {
+                    // The attempt is measured whichever way the gate goes; the
+                    // yield is preserved/attempted per lesson/transform pair.
+                    for family in families {
                         pairs
                             .entry((lesson_key.clone(), *family))
                             .or_default()
                             .attempted += 1;
                     }
-                    let id = match ScenarioKey::parse(&format!(
-                        "{}-v{:02}",
-                        base.id().as_str(),
-                        index + 1
-                    )) {
+                    let id = match variant_id(base, index) {
                         Ok(id) => id,
                         Err(err) => {
-                            report
-                                .errors
-                                .push(format!("cannot name a variant of `{}`: {err}", base.id()));
+                            report.errors.push(err);
                             break 'attempt;
                         }
                     };
-                    let gated = match gate::check(base, &plan.chain, &self.deps) {
-                        Ok(gated) => gated,
-                        Err(reject) => {
+                    match outcome {
+                        AttemptOutcome::Invalid(_) => {
+                            unreachable!("an invalid plan ended the attempt above")
+                        }
+                        AttemptOutcome::Rejected(reject) => {
                             count_rejection(
                                 &mut report,
                                 &mut pairs,
                                 &lesson_key,
-                                &plan.families,
+                                families,
                                 reject.code,
                             );
                             rejected.push(RejectedVariant {
                                 base: base.id().clone(),
                                 id,
-                                chain: plan.chain.clone(),
+                                chain: chain.clone(),
                                 code: reject.code,
                                 detail: reject.detail,
                                 label_preserved: false,
                             });
-                            break 'attempt;
                         }
-                    };
-                    report.preserved += 1;
-                    for family in &plan.families {
-                        pairs
-                            .entry((lesson_key.clone(), *family))
-                            .or_default()
-                            .preserved += 1;
+                        AttemptOutcome::Gated(gated) => {
+                            report.preserved += 1;
+                            for family in families {
+                                pairs
+                                    .entry((lesson_key.clone(), *family))
+                                    .or_default()
+                                    .preserved += 1;
+                            }
+                            match gated.label_use {
+                                LabelUse::Cached => label_activity.cached += 1,
+                                LabelUse::Evaluated => label_activity.evaluated += 1,
+                                LabelUse::Retried => label_activity.retried += 1,
+                                LabelUse::None => {}
+                            }
+                            let hash = exact_state_hash(&gated.state);
+                            if !seen.insert(hash.clone()) {
+                                report.duplicate_states += 1;
+                                count_rejection(
+                                    &mut report,
+                                    &mut pairs,
+                                    &lesson_key,
+                                    families,
+                                    "duplicate_state",
+                                );
+                                rejected.push(RejectedVariant {
+                                    base: base.id().clone(),
+                                    id,
+                                    chain: chain.clone(),
+                                    code: "duplicate_state",
+                                    detail: "the transformed state is already in the pack"
+                                        .to_string(),
+                                    label_preserved: true,
+                                });
+                                break 'attempt;
+                            }
+                            let scenario = variant_scenario(base, &id, &gated, chain);
+                            if let Some(finding) = find_spoiler(&scenario) {
+                                count_rejection(
+                                    &mut report,
+                                    &mut pairs,
+                                    &lesson_key,
+                                    families,
+                                    "spoiler",
+                                );
+                                rejected.push(RejectedVariant {
+                                    base: base.id().clone(),
+                                    id,
+                                    chain: chain.clone(),
+                                    code: "spoiler",
+                                    detail: finding.detail,
+                                    label_preserved: true,
+                                });
+                                break 'attempt;
+                            }
+                            kept_for_base += 1;
+                            variants.push(VariantRecord {
+                                base: base.id().clone(),
+                                id,
+                                lesson_key: lesson_key.clone(),
+                                families: families.clone(),
+                                chain: chain.clone(),
+                                state_hash: hash,
+                                label_check: gated.label_check.clone(),
+                                scenario,
+                            });
+                        }
                     }
-                    match gated.label_use {
-                        LabelUse::Cached => label_activity.cached += 1,
-                        LabelUse::Evaluated => label_activity.evaluated += 1,
-                        LabelUse::Retried => label_activity.retried += 1,
-                        LabelUse::None => {}
-                    }
-                    let hash = exact_state_hash(&gated.state);
-                    if !seen.insert(hash.clone()) {
-                        report.duplicate_states += 1;
-                        count_rejection(
-                            &mut report,
-                            &mut pairs,
-                            &lesson_key,
-                            &plan.families,
-                            "duplicate_state",
-                        );
-                        rejected.push(RejectedVariant {
-                            base: base.id().clone(),
-                            id,
-                            chain: plan.chain.clone(),
-                            code: "duplicate_state",
-                            detail: "the transformed state is already in the pack".to_string(),
-                            label_preserved: true,
-                        });
-                        break 'attempt;
-                    }
-                    let scenario = variant_scenario(base, &id, &gated, &plan.chain);
-                    if let Some(finding) = find_spoiler(&scenario) {
-                        count_rejection(
-                            &mut report,
-                            &mut pairs,
-                            &lesson_key,
-                            &plan.families,
-                            "spoiler",
-                        );
-                        rejected.push(RejectedVariant {
-                            base: base.id().clone(),
-                            id,
-                            chain: plan.chain.clone(),
-                            code: "spoiler",
-                            detail: finding.detail,
-                            label_preserved: true,
-                        });
-                        break 'attempt;
-                    }
-                    kept_for_base += 1;
-                    variants.push(VariantRecord {
-                        base: base.id().clone(),
-                        id,
-                        lesson_key: lesson_key.clone(),
-                        families: plan.families.clone(),
-                        chain: plan.chain.clone(),
-                        state_hash: hash,
-                        label_check: gated.label_check,
-                        scenario,
-                    });
                 }
                 // A pair needs at least one attempt per base to be measured;
                 // stop once the base has its target and every allowed family
@@ -407,6 +538,12 @@ impl<'a> VariantStage<'a> {
         }
         disabled
     }
+}
+
+/// The variant id one attempt would use, or the report error that stops it.
+fn variant_id(base: &BaseScenario, index: usize) -> Result<ScenarioKey, String> {
+    ScenarioKey::parse(&format!("{}-v{:02}", base.id().as_str(), index + 1))
+        .map_err(|err| format!("cannot name a variant of `{}`: {err}", base.id()))
 }
 
 fn validate_bases(bases: &[BaseScenario]) -> Result<(), VariantError> {

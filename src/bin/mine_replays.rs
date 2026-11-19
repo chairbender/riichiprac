@@ -28,7 +28,6 @@ use clap::{Parser, Subcommand};
 
 use riichiprac::miner::extract::{ExtractOptions, ExtractReport, run_extraction};
 use riichiprac::miner::label::Labeler;
-use riichiprac::miner::label::cache::LabelCache;
 use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
 use riichiprac::miner::qa::{QA_PACK_ID, QA_SELECTION_PACK_ID, QaOptions, run_fixture_pipeline};
 use riichiprac::miner::variant::{
@@ -85,6 +84,15 @@ enum Command {
         #[arg(long, value_name = "N")]
         limit: Option<usize>,
 
+        /// Worker threads for the offline walk. 0 uses every available core; 1
+        /// is for debugging and tests.
+        #[arg(long, value_name = "N", default_value_t = 0)]
+        workers: usize,
+
+        /// Print phase and file progress to stderr.
+        #[arg(long)]
+        progress: bool,
+
         /// Validate and report without writing any row.
         #[arg(long)]
         dry_run: bool,
@@ -125,6 +133,15 @@ enum Command {
         /// Classifier generation recorded on every label.
         #[arg(long, value_name = "V", default_value = CLASSIFIER_VERSION)]
         classifier_version: String,
+
+        /// Worker threads for the offline label pass. 0 uses every available
+        /// core; 1 is for debugging and tests.
+        #[arg(long, value_name = "N", default_value_t = 0)]
+        workers: usize,
+
+        /// Print phase and file progress to stderr.
+        #[arg(long)]
+        progress: bool,
 
         /// Reward discount the checkpoint was trained with, when known.
         #[arg(long, value_name = "F32")]
@@ -313,6 +330,15 @@ enum Command {
         /// Mortal checkpoint for the label re-run (needed for Mortal-only bases).
         #[arg(long, value_name = "FILE")]
         weights: Option<PathBuf>,
+
+        /// Worker threads for the offline variant stage. 0 uses every available
+        /// core; 1 is for debugging and tests.
+        #[arg(long, value_name = "N", default_value_t = 0)]
+        workers: usize,
+
+        /// Print base/attempt progress to stderr.
+        #[arg(long)]
+        progress: bool,
 
         /// Output directory (default: reviews/<pack-id>/variants).
         #[arg(long, value_name = "DIR")]
@@ -633,6 +659,8 @@ fn main() -> ExitCode {
             replays,
             family,
             limit,
+            workers,
+            progress,
             dry_run,
             json,
         } => run_extract_command(
@@ -641,6 +669,8 @@ fn main() -> ExitCode {
                 replays,
                 family,
                 limit,
+                workers,
+                progress,
                 dry_run,
             },
             json,
@@ -653,6 +683,8 @@ fn main() -> ExitCode {
             family,
             limit,
             classifier_version,
+            workers,
+            progress,
             gamma,
             pts,
             trigger,
@@ -684,6 +716,8 @@ fn main() -> ExitCode {
                     family,
                     limit,
                     classifier_version,
+                    workers,
+                    progress,
                     gamma,
                     pts,
                     label_options: Default::default(),
@@ -735,6 +769,8 @@ fn main() -> ExitCode {
             seed,
             yield_policy,
             weights,
+            workers,
+            progress,
             out,
             generated_at,
             pack,
@@ -768,6 +804,8 @@ fn main() -> ExitCode {
                 generated_at,
                 publish: pack,
                 persist: rehearsal.is_none(),
+                workers,
+                progress,
                 dry_run,
             };
             run_transform_command(&root, &options, weights, json)
@@ -1459,10 +1497,10 @@ fn run_transform_command(
         },
         None => None,
     };
-    let cache = LabelCache::new(&connection);
+    let db = riichiprac::miner::SharedDb::new(connection);
     let labeler = loaded.as_ref().map(|evaluator| VariantLabeler {
         evaluator,
-        cache: &cache,
+        db: &db,
         options: Default::default(),
     });
     match run_variants(root, options, labeler.as_ref()) {
@@ -1708,8 +1746,8 @@ fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> 
         }
         Ok(report) => {
             println!(
-                "mine_replays label: {} replay(s) ({}, {} failed), {} decisions \
-                 ({} labelled, {} cached, {} retried, {} failed)",
+                "mine_replays label: {} replay(s) ({} walked, {} failed), {} decisions \
+                 ({} labelled, {} cached, {} retried, {} failed) in {} ms on {} worker thread(s)",
                 report.replays_found,
                 report.replays_walked,
                 report.replays_failed,
@@ -1717,7 +1755,9 @@ fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> 
                 report.decisions_labelled,
                 report.decisions_cached,
                 report.decisions_retried,
-                report.decisions_failed
+                report.decisions_failed,
+                report.wall_time_ms,
+                report.workers
             );
             println!(
                 "  model: {} (sha256 {}), classifier {}",
@@ -2224,5 +2264,97 @@ mod tests {
     #[test]
     fn unknown_subcommand_is_rejected() {
         assert!(Cli::try_parse_from(["mine_replays", "frobnicate"]).is_err());
+    }
+
+    #[test]
+    fn the_offline_stages_parse_their_worker_and_progress_flags() {
+        let extract = Cli::try_parse_from([
+            "mine_replays",
+            "extract",
+            "--workers",
+            "14",
+            "--progress",
+            "--limit",
+            "40",
+            "--json",
+        ])
+        .expect("extract parses");
+        match extract.command {
+            Command::Extract {
+                workers,
+                progress,
+                limit,
+                ..
+            } => {
+                assert_eq!(workers, 14);
+                assert!(progress);
+                assert_eq!(limit, Some(40));
+            }
+            other => panic!("expected the extract command, got {other:?}"),
+        }
+
+        let label = Cli::try_parse_from([
+            "mine_replays",
+            "label",
+            "--weights",
+            "mortal_298k.safetensors",
+            "--workers",
+            "0",
+            "--progress",
+        ])
+        .expect("label parses");
+        match label.command {
+            Command::Label {
+                workers, progress, ..
+            } => {
+                assert_eq!(workers, 0, "0 is every available core");
+                assert!(progress);
+            }
+            other => panic!("expected the label command, got {other:?}"),
+        }
+
+        let transform = Cli::try_parse_from([
+            "mine_replays",
+            "transform",
+            "--rehearsal",
+            "8",
+            "--workers",
+            "3",
+            "--progress",
+            "--json",
+        ])
+        .expect("transform parses");
+        match transform.command {
+            Command::Transform {
+                workers, progress, ..
+            } => {
+                assert_eq!(workers, 3);
+                assert!(progress);
+            }
+            other => panic!("expected the transform command, got {other:?}"),
+        }
+
+        // The default is the whole machine, not one thread.
+        for name in ["extract", "transform"] {
+            let cli = Cli::try_parse_from(["mine_replays", name]).expect("defaults parse");
+            let workers = match cli.command {
+                Command::Extract { workers, .. } | Command::Transform { workers, .. } => workers,
+                other => panic!("expected `{name}`, got {other:?}"),
+            };
+            assert_eq!(workers, 0, "`{name}` defaults to every available core");
+        }
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "label",
+            "--weights",
+            "mortal_298k.safetensors",
+        ])
+        .expect("label defaults parse");
+        match cli.command {
+            Command::Label { workers, .. } => {
+                assert_eq!(workers, 0, "label defaults to every available core");
+            }
+            other => panic!("expected the label command, got {other:?}"),
+        }
     }
 }

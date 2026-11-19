@@ -1,0 +1,96 @@
+Q2p — parallel extract/label/transform: measured evidence, 2026-11-18
+=====================================================================
+
+Host: 14 logical cores, shared with other worktrees during the runs (a Blender
+bake held 8-10 cores for part of the extract pass; load average 2.4-32).
+
+Corpus: a scratch data root holding copies of the same 544 replay files the Q2
+pass used, seeded with the reference `replays` rows from
+`~/riichiprac-data/q2-ch8-defense-2026-11/db/miner.sqlite` so every label's
+generator provenance matches:
+
+    /tmp/opencode/q2p-bench/replays/{mortal_mirror,mortal_sampling_sweep,
+      akochan_tactics,akochan_vs_mortal,heterogeneous_table}/*.jsonl.gz   544 files
+
+Commands (release build, `workers 0` = every available core):
+
+    ./target/release/mine_replays --data-dir /tmp/opencode/q2p-bench extract \
+      --workers 0 --progress --json
+      -> reports: extract-report-parallel.json
+         544 replays walked / 0 failed
+         278,517 decisions seen / inserted
+         workers 14, wall_time_ms 748350 (12 min 28 s), 9.5 cores of CPU on average (ps %cpu)
+
+    ./target/release/mine_replays --data-dir /tmp/opencode/q2p-bench label \
+      --weights frontend/public/models/mortal_298k.safetensors \
+      --trigger book --workers 0 --progress --json
+      -> reports: label-report-parallel.json
+         544 replays walked / 0 failed; 278,517 decisions seen
+         40,429 evaluated, 580 served by an in-run cache reuse, 0 failed
+         41,009 book labels: 24,808 stable, 16,201 contested
+         workers 14, wall_time_ms 565535 (9 min 26 s)
+         CPU 6,346.8 s user + 64.9 s sys / 565.6 s wall = 11.3 cores busy
+
+Progress was printed by `--progress` at each tenth of the shard, for example
+`extract: 544 replay file(s), 14 worker thread(s)` then `extract: walk 54/544
+replay file(s)` ... `544/544`.
+
+Equivalence with the serial Q2 pass
+-----------------------------------
+
+Extraction, every column extract owns (query run with the reference database
+ATTACHed as `ref`):
+
+    rows_here|278517   only_here|0   only_ref|0   differing|0
+
+    differing = count of joined rows where family, kyoku, honba, event_index,
+    turn, seat, decision_kind, state_hash, visible_info_hash, played_action,
+    legal_actions or state_json differs.
+
+Label rows and cache:
+
+    labels_here|41009            cache_here|40429
+    cache_only_here|0            cache_only_ref|0
+    kind_differs|0   (label_kind, label_source on every decision)
+    top_differs|0    (mortal_top, q_values_json on every decision)
+    label_json_differs|562       cache_payload_differs|281
+
+The 281 differing cache payloads (0.7 %) differ in exactly one field,
+`generator` — the provenance line naming the *source replay's* engine. Two
+replays from different engine families can reach the same model-visible
+position; the observation does not carry the generator, so the cache keeps
+whichever claimant recorded it first, and with 14 workers that claimant need not
+be the serial order's. Removing `generator` from both payloads makes all 281
+pairs byte-identical, and no answer-bearing field (top action, ranking, Q
+values, q gaps, book half, stability, label_kind) differs anywhere.
+
+This is the documented caveat in `replay-miner-operations.md` ("Parallel
+execution (Q2p)") and `src/miner/label/run.rs`.
+
+Transform rehearsal (pinned stamp and pack id, book-only bases)
+---------------------------------------------------------------
+
+    transform --rehearsal 100 --workers 1 --dry-run \
+      --generated-at 2026-11-18T00:00:00Z --pack-id q2p-tx-bench --json
+      -> 4.96 s wall
+    transform --rehearsal 100 --workers 0 (14 threads) --dry-run ...
+      -> 3.37 s wall
+
+Both reports are equal once `workers` and `wall_time_ms` are removed: 100 bases,
+590 attempts, 284 preserved, 265 shipped. A book-only rehearsal has almost no
+model work, so this pass gains least from extra cores; a Mortal-base queue run
+also parallelises the label re-run.
+
+Reproduce
+---------
+
+    # rows
+    sqlite3 /tmp/opencode/q2p-bench/db/miner.sqlite "
+      ATTACH '$HOME/riichiprac-data/q2-ch8-defense-2026-11/db/miner.sqlite' AS ref;
+      SELECT count(*) FROM decisions d JOIN ref.decisions r USING (decision_id)
+       WHERE d.state_json <> r.state_json;"
+
+    # serial/parallel equality on a small shard + rows written
+    cargo test --features miner --lib -- \
+      miner::extract::tests::parallel_and_serial miner::label::run::tests::parallel_and_serial \
+      miner::variant::tests::a_parallel_stage_matches_the_serial_stage

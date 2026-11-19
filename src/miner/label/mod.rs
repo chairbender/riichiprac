@@ -82,7 +82,7 @@ use crate::replay::walk::DecisionSnapshot;
 use crate::safety::SafetyFacts;
 use crate::state::{CorrectAction, GameState, TargetAction};
 
-use self::cache::{CacheLookup, LabelCache, LabelKey};
+use self::cache::{CacheClaim, LabelCache, LabelKey};
 use self::calibration::ExpectedPointDiffs;
 use super::MODEL_LABEL_SCHEMA;
 pub use agreement::{
@@ -147,6 +147,9 @@ pub enum LabelError {
     /// The replay directory is missing.
     #[error("replay directory `{0}` does not exist")]
     MissingReplays(String),
+    /// The worker pool could not start.
+    #[error("{0}")]
+    Workers(String),
     /// A cheap-trigger report failed to evaluate or write (S1).
     #[error(transparent)]
     Trigger(#[from] crate::miner::trigger::TriggerError),
@@ -434,7 +437,11 @@ pub fn state_hash(state: &GameState) -> String {
 
 /// Anything that can score one state. The real implementation is [`Labeler`];
 /// tests use a canned evaluator so cache and label logic do not need weights.
-pub trait StateEvaluator {
+///
+/// The trait is `Sync` because the offline stages score many states from one
+/// worker pool: a checkpoint is loaded once and shared, and `evaluate` takes
+/// `&self` so it must be safe to call from several threads at once.
+pub trait StateEvaluator: Sync {
     /// The model identity recorded on every label.
     fn identity(&self) -> &ModelIdentity;
 
@@ -618,25 +625,11 @@ fn through_cache(
     build: impl FnOnce() -> Result<ModelLabel, LabelError>,
 ) -> Result<LabelDisposition, LabelError> {
     let key = LabelKey::new(state, identity, classifier_version, options);
-    let lookup = cache.lookup(&key)?;
-    if let CacheLookup::Hit(label) = &lookup {
+    let claim = cache.claim(&key)?;
+    if let CacheClaim::Hit(label) = &claim {
         return Ok(LabelDisposition::Cached(label.as_ref().clone()));
     }
-    let retrying = matches!(lookup, CacheLookup::Failed { .. });
-    match build() {
-        Ok(label) => {
-            cache.record_success(&key, &label)?;
-            Ok(if retrying {
-                LabelDisposition::Retried(label)
-            } else {
-                LabelDisposition::Labelled(label)
-            })
-        }
-        Err(err) => {
-            cache.record_failure(&key, &err.to_string())?;
-            Err(err)
-        }
-    }
+    cache.settle(&key, &claim, build())
 }
 
 /// Evaluate a snapshot and build its complete label document.

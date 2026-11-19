@@ -288,6 +288,12 @@ pub struct VariantReport {
     pub labels: LabelActivity,
     /// Pack-side share summary.
     pub share: ShareReport,
+    /// Resolved worker threads this run used (`0` was requested as every core).
+    #[serde(default)]
+    pub workers: usize,
+    /// Wall time of the whole run, in milliseconds.
+    #[serde(default)]
+    pub wall_time_ms: u64,
     /// Answer-free notes for the operator.
     #[serde(default)]
     pub notes: Vec<String>,
@@ -341,6 +347,8 @@ impl VariantReport {
                 by_family: BTreeMap::new(),
                 by_chain: BTreeMap::new(),
             },
+            workers: 0,
+            wall_time_ms: 0,
             notes: Vec::new(),
             errors: Vec::new(),
         }
@@ -391,6 +399,10 @@ impl VariantReport {
             self.min_yield * 100.0,
             self.labels.cached,
             self.labels.evaluated
+        ));
+        lines.push(format!(
+            "  ran in {} ms on {} worker thread(s)",
+            self.wall_time_ms, self.workers
         ));
         lines.push(format!(
             "  pack share: {}/{} scenarios are variants ({:.1}%); largest base {} ({:.1}%)",

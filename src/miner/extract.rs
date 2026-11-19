@@ -29,17 +29,28 @@
 //!
 //! The trigger, label and selection columns are owned by later stages and are
 //! preserved on every rerun.
+//!
+//! # Parallelism
+//!
+//! Files are independent, so the default run walks the shard on every available
+//! core (`--workers 0`). Each worker walks its own files and writes its rows
+//! under the stage's single database lock; the per-file results merge in file
+//! order, so the report and the rows are the same as a `--workers 1` run. The
+//! report records the worker count and wall time, and `--progress` prints the
+//! measured file count.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 
+use rayon::prelude::*;
 use rusqlite::{Connection, params};
 use serde::Serialize;
 use thiserror::Error;
 
 use crate::miner::label::run::discover_replays;
 use crate::miner::label::state_hash;
+use crate::miner::parallel::{Progress, SharedDb, elapsed_ms, resolve_workers, worker_pool};
 use crate::miner::select::candidate_turn;
 use crate::miner::select::dedupe::visible_info_fingerprint;
 use crate::miner::storage::{DataRoot, open_miner_db, utc_stamp};
@@ -59,6 +70,12 @@ pub struct ExtractOptions {
     pub family: Option<String>,
     /// Maximum replay files in this shard.
     pub limit: Option<usize>,
+    /// Worker threads. `0` uses every available core; `1` is the bounded mode
+    /// for tests, fixtures and debugging. Offline stages default to the whole
+    /// machine.
+    pub workers: usize,
+    /// Print phase and file progress to stderr.
+    pub progress: bool,
     /// Validate and report without writing a row.
     pub dry_run: bool,
 }
@@ -101,6 +118,12 @@ pub struct ExtractReport {
     pub decisions_updated: u64,
     /// The run wrote nothing (`--dry-run`).
     pub dry_run: bool,
+    /// Resolved worker threads this run used (`0` was requested as every core).
+    #[serde(default)]
+    pub workers: usize,
+    /// Wall time of the whole run, in milliseconds.
+    #[serde(default)]
+    pub wall_time_ms: u64,
     /// Per replay-family counts, sorted by family name.
     pub replay_families: Vec<(String, ExtractFamilyStats)>,
     /// First errors, in run order (bounded).
@@ -115,7 +138,7 @@ impl ExtractReport {
         let mut out = String::new();
         out.push_str(&format!(
             "mine_replays extract: {} replay(s) ({} walked, {} failed), {} decision(s) \
-             ({} walker drops{}), {} inserted, {} refreshed\n",
+             ({} walker drops{}), {} inserted, {} refreshed in {} ms on {} worker thread(s)\n",
             self.replays_found,
             self.replays_walked,
             self.replays_failed,
@@ -123,7 +146,9 @@ impl ExtractReport {
             self.decisions_dropped,
             if self.dry_run { ", dry run" } else { "" },
             self.decisions_inserted,
-            self.decisions_updated
+            self.decisions_updated,
+            self.wall_time_ms,
+            self.workers
         ));
         for (family, stats) in &self.replay_families {
             out.push_str(&format!(
@@ -156,6 +181,9 @@ pub enum ExtractError {
     /// The replay directory is missing.
     #[error("replay directory `{0}` does not exist")]
     MissingReplays(String),
+    /// The worker pool could not start.
+    #[error("{0}")]
+    Workers(String),
 }
 
 fn family_of_path(path: &Path, replays_dir: &Path) -> String {
@@ -168,11 +196,84 @@ fn family_of_path(path: &Path, replays_dir: &Path) -> String {
     }
 }
 
+/// One replay file's extraction result, merged in file order.
+struct ExtractFile {
+    /// The walk succeeded (so its decisions count even if the write failed).
+    walked: bool,
+    decisions_seen: u64,
+    decisions_dropped: u64,
+    /// The family row, present only when the file's rows were written.
+    family: Option<(String, ExtractFamilyStats)>,
+    /// The first failure for this file, in the serial report's wording.
+    error: Option<String>,
+}
+
+fn extract_file(db: &SharedDb, path: &Path, replays_dir: &Path, dry_run: bool) -> ExtractFile {
+    let family = family_of_path(path, replays_dir);
+    let mut file = ExtractFile {
+        walked: false,
+        decisions_seen: 0,
+        decisions_dropped: 0,
+        family: None,
+        error: None,
+    };
+    let walk = match walk_path(path) {
+        Ok(walk) => walk,
+        Err(err) => {
+            file.error = Some(format!("{}: {err}", path.display()));
+            return file;
+        }
+    };
+    file.walked = true;
+    file.decisions_seen = walk.decisions.len() as u64;
+    file.decisions_dropped = walk.skipped.len() as u64;
+
+    let (inserted, updated) = if dry_run {
+        (0, 0)
+    } else {
+        // The state hash, the visible-info fingerprint and the state JSON are
+        // the expensive part of a row (the v4 observation is rebuilt for the
+        // hash), so they are computed here, outside the stage's single database
+        // lock, and only the short statements run inside it.
+        let rows = match decision_rows(&family, &walk.decisions) {
+            Ok(rows) => rows,
+            Err(err) => {
+                file.error = Some(format!("{}: {err}", path.display()));
+                return file;
+            }
+        };
+        match db.with(|connection| write_rows(connection, walk.replay_id.as_str(), &rows)) {
+            Ok(counts) => counts,
+            Err(err) => {
+                file.error = Some(format!("{}: {err}", path.display()));
+                return file;
+            }
+        }
+    };
+    file.family = Some((
+        family,
+        ExtractFamilyStats {
+            replays: 1,
+            decisions: walk.decisions.len() as u64,
+            inserted,
+            updated,
+        },
+    ));
+    file
+}
+
 /// Walk a replay shard and upsert every reconstructed decision.
+///
+/// Files are independent, so the shard is walked with `workers` threads. Each
+/// worker walks its files and writes its rows under the stage's single database
+/// lock; the per-file results merge in file order, so the report is identical to
+/// a `--workers 1` run of the same shard (apart from the recorded worker count
+/// and wall time).
 pub fn run_extraction(
     root: &DataRoot,
     options: &ExtractOptions,
 ) -> Result<ExtractReport, ExtractError> {
+    let started = Instant::now();
     let replays = options
         .replays
         .clone()
@@ -183,7 +284,29 @@ pub fn run_extraction(
         files.truncate(limit);
     }
 
+    let workers = resolve_workers(options.workers);
+    let pool = worker_pool(workers).map_err(ExtractError::Workers)?;
+    let progress = Progress::new(
+        "extract",
+        "walk",
+        "replay file(s)",
+        files.len(),
+        options.progress,
+    );
+    progress.announce(workers);
+
     let connection = open_miner_db(root)?;
+    let db = SharedDb::new(connection);
+    let results: Vec<ExtractFile> = pool.install(|| {
+        files
+            .par_iter()
+            .map(|path| {
+                progress.tick();
+                extract_file(&db, path, &replays, options.dry_run)
+            })
+            .collect()
+    });
+
     let mut report = ExtractReport {
         schema: EXTRACT_SCHEMA.to_string(),
         version: EXTRACT_VERSION,
@@ -196,69 +319,66 @@ pub fn run_extraction(
         decisions_inserted: 0,
         decisions_updated: 0,
         dry_run: options.dry_run,
+        workers,
+        wall_time_ms: 0,
         replay_families: Vec::new(),
         errors: Vec::new(),
     };
     let mut families: BTreeMap<String, ExtractFamilyStats> = BTreeMap::new();
 
-    for path in &files {
-        let family = family_of_path(path, &replays);
-        let walk = match walk_path(path) {
-            Ok(walk) => walk,
-            Err(err) => {
-                report.replays_failed += 1;
-                record_error(&mut report, format!("{}: {err}", path.display()));
-                continue;
-            }
-        };
-        report.replays_walked += 1;
-        report.decisions_seen += walk.decisions.len() as u64;
-        report.decisions_dropped += walk.skipped.len() as u64;
-
-        let (inserted, updated) = if options.dry_run {
-            (0, 0)
-        } else {
-            match write_decisions(
-                &connection,
-                walk.replay_id.as_str(),
-                &family,
-                &walk.decisions,
-            ) {
-                Ok(counts) => counts,
-                Err(err) => {
-                    report.replays_failed += 1;
-                    record_error(&mut report, format!("{}: {err}", path.display()));
-                    continue;
-                }
-            }
-        };
-
-        let entry = families.entry(family).or_default();
-        entry.replays += 1;
-        entry.decisions += walk.decisions.len() as u64;
-        entry.inserted += inserted;
-        entry.updated += updated;
-        report.decisions_inserted += inserted;
-        report.decisions_updated += updated;
+    for file in results {
+        if file.walked {
+            report.replays_walked += 1;
+            report.decisions_seen += file.decisions_seen;
+            report.decisions_dropped += file.decisions_dropped;
+        }
+        if let Some((family, stats)) = file.family {
+            let entry = families.entry(family).or_default();
+            entry.replays += stats.replays;
+            entry.decisions += stats.decisions;
+            entry.inserted += stats.inserted;
+            entry.updated += stats.updated;
+            report.decisions_inserted += stats.inserted;
+            report.decisions_updated += stats.updated;
+        }
+        if let Some(error) = file.error {
+            report.replays_failed += 1;
+            record_error(&mut report, error);
+        }
     }
 
     report.replay_families = families.into_iter().collect();
+    report.wall_time_ms = elapsed_ms(started);
     Ok(report)
 }
 
-/// Insert or refresh one replay's decisions. Returns `(inserted, updated)`.
+/// One `decisions` row, fully prepared off the database lock.
 ///
-/// The insert is `OR IGNORE` and the refresh touches only the state columns, so
-/// a rerun cannot erase a label, trigger or selection that a later stage wrote.
-fn write_decisions(
-    connection: &Connection,
-    replay_id: &str,
+/// The v4 observation behind `state_hash` is the expensive part of extraction
+/// (about 13 ms per decision on the Q2 corpus), so building a row must not run
+/// inside the stage's single lock.
+struct DecisionRow {
+    decision_id: String,
+    family: String,
+    kyoku: i64,
+    honba: i64,
+    event_index: i64,
+    turn: i64,
+    seat: i64,
+    kind: &'static str,
+    state_hash: String,
+    state_json: String,
+    visible_info_hash: String,
+    legal_actions: String,
+    played_action: String,
+}
+
+/// Build one replay's rows. Pure, so a worker can do it outside the lock.
+fn decision_rows(
     family: &str,
     decisions: &[DecisionSnapshot],
-) -> Result<(u64, u64), ExtractError> {
-    let transaction = connection.unchecked_transaction()?;
-    let mut inserted = 0_u64;
-    let mut updated = 0_u64;
+) -> Result<Vec<DecisionRow>, ExtractError> {
+    let mut rows = Vec::with_capacity(decisions.len());
     for decision in decisions {
         let (turn, _) = candidate_turn(decision);
         let legal_actions: Vec<&str> = decision
@@ -266,6 +386,38 @@ fn write_decisions(
             .iter()
             .map(|info| info.action.as_str())
             .collect();
+        rows.push(DecisionRow {
+            decision_id: decision.decision_id.clone(),
+            family: family.to_string(),
+            kyoku: i64::try_from(decision.kyoku_index).unwrap_or(i64::MAX),
+            honba: i64::from(decision.state.honba),
+            event_index: i64::try_from(decision.event_index).unwrap_or(i64::MAX),
+            turn: i64::try_from(turn).unwrap_or(i64::MAX),
+            seat: i64::try_from(decision.seat).unwrap_or(i64::MAX),
+            kind: decision.kind.as_str(),
+            state_hash: state_hash(&decision.state),
+            state_json: serde_json::to_string(&decision.state)?,
+            visible_info_hash: visible_info_fingerprint(decision),
+            legal_actions: serde_json::to_string(&legal_actions)?,
+            played_action: decision.played.action.clone(),
+        });
+    }
+    Ok(rows)
+}
+
+/// Insert or refresh one replay's decisions. Returns `(inserted, updated)`.
+///
+/// The insert is `OR IGNORE` and the refresh touches only the state columns, so
+/// a rerun cannot erase a label, trigger or selection that a later stage wrote.
+fn write_rows(
+    connection: &Connection,
+    replay_id: &str,
+    rows: &[DecisionRow],
+) -> Result<(u64, u64), ExtractError> {
+    let transaction = connection.unchecked_transaction()?;
+    let mut inserted = 0_u64;
+    let mut updated = 0_u64;
+    for row in rows {
         transaction.execute(
             "INSERT OR IGNORE INTO decisions (
                 decision_id, replay_id, family, kyoku, honba, event_index, turn,
@@ -273,20 +425,20 @@ fn write_decisions(
                 legal_actions, played_action
              ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             params![
-                decision.decision_id,
+                row.decision_id,
                 replay_id,
-                family,
-                i64::try_from(decision.kyoku_index).unwrap_or(i64::MAX),
-                i64::from(decision.state.honba),
-                i64::try_from(decision.event_index).unwrap_or(i64::MAX),
-                i64::try_from(turn).unwrap_or(i64::MAX),
-                i64::try_from(decision.seat).unwrap_or(i64::MAX),
-                decision.kind.as_str(),
-                state_hash(&decision.state),
-                serde_json::to_string(&decision.state)?,
-                visible_info_fingerprint(decision),
-                serde_json::to_string(&legal_actions)?,
-                decision.played.action,
+                row.family,
+                row.kyoku,
+                row.honba,
+                row.event_index,
+                row.turn,
+                row.seat,
+                row.kind,
+                row.state_hash,
+                row.state_json,
+                row.visible_info_hash,
+                row.legal_actions,
+                row.played_action,
             ],
         )?;
         if transaction.changes() == 1 {
@@ -310,20 +462,20 @@ fn write_decisions(
                 played_action = ?14
               WHERE decision_id = ?1",
             params![
-                decision.decision_id,
+                row.decision_id,
                 replay_id,
-                family,
-                i64::try_from(decision.kyoku_index).unwrap_or(i64::MAX),
-                i64::from(decision.state.honba),
-                i64::try_from(decision.event_index).unwrap_or(i64::MAX),
-                i64::try_from(turn).unwrap_or(i64::MAX),
-                i64::try_from(decision.seat).unwrap_or(i64::MAX),
-                decision.kind.as_str(),
-                state_hash(&decision.state),
-                serde_json::to_string(&decision.state)?,
-                visible_info_fingerprint(decision),
-                serde_json::to_string(&legal_actions)?,
-                decision.played.action,
+                row.family,
+                row.kyoku,
+                row.honba,
+                row.event_index,
+                row.turn,
+                row.seat,
+                row.kind,
+                row.state_hash,
+                row.state_json,
+                row.visible_info_hash,
+                row.legal_actions,
+                row.played_action,
             ],
         )?;
         updated += 1;
@@ -509,5 +661,134 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM decisions", [], |row| row.get(0))
             .expect("count");
         assert_eq!(rows, 0);
+    }
+
+    /// Every `decisions` column that extract owns, keyed by `decision_id`, so two
+    /// runs can be compared row for row.
+    fn decision_rows(root: &DataRoot) -> Vec<(String, String, String, String, String)> {
+        let connection = open_miner_db(root).expect("miner db");
+        let mut statement = connection
+            .prepare(
+                "SELECT decision_id, replay_id, family, state_json, visible_info_hash
+                   FROM decisions ORDER BY decision_id",
+            )
+            .expect("statement");
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                ))
+            })
+            .expect("rows");
+        rows.map(|row| row.expect("row")).collect()
+    }
+
+    /// The report with the two fields that legitimately depend on the run
+    /// environment (resolved workers, wall time) removed.
+    fn comparable_report(report: &ExtractReport) -> serde_json::Value {
+        let mut value = serde_json::to_value(report).expect("report json");
+        let object = value.as_object_mut().expect("an object");
+        object.remove("workers");
+        object.remove("wall_time_ms");
+        object.remove("generated_at");
+        value
+    }
+
+    fn seed_shard(root: &DataRoot) {
+        for (family, events) in [
+            ("mortal_mirror", fixtures::all_events_game()),
+            ("mortal_mirror", fixtures::exhaustive_game(5)),
+            ("akochan_tactics", fixtures::two_kyoku_game()),
+            ("akochan_tactics", fixtures::chankan_game()),
+            ("akochan_tactics", fixtures::furiten_ron_game()),
+        ] {
+            let bytes = write_replay(root, family, &events);
+            insert_replay(root, family, &bytes);
+        }
+    }
+
+    #[test]
+    fn parallel_and_serial_extraction_write_the_same_rows_and_report() {
+        let serial_temp = tempfile::tempdir().expect("tempdir");
+        let serial_root = DataRoot::new(serial_temp.path().join("data")).expect("data root");
+        seed_shard(&serial_root);
+        let serial = run_extraction(
+            &serial_root,
+            &ExtractOptions {
+                workers: 1,
+                ..Default::default()
+            },
+        )
+        .expect("serial extract");
+
+        let parallel_temp = tempfile::tempdir().expect("tempdir");
+        let parallel_root = DataRoot::new(parallel_temp.path().join("data")).expect("data root");
+        seed_shard(&parallel_root);
+        let parallel = run_extraction(
+            &parallel_root,
+            &ExtractOptions {
+                workers: 4,
+                ..Default::default()
+            },
+        )
+        .expect("parallel extract");
+
+        assert!(serial.replays_walked >= 5, "{serial:?}");
+        assert_eq!(serial.workers, 1);
+        assert_eq!(parallel.workers, 4);
+        assert_eq!(serial.replays_found, parallel.replays_found);
+        assert_eq!(serial.replays_walked, parallel.replays_walked);
+        assert_eq!(serial.replays_failed, parallel.replays_failed);
+        assert_eq!(serial.decisions_seen, parallel.decisions_seen);
+        assert_eq!(serial.decisions_dropped, parallel.decisions_dropped);
+        assert_eq!(serial.decisions_inserted, parallel.decisions_inserted);
+        assert_eq!(serial.decisions_updated, parallel.decisions_updated);
+        assert_eq!(serial.replay_families, parallel.replay_families);
+        assert_eq!(serial.errors, parallel.errors);
+        assert_eq!(
+            comparable_report(&serial),
+            comparable_report(&parallel),
+            "the report differs only by the worker count and the wall time"
+        );
+        assert_eq!(
+            decision_rows(&serial_root),
+            decision_rows(&parallel_root),
+            "both runs must write the same rows"
+        );
+    }
+
+    #[test]
+    fn a_rerun_on_either_worker_count_refreshes_the_same_rows() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let root = DataRoot::new(temp.path().join("data")).expect("data root");
+        seed_shard(&root);
+
+        let first = run_extraction(
+            &root,
+            &ExtractOptions {
+                workers: 4,
+                ..Default::default()
+            },
+        )
+        .expect("parallel extract");
+        assert!(first.decisions_inserted > 0);
+        let rows = decision_rows(&root);
+
+        let second = run_extraction(
+            &root,
+            &ExtractOptions {
+                workers: 1,
+                ..Default::default()
+            },
+        )
+        .expect("serial rerun");
+        assert_eq!(second.decisions_inserted, 0);
+        assert_eq!(second.decisions_updated, first.decisions_inserted);
+        assert_eq!(second.decisions_seen, first.decisions_seen);
+        assert_eq!(decision_rows(&root), rows);
     }
 }
