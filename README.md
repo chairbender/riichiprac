@@ -329,8 +329,7 @@ The three safe kinds are the tile the left player has just discarded
 (temporary furiten, ch8:102), a fourth honor tile (ch8:103), and an absolute no
 chance tile (ch8:104). The lesson deals two Riichi declarations, a Riichi plus a
 three-meld open hand (assumed ready by ch8.4's "three or more open sets"
-shortcut), or all three at once on a South-round table where the human is ahead
-(ch8.5's "more defensive when you are ahead"). The open-hand threat is real
+shortcut), or all three at once. The open-hand threat is real
 tenpai, and every board keeps a trap: a hand tile that is 100% safe against one
 threat but a live winning tile or non-suji tile against another. The answer is
 the hand's only tile that is *certain* safe against every live threat, and the

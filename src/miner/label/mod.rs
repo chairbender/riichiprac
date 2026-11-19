@@ -100,7 +100,7 @@ pub const VALUE_UNITS: &str = "model_utility";
 /// It is part of the cache key: a classifier change must not reuse a book label
 /// from the previous rule set. The Mortal inference itself is versioned by
 /// `model_sha256`.
-pub const CLASSIFIER_VERSION: &str = "1";
+pub const CLASSIFIER_VERSION: &str = "2";
 
 /// The note carried by every label, so a consumer cannot mistake Q for points.
 pub const Q_UNITS_NOTE: &str = "Q values are model utility, not points.";

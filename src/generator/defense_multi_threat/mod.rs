@@ -26,10 +26,7 @@
 //!   "Assume an opponent has a ready hand ... They have three or more open sets
 //!   / runs." The open hand is generated as real tenpai so the read is exact.
 //! - `ThreeThreats`: both of the above at once — two Riichi declarations and a
-//!   three-meld open hand — on a South-round table where the human is well
-//!   ahead. Ch. 8's "Your position in the game" says to be more defensive when
-//!   ahead, "especially ... in the South round", so the score line reinforces
-//!   the fold.
+//!   three-meld open hand.
 //!
 //! # What the board teaches
 //!

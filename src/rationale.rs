@@ -33,7 +33,7 @@ use crate::generator::{
 use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, MeldType, RiichiTrigger,
-    ShouminkanTrigger, Wind,
+    ShouminkanTrigger,
 };
 
 /// A book reference. Line numbers are hints for reviewers, not stable anchors;
@@ -4356,31 +4356,6 @@ fn multi_threat_rationale(state: &GameState) -> Option<BookRationale> {
                  Riichi declaration.",
                 seat_list(&open_seats)
             ),
-        });
-    }
-
-    // The score line, when the shape uses ch. 8's "Your position in the game".
-    let leader = human(state)?.score
-        >= state
-            .players
-            .iter()
-            .filter(|player| !player.is_human)
-            .map(|player| player.score)
-            .max()
-            .unwrap_or(i32::MIN);
-    if state.round_wind == Wind::South && leader {
-        rules.push(BookRule {
-            id: "ahead_in_the_south_round".to_string(),
-            rule: "Be more defensive when you are ahead, especially in the South round."
-                .to_string(),
-            quote: "You should be more defensive when you are ahead of the game, while you should \
-                    be more aggressive when you are behind. This should especially be the case in \
-                    the South round."
-                .to_string(),
-            citation: ch8("Miscellaneous", 371, "more defensive when you are ahead"),
-            applies: "The human leads the table in the South round, so the score line pushes the \
-                      same way as the fold."
-                .to_string(),
         });
     }
 

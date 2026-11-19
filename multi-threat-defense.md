@@ -31,8 +31,6 @@ Two further sections matter for the shapes:
   … They have three or more open sets / runs."* The same section warns that
   suji and blockade theories are "completely useless" against a `toitoi` hand,
   which is why this lesson never counts an open hand's suji rows as safe.
-- ch. 8.5, "Miscellaneous": *"You should be more defensive when you are ahead of
-  the game … especially … in the South round."*
 
 ## The lesson
 
@@ -51,14 +49,12 @@ Three table shapes are generated, each evenly:
 | --- | --- | --- |
 | `two_riichi` | two Riichi declarations | — |
 | `riichi_and_open_hand` | one Riichi + one three-meld open hand | the open hand is real tenpai |
-| `three_threats` | two Riichi + one three-meld open hand | South round, human leads the table |
+| `three_threats` | two Riichi + one three-meld open hand | — |
 
-The third shape is the **score/threat** case from the task: the same three live
-opponents with a score line (human first, clear lead, South round) that ch. 8.5
-says calls for maximum defence. The task's shorthand `<35;83;61M` was not
-defined; this is the reading implemented — a score-conditioned multi-threat
-table. If the shorthand means something else, only `leading_scores` and the
-shape's `ThreeThreats` arm need changing.
+The three shapes are all the same question at different table loads: two live
+opponents, then the two ways an opponent becomes live, then all three at once.
+Rounds, scores and seats are drawn the ordinary way for every shape; the score
+line is never part of the answer.
 
 ### The answer
 
@@ -155,8 +151,7 @@ ready.
   `every_river`;
 - `safety_does_not_compose` — names the trap, the threat(s) that cannot ron it,
   and the threat(s) that can;
-- `open_hand_ready` when the shape has an open hand (ch8.4);
-- `ahead_in_the_south_round` on the score shape (ch8.5).
+- `open_hand_ready` when the shape has an open hand (ch8.4).
 
 Caveats state that the answer is *certain* safety rather than a chart row, keep
 the 2-away push line out of it, and note that the left-discard kind lasts one
@@ -195,5 +190,3 @@ cargo test --lib rationale::tests::multi_threat
   mining pass can now label multi-threat positions with the new classifier.
 - The lesson is not in the Tenhou/6 exporter's `EXPORTABLE` allow-list yet. Its
   meld claims are planted and could be exported; that is a separate decision.
-- The third shape's score interpretation (see above) should be confirmed if the
-  `<35;83;61M` shorthand means something more specific.

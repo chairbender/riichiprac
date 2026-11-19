@@ -5,8 +5,7 @@
 //!
 //! - two opponents in Riichi (ch. 8.3), or
 //! - one Riichi plus a three-meld open hand that is really tenpai (ch. 8.4), or
-//! - both at once, with the score line of ch. 8's "Your position in the game"
-//!   telling the human (who is well ahead, in the South round) to be defensive.
+//! - both at once: two Riichi declarations and a three-meld open hand.
 //!
 //! Every board reserves, before any random fill:
 //!
@@ -470,18 +469,8 @@ fn draw_plan() -> Result<Plan, String> {
     riichi.sort_unstable();
 
     let human_wind = choose(&Wind::ALL).ok_or_else(|| "no seat wind available".to_string())?;
-    let (round_wind, hand_number) = if shape == Shape::ThreeThreats {
-        // Ch. 8's "Your position in the game": "This should especially be the
-        // case in the South round."
-        (Wind::South, 1 + gen_range(0, 2) as u8)
-    } else {
-        random_round()
-    };
-    let scores = if shape == Shape::ThreeThreats {
-        leading_scores()
-    } else {
-        random_scores_with_human_first()
-    };
+    let (round_wind, hand_number) = random_round();
+    let scores = random_scores_with_human_first();
 
     // The open hand decides which tiles are live waits, so plan it before the
     // answer and the trap.
@@ -751,22 +740,6 @@ fn called_meld(planned: &PlannedMeld, source: usize) -> CalledMeld {
     }
 }
 
-/// Scores where the human is first and well ahead, for the score-threat table.
-fn leading_scores() -> [i32; 4] {
-    for _ in 0..200 {
-        let human = gen_range(36_000, 45_001) as i32;
-        let remaining = 100_000 - human;
-        let first = gen_range(13_000, (human as usize).min(26_000)) as i32;
-        let second = gen_range(11_000, (human as usize - first as usize).min(24_000) + 1) as i32;
-        let third = remaining - first - second;
-        if third > 5_000 && third < human && first < human && second < human {
-            return [human, first, second, third];
-        }
-    }
-    // A fixed line that satisfies the same contract.
-    [40_000, 22_000, 21_000, 17_000]
-}
-
 /// Places `tile` at the earliest free index of `river`, preferring the book's
 /// "early turns" slots so a trap precedes every declaration discard.
 fn place_early(river: &mut [Option<Tile>], tile: Tile) -> Result<usize, String> {
@@ -924,18 +897,6 @@ fn validate(state: &GameState, plan: &Plan) -> Result<(), String> {
                 return Err(format!(
                     "the three-threat shape needs two Riichi and one open hand, got {riichi:?} / {open:?}"
                 ));
-            }
-            if state.round_wind != Wind::South {
-                return Err("the score-threat board must be a South-round table".to_string());
-            }
-            if state.players[0].score
-                <= state.players[1..]
-                    .iter()
-                    .map(|player| player.score)
-                    .max()
-                    .unwrap_or(i32::MAX)
-            {
-                return Err("the human must lead the score-threat board".to_string());
             }
         }
     }
