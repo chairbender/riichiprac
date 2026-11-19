@@ -1829,9 +1829,12 @@ alpha so it cannot ink the felt even on an oblique side wall. Each joint draws
 **one** band, on the brighter of its two facing edges (measured from the sprite
 pixels), because a shaded edge has no highlight to remove: an earlier take that
 mapped the mask onto `faceQuad` on both tiles drew an ~11 px smudge across the
-painted faces, which is exactly what this avoids. The scripted gate proves it —
-on a 5-tile river, pass 3 changes 2.28 % of the panel at most 37.7 luma, with
-zero changed pixels outside a band.
+painted faces, which is exactly what this avoids. The band is an *occlusion*,
+not a tint: the mask's 35 % profile is normalised to full strength and drawn at
+0.85, so the lit bevel loses most of its light instead of keeping a bright
+highlight beside a neighbour. The scripted gate proves both halves — on a
+5-tile river, pass 3 changes 3.55 % of the panel at most 176.7 luma, with zero
+changed pixels outside a band.
 
 The rendered view (task 261118-1657) still owns the frame loop and is parked;
 until it lands, the proof renders come from `npm run shadows:review` in

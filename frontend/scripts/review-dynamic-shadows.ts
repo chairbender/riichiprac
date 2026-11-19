@@ -29,7 +29,7 @@ import type { ShadowBoard, ShadowContext2D, ShadowImage } from '../src/table/boa
 import {
   SEAM_BAND_MAX_PX,
   SEAM_MIN_RING_LUMA,
-  SEAM_OPACITY,
+  SEAM_PEAK_ALPHA,
   SeamOverlayCache,
 } from '../src/table/seamOverlays';
 import { parseBlanksManifest } from '../src/table/blankManifest';
@@ -473,7 +473,7 @@ const seamShape = {
   shellFlatUprightBands: flatSides,
   bandMaxPx: SEAM_BAND_MAX_PX,
   minRingLuma: SEAM_MIN_RING_LUMA,
-  opacity: SEAM_OPACITY,
+  peakAlpha: SEAM_PEAK_ALPHA,
 };
 console.log(
   `[seams] flat_upright rings ${flatSides.join(' ')} · 18-tile river bands ${JSON.stringify(seamShape.bySide)}`,

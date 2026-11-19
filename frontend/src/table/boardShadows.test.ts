@@ -20,7 +20,7 @@ import {
   SEAM_BAND_MIN_PX,
   SEAM_SIDE_FACE_MAX_PX,
   SEAM_MIN_RING_LUMA,
-  SEAM_OPACITY,
+  SEAM_PEAK_ALPHA,
   SeamOverlayCache,
   drawMaskInBand,
   seamBandRect,
@@ -666,6 +666,29 @@ describe('bevel bands', () => {
     }
   });
 
+  it('cancels the lit bevel where a neighbour touches, rather than tinting it', () => {
+    const overlay = seamOverlays.overlayFor(flat, 'left')!;
+    const ctx = overlay.canvas.getContext('2d') as unknown as ShadowContext2D;
+    const ink = ctx.getImageData(0, 0, overlay.canvas.width, overlay.canvas.height).data;
+    const sprite = createShadowCanvas(flat.texWidth, flat.texHeight);
+    const spriteCtx = sprite.getContext('2d') as unknown as ShadowContext2D;
+    spriteCtx.drawImage(imageFor(flat.textureFile) as never, 0, 0, flat.texWidth, flat.texHeight);
+    const pixels = spriteCtx.getImageData(0, 0, flat.texWidth, flat.texHeight).data;
+    let maxInk = 0;
+    let brightestUnderInk = 0;
+    for (let index = 0; index < ink.length; index += 4) {
+      if (ink[index + 3] === 0 || pixels[index + 3] < 230) continue;
+      maxInk = Math.max(maxInk, ink[index + 3] / 255);
+      const luma = pixels[index] * 0.299 + pixels[index + 1] * 0.587 + pixels[index + 2] * 0.114;
+      brightestUnderInk = Math.max(brightestUnderInk, luma);
+    }
+    // The band lands on the lit bevel …
+    expect(brightestUnderInk).toBeGreaterThan(200);
+    // … and removes most of its light: a contact is an occlusion, not a tint.
+    expect(maxInk).toBeGreaterThan(0.7);
+    expect(1 - maxInk).toBeLessThan(0.3);
+  });
+
   it('measures the lit edge, so a joint has one bright side to darken', () => {
     const leftBand = seamOverlays.bandFor(flat, 'left');
     const rightBand = seamOverlays.bandFor(flat, 'right');
@@ -709,7 +732,7 @@ describe('bevel bands', () => {
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, 60, 60);
       const record = seams.seams[side];
-      drawMaskInBand(ctx, record, imageFor(record.textureFile)!, rects[side], side, SEAM_OPACITY);
+      drawMaskInBand(ctx, record, imageFor(record.textureFile)!, rects[side], side, SEAM_PEAK_ALPHA);
       return (x, y) => {
         const data = ctx.getImageData(x, y, 1, 1).data;
         return Math.round((data[0] + data[1] + data[2]) / 3);

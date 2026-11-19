@@ -117,8 +117,19 @@ export const SEAM_SIDE_FACE_MAX_PX = 12;
 const SEAM_SIDE_FACE_LIT_SHARE = 0.6;
 /** A band darker than this has no highlight to remove; the joint draws nothing. */
 export const SEAM_MIN_RING_LUMA = 45;
-/** The AO masks are drawn at this share of their authored 35 % peak. */
-export const SEAM_OPACITY = 0.6;
+/**
+ * Ink strength at the crevice line, as an opaque black share.
+ *
+ * `ao_seams.json` authors the masks at a 35 % peak, and its runtime note asks
+ * for 50-70 % of that — a *soft* ambient-occlusion hint. That is not what a
+ * contact looks like: the bevel facing a neighbour receives no key light at all,
+ * so its lit highlight has to go. The mask's profile (raised cosine over the
+ * bevel) is therefore normalised to full strength and drawn at this share, which
+ * cancels the highlight and leaves a trace of the tile's own shading rather than
+ * a hard black line. The Task 4A contact bakes agree that a contact is opaque:
+ * the stack decals and the 3D catches both measure a 1.0 peak.
+ */
+export const SEAM_PEAK_ALPHA = 0.85;
 
 export interface SeamOverlayOptions {
   readonly createCanvas: (width: number, height: number) => AtlasCanvas;
@@ -344,6 +355,8 @@ export class SeamOverlayCache {
   }
 
   private readonly pixelCache = new Map<string, { data: Uint8ClampedArray; width: number }>();
+  /** Masks rescaled so their band edge is fully opaque (the profile is kept). */
+  private readonly normalisedMasks = new Map<string, AtlasCanvas | null>();
 
   /** The shell sprite's decoded pixels, cached per texture. */
   private pixels(
@@ -386,7 +399,7 @@ export class SeamOverlayCache {
     const ctx = canvas.getContext('2d') as SeamContext | null;
     if (!ctx) throw new Error('seams: no 2D context for a band overlay');
     const record = this.options.seams.seams[side];
-    const mask = this.options.imageFor(record.textureFile);
+    const mask = this.normalisedMask(record);
     if (!mask) {
       this.overlays.set(key, null);
       return null;
@@ -395,7 +408,7 @@ export class SeamOverlayCache {
     ctx.save();
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     for (const region of band.regions) {
-      drawMaskInBand(ctx, record, mask, region, side, SEAM_OPACITY);
+      drawMaskInBand(ctx, record, mask, region, side, SEAM_PEAK_ALPHA);
     }
     ctx.restore();
     // 2. … kept only where the tile's own pixels are, so the band follows the
@@ -408,6 +421,37 @@ export class SeamOverlayCache {
     const overlay: SeamOverlay = { canvas, band };
     this.overlays.set(key, overlay);
     return overlay;
+  }
+
+  /**
+   * One mask's fade sub-rect with its alpha rescaled so the outer edge is fully
+   * opaque: the authored profile (raised cosine, monotonic) is kept, only its
+   * 35 % peak is removed so the band can be drawn at any strength.
+   */
+  private normalisedMask(record: AoSeamRecord): AtlasCanvas | null {
+    const key = record.textureFile;
+    if (this.normalisedMasks.has(key)) return this.normalisedMasks.get(key) ?? null;
+    const image = this.options.imageFor(record.textureFile);
+    if (!image) {
+      this.normalisedMasks.set(key, null);
+      return null;
+    }
+    const source = this.options.createCanvas(image.width, image.height);
+    const sourceCtx = source.getContext('2d') as SeamContext | null;
+    if (!sourceCtx) return null;
+    sourceCtx.setTransform(1, 0, 0, 1, 0, 0);
+    sourceCtx.drawImage(image as unknown as CanvasImageSource, 0, 0);
+    const data = sourceCtx.getImageData(0, 0, image.width, image.height);
+    const peak = Math.max(1, this.options.seams.peakAlpha * 255);
+    for (let index = 3; index < data.data.length; index += 4) {
+      data.data[index] = Math.min(255, Math.round((data.data[index] / peak) * 255));
+    }
+    const canvas = this.options.createCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d') as SeamContext | null;
+    if (!ctx) return null;
+    ctx.putImageData(data, 0, 0);
+    this.normalisedMasks.set(key, canvas);
+    return canvas;
   }
 
   /**
