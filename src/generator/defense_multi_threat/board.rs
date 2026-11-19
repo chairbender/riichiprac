@@ -1201,7 +1201,10 @@ mod tests {
                         .join(","),
                 );
                 key.push('/');
-                key.push_str(&player.melds.len().to_string());
+                key.push_str("melds:");
+                for meld in &player.melds {
+                    key.push_str(&format!("{:?}:{};", meld.meld_type, meld.tiles.join(",")));
+                }
             }
             assert!(seen.insert(key), "run {run} repeated a visible table");
         }
