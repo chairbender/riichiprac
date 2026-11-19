@@ -72,6 +72,10 @@ bash tools/render/bake-table-reference.sh --check # whole-table + rig integrity 
 bash tools/render/bake-table-layout.sh            # Task 3 dry run: print the layout/bucket plan
 bash tools/render/bake-table-layout.sh --bake     # Task 3 export + probe render + 1 px proof + check
 bash tools/render/bake-table-layout.sh --check    # Task 3 layout + probe + overlay gate; no Blender
+bash tools/render/bake-board-assets.sh            # Task 4 dry run: print the bucket/representative plan
+bash tools/render/bake-board-assets.sh --bake     # Task 4 board_bg + 16 blanks + face atlas + gate
+bash tools/render/bake-board-assets.sh --atlas    # re-rasterise tile_faces.png/json only (resvg)
+bash tools/render/bake-board-assets.sh --check    # Task 4 asset gate; no Blender
 ```
 
 The group-shadow lab is a static page; serve the repo root and open it:
@@ -413,6 +417,89 @@ measures decoded pixels, never the PNG bytes. Re-run `--bake` after any change
 to the table, a placement, the camera or a bucket boundary, and commit the
 script, the spec, the layout JSON and the proof artifacts together.
 
+## Task 4: the board background, bucketed blanks and the face atlas
+
+Task 4 generates the minimal static 2D image set the runtime reconstructs the
+whole table from. It is the Blender half of the pipeline (blank bodies plus the
+empty board) and one resvg pass (the flat glyph atlas). Everything is derived
+from `table_layout.json`, so the sprites cannot drift from the runtime layout
+without the bake failing.
+
+```bash
+bash tools/render/bake-board-assets.sh            # dry run: bucket/representative plan
+bash tools/render/bake-board-assets.sh --bake     # board_bg + 16 blanks + atlas + gate
+bash tools/render/bake-board-assets.sh --atlas    # re-rasterise tile_faces.png/json only (resvg)
+bash tools/render/bake-board-assets.sh --check    # Task 4 asset gate; no Blender
+```
+
+### The committed assets
+
+| File | Size | Purpose |
+| --- | --- | --- |
+| `frontend/public/table/board_bg.png` | 1920 × 1080 RGBA, opaque | the empty table: mat, rim, centre well and room floor, every tile/decal/shadow helper hidden |
+| `frontend/public/table/blanks/<bucket>.png` | 16 cropped RGBA sprites at 2× | one blank tile body per bucket, rendered alone from the bucket's representative slot |
+| `frontend/public/table/blanks.json` | manifest | pivot, crop, anchor, depth/scale, sprite-pixel `faceQuad`, alpha measurements and decoded-RGBA hashes |
+| `frontend/public/table/tile_faces.png` | 1728 × 2688 RGBA | 37 glyph cells in a 6 × 7 grid, transparent background |
+| `frontend/public/table/tile_faces.json` | manifest | the stable face order, 288 × 384 cell rects, aliases and per-cell measurements/hashes |
+
+The 16 buckets are exactly the ones `table_layout.json` emitted: five
+`hand_*`, two `wall_*_side`, three `wall_horiz_*`, and `flat_left/center/right`
+plus `_rotated`. The representative is the layout's own median slot per bucket
+(`bucketCatalogue.representative`), so the perspective is the slot's own and the
+export itself rejects a bucket whose representative has no filled body.
+
+**No external shadows.** A blank is rendered with only its own body in the
+scene: film transparent, no floor, no shadow catcher, no other tile. Alpha is
+the tile silhouette and its own bevel self-shading; there is no mat shadow or
+neighbour halo to strip later. Task 4A derives `shadow_mat_<bucket>.png` and the
+`ao_seam_*` masks separately. `check-board-assets.mjs` enforces this as a
+number: no alpha between 16 and 199 may sit more than `noHaloPx` (2) from the
+opaque body core, so a baked cast shadow fails the gate.
+
+**The pixel pivot.** Sprites are rendered at `pixelRatio` (2) × the 1920 × 1080
+contract frame, cropped to the alpha bounds plus `paddingPx` (4), and published
+with the representative slot's normalized `anchor` and the pixel `pivot` it
+lands on inside the sprite. A consumer places the sprite so `pivot` sits on
+`anchor * referenceResolution * pixelRatio`; `faceQuad` is the same slot's
+TL,TR,BR,BL corners in sprite pixels. `faceVisible` carries the projected quad's
+sign: face-down wall tiles publish their own (hidden) face frame, which is
+mirrored on screen, and no glyph is mapped onto those blanks.
+
+**Opponent hand backs.** The five hand buckets are drawn from `hand_south`, the
+plan's named fan, so the blank is the ivory front. The north/west/east hands
+stand with their blue backs to the camera and are deliberately not a sixth
+bucket family: the plan fixes the five names and the under-20-file acceptance,
+and `table-reference-spec.json` records the share as a Task 4 asset decision.
+Task 5/6 must add blue-back hand blanks or reuse a blue body; the manifest
+records this as `blanks.opponentHands` rather than inventing a silent bucket.
+
+**The face atlas is a contract, not throwaway art.** `tile_faces.png` packs the
+`faces-spec.json` glyphs with the same `face-raster.mjs` resvg configuration as
+`faces.json`: one 288 × 384 transparent cell per face, the upstream uniform 0.96
+canvas scale, the same red paint pair. There is no perspective and no
+per-bucket copy. The `order` array is the stable 37: 1m-9m, 1p-9p, 1s-9s,
+1z-7z, then `5mr`/`5pr`/`5sr`; Task 4B's carved bake and Task 5's flat
+compositor both index it, so append new faces and never re-sort. The plan's
+`0m`/`0p`/`0s` names are published as aliases of the red fives. Haku (`5z`) is a
+real cell with zero ink (a white dragon has no symbol), matching the existing
+`faces.json` record.
+
+**Gates.** `check-board-assets.mjs` validates the default variant and camera,
+one-to-one bucket coverage under the 20-file limit, each PNG's size/channels,
+opaque body, anti-aliased edge, transparent padding border and no-halo rule, the
+pivot→anchor and faceQuad→slot pixel mappings, the board's opaque 1920 × 1080
+fact and tonal range, and the atlas's order, cell tiling, zero-ink haku, red
+aliases and every decoded-RGBA hash. It is dependency-free and needs no Blender.
+
+Visual sign-off on the rendered board and blanks is the user's (AGENTS.md §6):
+open `frontend/public/table/board_bg.png` and `frontend/public/table/blanks/`,
+or run `cd frontend && npm run dev`, and compare against
+`tools/render/reference/rig/v13-shadow-darker-1x.png`.
+
+**Sign-off.** The user reviewed the committed board, the 16 bucket blanks and
+the 37-face atlas on 2026-11-18 and approved them. The numeric gate is
+`bash tools/render/bake-board-assets.sh --check` (1002 checks, 0 failures).
+
 ## Directory layout
 
 | Path | Committed | Purpose |
@@ -448,6 +535,11 @@ script, the spec, the layout JSON and the proof artifacts together.
 | `bake_table_layout.py` | yes | Task 3 Blender exporter: builds the same scene, projects every `SlotAnchors` centre/face quad, writes the runtime layout and renders the anchor probe |
 | `table_layout.py` | yes | the Task 3 projection walker, bucket classifier and probe renderer plus Task 3A's face basis and scene-lighting readers (imported by `bake_table_layout.py`) |
 | `bake-table-layout.sh` | yes | one command for the Task 3 dry run / export + proof / no-Blender check |
+| `board-assets-spec.json` | yes | the Task 4 contract: board resolution/film, blank pixel ratio/padding/alpha thresholds, atlas grid/order and the acceptance numbers |
+| `bake_board_assets.py` | yes | Task 4 Blender baker: empty board + one blank per layout bucket, alpha crop, pivot/faceQuad manifest |
+| `bake-board-assets.sh` | yes | one command for the Task 4 dry run / bake + atlas + gate / atlas-only / no-Blender check |
+| `scripts/bake-tile-faces-atlas.mjs` | yes | the 37-face 6 × 7 flat atlas + region map (resvg, the `faces-spec.json` rasteriser) |
+| `scripts/check-board-assets.mjs` | yes | dependency-free Task 4 asset gate (CI): buckets, pivots, alpha halo, board opacity, atlas order/regions/hashes |
 | `scripts/table-layout.mjs` | yes | shared layout rules: bucket families, sideways test, probe centroid measurement and one-to-one matching |
 | `scripts/table-layout-proof.mjs` | yes | measures the committed probe PNG, writes `layout-proof.json` and the overlay/zoom review images |
 | `scripts/check-table-layout.mjs` | yes | dependency-free layout + basis + lighting + probe + overlay gate (CI) |
@@ -456,6 +548,11 @@ script, the spec, the layout JSON and the proof artifacts together.
 | `reference/layout/overlay-1x.png` | yes | exported anchors and face quads over the committed v13 board render |
 | `reference/layout/overlay-zoom-4x.png` | yes | 4x crops of each bucket representative and the drawn tile, labelled with the measured delta |
 | `../../frontend/public/table/table_layout.json` | yes | the runtime Task 3/3A layout contract: 293 slots with anchors, face quads, world-space basis and the scene lighting block |
+| `../../frontend/public/table/board_bg.png` | yes | the Task 4 empty-table background at 1920 × 1080, opaque |
+| `../../frontend/public/table/blanks/` | yes | the 16 Task 4 bucket blank bodies at 2× |
+| `../../frontend/public/table/blanks.json` | yes | the Task 4 blank manifest: pivots, crops, anchors, face quads, alpha and hashes |
+| `../../frontend/public/table/tile_faces.png` | yes | the Task 4 37-face flat atlas (1728 × 2688, 6 × 7 cells) |
+| `../../frontend/public/table/tile_faces.json` | yes | the Task 4 atlas region map and stable face order |
 | `TABLE-REFERENCE.md` | yes | the reference's calibration note: scene, chosen perspective, metrics, how to compare |
 | `scripts/table-camera.mjs` | yes | shared reference pinhole, tile-corner projection, metrics and crop rects |
 | `scripts/table-reference.mjs` | yes | publishes the 1x board, 2x crops, manifest and contact page from the master |
