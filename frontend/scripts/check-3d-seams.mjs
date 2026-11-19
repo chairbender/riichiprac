@@ -3,22 +3,23 @@
  * The 3D seam gate (3D-20): render the board in headless Chrome and print the
  * numbers the white-seam defect is made of.
  *
- *   node frontend/scripts/check-3d-seams.mjs            # the three committed variants
- *   node frontend/scripts/check-3d-seams.mjs --aa=1     # one MSAA setting, crevice on
+ *   node frontend/scripts/check-3d-seams.mjs            # MSAA on and off, three sizes
+ *   node frontend/scripts/check-3d-seams.mjs --aa=0      # one MSAA setting
  *   node frontend/scripts/check-3d-seams.mjs --debug=albedo --png
  *
  * AGENTS.md §6: this is the numeric half of the acceptance. It serves
  * `scripts/seam-probe.html` through the frontend's own Vite install (no new
  * package), drives it with whatever Chrome is installed, and reads the JSON the
- * page publishes after a real `readPixels` scanline across four known grooves
- * (`seamProbe.ts`). It never inspects an image: a seam passes when the brightest
- * pixel inside its groove is at least `SEAM_GATE.minContrast` luma below the
- * adjacent face, and it still reads as a groove at `minDepth`.
+ * page publishes after a real `readPixels` scanline across four seams between
+ * touching tiles (`seamProbe.ts`). It never inspects an image: a seam passes when
+ * **no** pixel in its core reads as the felt or the clear colour (the see-through
+ * defect), and the gate separately measures how much smaller MSAA makes the
+ * largest one-pixel step on the hand's silhouette.
  *
  * Requirements: Chrome/Chromium on PATH (or `CHROME=/path/to/chrome`) and
  * `npm ci` in frontend/. Software WebGL2 (SwiftShader) is enough and is what
  * `--headless=new` uses here, so the numbers are GPU-independent — they check
- * geometry, shading and the crevice profile, not a driver.
+ * geometry and coverage, not a driver.
  *
  * Exit code: 0 when every seam passes on every variant that was asked for, 1
  * otherwise (including "the page never became ready").
@@ -44,7 +45,6 @@ function flags(argv) {
 
 const options = flags(process.argv.slice(2));
 const explicitAa = options.get('aa') ?? null;
-const explicitCrevice = options.get('crevice') ?? null;
 const debug = options.get('debug') ?? null;
 const wantPng = options.has('png');
 const keepOut = options.get('out') ?? '/tmp/opencode/seam-probe';
@@ -245,8 +245,7 @@ function formatLuma(values) {
 }
 
 /** Print one variant's seams and return its pass count. */
-function printVariant(label, report, expect) {
-  const expected = expect ?? 'pass';
+function printVariant(label, report) {
   if (report.error) {
     console.log(`  FAIL  ${label}: ${report.error}`);
     return { ok: false, pass: 0, total: 0 };
@@ -256,10 +255,9 @@ function printVariant(label, report, expect) {
     console.log(`  FAIL  ${label}: no seams were measured`);
     return { ok: false, pass: 0, total: 0 };
   }
-  const { widthPx, heightPx, antialias, drawCalls, creviceScale } = seams;
+  const { widthPx, heightPx, antialias, drawCalls } = seams;
   console.log(
     `  ${label}: ${widthPx} x ${heightPx}, MSAA ${antialias ? 'on' : 'off'}, ` +
-      `crevice scale ${Number(creviceScale).toFixed(2)}, ` +
       `${drawCalls} draw calls, ${report.stats?.instances ?? '?'} instances`,
   );
   let pass = 0;
@@ -277,8 +275,9 @@ function printVariant(label, report, expect) {
         `  rim max ${seam.rimMaxLuma.toFixed(1)}`,
     );
     console.log(
-      `          contrast ${seam.contrast.toFixed(1)} (>= 12), depth ${seam.depth.toFixed(1)} (>= 18)` +
-        `   brightest core rgb ${seam.brightestRgb.join(',')} -> ${seam.brightestClass}`,
+      `          leak pixels ${seam.leakPixels} (0 allowed)` +
+        `   brightest core rgb ${seam.brightestRgb.join(',')} -> ${seam.brightestClass}` +
+        `   contrast ${seam.contrast.toFixed(1)} (information)`,
     );
     if (seam.detail) console.log(`          ${seam.detail}`);
     if (seam.pass) pass += 1;
@@ -287,8 +286,8 @@ function printVariant(label, report, expect) {
   if (edge) {
     console.log(
       `    edge ${edge.id}: light ${edge.lightLuma.toFixed(1)} / dark ${edge.darkLuma.toFixed(1)}, ` +
-        `largest one-pixel step ${edge.maxStep.toFixed(1)} luma` +
-        ` (${edge.intermediates} columns between the two surfaces)`,
+        `mean largest one-pixel step ${edge.maxStep.toFixed(1)} luma over ${edge.lines} lines` +
+        ` (worst ${edge.worstStep.toFixed(1)}; ${edge.intermediates.toFixed(1)} intermediate columns)`,
     );
     console.log(`          luma${formatLuma(edge.luma)}`);
   } else {
@@ -300,11 +299,8 @@ function printVariant(label, report, expect) {
     writeFileSync(file, Buffer.from(report.png.split(',')[1] ?? '', 'base64'));
     console.log(`    artifact: ${file}`);
   }
-  const ok =
-    expected === 'fail' ? pass < seams.seams.length : pass === seams.seams.length;
-  console.log(
-    `    verdict: ${pass}/${seams.seams.length} seams pass (expected ${expected.toUpperCase()}) -> ${ok ? 'as expected' : 'UNEXPECTED'}`,
-  );
+  const ok = pass === seams.seams.length;
+  console.log(`    verdict: ${pass}/${seams.seams.length} seams have no leak -> ${ok ? 'ok' : 'FAIL'}`);
   return { ok, pass, total: seams.seams.length };
 }
 
@@ -334,53 +330,22 @@ async function main() {
     ];
   })();
 
-  // The committed variants. The first of each size is the *before* state: the
-  // pre-3D-20 body with no crevice profile, which the gate requires to FAIL at
-  // least once — that is what makes the numbers evidence rather than a claim.
+  // The committed variants: the same scene at the same size with MSAA off and
+  // on. The seam rule is size-independent (a slot is a slot), and the aliasing
+  // comparison needs the pair.
   const variants = (() => {
     const list = [];
     for (const [width, height, dpr] of sizes) {
-      if (explicitAa !== null || explicitCrevice !== null) {
+      const states = explicitAa === null ? ['0', '1'] : [explicitAa === '0' ? '0' : '1'];
+      for (const aa of states) {
         list.push({
-          label: `MSAA ${explicitAa === '0' ? 'off' : 'on'}, crevice ${explicitCrevice === '0' ? 'off' : 'on'}, ${width}x${height}@${dpr}`,
-          aa: explicitAa === '0' ? '0' : '1',
-          crevice: explicitCrevice === '0' ? '0' : '1',
+          label: `MSAA ${aa === '0' ? 'off' : 'on'}, ${width}x${height}@${dpr}`,
+          aa,
           width,
           height,
           dpr,
-          expect: explicitCrevice === '0' ? 'fail' : 'pass',
         });
-        continue;
       }
-      list.push(
-        {
-          label: `before: crevice off, ${width}x${height}@${dpr}`,
-          aa: '0',
-          crevice: '0',
-          width,
-          height,
-          dpr,
-          expect: 'fail',
-        },
-        {
-          label: `after: crevice on, MSAA off, ${width}x${height}@${dpr}`,
-          aa: '0',
-          crevice: '1',
-          width,
-          height,
-          dpr,
-          expect: 'pass',
-        },
-        {
-          label: `after: crevice on, MSAA on, ${width}x${height}@${dpr}`,
-          aa: '1',
-          crevice: '1',
-          width,
-          height,
-          dpr,
-          expect: 'pass',
-        },
-      );
     }
     return list;
   })();
@@ -391,7 +356,6 @@ async function main() {
     for (const variant of variants) {
       const query = new URLSearchParams({
         aa: variant.aa,
-        crevice: variant.crevice,
         w: String(variant.width),
         h: String(variant.height),
         dpr: String(variant.dpr),
@@ -403,14 +367,13 @@ async function main() {
       if (report.console) {
         for (const entry of report.console) console.log(`    console: ${entry}`);
       }
-      const result = printVariant(variant.label, report, variant.expect);
+      const result = printVariant(variant.label, report);
       if (result.ok) ok += 1;
       const edge = report.seams?.edge;
       if (edge) {
         edges.push({
           width: variant.width,
           height: variant.height,
-          crevice: report.seams.creviceScale > 0,
           antialias: report.seams.antialias,
           maxStep: edge.maxStep,
         });
@@ -428,17 +391,16 @@ async function main() {
   const sizesSeen = [...new Set(edges.map((entry) => `${entry.width}x${entry.height}`))];
   console.log('aliasing (largest one-pixel step on the hand silhouette)');
   for (const size of sizesSeen) {
-    // Compare the same scene: both runs must have the committed crevice, so the
-    // only difference between them is MSAA.
+    // The same scene at the same size: the only difference is MSAA.
     const off = edges.find(
-      (entry) =>
-        `${entry.width}x${entry.height}` === size && !entry.antialias && entry.crevice,
+      (entry) => `${entry.width}x${entry.height}` === size && !entry.antialias,
     );
     const on = edges.find(
-      (entry) => `${entry.width}x${entry.height}` === size && entry.antialias && entry.crevice,
+      (entry) => `${entry.width}x${entry.height}` === size && entry.antialias,
     );
     if (!off || !on) {
       console.log(`  ${size}: needs both an MSAA-off and an MSAA-on run to compare`);
+      aliasOk = aliasOk && true;
       continue;
     }
     const reduction = 1 - on.maxStep / off.maxStep;

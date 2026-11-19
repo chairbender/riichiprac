@@ -13,11 +13,13 @@ import { describe, expect, it } from 'vitest';
 
 import { boardFixture } from './boardFixture';
 import { frameForAspect, layoutBoard } from './boardLayout';
+import { GAP, tileGaps } from './gaps';
 import {
   EDGE_GATE,
+  EDGE_SCAN_LINES,
   SEAM_GATE,
   classifySeamPixel,
-  edgeScan,
+  edgeScans,
   readEdge,
   readSeam,
   seamRaster,
@@ -25,13 +27,37 @@ import {
   seamTargets,
 } from './seamProbe';
 import type { SeamPixelSource } from './seamProbe';
-import { CREVICE, creviceGainAt } from './tileMaterial';
-import { TILE } from '../layoutConstants';
 
 const layout = layoutBoard(boardFixture());
 const frame = frameForAspect(16 / 9, layout);
 const WIDTH = 1280;
 const HEIGHT = 720;
+
+/** A pixel source that paints one 8-bit sRGB value per screen-space x/y. */
+function rgbSource(
+  width: number,
+  height: number,
+  rgbAt: (x: number, y: number) => readonly [number, number, number],
+): SeamPixelSource {
+  return {
+    width,
+    height,
+    read(x, y, readWidth, readHeight) {
+      const pixels = new Uint8Array(readWidth * readHeight * 4);
+      for (let row = 0; row < readHeight; row += 1) {
+        for (let column = 0; column < readWidth; column += 1) {
+          const [r, g, b] = rgbAt(x + column, y + row);
+          const index = (row * readWidth + column) * 4;
+          pixels[index] = r;
+          pixels[index + 1] = g;
+          pixels[index + 2] = b;
+          pixels[index + 3] = 255;
+        }
+      }
+      return pixels;
+    },
+  };
+}
 
 /** A pixel source that paints horizontal bands of luma in a screen-space x run. */
 function bandSource(
@@ -72,22 +98,25 @@ describe('3D seam probe (3D-20)', () => {
       expect(b).toBeDefined();
       // The pair must be in contact, so a probe can never measure a gap that is
       // meant to be open (the drawn tile, an empty pond cell).
-      const bits = [1, 2, 4, 8, 16, 32];
-      expect(a!.contact & bits[target.axis * 2 + (target.sign > 0 ? 1 : 0)]).not.toBe(0);
+      expect(GAP.touchingUnits).toBeGreaterThan(0);
+      const gap = tileGaps(layout.tiles, { withinUnits: 1 }).find(
+        (entry) =>
+          (entry.aId === target.aId && entry.bId === target.bId) ||
+          (entry.aId === target.bId && entry.bId === target.aId),
+      );
+      expect(gap).toBeDefined();
+      expect(Math.abs(gap!.gapUnits)).toBeLessThanOrEqual(GAP.touchingUnits);
     }
   });
 
-  it('projects the committed 0.3 mm groove into a measurable window', () => {
+  it('projects two touching tiles\u2019 bevel valley into a measurable window', () => {
     const targets = seamTargets(layout, { frame, widthPx: WIDTH, heightPx: HEIGHT });
     const rasters = seamRasters(layout, frame, WIDTH, HEIGHT, targets);
     expect(rasters.length).toBe(targets.length);
     for (const raster of rasters) {
-      // Every pair is a row groove (0.0107) or the pond's 0.0071-unit groove.
-      expect(Math.abs(raster.gapUnits)).toBeGreaterThan(0);
-      expect(Math.abs(raster.gapUnits)).toBeLessThan(0.02);
+      // Contact is exact: the window is the two bevels either side of it.
+      expect(Math.abs(raster.gapUnits)).toBeLessThanOrEqual(GAP.touchingUnits);
       expect(raster.spanPx).toBeGreaterThan(1);
-      // The window is the two bevels plus the groove, in pixels.
-      expect(raster.spanPx / raster.gapUnits).toBeGreaterThan(20);
       // Samples stay inside the drawing buffer.
       expect(raster.block.x).toBeGreaterThanOrEqual(0);
       expect(raster.block.y).toBeGreaterThanOrEqual(0);
@@ -104,35 +133,32 @@ describe('3D seam probe (3D-20)', () => {
     );
   });
 
-  it('reads a dark groove as a pass and a bright one as the defect', () => {
+  it('passes a groove and fails one the felt shows through', () => {
     const target = seamTargets(layout, { frame, widthPx: WIDTH, heightPx: HEIGHT }).find(
       (entry) => entry.kind === 'hand-row',
     )!;
     const raster = seamRaster(layout, target, frame, WIDTH, HEIGHT);
     const { x, width } = raster.block;
-    const span = raster.spanPx;
     const centre = x + Math.round(width / 2);
 
-    // A groove: bright faces, a dark band at the middle, and nothing brighter
-    // than the faces.
-    const groove = bandSource(WIDTH, HEIGHT, (px) => {
+    // A closed seam: two bevels meeting, no felt in the valley.
+    const closed = bandSource(WIDTH, HEIGHT, (px) => {
       const distance = Math.abs(px - centre);
-      return distance <= span / 2 ? 40 : 235;
+      return distance <= 1 ? 150 : 235;
     });
-    const dark = readSeam(groove, raster);
-    expect(dark.pass).toBe(true);
-    expect(dark.contrast).toBeGreaterThan(SEAM_GATE.minContrast);
-    expect(dark.depth).toBeGreaterThan(SEAM_GATE.minDepth);
+    const sealed = readSeam(closed, raster);
+    expect(sealed.leakPixels).toBe(0);
+    expect(sealed.pass).toBe(true);
 
-    // The defect: the same seam with a bright line down its middle.
-    const brightLine = bandSource(WIDTH, HEIGHT, (px) => {
-      const distance = Math.abs(px - centre);
-      return distance <= 1 ? 250 : distance <= span / 2 ? 200 : 235;
-    });
-    const bright = readSeam(brightLine, raster);
-    expect(bright.pass).toBe(false);
-    expect(bright.contrast).toBeLessThan(SEAM_GATE.minContrast);
-    expect(bright.detail).toContain('core');
+    // The defect: a slot in the middle of the seam showing the cloth through it.
+    // The felt's own green (`#1a5038`) is the signature, not a luma band.
+    const slot = rgbSource(WIDTH, HEIGHT, (px) =>
+      Math.abs(px - centre) <= 2 ? [26, 80, 56] : [235, 235, 235],
+    );
+    const leaking = readSeam(slot, raster);
+    expect(leaking.leakPixels).toBeGreaterThan(SEAM_GATE.maxLeakPixels);
+    expect(leaking.pass).toBe(false);
+    expect(leaking.detail).toContain('felt or clear colour');
   });
 
   it('attributes a bright seam pixel to the body, the cloth or the clear colour', () => {
@@ -144,27 +170,29 @@ describe('3D seam probe (3D-20)', () => {
 });
 
 describe('3D aliasing probe (3D-20)', () => {
-  it('scans the human hand\u2019s outer silhouette from its face to the felt', () => {
-    const scan = edgeScan(layout, frame, WIDTH, HEIGHT);
-    expect(scan).not.toBeNull();
-    expect(scan!.id).toBe('hand-end');
-    expect(scan!.spanPx).toBeGreaterThan(4);
-    expect(scan!.block.x + scan!.block.width).toBeLessThanOrEqual(WIDTH);
-    expect(scan!.block.y + scan!.block.height).toBeLessThanOrEqual(HEIGHT);
+  it('scans the human hand\u2019s outer silhouette on several parallel lines', () => {
+    const scans = edgeScans(layout, frame, WIDTH, HEIGHT);
+    expect(scans.length).toBe(EDGE_SCAN_LINES);
+    for (const scan of scans) {
+      expect(scan.id).toBe('hand-end');
+      expect(scan.spanPx).toBeGreaterThan(4);
+      expect(scan.block.x + scan.block.width).toBeLessThanOrEqual(WIDTH);
+      expect(scan.block.y + scan.block.height).toBeLessThanOrEqual(HEIGHT);
+    }
   });
 
   it('reads a hard step as no transition and a partial-coverage pixel as one', () => {
-    const scan = edgeScan(layout, frame, WIDTH, HEIGHT)!;
-    const { x, width } = scan.block;
+    const scans = edgeScans(layout, frame, WIDTH, HEIGHT);
+    const { x, width } = scans[0].block;
     const centre = x + Math.round(width / 2);
 
     const hard = readEdge(
       bandSource(WIDTH, HEIGHT, (px) => (px < centre ? 235 : 45)),
-      scan,
+      scans,
     );
     const soft = readEdge(
       bandSource(WIDTH, HEIGHT, (px) => (px < centre ? 235 : px === centre ? 150 : 45)),
-      scan,
+      scans,
     );
     expect(hard.intermediates).toBe(0);
     expect(soft.intermediates).toBeGreaterThanOrEqual(EDGE_GATE.minIntermediates);
@@ -172,16 +200,3 @@ describe('3D aliasing probe (3D-20)', () => {
   });
 });
 
-describe('the crevice profile (3D-20)', () => {
-  it('converts the apparent alphas to linear light', () => {
-    expect(creviceGainAt(0)).toBe(1);
-    expect(creviceGainAt(CREVICE.creaseAlpha)).toBeLessThan(0.05);
-    expect(creviceGainAt(CREVICE.plateauAlpha)).toBeGreaterThan(
-      creviceGainAt(CREVICE.creaseAlpha),
-    );
-    // The plateau edge sits one bevel in from the silhouette and the fade ends
-    // 2.0 mm inside it, which is the 2.5D mask's own band.
-    expect(CREVICE.fadeUnits).toBeGreaterThan(TILE.bevelUnits);
-    expect(CREVICE.fadeUnits).toBeLessThan(TILE.widthUnits);
-  });
-});

@@ -99,6 +99,9 @@ async function loadModules() {
       fixture: await server.ssrLoadModule(
         '/src/renderers/three/boardFixture.ts',
       ),
+      gaps: await server.ssrLoadModule(
+        '/src/renderers/three/gaps.ts',
+      ),
     };
   } finally {
     await server.close();
@@ -166,7 +169,7 @@ function widestFixture(fixture) {
 }
 
 async function main() {
-  const { constants: C, layout: L, fixture: F } = await loadModules();
+  const { constants: C, layout: L, fixture: F, gaps: G } = await loadModules();
 
   const fixture = F.boardFixture();
   const board = L.layoutBoard(fixture);
@@ -619,6 +622,67 @@ async function main() {
         })
         .join(' '),
   );
+
+  /* ----------------------------- gaps -------------------------------- */
+  // 3D-20: the defect the user reported was seeing *through* a slot where two
+  // tiles should meet, so the gate measures the slots themselves. Nothing may sit
+  // between touching and clearly apart: a pair is either in contact (0 up to the
+  // touching tolerance) or at least `GAP.maxTouchingGapUnits` away.
+  console.log('tile gaps (surface-to-surface; a slot is a gap in (0.000001, 0.05])');
+  const reportGaps = (label, board) => {
+    const measured = G.tileGaps(board.tiles);
+    const slots = G.slotGaps(measured);
+    const merged = G.overlaps(measured);
+    const touching = G.touchingByZone(measured);
+    const touchingCount = [...touching.values()].reduce((sum, count) => sum + count, 0);
+    console.log(
+      `  ${label}: ${board.tiles.length} tiles, ${touchingCount} touching pairs, ` +
+        `${slots.length} slots, ${merged.length} overlapping`,
+    );
+    const zoneRows = [...touching.entries()].sort((left, right) => right[1] - left[1]);
+    if (zoneRows.length) {
+      console.log(
+        `    touching by zone: ${zoneRows.map(([zone, count]) => `${zone} ${count}`).join(', ')}`,
+      );
+    }
+    const worst = [...slots].sort((left, right) => right.gapUnits - left.gapUnits).slice(0, 6);
+    for (const slot of worst) {
+      console.log(
+        `    slot ${formatNumber(slot.gapUnits, 5)} u ` +
+          `(${formatNumber(slot.gapUnits * C.UNIT_MM, 2)} mm): ${slot.aId} x ${slot.bId}`,
+      );
+    }
+    const narrowest = [...measured]
+      .filter((gap) => gap.gapUnits > G.GAP.maxTouchingGapUnits)
+      .sort((left, right) => left.gapUnits - right.gapUnits)
+      .slice(0, 3);
+    for (const deliberate of narrowest) {
+      console.log(
+        `    deliberate gap ${formatNumber(deliberate.gapUnits, 4)} u: ` +
+          `${deliberate.aId} x ${deliberate.bId}`,
+      );
+    }
+    return { slots, merged };
+  };
+
+  const fixtureGaps = reportGaps('fixture board', board);
+  check(
+    'no tile pair leaves a slot between touching and clearly apart',
+    fixtureGaps.slots.length === 0,
+    fixtureGaps.slots.length ? `${fixtureGaps.slots.length} slot(s)` : '0 slots',
+  );
+  check(
+    'no two tiles interpenetrate',
+    fixtureGaps.merged.length === 0,
+    fixtureGaps.merged.length ? `${fixtureGaps.merged.length} overlap(s)` : '0 overlaps',
+  );
+  const widestGaps = reportGaps('widest board', widest);
+  check(
+    'the widest board leaves no slot either',
+    widestGaps.slots.length === 0,
+    widestGaps.slots.length ? `${widestGaps.slots.length} slot(s)` : '0 slots',
+  );
+  console.log();
 
   /* --------------------------- reference ----------------------------- */
   if (WITH_REFERENCE) {

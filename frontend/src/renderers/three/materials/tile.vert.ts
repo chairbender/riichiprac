@@ -16,22 +16,17 @@
  *
  * Instancing. three declares `instanceMatrix` itself when the mesh is an
  * `InstancedMesh`; this shader only has to use it. The per-instance attributes
- * are the atlas cell rect (vec4 `u0, v0, u1, v1`), `aFlags`, the bitfield 3D-07
- * packs (`boardMesh.INSTANCE_FLAG`: face-up, highlighted, dimmed), and
- * `aContact`, the six-edge contact mask 3D-20 derives
- * (`contact.CONTACT_EDGE`). The fragment stage tests the flags: face-up chooses
- * between the carved face and the blue back, the other two shade the tile, and
- * the contact bits decide which edges take the inter-tile crevice. A face-down
- * tile is rotated by the layout (3D-06), so its visible surface is the mesh's
- * local -Z back plate and needs no second geometry. `vLocalPosition` reaches the
- * fragment stage *before* the instance transform, which is what lets the crevice
- * be measured in the tile's own frame.
+ * are the atlas cell rect (vec4 `u0, v0, u1, v1`) and `aFlags`, the bitfield
+ * 3D-07 packs (`boardMesh.INSTANCE_FLAG`: face-up, highlighted, dimmed). The
+ * fragment stage tests the bits: face-up chooses between the carved face and the
+ * blue back, and the other two shade the tile. A face-down tile is rotated by the
+ * layout (3D-06), so its visible surface is the mesh's local -Z back plate and
+ * needs no second geometry.
  */
 
 export const TILE_VERTEX_SHADER = /* glsl */ `
 attribute vec4 aAtlasRect;
 attribute float aFlags;
-attribute float aContact;
 attribute vec4 tangent;
 attribute float faceZone;
 
@@ -43,7 +38,6 @@ varying vec3 vWorldPosition;
 varying vec3 vLocalPosition;
 varying float vFaceZone;
 varying float vFlags;
-varying float vContact;
 
 void main() {
   vec4 localPosition = vec4(position, 1.0);
@@ -77,7 +71,6 @@ void main() {
   vLocalPosition = localPosition.xyz;
   vFaceZone = faceZone;
   vFlags = aFlags;
-  vContact = aContact;
 
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }

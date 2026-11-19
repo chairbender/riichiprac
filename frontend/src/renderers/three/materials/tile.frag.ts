@@ -85,13 +85,6 @@ uniform float uBodyIvoryRoughness;
 uniform float uBodyBlueRoughness;
 uniform float uBackEdgeFraction;
 uniform float uThicknessUnits;
-uniform vec3 uHalfSizeUnits;
-uniform float uCreviceBevelUnits;
-uniform float uCreviceFadeUnits;
-uniform float uCrevicePlateauAlpha;
-uniform float uCreviceCreaseAlpha;
-uniform float uCreviceExponent;
-uniform float uCreviceScale;
 uniform float uCoatFace;
 uniform float uCoatBack;
 uniform float uCoatRoughness;
@@ -123,30 +116,12 @@ varying vec3 vWorldPosition;
 varying vec3 vLocalPosition;
 varying float vFaceZone;
 varying float vFlags;
-varying float vContact;
 
 const float PI = 3.141592653589793;
 const float EPSILON = 1e-4;
 
 vec3 decodeTangentNormal(vec3 encoded) {
   return normalize(encoded * 2.0 - 1.0);
-}
-
-/**
- * The crevice's apparent occlusion at a distance 'inset' from the body
- * silhouette: near-black at the crease, uCrevicePlateauAlpha at the plateau
- * edge, ramping to 0 uCreviceFadeUnits further inside the plate. Mirrors
- * tileMaterial.CREVICE and its creviceGainAt.
- */
-float creviceOcclusion(float inset) {
-  float crease = 1.0 - smoothstep(0.0, uCreviceBevelUnits, inset);
-  float alpha = mix(uCrevicePlateauAlpha, uCreviceCreaseAlpha, crease);
-  float fade = 1.0 - smoothstep(
-    0.0,
-    uCreviceFadeUnits,
-    max(inset - uCreviceBevelUnits, 0.0)
-  );
-  return clamp(alpha * fade * uCreviceScale, 0.0, 0.98);
 }
 
 /** An up-facing hemisphere fill weight for the world normal. */
@@ -337,45 +312,6 @@ void main() {
   // hero tiles carry no flags.
   colour = mix(colour, colour * uHighlightTint, flagHighlighted * uHighlightStrength);
   colour *= mix(1.0, uDimGain, flagDimmed);
-
-  // (5) The inter-tile crevice (3D-20). A tile darkens only the edges that have
-  // a neighbour against them (aContact, contact.CONTACT_EDGE bit order), so a
-  // groove between two touching tiles goes dark while an open edge keeps the lit
-  // bevel - the 2.5D pipeline's approved rule (an open edge draws no seam mask).
-  // The profile, its extent and its two depths are CREVICE's (tileMaterial.ts):
-  // near-black at the crease, the mask's band at the plateau edge, fading out
-  // 2.0 mm inside the plate. It multiplies the *final* colour, because the
-  // defect it removes is a lit (and at the crease, specular) surface inside the
-  // groove, and a diffuse-only AO term would leave it.
-  float edges = vContact;
-  float edgeMinusX = mod(edges, 2.0);
-  float edgePlusX = mod(floor(edges * 0.5), 2.0);
-  float edgeMinusY = mod(floor(edges * 0.25), 2.0);
-  float edgePlusY = mod(floor(edges * 0.125), 2.0);
-  float edgeMinusZ = mod(floor(edges * 0.0625), 2.0);
-  float edgePlusZ = mod(floor(edges * 0.03125), 2.0);
-  vec3 localPoint = vLocalPosition;
-  float insetX = uHalfSizeUnits.x - abs(localPoint.x);
-  float insetY = uHalfSizeUnits.y - abs(localPoint.y);
-  float insetZ = uHalfSizeUnits.z - abs(localPoint.z);
-  float creviceX =
-    (localPoint.x < 0.0 ? edgeMinusX : edgePlusX) * creviceOcclusion(insetX);
-  float creviceY =
-    (localPoint.y < 0.0 ? edgeMinusY : edgePlusY) * creviceOcclusion(insetY);
-  // A tier contact runs along the body's thickness, and only the side walls near
-  // the silhouette sit in that groove - never the back plate, whose whole face
-  // would otherwise darken because it lies on the contact plane.
-  float rim = 1.0 - smoothstep(
-    0.0,
-    uCreviceFadeUnits,
-    min(max(insetX - uCreviceBevelUnits, 0.0), max(insetY - uCreviceBevelUnits, 0.0))
-  );
-  float creviceZ =
-    (localPoint.z < 0.0 ? edgeMinusZ : edgePlusZ) *
-    creviceOcclusion(insetZ) *
-    rim;
-  float crevice = max(creviceX, max(creviceY, creviceZ));
-  colour *= pow(1.0 - crevice, uCreviceExponent);
 
   if (uDebug > 0.5) {
     if (uDebug < 1.5) {

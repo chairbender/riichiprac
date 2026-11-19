@@ -324,10 +324,12 @@ export interface SeamReadingNumber {
   readonly brightestRgb: readonly [number, number, number];
   /** What that pixel's colour is: ivory body, felt, background or other. */
   readonly brightestClass: 'body' | 'felt' | 'background' | 'other';
-  /** `faceLuma - coreMaxLuma`: positive means the groove's core is not bright. */
+  /** `faceLuma - coreMaxLuma`: informational (a bevel may be as bright as a face). */
   readonly contrast: number;
-  /** `faceLuma - coreMeanLuma`. */
+  /** `faceLuma - coreMeanLuma`: informational. */
   readonly depth: number;
+  /** Core pixels that read as the felt or the clear colour: the defect. */
+  readonly leakPixels: number;
   readonly pass: boolean;
   readonly detail: string | null;
 }
@@ -349,8 +351,14 @@ export interface EdgeReadingNumber {
   readonly offsetsPx: readonly number[];
   readonly lightLuma: number;
   readonly darkLuma: number;
+  /** Mean columns per line whose value lies between the two surfaces. */
   readonly intermediates: number;
+  /** Mean over lines of each line's largest one-pixel luma step. */
   readonly maxStep: number;
+  /** The worst line's largest one-pixel step (a single unlucky line cannot hide). */
+  readonly worstStep: number;
+  /** How many parallel scan lines were averaged. */
+  readonly lines: number;
   readonly pass: boolean;
 }
 
@@ -361,8 +369,6 @@ export interface SeamReport {
   readonly widthPx: number;
   readonly heightPx: number;
   readonly drawCalls: number;
-  /** The live crevice scale the frame was drawn with (1 = the committed profile). */
-  readonly creviceScale: number;
   readonly seams: readonly SeamReadingNumber[];
   readonly allSeamsPass: boolean;
   /** The anti-aliasing reading on the human hand's outer silhouette, or null. */

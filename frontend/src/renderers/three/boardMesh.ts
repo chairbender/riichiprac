@@ -19,12 +19,6 @@
  *   and dimmed. One float rather than three attributes because the fragment
  *   stage only ever tests bits, and one float keeps the per-vertex footprint
  *   minimal at 320 instances.
- * - `aContact` (float bitfield, see `contact.CONTACT_EDGE`, 3D-20): which of the
- *   tile's six body edges touch another tile. The fragment stage darkens exactly
- *   those edges, which is what keeps a 0.3 mm groove reading as a groove instead
- *   of a bright bevel-to-bevel line. Its own attribute rather than more bits in
- *   `aFlags` because it is a different kind of fact (a relation between poses,
- *   not a per-tile state flag) and a separate float keeps both readable.
  *
  * A per-instance atlas *page* is not needed in v1: the three atlases hold all 37
  * cells, so a tile only needs its rect. If a future bake ever splits the face
@@ -86,8 +80,6 @@ export interface BoardInstance {
   readonly matrix: readonly number[];
   readonly atlasRect: AtlasRect;
   readonly flags: number;
-  /** `contact.CONTACT_EDGE` bits: which edges touch a neighbour (3D-20). */
-  readonly contact: number;
   /** The face the instance shows, kept for the highlight/atlas probes. */
   readonly face: TileFaceId;
 }
@@ -101,8 +93,6 @@ export interface BoardBuffers {
   readonly atlasRects: Float32Array;
   /** `count` floats. */
   readonly flags: Float32Array;
-  /** `count` floats: the six-bit contact mask per instance. */
-  readonly contacts: Float32Array;
 }
 
 /** The `aFlags` word for one layout tile. */
@@ -145,7 +135,6 @@ function instanceFor(
       ? (cellForFace(tile.face)?.rect ?? NEUTRAL_ATLAS_RECT)
       : NEUTRAL_ATLAS_RECT,
     flags: instanceFlags(tile),
-    contact: tile.contact,
     face: tile.face,
   };
 }
@@ -171,7 +160,6 @@ export function packBoardInstances(
   const matrices = new Float32Array(count * 16);
   const atlasRects = new Float32Array(count * 4);
   const flags = new Float32Array(count);
-  const contacts = new Float32Array(count);
   instances.forEach((instance, index) => {
     if (instance.matrix.length !== 16) {
       throw new Error(
@@ -183,18 +171,11 @@ export function packBoardInstances(
         throw new Error(`3D board mesh: instance ${instance.id} has a non-finite matrix`);
       }
     }
-    const contact = instance.contact ?? 0;
-    if (!Number.isInteger(contact) || contact < 0 || contact > 63) {
-      throw new Error(
-        `3D board mesh: instance ${instance.id} has contact mask ${contact}, outside the six-edge range`,
-      );
-    }
     matrices.set(instance.matrix, index * 16);
     atlasRects.set(instance.atlasRect, index * 4);
     flags[index] = instance.flags;
-    contacts[index] = contact;
   });
-  return { count, matrices, atlasRects, flags, contacts };
+  return { count, matrices, atlasRects, flags };
 }
 
 /** The live board mesh and the buffers it re-uploads on a snapshot change. */
@@ -248,13 +229,10 @@ export function createBoardMesh(
 
   const atlasRects = new InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
   const flags = new InstancedBufferAttribute(new Float32Array(capacity), 1);
-  const contacts = new InstancedBufferAttribute(new Float32Array(capacity), 1);
   (atlasRects.array as Float32Array).set(buffers.atlasRects);
   (flags.array as Float32Array).set(buffers.flags);
-  (contacts.array as Float32Array).set(buffers.contacts);
   geometry.setAttribute('aAtlasRect', atlasRects);
   geometry.setAttribute('aFlags', flags);
-  geometry.setAttribute('aContact', contacts);
 
   const matrix = new Matrix4();
   for (let index = 0; index < buffers.count; index += 1) {
@@ -276,11 +254,9 @@ export function createBoardMesh(
       target.set(packed.matrices);
       (atlasRects.array as Float32Array).set(packed.atlasRects);
       (flags.array as Float32Array).set(packed.flags);
-      (contacts.array as Float32Array).set(packed.contacts);
       mesh.instanceMatrix.needsUpdate = true;
       atlasRects.needsUpdate = true;
       flags.needsUpdate = true;
-      contacts.needsUpdate = true;
       mesh.count = packed.count;
     },
     dispose() {

@@ -17,7 +17,6 @@
  *   tier      quality tier (default `high`)
  *   aa        1/0 forces MSAA on/off; absent follows `antiAliasFor(tier)`
  *   debug     a debug view (`albedo`, `height`, `normal`, `steps`, `pom-off`)
- *   crevice   0 draws the pre-3D-20 body (the crevice profile off)
  *   png       1 also returns the frame as a PNG data URL
  *
  * The PNG is taken in the same task as `seamReport()`'s draw, because the
@@ -39,7 +38,6 @@ const debugParam = params.get('debug');
 const debug = debugParam ? (debugParam as DebugMode) : null;
 const aaParam = params.get('aa');
 const antialias = aaParam === null ? antiAliasFor(tier) : aaParam !== '0';
-const creviceOn = params.get('crevice') !== '0';
 const wantPng = params.get('png') === '1';
 
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
@@ -79,15 +77,12 @@ try {
   const renderer: TableRenderer = scene;
 
   const done = (): void => {
-    // The before/after switch: `?crevice=0` draws the pre-3D-20 body, which is
-    // how the gate proves the defect exists and that the profile removes it.
-    if (!creviceOn) scene.setCreviceScale(0);
     renderer.syncState(boardFixture());
     renderer.setSize(width, height, dpr);
     const seams = renderer.seamReport?.() ?? null;
     const png = wantPng ? canvas.toDataURL('image/png') : null;
     publish({
-      options: { width, height, dpr, tier, antialias, debug, crevice: creviceOn },
+      options: { width, height, dpr, tier, antialias, debug },
       seams,
       stats: renderer.measure(),
       png,

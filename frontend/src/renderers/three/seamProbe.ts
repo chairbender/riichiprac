@@ -37,7 +37,7 @@ import { TILE, WALL } from '../layoutConstants';
 import type { EdgeReadingNumber, SeamReadingNumber } from '../contract';
 import { orientedBox, projectToPixels, seatBasis } from './boardLayout';
 import type { BoardLayout, CameraFrame, Vec3 } from './boardLayout';
-import { CONTACT_EDGE, contactPairs } from './contact';
+import { GAP, tileGaps } from './gaps';
 
 /** Which family a probe belongs to; each reads a different part of the board. */
 export type SeamKind = 'hand-row' | 'pond-row' | 'wall-stack' | 'wall-tier';
@@ -48,27 +48,28 @@ export const SEAM_PLATEAU_PAD_PX = 5;
 /** How far either side of the scan line each sample is medianed, in pixels. */
 export const SEAM_PERPENDICULAR_OFFSETS_PX: readonly number[] = [-2, 0, 2];
 
-/** The pass rule, as numbers. */
+/**
+ * The pass rule, as a number.
+ *
+ * The defect this exists for is a **slot you can see through**, so the rule is a
+ * leak count, not a brightness one: no pixel inside a seam's core may be the
+ * felt's green or the scene's clear colour. A groove that is merely dark is
+ * fine, and so is a bevel that is as bright as the plate — those are geometry
+ * and shading, and the user's eye decides whether the tiles read as a table.
+ *
+ * The companion guarantee is geometric and lives in `gaps.ts`: the layout gate
+ * asserts that no pair of tiles is separated by anything between a true contact
+ * and a deliberate 1.4 mm gap, so a core sample can only be felt here if the
+ * bodies are not where the layout says they are.
+ */
 export const SEAM_GATE = {
+  /** Pixels in a seam's core that may read as felt or as the clear colour. */
+  maxLeakPixels: 0,
   /**
-   * The groove's **core** — its middle third, where two bodies meet — must be at
-   * least this many luma below the darker of the two adjacent faces. The outer
-   * thirds are legitimately bright: they are the two bevels, and a bevel is a lit
-   * surface. A white seam is a *core* that does not go dark.
+   * A seam narrower than this cannot be sampled: the scan's own rounding is then
+   * the whole window. Reported as unmeasurable rather than passed.
    */
-  minContrast: 12,
-  /**
-   * The core's mean must be this far below the darker face, so a groove that has
-   * been filled in (or washed out) fails just as a bright core does.
-   */
-  minDepth: 18,
-  /**
-   * A groove narrower than this many pixels cannot be measured: at 2 px there is
-   * a core pixel, at 1 px the two bevels merge and no scanline can tell a groove
-   * from a line (that case is the resolution budget's problem, and the gate says
-   * so instead of pretending to measure it).
-   */
-  minSpanPx: 2.5,
+  minSpanPx: 1.5,
 } as const;
 
 /** One touching pair chosen for measurement. */
@@ -159,13 +160,33 @@ export function seamTargets(
   view?: SeamView,
 ): readonly SeamTarget[] {
   const byId = new Map(layout.tiles.map((tile) => [tile.id, tile]));
-  const { pairs } = contactPairs(layout.tiles);
   const targets: SeamTarget[] = [];
   const zoneOf = (id: string): string => byId.get(id)?.zone ?? '';
   const seatOf = (id: string): number | null => byId.get(id)?.seat ?? null;
+  // A "seam" is a pair the layout places in contact; `tileGaps` is the one
+  // authority on that, so a probe can never measure a pair that is apart.
+  const pairs = tileGaps(layout.tiles)
+    .filter((gap) => Math.abs(gap.gapUnits) <= GAP.touchingUnits)
+    .map((gap) => {
+      const a = byId.get(gap.aId);
+      const b = byId.get(gap.bId);
+      if (!a || !b) return null;
+      const axes = orientedBox(a.pose).axes;
+      const axis = axes[gap.axis];
+      const sign =
+        Math.sign(
+          (b.pose.position[0] - a.pose.position[0]) * axis[0] +
+            (b.pose.position[1] - a.pose.position[1]) * axis[1] +
+            (b.pose.position[2] - a.pose.position[2]) * axis[2],
+        ) || 1;
+      return { aId: gap.aId, bId: gap.bId, axis: gap.axis, sign };
+    })
+    .filter((pair): pair is { aId: string; bId: string; axis: 0 | 1 | 2; sign: number } =>
+      pair !== null,
+    );
   const pick = (
     kind: SeamKind,
-    candidates: readonly { aId: string; bId: string; axis: 0 | 1 | 2; sign: 1 | -1 }[],
+    candidates: readonly { aId: string; bId: string; axis: 0 | 1 | 2; sign: number }[],
   ): void => {
     const chosen = candidates[0];
     if (!chosen) return;
@@ -175,7 +196,7 @@ export function seamTargets(
       aId: chosen.aId,
       bId: chosen.bId,
       axis: chosen.axis,
-      sign: chosen.sign,
+      sign: chosen.sign > 0 ? 1 : -1,
       facing: kind === 'wall-stack' ? 'front' : 'top',
     });
   };
@@ -196,7 +217,7 @@ export function seamTargets(
       aId: hand.aId,
       bId: hand.bId,
       axis: hand.axis,
-      sign: hand.sign,
+      sign: hand.sign > 0 ? 1 : -1,
       facing: 'top',
     });
   }
@@ -213,11 +234,11 @@ export function seamTargets(
     ),
   );
 
-  // The wall families. A lateral pair is measured on the wall's **top tier's
-  // back plates** — the surface the camera sees most of — and among those the
-  // pair nearest the frame centre, where the seam is least foreshortened. The
-  // tier pair is measured on the near run's front wall, the only place the tier
-  // line is visible at all.
+  // The wall families. A lateral pair is measured on the wall's **front wall** —
+  // where a standing tile's seam is a legible line rather than a sub-pixel slot —
+  // and among those the pair nearest the frame centre, where the seam is least
+  // foreshortened. The tier pair is measured on the near run, the only place the
+  // tier line is visible at all.
   const wallRun = (id: string): number => {
     const tile = byId.get(id);
     return tile ? Math.floor(tile.slot / WALL.slotsPerRun) : -1;
@@ -239,8 +260,8 @@ export function seamTargets(
       (a.y + b.y) / 2 - view.heightPx / 2,
     );
   };
-  const best = (
-    candidates: readonly { aId: string; bId: string; axis: 0 | 1 | 2; sign: 1 | -1 }[],
+  const nearestToCentre = (
+    candidates: readonly { aId: string; bId: string; axis: 0 | 1 | 2; sign: number }[],
   ) =>
     [...candidates].sort((left, right) => distanceToCentre(left) - distanceToCentre(right))[0];
 
@@ -249,21 +270,14 @@ export function seamTargets(
   );
   pick(
     'wall-stack',
-    [...topTierWallPairs.filter((pair) => pair.axis === 0)]
-      .map((pair) => pair)
-      .sort((left, right) => distanceToCentre(left) - distanceToCentre(right))
-      .slice(0, 1),
+    topTierWallPairs.filter((pair) => pair.axis === 0),
   );
   const nearTierPairs = wallPairs.filter(
     (pair) =>
       pair.axis === 2 && wallRun(pair.aId) === human && wallRun(pair.bId) === human,
   );
-  pick(
-    'wall-tier',
-    nearTierPairs.length
-      ? [best(nearTierPairs) as { aId: string; bId: string; axis: 0 | 1 | 2; sign: 1 | -1 }]
-      : [],
-  );
+  const tierPair = nearestToCentre(nearTierPairs);
+  pick('wall-tier', tierPair ? [tierPair] : []);
   return targets;
 }
 
@@ -646,11 +660,10 @@ export function readSeam(source: SeamPixelSource, raster: SeamRaster): SeamReadi
 
   const faceALuma = faceA.length ? median(faceA) : 0;
   const faceBLuma = faceB.length ? median(faceB) : 0;
-  // The reference is the **mean of the two faces**. Neither extreme works: the
-  // darker flank is already in shadow at a high-contrast seam (a blue wall face
-  // beside an ivory one), and the brighter flank would excuse a groove that is
-  // as bright as the lit tile. The mean is the level a crevice has to fall below
-  // to read as one. `faceLuma` stays as the mean's name for the report.
+  // The reference is the **mean of the two faces**: neither extreme works (the
+  // darker flank is already in shadow at a high-contrast seam, and the brighter
+  // one would excuse a groove as bright as the lit tile). It is reported as
+  // information — the verdict is the leak count, not a contrast threshold.
   const faceLuma = (faceALuma + faceBLuma) / 2;
   const coreLuma = core.map((column) => column.luma);
   const coreMinLuma = coreLuma.length ? Math.min(...coreLuma) : 0;
@@ -673,14 +686,24 @@ export function readSeam(source: SeamPixelSource, raster: SeamRaster): SeamReadi
   );
   const contrast = faceLuma - coreMaxLuma;
   const depth = faceLuma - coreMeanLuma;
+  // The defect: the felt or the clear colour showing between two bodies that the
+  // layout places in contact. `classifySeamPixel` is the attribution; the count
+  // is the verdict.
+  const leaks = core.filter((column) => {
+    const kind = classifySeamPixel(column.rgb);
+    return kind === 'felt' || kind === 'background';
+  });
 
   let detail: string | null = null;
   if (raster.spanPx < SEAM_GATE.minSpanPx) {
-    detail = `the seam projects to ${raster.spanPx.toFixed(1)} px (< ${SEAM_GATE.minSpanPx}): too narrow to tell a groove from a line at this size`;
-  } else if (contrast < SEAM_GATE.minContrast) {
-    detail = `the groove's core is only ${contrast.toFixed(1)} luma below the darker face (< ${SEAM_GATE.minContrast})`;
-  } else if (depth < SEAM_GATE.minDepth) {
-    detail = `the groove's core averages only ${depth.toFixed(1)} luma below the darker face (< ${SEAM_GATE.minDepth}): it no longer reads as a groove`;
+    detail = `the seam projects to ${raster.spanPx.toFixed(1)} px (< ${SEAM_GATE.minSpanPx}): too narrow to sample`;
+  } else if (leaks.length > SEAM_GATE.maxLeakPixels) {
+    detail =
+      `${leaks.length} core pixel(s) read as felt or clear colour: ` +
+      leaks
+        .slice(0, 3)
+        .map((column) => `rgb ${column.rgb.join(',')} at ${column.offset} px`)
+        .join('; ');
   }
 
   return {
@@ -702,6 +725,7 @@ export function readSeam(source: SeamPixelSource, raster: SeamRaster): SeamReadi
     coreColumns,
     brightestRgb: brightest.rgb,
     brightestClass: classifySeamPixel(brightest.rgb),
+    leakPixels: leaks.length,
     contrast,
     depth,
     pass: detail === null,
@@ -762,24 +786,37 @@ export interface EdgeScan {
 }
 
 /**
- * The outer silhouette of the human hand's leftmost tile, sampled from inside
- * its face to the felt outside it.
+ * How many parallel scan lines the aliasing probe averages over.
+ *
+ * One line is not a measurement: whether a *particular* line's edge lands on a
+ * pixel boundary or half way across one is luck, so a single line reports the
+ * grid's phase rather than the renderer's filtering. Nine lines spread along the
+ * edge average that phase out.
+ */
+export const EDGE_SCAN_LINES = 9;
+
+/** How far apart the parallel scan lines are, in tile units. */
+const EDGE_SCAN_SPACING_UNITS = 0.05;
+
+/**
+ * The outer silhouette of the human hand's leftmost tile: one scan per line,
+ * each running from inside the face to the felt outside it.
  *
  * That edge is the sharpest, most visible boundary on the table (ivory against
  * cloth) and it belongs to the one zone the player looks at most, so it is the
- * fairest place to ask "is this edge anti-aliased?". Returns null when the hand
- * is empty.
+ * fairest place to ask "is this edge anti-aliased?". Returns no scans when the
+ * hand is empty.
  */
-export function edgeScan(
+export function edgeScans(
   layout: BoardLayout,
   frame: CameraFrame,
   widthPx: number,
   heightPx: number,
-): EdgeScan | null {
+): readonly EdgeScan[] {
   const hand = layout.foreground.filter(
     (tile) => tile.seat === layout.humanSeat && tile.zone === 'hand',
   );
-  if (hand.length === 0) return null;
+  if (hand.length === 0) return [];
   // The row's own axis: "leftmost" means the same thing for every seat, so the
   // probe does not depend on which seat the human happens to sit in.
   const { right } = seatBasis(layout.humanSeat);
@@ -788,9 +825,10 @@ export function edgeScan(
     (left, rightTile) => along(left.pose.position) - along(rightTile.pose.position),
   )[0];
   const box = orientedBox(tile.pose);
-  const [axisX, , axisZ] = box.axes;
-  // The outer edge is whichever of the tile's two X edges has no neighbour.
-  const outerSign = (tile.contact & CONTACT_EDGE.minusX) === 0 ? -1 : 1;
+  const [axisX, axisY, axisZ] = box.axes;
+  // The row's leftmost tile: its outward end is the seat's -right direction, so
+  // the silhouette scanned is the one with no neighbour against it.
+  const outwardSign = axisX[0] * right[0] + axisX[2] * right[2] >= 0 ? -1 : 1;
   const halfWidth = box.halfExtents[0];
   const halfThickness = box.halfExtents[2];
   const facePoint: Vec3 = [
@@ -799,18 +837,38 @@ export function edgeScan(
     box.centre[2] + axisZ[2] * halfThickness,
   ];
   const alongAxis = (units: number): Vec3 => [
-    facePoint[0] + axisX[0] * outerSign * units,
-    facePoint[1] + axisX[1] * outerSign * units,
-    facePoint[2] + axisX[2] * outerSign * units,
+    facePoint[0] + axisX[0] * outwardSign * units,
+    facePoint[1] + axisX[1] * outwardSign * units,
+    facePoint[2] + axisX[2] * outwardSign * units,
   ];
   const from = alongAxis(halfWidth - 0.22);
   const to = alongAxis(halfWidth + 0.22);
-  const scan = buildScan(from, to, frame, widthPx, heightPx, 2);
-  return { id: 'hand-end', ...scan };
+  const scans: EdgeScan[] = [];
+  const centre = (EDGE_SCAN_LINES - 1) / 2;
+  for (let line = 0; line < EDGE_SCAN_LINES; line += 1) {
+    const shift = (line - centre) * EDGE_SCAN_SPACING_UNITS;
+    const offset = (point: Vec3): Vec3 => [
+      point[0] + axisY[0] * shift,
+      point[1] + axisY[1] * shift,
+      point[2] + axisY[2] * shift,
+    ];
+    scans.push({ id: 'hand-end', ...buildScan(offset(from), offset(to), frame, widthPx, heightPx, 2) });
+  }
+  return scans;
 }
 
 /** Read one silhouette scan and count its anti-aliased transition columns. */
-export function readEdge(source: SeamPixelSource, scan: EdgeScan): EdgeReadingNumber {
+/** One line's numbers, before the lines are averaged. */
+interface EdgeLine {
+  readonly lightLuma: number;
+  readonly darkLuma: number;
+  readonly intermediates: number;
+  readonly maxStep: number;
+  readonly luma: readonly number[];
+  readonly offsetsPx: readonly number[];
+}
+
+function readEdgeLine(source: SeamPixelSource, scan: EdgeScan): EdgeLine {
   const { block } = scan;
   const pixels = source.read(block.x, block.y, block.width, block.height);
   const byOffset = new Map<number, number[]>();
@@ -836,15 +894,43 @@ export function readEdge(source: SeamPixelSource, scan: EdgeScan): EdgeReadingNu
   for (let index = 1; index < lumaPerOffset.length; index += 1) {
     maxStep = Math.max(maxStep, Math.abs(lumaPerOffset[index] - lumaPerOffset[index - 1]));
   }
+  return { lightLuma, darkLuma, intermediates, maxStep, luma: lumaPerOffset, offsetsPx };
+}
+
+/**
+ * Read every line of the silhouette and average the aliasing measure.
+ *
+ * `maxStep` is the mean of the per-line largest one-pixel luma steps, and
+ * `worstStep` is the worst line — reported so a single unlucky line cannot hide
+ * behind the average. `intermediates` is the mean count of columns between the
+ * two surfaces, which is the same fact seen from the other side.
+ */
+export function readEdge(
+  source: SeamPixelSource,
+  scans: readonly EdgeScan[],
+): EdgeReadingNumber {
+  const lines = scans.map((scan) => readEdgeLine(source, scan));
+  const mean = (values: readonly number[]): number =>
+    values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  const middle = lines[Math.floor(lines.length / 2)] ?? {
+    lightLuma: 0,
+    darkLuma: 0,
+    intermediates: 0,
+    maxStep: 0,
+    luma: [],
+    offsetsPx: [],
+  };
   return {
-    id: scan.id,
-    spanPx: scan.spanPx,
-    luma: lumaPerOffset,
-    offsetsPx,
-    lightLuma,
-    darkLuma,
-    intermediates,
-    maxStep,
-    pass: intermediates >= EDGE_GATE.minIntermediates,
+    id: 'hand-end',
+    spanPx: scans[0]?.spanPx ?? 0,
+    lines: lines.length,
+    luma: middle.luma,
+    offsetsPx: middle.offsetsPx,
+    lightLuma: mean(lines.map((line) => line.lightLuma)),
+    darkLuma: mean(lines.map((line) => line.darkLuma)),
+    intermediates: mean(lines.map((line) => line.intermediates)),
+    maxStep: mean(lines.map((line) => line.maxStep)),
+    worstStep: Math.max(...lines.map((line) => line.maxStep)),
+    pass: mean(lines.map((line) => line.intermediates)) >= EDGE_GATE.minIntermediates,
   };
 }

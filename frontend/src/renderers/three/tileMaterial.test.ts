@@ -20,12 +20,10 @@ import { Texture } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { RELIEF_RASTER } from './reliefAssets';
 import { TILE_LIGHTING_UNIFORMS } from './lighting';
-import { TILE } from '../layoutConstants';
 import { TILE_FRAGMENT_SHADER } from './materials/tile.frag';
 import { TILE_VERTEX_SHADER } from './materials/tile.vert';
 import {
   CARVE_AO_POWER,
-  CREVICE,
   CARVE_DEPTH_MM,
   CARVE_DEPTH_UNITS,
   CARVE_NORMAL_STRENGTH,
@@ -89,7 +87,7 @@ describe('fragment shader invariants', () => {
   });
 
   it('declares the attributes the geometry provides and the uniforms it reads', () => {
-    for (const attribute of ['aAtlasRect', 'aFlags', 'aContact', 'tangent', 'faceZone']) {
+    for (const attribute of ['aAtlasRect', 'aFlags', 'tangent', 'faceZone']) {
       expect(TILE_VERTEX_SHADER).toContain(`attribute`);
       expect(TILE_VERTEX_SHADER).toContain(attribute);
     }
@@ -200,53 +198,6 @@ describe('material uniforms', () => {
     handle.setHeightScale(-1);
     expect(handle.heightScale()).toBe(0);
     handle.dispose();
-  });
-
-  it('carries the inter-tile crevice profile (3D-20)', () => {
-    const handle = material();
-    expect(handle.uniforms.uCreviceBevelUnits.value).toBe(TILE.bevelUnits);
-    expect(handle.uniforms.uCreviceFadeUnits.value).toBe(CREVICE.fadeUnits);
-    expect(handle.uniforms.uCrevicePlateauAlpha.value).toBe(CREVICE.plateauAlpha);
-    expect(handle.uniforms.uCreviceCreaseAlpha.value).toBe(CREVICE.creaseAlpha);
-    expect(handle.uniforms.uCreviceExponent.value).toBe(CREVICE.srgbExponent);
-    expect(handle.uniforms.uCreviceScale.value).toBe(1);
-    expect(handle.uniforms.uHalfSizeUnits.value).toEqual([
-      TILE.widthUnits / 2,
-      TILE.heightUnits / 2,
-      TILE.thicknessUnits / 2,
-    ]);
-    // The before/after switch the seam probe drives: clamping, never throwing.
-    handle.setCreviceScale(0);
-    expect(handle.creviceScale()).toBe(0);
-    handle.setCreviceScale(2);
-    expect(handle.creviceScale()).toBe(1);
-    handle.setCreviceScale(Number.NaN);
-    expect(handle.creviceScale()).toBe(1);
-    handle.dispose();
-  });
-
-  it('shades the crevice from the contact mask and the local geometry', () => {
-    // The fragment stage decodes the six bits, weighs only the occupied edges and
-    // multiplies the final colour, which is what removes a specular seam.
-    for (const bit of [
-      'edgeMinusX',
-      'edgePlusX',
-      'edgeMinusY',
-      'edgePlusY',
-      'edgeMinusZ',
-      'edgePlusZ',
-    ]) {
-      expect(TILE_FRAGMENT_SHADER).toContain(bit);
-    }
-    expect(TILE_FRAGMENT_SHADER).toContain('float creviceOcclusion(float inset)');
-    expect(TILE_FRAGMENT_SHADER).toContain('uCreviceCreaseAlpha');
-    expect(TILE_FRAGMENT_SHADER).toContain('uCrevicePlateauAlpha');
-    expect(TILE_FRAGMENT_SHADER).toContain('colour *= pow(1.0 - crevice, uCreviceExponent);');
-    // It must run after the BRDF and the per-instance shading flags, so the
-    // highlight and dim steps cannot be left un-darkened in a groove.
-    expect(TILE_FRAGMENT_SHADER.indexOf('colour *= mix(1.0, uDimGain, flagDimmed);')).toBeLessThan(
-      TILE_FRAGMENT_SHADER.indexOf('colour *= pow(1.0 - crevice, uCreviceExponent);'),
-    );
   });
 
   it('carries the shell material gate, coat and carve-response knobs', () => {

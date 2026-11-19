@@ -86,7 +86,7 @@ import { loadReliefAssets } from './reliefAssets';
 import type { ReliefAssets } from './reliefAssets';
 import { createReliefTextureFactory } from './reliefTextures';
 import type { ReliefGpuTexture } from './reliefTextures';
-import { edgeScan, readEdge, readSeam, seamRasters } from './seamProbe';
+import { edgeScans, readEdge, readSeam, seamRasters } from './seamProbe';
 import type { SeamPixelSource } from './seamProbe';
 import { createShadowLayer, shadowInstances } from './shadows';
 import type { ShadowLayer } from './shadows';
@@ -338,19 +338,6 @@ export class TableScene implements TableRenderer {
     this.requestFrame();
   }
 
-  /**
-   * 3D-20's before/after switch for the seam handoff: `1` is the committed
-   * crevice profile, `0` leaves the tile body exactly as it was before it.
-   * Debug-only: the app always draws the committed profile;
-   * `scripts/seam-probe.ts` drives this to measure the defect and the fix from
-   * one build.
-   */
-  setCreviceScale(scale: number): void {
-    this.hero?.material.setCreviceScale(scale);
-    this.board?.material.setCreviceScale(scale);
-    this.requestFrame();
-  }
-
   /** No interactive tiles exist before 3D-08. */
   hitRects(): readonly HitRect[] {
     return [];
@@ -469,14 +456,13 @@ export class TableScene implements TableRenderer {
       ? seamRasters(this.layout, this.frame, size.x, size.y)
       : [];
     const seams = rasters.map((raster) => readSeam(source, raster));
-    const scan = this.layout ? edgeScan(this.layout, this.frame, size.x, size.y) : null;
-    const edge = scan ? readEdge(source, scan) : null;
+    const scans = this.layout ? edgeScans(this.layout, this.frame, size.x, size.y) : [];
+    const edge = scans.length ? readEdge(source, scans) : null;
     return {
       antialias,
       widthPx: size.x,
       heightPx: size.y,
       drawCalls: this.renderer.info.render.calls,
-      creviceScale: this.board.material.creviceScale(),
       seams,
       allSeamsPass: seams.length > 0 && seams.every((seam) => seam.pass),
       edge,
@@ -709,9 +695,6 @@ export class TableScene implements TableRenderer {
           highlighted: false,
           dimmed: false,
         }),
-        // The hero view shows four isolated tiles: nothing touches, so no
-        // crevice darkening (3D-20).
-        contact: 0,
         face: instance.slot.face,
       })),
       material,
