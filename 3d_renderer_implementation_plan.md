@@ -1882,15 +1882,26 @@ changed pixels and max 19.1**; the other 98.7 % of the frame is byte-identical.
 That is the groove-only, key-only effect the offline model predicts, rendered by
 the shipped shader rather than modelled.
 
-*Handoff (pending the user's verdict).* Open
-`?renderer=3d&debug=hero` and `?renderer=3d&debug=shadow`, press **Export carve
-sheets (4K)**, and compare each sheet's panels. A live A/B needs no image:
-`?debug=pom-off` is carve off, `?debug=shadow-off` is a lit carve with no
-self-shadow, and both are comparable with the same URL's normal view. The named
-questions: **(1)** does the ink read behind a lit near wall — i.e. is a groove's
-shadow visible where the key crosses the wall, or does the paint look flat?
-**(2)** is the self-shadow too strong on the small glyphs — do the thin strokes
-read muddy rather than engraved? Record the verdict here.
+*Handoff (accepted 2026-11-19).* The user reviewed the live board and the four
+4K sheets (`?renderer=3d` against `?debug=shadow-off`, plus the exported state
+matrix) and recorded the verdict **"Looks fine."** That accepts the carve with
+the self-shadow at the shipped calibration — strength 0.45, 4 steps at `high`,
+6-texel reach — and answers both named questions in the affirmative: the ink
+reads beside a lit near wall (the groove shadow is visible where the key crosses
+the wall) and the self-shadow does not muddy the small glyphs. No calibration
+change was requested, so `SHADOW_CALIBRATION` and `SHADOW_STEPS` stand as
+measured above. The named questions, for the record, were: **(1)** does the ink
+read behind a lit near wall — i.e. is a groove's shadow visible where the key
+crosses the wall, or does the paint look flat? **(2)** is the self-shadow too
+strong on the small glyphs — do the thin strokes read muddy rather than
+engraved? The live A/B needs no image: `?debug=pom-off` is carve off,
+`?debug=shadow-off` is a lit carve with no self-shadow.
+
+One follow-up recorded, not changed: the shader still integrates against
+**0.55 mm** (3D-05's calibration) while the only surviving carve manifest,
+`relief3d.json`, is **0.495 mm** deep. `tileMaterial.ts` documents the
+difference; aligning it would shorten both marches ~10% and is a calibration
+decision for a later unit, not a drive-by edit.
 
 ---
 
