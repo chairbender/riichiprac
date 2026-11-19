@@ -51,12 +51,6 @@
  *    takes `uHighlightTint` at `uHighlightStrength` and a dimmed tsumogiri tile
  *    takes `uDimGain`, both after the BRDF. The values are `TILE_HIGHLIGHT`'s
  *    calibrated ranges, not debug colours.
- * 5. **The private-hand shade (3D-18).** `vShade` removes that fraction of the
- *    key — diffuse *and* specular — from surfaces that do not face the ceiling;
- *    the fill and ambient remain, which is what makes a shaded hand read as
- *    cooler shade rather than a dimmer tile, and why every top stays lit. The
- *    mask uses the geometric normal (taken before the carve), so a glyph's
- *    groove walls do not flicker in and out of it.
  *
  * `POM_MAX_STEPS` is the compile-time loop bound (a constant so the compiler
  * unrolls it); the live count is the `uPomSteps` uniform, and **0 is a
@@ -110,8 +104,6 @@ uniform vec3 uAmbientColor;
 uniform float uAmbientIntensity;
 uniform float uSpecularF0;
 uniform float uWrap;
-uniform float uTopLitFrom;
-uniform float uTopLitFull;
 uniform vec3 uHighlightTint;
 uniform float uHighlightStrength;
 uniform float uDimGain;
@@ -124,7 +116,6 @@ varying vec3 vWorldPosition;
 varying vec3 vLocalPosition;
 varying float vFaceZone;
 varying float vFlags;
-varying float vShade;
 
 const float PI = 3.141592653589793;
 const float EPSILON = 1e-4;
@@ -201,12 +192,6 @@ void main() {
   vec2 dUvDy = dFdy(vFaceUv);
 
   vec3 N = normalize(vWorldNormal);
-  // The private-hand shade (3D-18) is masked by the *geometric* normal, before
-  // the carve replaces N, so a glyph's groove walls do not flicker in and out of
-  // the mask. A surface that faces the ceiling (every pond, meld, dora and the
-  // wall's backs) keeps the key in full; a hand's 40-degree face takes it all.
-  float upness = smoothstep(uTopLitFrom, uTopLitFull, N.y);
-  float keyShade = vShade * (1.0 - upness);
   vec3 T = normalize(vWorldTangent);
   vec3 B = normalize(vWorldBitangent);
   vec3 V = normalize(cameraPosition - vWorldPosition);
@@ -308,15 +293,12 @@ void main() {
   // hemisphere fill + a weak ambient, exactly as lighting.ts predicts.
   vec3 lightDirection = normalize(uKeyDirection);
   float wrapDiffuse = clamp((dot(N, lightDirection) + uWrap) / (1.0 + uWrap), 0.0, 1.0);
-  // The shade removes the key only: the hemisphere fill and the ambient stay, so
-  // a shaded face goes darker and cooler rather than grey.
-  vec3 keyIrradiance = uKeyColor * uKeyIntensity * wrapDiffuse * (1.0 - keyShade);
+  vec3 keyIrradiance = uKeyColor * uKeyIntensity * wrapDiffuse;
   vec3 fillIrradiance = mix(uFillGround, uFillSky, hemisphereWeight(N)) * uFillIntensity;
   vec3 ambientIrradiance = uAmbientColor * uAmbientIntensity;
   vec3 diffuse = albedo * (keyIrradiance + fillIrradiance + ambientIrradiance) / PI * cavity;
 
-  vec3 specular =
-    uKeyColor * uKeyIntensity * keySpecular(N, V, roughness, coat) * (1.0 - keyShade);
+  vec3 specular = uKeyColor * uKeyIntensity * keySpecular(N, V, roughness, coat);
 
   vec3 colour = diffuse + specular;
   // The baked lacquer's broad sheen (see PAINT_SHEEN): painted pixels only, and

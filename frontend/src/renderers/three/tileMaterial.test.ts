@@ -19,7 +19,7 @@
 import { Texture } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { RELIEF_RASTER } from './reliefAssets';
-import { TILE_LIGHTING_UNIFORMS, TILE_SHADE } from './lighting';
+import { TILE_LIGHTING_UNIFORMS } from './lighting';
 import { TILE_FRAGMENT_SHADER } from './materials/tile.frag';
 import { TILE_VERTEX_SHADER } from './materials/tile.vert';
 import {
@@ -87,7 +87,7 @@ describe('fragment shader invariants', () => {
   });
 
   it('declares the attributes the geometry provides and the uniforms it reads', () => {
-    for (const attribute of ['aAtlasRect', 'aFlags', 'aShade', 'tangent', 'faceZone']) {
+    for (const attribute of ['aAtlasRect', 'aFlags', 'tangent', 'faceZone']) {
       expect(TILE_VERTEX_SHADER).toContain(`attribute`);
       expect(TILE_VERTEX_SHADER).toContain(attribute);
     }
@@ -97,36 +97,6 @@ describe('fragment shader invariants', () => {
     expect(TILE_FRAGMENT_SHADER).toContain('uniform float uPomSteps;');
     expect(TILE_FRAGMENT_SHADER).toContain('uniform float uCarveDepthUnits;');
     expect(TILE_FRAGMENT_SHADER).toContain('uniform float uMaxParallaxTexels;');
-    expect(TILE_FRAGMENT_SHADER).toContain('uniform float uTopLitFrom;');
-    expect(TILE_FRAGMENT_SHADER).toContain('uniform float uTopLitFull;');
-  });
-
-  it('shades the key only, masked by the geometric normal (3D-18)', () => {
-    // The mask is taken before the carve replaces N, so the glyph's groove
-    // walls do not flicker in and out of it.
-    expect(TILE_FRAGMENT_SHADER).toContain('float upness = smoothstep(uTopLitFrom, uTopLitFull, N.y);');
-    expect(TILE_FRAGMENT_SHADER).toContain('float keyShade = vShade * (1.0 - upness);');
-    // Only the key terms scale: the hemisphere fill and ambient stay, which is
-    // what makes a shaded hand cooler rather than grey.
-    expect(TILE_FRAGMENT_SHADER).toContain(
-      'uKeyColor * uKeyIntensity * wrapDiffuse * (1.0 - keyShade)',
-    );
-    expect(TILE_FRAGMENT_SHADER).toContain(
-      'keySpecular(N, V, roughness, coat) * (1.0 - keyShade)',
-    );
-    // The uniforms are the committed thresholds, and the material carries them.
-    expect(TILE_SHADE.topLitFrom).toBe(0.8);
-    expect(TILE_SHADE.topLitFull).toBe(0.95);
-    const handle = createTileMaterial({
-      tier: 'high',
-      debug: null,
-      albedo: new Texture(),
-      normalDepth: new Texture(),
-      aoRoughness: new Texture(),
-    });
-    expect(handle.uniforms.uTopLitFrom.value).toBe(TILE_SHADE.topLitFrom);
-    expect(handle.uniforms.uTopLitFull.value).toBe(TILE_SHADE.topLitFull);
-    handle.dispose();
   });
 
   it('decodes the atlas normal, mixes the paint mask and samples AO and roughness', () => {

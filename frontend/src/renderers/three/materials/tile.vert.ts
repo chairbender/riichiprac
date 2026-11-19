@@ -27,7 +27,6 @@
 export const TILE_VERTEX_SHADER = /* glsl */ `
 attribute vec4 aAtlasRect;
 attribute float aFlags;
-attribute float aShade;
 attribute vec4 tangent;
 attribute float faceZone;
 
@@ -39,7 +38,6 @@ varying vec3 vWorldPosition;
 varying vec3 vLocalPosition;
 varying float vFaceZone;
 varying float vFlags;
-varying float vShade;
 
 void main() {
   vec4 localPosition = vec4(position, 1.0);
@@ -73,7 +71,6 @@ void main() {
   vLocalPosition = localPosition.xyz;
   vFaceZone = faceZone;
   vFlags = aFlags;
-  vShade = aShade;
 
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }

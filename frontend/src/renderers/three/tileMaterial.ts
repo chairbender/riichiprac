@@ -2,8 +2,7 @@
  * The carved tile material (3D-05): the shader program, its uniforms, the POM
  * step tiers and the numeric parallax bound. Since 3D-07 one material also
  * draws the whole board, so it owns the per-instance highlight/dim ranges the
- * `aFlags` bits select ({@link TILE_HIGHLIGHT}) and the private-hand shade's
- * top-lit thresholds ({@link TILE_SHADE}).
+ * `aFlags` bits select ({@link TILE_HIGHLIGHT}).
  *
  * The material is one `ShaderMaterial` shared by every tile instance. It reads
  * the three committed relief atlases (3D-03) with per-instance atlas rects, and
@@ -35,7 +34,7 @@ import type { IUniform, Texture, WebGLRenderer } from 'three';
 import type { DebugMode, QualityTier } from '../contract';
 import { TILE, UNIT_MM } from '../layoutConstants';
 import { RELIEF_RASTER } from './reliefAssets';
-import { TILE_LIGHTING_UNIFORMS, TILE_SHADE } from './lighting';
+import { TILE_LIGHTING_UNIFORMS } from './lighting';
 import { TILE_VERTEX_SHADER } from './materials/tile.vert';
 import { TILE_FRAGMENT_SHADER } from './materials/tile.frag';
 
@@ -276,8 +275,6 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     uAmbientIntensity: { value: TILE_LIGHTING_UNIFORMS.ambientIntensity },
     uSpecularF0: { value: TILE_LIGHTING_UNIFORMS.specularF0 },
     uWrap: { value: TILE_LIGHTING_UNIFORMS.wrap },
-    uTopLitFrom: { value: TILE_SHADE.topLitFrom },
-    uTopLitFull: { value: TILE_SHADE.topLitFull },
     uHighlightTint: { value: [...TILE_HIGHLIGHT.tint] },
     uHighlightStrength: { value: TILE_HIGHLIGHT.strength },
     uDimGain: { value: TILE_HIGHLIGHT.dimGain },

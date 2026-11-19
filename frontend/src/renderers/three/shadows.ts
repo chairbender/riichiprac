@@ -9,11 +9,16 @@
  *    tier): the tile's oriented-box footprint plus a fixed rim, shaded with the
  *    procedural rounded-rect alpha in {@link shadowAlphaPixels}.
  * 2. **One blurred band for the human's hand group** — the concealed row *and*
- *    the drawn tile unioned into a single footprint. Only that hand is reclined
- *    (40° back on its far bottom edge) and overhangs its contact line, so
- *    per-tile quads read as a thin scalloped line rather than a hand resting on
- *    the table. The other three hands stand on the table, where per-tile blobs
- *    are correct and stay as they are.
+ *    the drawn tile unioned into a single footprint, in the signed-off
+ *    "resting on the table" form ({@link SHADOW.hand}). This is the one the user
+ *    asked to leave alone.
+ * 3. **One radial cast band for every other standing thing** (3D-19) — the three
+ *    opponent hands (row + draw unioned) and each of the four wall runs. Each
+ *    band starts under the object's base and reaches
+ *    {@link SHADOW.cast.lengthUnits} **directly away from the table centre**, as
+ *    if a lamp hung above the compass: down-screen for the near wall, up-screen
+ *    for the far one, sideways for the side runs and hands. That is what makes
+ *    the hands read as standing behind the wall rather than merely darker.
  *
  * The hand group is the **2.5D recipe, copied rather than reinvented**. The
  * user-approved whole-table rig (`tools/render/table-reference-spec.json`, rig
@@ -67,8 +72,9 @@ import {
   Vector3,
 } from 'three';
 import type { Seat } from '../contract';
+import { TILE, WALL } from '../layoutConstants';
 import { BOARD_TILE_CAPACITY } from './boardMesh';
-import { orientedBox, orientedBoxCorners, seatBasis } from './boardLayout';
+import { orientedBox, orientedBoxCorners, seatBasis, wallRunRadius } from './boardLayout';
 import type { BoardLayout, BoardTile, Vec3 } from './boardLayout';
 
 /** The contact-shadow layer's committed numbers. */
@@ -85,8 +91,38 @@ export const SHADOW = {
   opacity: 0.55,
   /** The tile blob's alpha texture edge, in texels. */
   textureSize: 64,
-  /** One quad per grounded non-hand tile plus one per seat's hand group. */
+  /** One quad per grounded non-hand tile plus one per hand group and wall run. */
   capacity: BOARD_TILE_CAPACITY,
+  /**
+   * The quad's margin outside a band's blurred rectangle, in multiples of that
+   * axis's sigma.
+   *
+   * The analytic profile is 0.5 alpha on the rect's edge and reaches 0 a sigma
+   * outside it, so a quad that stopped at the rect would be cut off at half
+   * opacity — a hard-edged "solid rectangle". Every band quad is therefore drawn
+   * `marginSigmas` wider than its rect on each axis, where the profile has
+   * already fallen to 0.
+   */
+  marginSigmas: 1.5,
+  /**
+   * The radial cast shadow (3D-19): every **standing** thing throws a fairly
+   * diffuse shadow directly away from the table centre, as if a lamp hung above
+   * the compass. The wall ring casts one band per run; the three opponent hands
+   * cast one band per seat. The human's hand keeps its own band
+   * ({@link SHADOW.hand}) — the user asked for it to stay as it is.
+   *
+   * `lengthUnits` is the **visible** reach past the object's base (where the
+   * profile reaches 0, not where the rect ends); `overlapUnits` tucks the band
+   * back under the body so the foot stays dark; the sigmas are the blur across
+   * the cast direction and along the object's row.
+   */
+  cast: {
+    lengthUnits: 1.2,
+    overlapUnits: 0.2,
+    spreadUnits: 0.24,
+    sigmaAcrossUnits: 0.6,
+    sigmaAlongUnits: 0.35,
+  },
   /**
    * The human hand's band, from the v13 rig and then widened to read like it.
    *
@@ -105,12 +141,7 @@ export const SHADOW = {
    * band is built from the tile's **contact** corners, not its whole oriented
    * box — using the box would make it twice as deep again.
    *
-   * `marginSigmas` is the quad's margin outside the blurred rectangle. The
-   * analytic profile is 0.5 alpha on the rect's edge and reaches 0 a sigma
-   * outside it, so a quad that stopped at the rect would be cut off at half
-   * opacity — a hard-edged "solid rectangle". The quad is therefore drawn
-   * `marginSigmas` wider than the rect on every axis (1.5 x σ = ~0.75 units
-   * across), where the profile has already fallen to 0.
+   * The quad's fade margin is {@link SHADOW.marginSigmas}.
    */
   hand: {
     depthUnits: 1.1,
@@ -118,8 +149,6 @@ export const SHADOW = {
     spreadUnits: 0.24,
     sigmaAcrossUnits: 0.5,
     sigmaAlongUnits: 0.3,
-    /** Quad margin around the shadow rect, in multiples of that axis's sigma. */
-    marginSigmas: 1.5,
   },
 } as const;
 
@@ -226,18 +255,82 @@ function includeContact(span: GroupSpan, tile: BoardTile): void {
   }
 }
 
+/** A band's hard rectangle, in world row/depth coordinates. */
+interface BandRect {
+  readonly id: string;
+  /** Whether the row (the object's long axis) runs along world X or world Z. */
+  readonly rowIsX: boolean;
+  readonly rowMin: number;
+  readonly rowMax: number;
+  readonly depthMin: number;
+  readonly depthMax: number;
+  /** Blur per world axis: `[x, z]`, in units. */
+  readonly sigmaUnits: readonly [number, number];
+  /** A slide along world +Z (the human band's "south" offset). */
+  readonly depthShift?: number;
+}
+
 /**
- * The union quad for one seat's hand and drawn tile: v13's recipe.
- *
- * The band is a fixed {@link SHADOW.hand.depthUnits} deep, anchored on the
- * contact edge that faces the camera and pushed {@link SHADOW.hand.offsetUnits}
- * toward it, with {@link SHADOW.hand.spreadUnits} at both row ends — so it reads
- * as the hand resting on the felt rather than as the shadow of a tilted plate.
- * The sigmas are assigned to the world axes so they stay across and along the
- * band whichever way the seat's row runs.
+ * Turn a blurred rectangle into one band quad, with the fade margin the analytic
+ * profile needs so its alpha reaches 0 inside the geometry.
  */
-function handGroupQuad(seat: Seat, span: GroupSpan): ShadowInstance {
-  const { depthUnits, offsetUnits, spreadUnits, marginSigmas } = SHADOW.hand;
+function bandQuad(rect: BandRect): ShadowInstance {
+  const margin = SHADOW.marginSigmas;
+  const rowHalf = (rect.rowMax - rect.rowMin) / 2;
+  const depthHalf = (rect.depthMax - rect.depthMin) / 2;
+  const innerHalfUnits: readonly [number, number] = rect.rowIsX
+    ? [rowHalf, depthHalf]
+    : [depthHalf, rowHalf];
+  const halfUnits: readonly [number, number] = [
+    innerHalfUnits[0] + rect.sigmaUnits[0] * margin,
+    innerHalfUnits[1] + rect.sigmaUnits[1] * margin,
+  ];
+  const rowCentre = (rect.rowMin + rect.rowMax) / 2;
+  const depthCentre = (rect.depthMin + rect.depthMax) / 2;
+  const shift = rect.depthShift ?? 0;
+  // The row is X or Z; the depth is the other one. `depthShift` always slides
+  // along world +Z, which is the row axis for a side seat.
+  const centre: Vec3 = rect.rowIsX
+    ? [rowCentre, SHADOW.liftUnits, depthCentre + shift]
+    : [depthCentre, SHADOW.liftUnits, rowCentre + shift];
+  const sizeUnits: readonly [number, number] = [halfUnits[0] * 2, halfUnits[1] * 2];
+  return {
+    id: rect.id,
+    centre,
+    sizeUnits,
+    matrix: shadowMatrix(centre, sizeUnits),
+    kind: SHADOW_KIND.band,
+    sigmaUnits: rect.sigmaUnits,
+    innerHalfUnits,
+  };
+}
+
+/** The sigmas for a band whose row runs along X (`rowIsX`) or Z. */
+function bandSigmas(
+  rowIsX: boolean,
+  along: number,
+  across: number,
+): readonly [number, number] {
+  return rowIsX ? [along, across] : [across, along];
+}
+
+/** The sign of a seat's outward direction along its band's depth axis. */
+function outwardSign(seat: Seat, rowIsX: boolean): number {
+  const { outward } = seatBasis(seat);
+  return rowIsX ? Math.sign(outward[2]) || 1 : Math.sign(outward[0]) || 1;
+}
+
+/**
+ * The human's hand band: the union of the concealed row and the drawn tile.
+ *
+ * A fixed {@link SHADOW.hand.depthUnits} deep, anchored on the contact edge that
+ * faces the camera and pushed {@link SHADOW.hand.offsetUnits} toward the viewer
+ * — the signed-off "hand resting on the table" fake, which the cast shadows
+ * deliberately leave alone.
+ */
+function humanHandQuad(seat: Seat, span: GroupSpan): ShadowInstance {
+  const { depthUnits, offsetUnits, spreadUnits, sigmaAcrossUnits, sigmaAlongUnits } =
+    SHADOW.hand;
   const rowMin = span.minRow - spreadUnits;
   const rowMax = span.maxRow + spreadUnits;
   let depthMin: number;
@@ -255,38 +348,75 @@ function handGroupQuad(seat: Seat, span: GroupSpan): ShadowInstance {
     depthMax = span.maxDepth + spreadUnits + offsetUnits;
     depthShift = offsetUnits;
   }
-  const along = SHADOW.hand.sigmaAlongUnits;
-  const across = SHADOW.hand.sigmaAcrossUnits;
-  const sigmaUnits: readonly [number, number] = span.rowIsX
-    ? [along, across]
-    : [across, along];
-  const innerHalfUnits: readonly [number, number] = span.rowIsX
-    ? [(rowMax - rowMin) / 2, (depthMax - depthMin) / 2]
-    : [(depthMax - depthMin) / 2, (rowMax - rowMin) / 2];
-  // The quad carries the rect plus a fade margin, so its own edge is where the
-  // profile has already reached 0 (see SHADOW.hand.marginSigmas).
-  const halfUnits: readonly [number, number] = [
-    innerHalfUnits[0] + sigmaUnits[0] * marginSigmas,
-    innerHalfUnits[1] + sigmaUnits[1] * marginSigmas,
-  ];
-  const innerCentre: Vec3 = [
-    span.rowIsX ? (rowMin + rowMax) / 2 : (depthMin + depthMax) / 2,
-    SHADOW.liftUnits,
-    span.rowIsX
-      ? (depthMin + depthMax) / 2
-      : (rowMin + rowMax) / 2 + depthShift,
-  ];
-  const sizeUnits: readonly [number, number] = [halfUnits[0] * 2, halfUnits[1] * 2];
-  const centre: Vec3 = [innerCentre[0], innerCentre[1], innerCentre[2]];
-  return {
+  return bandQuad({
     id: `hand-group-${seat}`,
-    centre,
-    sizeUnits,
-    matrix: shadowMatrix(centre, sizeUnits),
-    kind: SHADOW_KIND.band,
-    sigmaUnits,
-    innerHalfUnits,
-  };
+    rowIsX: span.rowIsX,
+    rowMin,
+    rowMax,
+    depthMin,
+    depthMax,
+    sigmaUnits: bandSigmas(span.rowIsX, sigmaAlongUnits, sigmaAcrossUnits),
+    depthShift,
+  });
+}
+
+/**
+ * One standing object's radial cast: the band starts under the object's base and
+ * reaches {@link SHADOW.cast.lengthUnits} directly away from the table centre.
+ */
+function castQuad(id: string, span: GroupSpan, seat: Seat): ShadowInstance {
+  const { lengthUnits, overlapUnits, spreadUnits, sigmaAcrossUnits, sigmaAlongUnits } =
+    SHADOW.cast;
+  const sign = outwardSign(seat, span.rowIsX);
+  const base = sign >= 0 ? span.maxDepth : span.minDepth;
+  // The rect's outer edge sits one sigma short of the visible reach, so the
+  // profile's 0 lands exactly at `base + length`, and its inner edge tucks back
+  // under the body so the object's foot stays dark.
+  const inner = base - sign * overlapUnits;
+  const outer = base + sign * (lengthUnits - sigmaAcrossUnits);
+  return bandQuad({
+    id,
+    rowIsX: span.rowIsX,
+    rowMin: span.minRow - spreadUnits,
+    rowMax: span.maxRow + spreadUnits,
+    depthMin: Math.min(inner, outer),
+    depthMax: Math.max(inner, outer),
+    sigmaUnits: bandSigmas(span.rowIsX, sigmaAlongUnits, sigmaAcrossUnits),
+  });
+}
+
+/**
+ * The wall ring's cast: one band per run, thrown outward from the wall's outer
+ * face across the strip of felt that separates it from the hands.
+ *
+ * The wall is the tallest thing on the table (two tiers, 1.18 units), so its
+ * shadow is what makes the hands read as *behind* it rather than merely darker.
+ */
+function wallCastQuads(layout: BoardLayout): ShadowInstance[] {
+  const { lengthUnits, overlapUnits, sigmaAcrossUnits, sigmaAlongUnits } = SHADOW.cast;
+  const bands: ShadowInstance[] = [];
+  for (let run = 0; run < WALL.runs; run += 1) {
+    const seat = run as Seat;
+    const { right } = seatBasis(seat);
+    const rowIsX = Math.abs(right[0]) > Math.abs(right[2]);
+    const sign = outwardSign(seat, rowIsX);
+    const outerFace =
+      sign * (wallRunRadius(seat, layout.humanSeat) + TILE.heightUnits / 2);
+    const inner = outerFace - sign * overlapUnits;
+    const outer = outerFace + sign * (lengthUnits - sigmaAcrossUnits);
+    bands.push(
+      bandQuad({
+        id: `wall-cast-${run}`,
+        rowIsX,
+        rowMin: -WALL.runHalfLengthUnits,
+        rowMax: WALL.runHalfLengthUnits,
+        depthMin: Math.min(inner, outer),
+        depthMax: Math.max(inner, outer),
+        sigmaUnits: bandSigmas(rowIsX, sigmaAlongUnits, sigmaAcrossUnits),
+      }),
+    );
+  }
+  return bands;
 }
 
 /** The per-tile blob quad for a lying (or standing non-hand) grounded tile. */
@@ -309,18 +439,21 @@ function tileQuad(tile: BoardTile): ShadowInstance {
 }
 
 /**
- * Every contact quad: one per grounded tile, except the human's hand and drawn
- * tile, which are unioned into a single band.
+ * Every contact quad.
  *
- * Only the human's hand is reclined and overhangs its contact line; the other
- * three hands stand on the table, so their per-tile blobs are already right.
+ * - One blob per grounded tile, except hand/draw tiles.
+ * - Each seat's hand row and drawn tile are unioned into one band: the human's
+ *   keeps the signed-off "resting on the table" fake, the three opponents cast
+ *   a radial shadow away from the centre.
+ * - One radial cast band per wall run (the ring is the tallest thing on the
+ *   table, and its shadow is what grounds the hands behind it).
  */
 export function shadowInstances(layout: BoardLayout): readonly ShadowInstance[] {
-  const instances: ShadowInstance[] = [];
+  const instances: ShadowInstance[] = [...wallCastQuads(layout)];
   const groups = new Map<Seat, GroupSpan>();
   for (const tile of layout.tiles) {
     if (!isGrounded(tile)) continue;
-    if (isHandGroupTile(tile) && tile.seat === layout.humanSeat) {
+    if (isHandGroupTile(tile)) {
       const { right } = seatBasis(tile.seat);
       const rowIsX = Math.abs(right[0]) > Math.abs(right[2]);
       const span = groups.get(tile.seat) ?? {
@@ -338,7 +471,11 @@ export function shadowInstances(layout: BoardLayout): readonly ShadowInstance[] 
   }
   for (const [seat, span] of groups) {
     if (!Number.isFinite(span.minRow)) continue;
-    instances.push(handGroupQuad(seat, span));
+    instances.push(
+      seat === layout.humanSeat
+        ? humanHandQuad(seat, span)
+        : castQuad(`hand-cast-${seat}`, span, seat),
+    );
   }
   if (instances.length > SHADOW.capacity) {
     throw new Error(

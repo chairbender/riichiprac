@@ -23,9 +23,15 @@
 
 import { ShaderMaterial } from 'three';
 import { describe, expect, it } from 'vitest';
-import { TILE } from '../layoutConstants';
+import { TILE, WALL } from '../layoutConstants';
 import { boardFixture } from './boardFixture';
-import { layoutBoard, orientedBox, orientedBoxCorners } from './boardLayout';
+import {
+  layoutBoard,
+  orientedBox,
+  orientedBoxCorners,
+  seatBasis,
+  wallRunRadius,
+} from './boardLayout';
 import {
   SHADOW,
   SHADOW_KIND,
@@ -46,43 +52,52 @@ const handGroupFor = (seat: number) =>
   shadows.find((instance) => instance.id === `hand-group-${seat}`);
 
 describe('contact quad placement', () => {
-  it('unions the human hand only; the other hands keep per-tile blobs', () => {
+  it('unions every hand into one band, and gives the wall ring one per run', () => {
     const bands = shadows.filter((instance) => instance.kind === SHADOW_KIND.band);
     const blobs = shadows.filter((instance) => instance.kind === SHADOW_KIND.blob);
-    expect(bands).toHaveLength(1);
-    expect(bands[0].id).toBe(`hand-group-${layout.humanSeat}`);
+    expect(bands.map((band) => band.id).sort()).toEqual(
+      [
+        `hand-group-${layout.humanSeat}`,
+        ...[0, 1, 2, 3].map((seat) => `wall-cast-${seat}`),
+        ...[0, 1, 2, 3]
+          .filter((seat) => seat !== layout.humanSeat)
+          .map((seat) => `hand-cast-${seat}`),
+      ].sort(),
+    );
 
     const handTiles = grounded.filter(
       (tile) => tile.zone === 'hand' || tile.zone === 'draw',
     );
-    const humanHand = handTiles.filter((tile) => tile.seat === layout.humanSeat);
     const blobIds = new Set(blobs.map((blob) => blob.id));
-    // The human's hand/draw tiles are in the band, not in blobs...
-    for (const tile of humanHand) {
+    for (const tile of handTiles) {
       expect(blobIds.has(tile.id), tile.id).toBe(false);
     }
-    // ...and every grounded tile that is not the human's hand has its own blob.
     for (const tile of grounded) {
-      if (tile.seat === layout.humanSeat && (tile.zone === 'hand' || tile.zone === 'draw')) {
-        continue;
-      }
+      if (tile.zone === 'hand' || tile.zone === 'draw') continue;
       expect(blobIds.has(tile.id), tile.id).toBe(true);
     }
-    expect(blobs).toHaveLength(grounded.length - humanHand.length);
-    expect(shadows).toHaveLength(grounded.length - humanHand.length + 1);
+    expect(blobs).toHaveLength(grounded.length - handTiles.length);
+    expect(shadows).toHaveLength(blobs.length + bands.length);
   });
 
   it('follows the human seat', () => {
     const shifted = layoutBoard(boardFixture({ humanSeat: 2 }));
-    const bands = shadowInstances(shifted).filter(
-      (instance) => instance.kind === SHADOW_KIND.band,
+    const ids = shadowInstances(shifted)
+      .filter((instance) => instance.kind === SHADOW_KIND.band)
+      .map((band) => band.id)
+      .sort();
+    expect(ids).toEqual(
+      [
+        'hand-group-2',
+        'hand-cast-0',
+        'hand-cast-1',
+        'hand-cast-3',
+        'wall-cast-0',
+        'wall-cast-1',
+        'wall-cast-2',
+        'wall-cast-3',
+      ].sort(),
     );
-    expect(bands.map((band) => band.id)).toEqual(['hand-group-2']);
-    // Seat 0's hand is an opponent's now, so it has blobs again.
-    const blobs = shadowInstances(shifted).filter(
-      (instance) => instance.kind === SHADOW_KIND.blob,
-    );
-    expect(blobs.some((blob) => blob.id.startsWith('hand-0-'))).toBe(true);
   });
 
   it('anchors one band on the hand row + drawn tile contact line (v13)', () => {
@@ -126,11 +141,11 @@ describe('contact quad placement', () => {
     // profile reaches 0 before the geometry ends. Without it the band is cut off
     // at 0.5 alpha and reads as a solid rectangle (the handoff's complaint).
     expect(group.sizeUnits[0]).toBeCloseTo(
-      group.innerHalfUnits[0] * 2 + 2 * SHADOW.hand.sigmaAlongUnits * SHADOW.hand.marginSigmas,
+      group.innerHalfUnits[0] * 2 + 2 * SHADOW.hand.sigmaAlongUnits * SHADOW.marginSigmas,
       9,
     );
     expect(group.sizeUnits[1]).toBeCloseTo(
-      group.innerHalfUnits[1] * 2 + 2 * SHADOW.hand.sigmaAcrossUnits * SHADOW.hand.marginSigmas,
+      group.innerHalfUnits[1] * 2 + 2 * SHADOW.hand.sigmaAcrossUnits * SHADOW.marginSigmas,
       9,
     );
     // Alpha at the quad's own edge is 0, and 0 at the fade-out distance beyond
@@ -161,21 +176,71 @@ describe('contact quad placement', () => {
     expect(draw.pose.position[0]).toBeGreaterThan(group.centre[0] - group.sizeUnits[0] / 2);
   });
 
-  it('gives every opponent hand a contact blob at its own base', () => {
-    for (const seat of [1, 2, 3] as const) {
-      const blobs = shadows.filter(
-        (instance) =>
-          instance.kind === SHADOW_KIND.blob && instance.id.startsWith(`hand-${seat}-`),
+  /** Where a band's visible shadow ends on its depth axis. */
+  function castReach(
+    instance: {
+      centre: readonly number[];
+      innerHalfUnits: readonly [number, number];
+      sigmaUnits: readonly [number, number];
+    },
+    rowIsX: boolean,
+    sign: number,
+  ): number {
+    const depthCentre = rowIsX ? instance.centre[2] : instance.centre[0];
+    const depthHalf = rowIsX ? instance.innerHalfUnits[1] : instance.innerHalfUnits[0];
+    const sigma = rowIsX ? instance.sigmaUnits[1] : instance.sigmaUnits[0];
+    return depthCentre + sign * (depthHalf + sigma);
+  }
+
+  it('throws the opponents\u2019 shadows directly away from the table centre', () => {
+    const expectCast = (seat: number, rowIsX: boolean, sign: number) => {
+      const band = shadows.find((instance) => instance.id === `hand-cast-${seat}`);
+      expect(band, `seat ${seat}`).toBeDefined();
+      if (!band) return;
+      // The seat's own contact edge, from its contact corners.
+      const tiles = grounded.filter(
+        (tile) => tile.seat === seat && (tile.zone === 'hand' || tile.zone === 'draw'),
       );
-      expect(blobs.length, `seat ${seat}`).toBeGreaterThan(0);
-      for (const blob of blobs) {
-        const tile = grounded.find((entry) => entry.id === blob.id);
-        expect(tile, blob.id).toBeDefined();
-        if (!tile) continue;
-        // Centred on the tile's own (upright) footprint, not moved south.
-        expect(blob.centre[0]).toBeCloseTo(tile.pose.position[0], 9);
-        expect(blob.centre[2]).toBeCloseTo(tile.pose.position[2], 9);
+      let contact = sign > 0 ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
+      for (const tile of tiles) {
+        for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+          if (corner[1] > SHADOW.groundToleranceUnits) continue;
+          const depth = rowIsX ? corner[2] : corner[0];
+          contact = sign > 0 ? Math.max(contact, depth) : Math.min(contact, depth);
+        }
       }
+      // The visible reach is exactly `cast.lengthUnits` past that edge.
+      expect(castReach(band, rowIsX, sign)).toBeCloseTo(
+        contact + sign * SHADOW.cast.lengthUnits,
+        9,
+      );
+      // And the band is a real rect on both axes (it starts under the body).
+      expect(band.innerHalfUnits[0]).toBeGreaterThan(0);
+      expect(band.innerHalfUnits[1]).toBeGreaterThan(0);
+    };
+    expectCast(2, true, -1);
+    expectCast(1, false, 1);
+    expectCast(3, false, -1);
+  });
+
+  it('casts the wall ring outward, one band per run', () => {
+    for (let run = 0; run < 4; run += 1) {
+      const band = shadows.find((instance) => instance.id === `wall-cast-${run}`);
+      expect(band, `run ${run}`).toBeDefined();
+      if (!band) continue;
+      const seat = run as 0 | 1 | 2 | 3;
+      const { outward, right } = seatBasis(seat);
+      const rowIsX = Math.abs(right[0]) > Math.abs(right[2]);
+      const sign = rowIsX ? Math.sign(outward[2]) : Math.sign(outward[0]);
+      const outerFace =
+        sign * (wallRunRadius(seat, layout.humanSeat) + TILE.heightUnits / 2);
+      expect(castReach(band, rowIsX, sign)).toBeCloseTo(
+        outerFace + sign * SHADOW.cast.lengthUnits,
+        9,
+      );
+      // The run's own length, no longer and no shorter.
+      const rowHalf = rowIsX ? band.innerHalfUnits[0] : band.innerHalfUnits[1];
+      expect(rowHalf).toBeCloseTo(WALL.runHalfLengthUnits, 9);
     }
   });
 
@@ -197,8 +262,8 @@ describe('contact quad placement', () => {
       spreadUnits: 0.24,
       sigmaAcrossUnits: 0.5,
       sigmaAlongUnits: 0.3,
-      marginSigmas: 1.5,
     });
+    expect(SHADOW.marginSigmas).toBe(1.5);
   });
 
   it('emits nothing for a raised tier, and everything at the same lift', () => {

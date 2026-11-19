@@ -1879,58 +1879,57 @@ better, that looks great." The carve reads as physically recessed at the hand's
 and the shell body, blue band and Haku's clean face were accepted earlier in the
 same thread. `POM_HEIGHT_SCALE` stays at 0.25; `1p` is the hero face.
 
-### 3D-18 — Private-hand shade (runtime lighting)
+### 3D-19 — Radial cast shadows from standing things
 
-**Goal.** A player's hand should read as private and tucked out of the table's
-light, while every surface that faces the ceiling — ponds, melds, dora, the blue
-backs of the wall — stays on the key. The user's picture is a light at the table's
-centre with the wall ring between it and each hand; with no shadow maps, the
-effect is the wall's occlusion applied as a **key-only shade on non-horizontal
-surfaces**.
+**Goal.** The board should read as lit from a lamp above the compass: every
+standing thing throws a fairly diffuse shadow **directly away from the table
+centre**. Replaces 3D-18, which shaded the hand's own material instead of putting
+a shadow on the felt.
 
-**Depends on:** 3D-05 (rig), 3D-06 (layout), 3D-07 (the per-instance board).
+**Depends on:** 3D-06 (layout, `wallRunRadius`), 3D-07 (the shadow layer).
 
 **Deliverables**
 
-- `lighting.ts`: `TILE_SHADE` (the amounts and the top-lit band), `shadeAt()`, and
-  the shade term inside `diffuseIrradiance`/`predictLitColour` so the effect is a
-  predicted number, not an impression.
-- `boardMesh.ts`: an `aShade` per-instance float (`instanceShade`) — hands and the
-  drawn tile only, the human's milder than the three opponents'.
-- `materials/tile.{vert,frag}.ts`: the key's diffuse **and** specular scale by
-  `(1 − shade)`, masked by the **geometric** normal so a glyph's groove walls do
-  not flicker in and out of the mask.
+- `shadows.SHADOW.cast` (the numbers) and one `bandQuad` helper shared with the
+  human hand's band.
+- `shadowInstances`: one radial band per **opponent hand** (row + draw unioned)
+  and one per **wall run**; the human's hand keeps its own signed-off band
+  untouched; ponds, melds, dora keep their contact blobs.
 
 **Acceptance criteria**
 
-- Every up-facing surface is unchanged: `diffuseIrradiance([0,1,0], shade)` equals
-  `diffuseIrradiance([0,1,0])` bit-for-bit, and every non-hand zone carries
-  `aShade = 0`.
-- Only the key scales; the hemisphere fill and ambient stay, so a shaded face is
-  darker **and** cooler (the fill is `#cfe0ff`) instead of grey.
-- The human's hand stays readable (≥ 70 % of its sRGB luma); the three opponents
-  are equal and darker (user decision 2026-11-18).
-- The hero/debug view stays unshaded, so 3D-05's absolute albedo probes keep
-  their targets; the board is where the shade composes.
+- The human hand's band is byte-for-byte what it was (depth 1.1, offset 0.65,
+  spread 0.24, σ 0.5/0.3) — the user asked for it to be unaffected.
+- Every radial band's visible edge lands exactly `cast.lengthUnits` past the
+  object's own base on its outward axis, for all four seats and all four runs;
+  tests compute the base from the tiles' contact corners.
+- Every band is a blurred rectangle with the 1.5σ fade margin, so its alpha
+  reaches 0 inside the quad (no half-opacity cut-off).
+- One quad per hand group and per wall run; still one instanced draw.
 
 **Gate:** frontend gate.
 
-**As built (3D-18, 2026-11-18).** `TILE_SHADE = { humanHand 0.45, opponentHand
-0.7, topLitFrom 0.8, topLitFull 0.95 }`; the band is a smoothstep on the
-geometric normal's Y, so at `N.y ≤ 0.8` the whole amount applies and at
-`N.y ≥ 0.95` none does. Measured with `predictLitColour` at the board's view
-angles:
+**As built (3D-19, 2026-11-18).** `SHADOW.cast = { lengthUnits 1.2, overlapUnits
+0.2, spreadUnits 0.24, sigmaAcrossUnits 0.6, sigmaAlongUnits 0.35 }`; the quad's
+fade margin moved to `SHADOW.marginSigmas` (1.5) and is shared by both band
+kinds. At 16:9 (≈ 58 px per unit near the centre) each cast is a ~70 px gradient
+past the object's base, with the core dark at the foot:
 
-| surface | lit | shaded |
-| --- | --- | --- |
-| pond / meld / dora face, wall back (`N.y 1`) | `#f5f0ec`, luma 241 | **unchanged** |
-| human hand face (40° recline, `N.y 0.64`) | `#f5eee8`, luma 239 | luma **202** (85 %) |
-| human hand top edge (`N.y 0.9`) | luma 247 | **238** (96 %, still lit) |
-| opponent hand back (`N.y 0`) | luma 33 | **23** (70 %) |
+| cast | where it lands |
+| --- | --- |
+| `wall-cast-0` (near run) | the felt strip between the near wall (outer face 6.46) and the human's hand (7.76) |
+| `wall-cast-1/3` (side runs) | sideways past the side walls' outer face (7.5) |
+| `wall-cast-2` (far run) | up-screen past the far wall (6.46) to 7.66 |
+| `hand-cast-1` (right seat) | +X from its base, to +10.35 |
+| `hand-cast-2` (across) | -Z from its outer base edge, to -9.55 (partly near the top edge) |
+| `hand-cast-3` (left seat) | -X from its base |
+| `hand-group-0` (the human) | **unchanged** |
 
-One extra float attribute on the existing instance buffer; no new draw call, no
-new texture, no change to the felt. The hero view is deliberately unshaded (its
-probes assert absolute albedo), so the shade is only ever seen on the board.
+182 quads in total on the fixture board (177 tile blobs + 4 wall casts + the
+human's band + 3 hand casts), one instanced draw. The near wall's cast and the
+human's band overlap between 6.8 and 7.7 units from the centre — physically where
+a centre lamp's wall shadow would fall — so that strip reads darker than either
+alone; the hand's own band is untouched.
 
 ---
 
@@ -1958,7 +1957,6 @@ at once). Titles are the proposed task titles.
 | 3D-14 | 3D R14: view switch integration | 3D-08 |
 | 3D-15 | 3D R15: full-board verification and sign-off | 3D-08, 3D-09, 3D-11, 3D-12, 3D-13, 3D-14 |
 | 3D-16 | 3D R16: architecture record and docs | 3D-15 |
-| 3D-18 | 3D R18: private-hand shade (runtime lighting) | 3D-05, 3D-06, 3D-07 |
 
 Creation pattern (one wave at a time):
 
@@ -2223,4 +2221,3 @@ it was right and corrected where the repository or the browser facts disagree.
 | 3D-14 | `frontend/src/store/useSettingsStore.ts`, `frontend/src/components/AppControls.tsx`, `frontend/src/App.tsx`, `AGENTS.md` §4 |
 | 3D-15 | tests + this plan's verification report |
 | 3D-16 | `3d_renderer_architecture.md`, `THIRD_PARTY_NOTICES.md`, `README.md`, `AGENTS.md` §4 |
-| 3D-18 | `frontend/src/renderers/three/{lighting,boardMesh}.ts`, `.../materials/tile.{vert,frag}.ts` |
