@@ -497,9 +497,29 @@ async function main() {
         )
       );
     });
+  const stickBoxes = board.sticks.map((stick) => {
+    const yaw = (stick.yawDeg * Math.PI) / 180;
+    return {
+      centre: stick.position,
+      axes: [
+        [Math.cos(yaw), 0, -Math.sin(yaw)],
+        [0, 1, 0],
+        [Math.sin(yaw), 0, Math.cos(yaw)],
+      ],
+      halfExtents: stick.sizeUnits.map((extent) => extent / 2),
+    };
+  });
+  let sticksApart = true;
+  for (let first = 0; first < stickBoxes.length; first += 1) {
+    for (let second = first + 1; second < stickBoxes.length; second += 1) {
+      if (L.orientedBoxesIntersect(stickBoxes[first], stickBoxes[second])) {
+        sticksApart = false;
+      }
+    }
+  }
   check(
-    'one riichi stick per declarer sits on that seat’s side, clear of every tile',
-    sticksOk,
+    'one riichi stick per declarer sits on that seat’s side, clear of every tile and neighbour',
+    sticksOk && sticksApart,
     `${board.sticks.length} sticks for ${declarers.length} declarers`,
   );
 

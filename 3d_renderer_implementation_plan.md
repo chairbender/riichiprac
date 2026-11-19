@@ -488,8 +488,8 @@ The canvas is an image. Everything a user can do or must hear is DOM:
 - Hand and drawn tile become absolutely positioned `<button>`s over the canvas,
   sized from the projected OBB with a 44 × 44 CSS px minimum, labelled exactly
   as `HandDock`'s tiles are, disabled when answered, in the same order.
-- The compass (four seats: wind symbol, score, riichi marker; centre: round and
-  tiles left; honba stays in the existing stage status line) is a DOM overlay
+- The compass (four seats: wind symbol, score; centre: round and tiles left;
+  honba stays in the existing stage status line) is a DOM overlay
   with the same group/role/label structure as `PhysicalTable`'s compass, and a
   drift test compares the accessible names. Its **square** is real 3D table
   furniture laid on the felt (`three/compassPlate.ts`, one draw, sized to touch
@@ -498,7 +498,8 @@ The canvas is an image. Everything a user can do or must hear is DOM:
   foreshortened. Each seat is one row with the wind glyph greyed to the left of
   the score; the visible score is Tenhou's split plate (the hundreds large, the
   trailing two digits small and grey) while the accessible name keeps the full
-  score.
+  score. The corners carry no stick icon (the 3D bar on the plate is the
+  declarer's marker), but the corner name still ends ", riichi".
 - Hover/focus lifts the tile in 3D (bounded, reduced-motion aware) and never
   moves the button.
 - Tile faces, rivers, melds and walls are decorative and not individually
@@ -1656,23 +1657,48 @@ edge (`BoardStick.seat` + `yawDeg`; `sticks.ts` composes the yaw). The
 one stick per declarer, its side/radius/tangent, and clearance from every tile
 at its own yaw.
 
-*Sticks: modelled from the sprite, and moved inboard.* The user's third
-revision the same day: "the sticks should go above the number (closer to the
-center) as there is a nice space there on all sides", and "the 3d stick models
-look awful, they're supposed to be rounded … it looks like there is a sprite
-for one you put next to the score, that one is more accurate, but we want it as a
-3d model." Two changes follow. (1) `STICK.radiusUnits` moves 2.144 → **0.95**,
-placing the bar in the clear band between each score row's inner edge (~1.1
-units) and the centre group's outer edge (~0.8), on all four sides. (2) The
-model is no longer a `BoxGeometry`: `three/sticks.ts` extrudes a **stadium**
-(semicircular ends) with a 0.02-unit bevel on a 1.2 × 0.22 × 0.1 bar, taking its
-reference from `components/RiichiStick.tsx`'s 100 × 24 sprite — white `#f8f9fa`
-body, `#adb5bd` bands at 8–15 % and 85–92 % of the length, and a `#e03131` dot
-whose radius is 21 % of the bar's width. The 256 × 64 procedural face texture is
-mapped only onto the caps (the side wall samples one plain ivory texel), so the
-instanced layer is still one draw. The geometry is authored at full size, so an
-instance matrix is a pure rotation; `sticks.test.ts` pins the capsule's extents,
-the absence of a square corner, the printed face and the one-draw layer.
+*Sticks: the real bar, with a carved pip.* Two more user revisions the same
+day: the sticks belong "above the number (closer to the center)" and "the 3d
+stick models look awful, they're supposed to be rounded … that [sprite] is more
+accurate, but we want it as a 3d model"; then the model itself: "65mm long, 7mm
+wide, and 3.5mm thick. The material is Polystyrene resin. Every edge of the
+stick has rounded long edges, about .4mm … there should only be a center pip,
+not those weird grey lines on the sides … the center pip is actually 'carved
+out' and then painted on … use the same approach we used with the tiles."
+
+- **Dimensions and finish.** `STICK_MM` is 65 × 7 × 3.5 mm, so the layout bar is
+  2.321 × 0.25 × 0.125 units. The mesh is still one instanced extruded
+  **stadium** (semicircular ends, as the sprite draws it) but now with the
+  user's **0.4 mm (0.0143-unit) round-over** on every longitudinal edge
+  (`bevelSegments` 5), authored inset by the bevel so the finished bar is
+  exactly the spec. The material is `MeshPhysicalMaterial` (polystyrene `ior`
+  1.59) with a **clear coat** 0.5 at roughness 0.07 and a per-texel roughness
+  map, so it has the sheen the flat matte box lacked. The grey end bands are
+  gone; the only decoration is the centre pip.
+- **The pip is carved and painted.** `three/stickMaps.ts` generates the same
+  three-part face the tiles use for their engraving — albedo with the paint
+  mixed in, a tangent normal of the recess wall and a roughness map — for a
+  3 mm pip (42 % of the bar's width, the sprite's own proportion) sunk 0.3 mm
+  through a 0.25 mm wall, with a baked 18 % cavity darkening. The face is the
+  atlas's top half and the rounded side wall its plain-ivory bottom half, so
+  one material and one instanced draw still cover the whole bar. There is no
+  POM march: the pip is 0.3 mm deep, which is under half a pixel of parallax at
+  the reference angle, and the normal map carries the carve; the tiles' 0.55 mm
+  glyph wall is a different scale. `sticks.test.ts` pins the bar's extents, the
+  rounded-edge inset, the pip's albedo/normal/roughness, and the one draw.
+- **Position.** 65 mm is 2.32 units, so four bars on a 0.95-unit ring would
+  cross their neighbours (each half-length is 1.16). `STICK.radiusUnits` is
+  **1.35**, the first radius that clears them (the neighbouring bar's inner
+  face is 1.225), and the score rows moved to the plate's outer edge
+  (`align-self` on the top/bottom seats; the rotated side rows already sit
+  there, ~1.95 units out). The bars therefore stay **inboard of the number
+  row** with a ~0.2-unit gap, on all four sides. The layout gate now also
+  checks stick-to-stick clearance.
+- **No DOM stick icon.** The user asked for the 3D model alone, so the 3D
+  compass's corner row is only the grey wind and the score; the corner's
+  accessible name still ends ", riichi" for each declarer, and the drift test
+  compares the informative names (ignoring `PhysicalTable`'s decorative sprite
+  label).
 
 *Interaction.* The compass is informational: no buttons, no tab stops, and the
 layer is `pointer-events: none` with only its labels re-enabling them, so the
@@ -1691,12 +1717,13 @@ adapter tests the copy. It is review-only and disappears with the rest of the
 preview chrome at 3D-15 sign-off.
 
 **Visual sign-off:** the first pass was reviewed by the user on 2026-11-19 and
-two further rounds of feedback followed the same day (physical square and
-Tenhou score plate; then the discards-touching size, bigger numbers with a grey
-wind at the left, and the capsule stick model moved inboard). The revised look
-still needs the user's verdict — the plate's colour and thickness, the score and
-wind proportions, the split's size, and the stick's rounded profile and new
-position — which is handed over with 3D-15's whole-board check (AGENTS.md §6).
+three further rounds of feedback followed the same day (physical square and
+Tenhou score plate; the discards-touching size, bigger numbers with a grey wind
+at the left; then the real 65 × 7 × 3.5 mm polystyrene bar with its 0.4 mm
+edges, carved pip and no DOM icon). The revised look still needs the user's
+verdict — the plate's colour and thickness, the score and wind proportions, the
+split's size, and the stick's profile, sheen and carved pip — which is handed
+over with 3D-15's whole-board check (AGENTS.md §6).
 
 ---
 

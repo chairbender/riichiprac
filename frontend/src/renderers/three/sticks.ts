@@ -2,25 +2,24 @@
  * The riichi sticks (3D-07, remodelled in 3D-09): one instanced draw for the
  * point sticks standing on the compass plate.
  *
- * **The model.** A 1000-point stick is a rounded, injection-moulded bar: a
- * stadium (semicircular ends), a softly rounded top edge, a white body, a grey
- * band near each end and a red dot in the middle. The sprites next to every
- * score (`components/RiichiStick.tsx`) are the reference this mesh reproduces:
- * the same 100:24 proportions for the end bands (8–15 % and 85–92 % of the
- * length) and the same colours (`#f8f9fa` body, `#adb5bd` bands, `#e03131` dot).
- * A 3D box with a texture on it is not that shape, which is why this is a
- * capsule extruded from a `Shape` in core three (no addons) rather than a
- * `BoxGeometry`.
+ * **The model.** A 1000-point stick is a polystyrene bar: 65 mm long, 7 mm wide
+ * and 3.5 mm thick, with 0.4 mm round-overs along its long edges, a painted red
+ * pip in the middle, and a soft sheen. That is the user's spec (2026-11-19) and
+ * the shape the score sprite shows (`components/RiichiStick.tsx`): a stadium
+ * (semicircular ends), a rounded top edge, one red dot, no end bands. A 3D box
+ * with a texture on it is not that shape, which is why this is a capsule
+ * extruded from a `Shape` in core three (no addons) with a bevel on both faces.
  *
- * The texture is generated in code (`stickTexturePixels`) for the same reasons
- * as the felt and the contact shadow: no new committed asset, deterministic
- * bytes, and a Node test can assert the dot, the bands and the colours without
- * a GPU. Only the top face samples it; the rounded side wall is plain ivory.
+ * **The pip is carved, not printed.** The red centre is a painted recess: the
+ * albedo, tangent normal, cavity and roughness come from
+ * `stickMaps.ts`, the same albedo + paint + normal + cavity model the tiles use
+ * for their engraving (3D-05). The atlas puts the face on the top half and a
+ * plain ivory wall on the bottom half, so one material and one instanced draw
+ * cover the whole bar.
  *
  * A stick is table furniture, not a tile, so it is not part of the board's tile
  * `InstancedMesh` (3D-06 keeps them in `layout.sticks` and the collision gate
- * skips them). It is still a single draw: one shared capsule geometry, one
- * instanced mesh, one procedural texture.
+ * skips them).
  */
 
 import {
@@ -28,46 +27,41 @@ import {
   ExtrudeGeometry,
   InstancedMesh,
   Matrix4,
-  MeshStandardMaterial,
+  MeshPhysicalMaterial,
   Quaternion,
   RGBAFormat,
   Shape,
   SRGBColorSpace,
   Vector3,
 } from 'three';
-import { STICK as STICK_LAYOUT } from '../layoutConstants';
+import { STICK as STICK_LAYOUT, UNIT_MM } from '../layoutConstants';
 import type { BoardStick } from './boardLayout';
+import {
+  STICK_CARVE,
+  stickAlbedoPixels,
+  stickNormalPixels,
+  stickRoughnessPixels,
+} from './stickMaps';
 
-/** The stick layer's committed numbers (the size itself is the layout's). */
+/** The stick layer's committed numbers. */
 export const STICK = {
   /** The visible point sticks; a hand rarely has more than a few on the table. */
   capacity: 32,
-  /** Procedural face texture, in texels. */
-  textureWidth: 256,
-  textureHeight: 64,
   /**
-   * The red dot's radius: 21 % of the bar's width, the sprite's own proportion
-   * (`r = 5` on a 24-high viewBox).
+   * The round-over on every long edge: the user's 0.4 mm. `ExtrudeGeometry`
+   * grows the outline by the bevel, so the shape is authored inset and the
+   * finished bar measures the layout's exact 65 x 3.5 x 7 mm.
    */
-  dotRadiusUnits: STICK_LAYOUT.widthUnits * 0.21,
-  /** The grey end bands, as fractions of the length (the sprite's 8..15 %). */
-  bandStartFraction: 0.08,
-  bandEndFraction: 0.15,
-  /** White body, grey bands, red dot: the sprite's own palette. */
-  ivoryRgb: [248, 249, 250] as const,
-  bandRgb: [173, 181, 189] as const,
-  dotRgb: [224, 49, 49] as const,
-  /** Soft moulded plastic: a matte body with a gentle sheen. */
-  roughness: 0.38,
+  bevelUnits: 0.4 / UNIT_MM,
+  bevelSegments: 5,
+  curveSegments: 16,
+  /** Polystyrene under the key light: a satin body with a lacquered clear coat. */
+  roughness: 0.24,
   metalness: 0,
-  /**
-   * The round-over of the top and bottom edges, in units. The bevel grows the
-   * outline by the same amount, so the shape is authored inset by it and the
-   * finished bar is exactly the layout's width/length/height.
-   */
-  bevelUnits: 0.02,
-  bevelSegments: 3,
-  curveSegments: 12,
+  clearcoat: 0.5,
+  clearcoatRoughness: 0.07,
+  /** Polystyrene's index of refraction (the model is a solid resin bar). */
+  ior: 1.59,
 } as const;
 
 /** The bar's dimensions, from the layout so the gate and the mesh agree. */
@@ -78,7 +72,7 @@ export const STICK_SIZE = {
 } as const;
 
 /**
- * A stadium outline: the side profile of a point stick, with semicircular ends.
+ * A stadium outline: the plan view of a point stick, with semicircular ends.
  *
  * Authored inset by the bevel, because `ExtrudeGeometry` grows an outline by
  * `bevelSize` on every side; the finished bar therefore measures exactly
@@ -104,53 +98,6 @@ export function stickShape(
   return shape;
 }
 
-/**
- * The stick's face texture: a white bar with a grey band near each end and a
- * red disc in the middle, exactly the sprite's layout.
- *
- * Pure and deterministic, so `sticks.test.ts` can assert the dot (red at the
- * centre), the bands (grey at 8–15 % and 85–92 %) and the body (white between
- * them) as numbers. The dot's texel radii differ per axis so that its footprint
- * is a **circle in world space** on a bar that is much longer than it is wide.
- */
-export function stickTexturePixels(
-  width: number = STICK.textureWidth,
-  height: number = STICK.textureHeight,
-): Uint8Array {
-  const pixels = new Uint8Array(width * height * 4);
-  const centreX = width / 2;
-  const centreY = height / 2;
-  const dotRadiusX = (STICK.dotRadiusUnits / STICK_SIZE.lengthUnits) * width;
-  const dotRadiusY = (STICK.dotRadiusUnits / STICK_SIZE.widthUnits) * height;
-  const bandStart = STICK.bandStartFraction * width;
-  const bandEnd = STICK.bandEndFraction * width;
-  const bandEndStart = (1 - STICK.bandEndFraction) * width;
-  const bandEndFinish = (1 - STICK.bandStartFraction) * width;
-
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const dx = (x + 0.5 - centreX) / dotRadiusX;
-      const dy = (y + 0.5 - centreY) / dotRadiusY;
-      const inDot = dx * dx + dy * dy <= 1;
-      const centre = x + 0.5;
-      const inBand =
-        (centre >= bandStart && centre < bandEnd) ||
-        (centre >= bandEndStart && centre < bandEndFinish);
-      const rgb = inDot
-        ? STICK.dotRgb
-        : inBand
-          ? STICK.bandRgb
-          : STICK.ivoryRgb;
-      const index = (y * width + x) * 4;
-      pixels[index] = rgb[0];
-      pixels[index + 1] = rgb[1];
-      pixels[index + 2] = rgb[2];
-      pixels[index + 3] = 255;
-    }
-  }
-  return pixels;
-}
-
 /** The live stick layer. */
 export interface StickMesh {
   readonly mesh: InstancedMesh;
@@ -168,9 +115,10 @@ const DEG = Math.PI / 180;
  * The shared capsule geometry: a stadium extruded to the bar's height, turned
  * flat, with its centre at the origin and its long axis along +X.
  *
- * The top/bottom faces sample the full face texture; the rounded side wall
- * samples a plain ivory texel, because the sprite's decoration is printed on
- * the face, not wrapped around the edge.
+ * The cap is UV-mapped onto the top half of the carve atlas (u along the bar,
+ * v across it) so the pip sits in the middle; the rounded side wall maps onto
+ * the atlas's plain-ivory bottom half. Both UVs vary across each surface, which
+ * keeps the tangent-space normal map well-conditioned everywhere.
  */
 export function createStickGeometry(): ExtrudeGeometry {
   const geometry = new ExtrudeGeometry(stickShape(), {
@@ -195,29 +143,42 @@ export function createStickGeometry(): ExtrudeGeometry {
     );
   }
 
-  // Rewrite the UVs: the caps map the face texture along the bar, the side
-  // wall samples one ivory texel.
   const position = geometry.getAttribute('position');
   const normal = geometry.getAttribute('normal');
   const uv = geometry.getAttribute('uv');
   const halfLength = STICK_SIZE.lengthUnits / 2;
   const halfWidth = STICK_SIZE.widthUnits / 2;
   for (let index = 0; index < uv.count; index += 1) {
-    const isCap = Math.abs(normal.getY(index)) > 0.9;
-    if (isCap) {
-      uv.setXY(
-        index,
-        (position.getX(index) + halfLength) / STICK_SIZE.lengthUnits,
-        (position.getZ(index) + halfWidth) / STICK_SIZE.widthUnits,
-      );
+    const u = (position.getX(index) + halfLength) / STICK_SIZE.lengthUnits;
+    const v = (position.getZ(index) + halfWidth) / STICK_SIZE.widthUnits;
+    if (Math.abs(normal.getY(index)) > 0.9) {
+      // The printed face: the atlas's top half, u along the bar.
+      uv.setXY(index, u, v * STICK_CARVE.capUvMaxV);
     } else {
-      // A plain ivory texel: u between the band and the dot, mid-bar.
-      uv.setXY(index, 0.3, 0.5);
+      // The rounded wall: a varying u keeps the normal-map tangent defined,
+      // while v stays inside the plain-ivory half of the atlas.
+      uv.setXY(index, (u + v) / 2, STICK_CARVE.sideUv);
     }
   }
   uv.needsUpdate = true;
 
   return geometry;
+}
+
+/** Make a data texture with the right colour space and filtering. */
+function makeTexture(
+  pixels: Uint8Array,
+  colorSpace: typeof SRGBColorSpace | '',
+): DataTexture {
+  const texture = new DataTexture(
+    pixels,
+    STICK_CARVE.textureWidth,
+    STICK_CARVE.textureHeight,
+    RGBAFormat,
+  );
+  if (colorSpace !== '') texture.colorSpace = colorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 /** Build the one instanced stick draw for a list of placed sticks. */
@@ -226,19 +187,20 @@ export function createStickMesh(
   capacity: number = STICK.capacity,
 ): StickMesh {
   const geometry = createStickGeometry();
-  const texture = new DataTexture(
-    stickTexturePixels(),
-    STICK.textureWidth,
-    STICK.textureHeight,
-    RGBAFormat,
-  );
-  texture.colorSpace = SRGBColorSpace;
-  texture.needsUpdate = true;
-  const material = new MeshStandardMaterial({
+  const albedo = makeTexture(stickAlbedoPixels(), SRGBColorSpace);
+  const normalMap = makeTexture(stickNormalPixels(), '');
+  const roughnessMap = makeTexture(stickRoughnessPixels(), '');
+  const material = new MeshPhysicalMaterial({
     name: 'riichi-stick',
-    map: texture,
-    roughness: STICK.roughness,
+    map: albedo,
+    normalMap,
+    roughnessMap,
+    // The maps carry the values; the material's scalar is the multiplier.
+    roughness: 1,
     metalness: STICK.metalness,
+    clearcoat: STICK.clearcoat,
+    clearcoatRoughness: STICK.clearcoatRoughness,
+    ior: STICK.ior,
   });
   const mesh = new InstancedMesh(geometry, material, capacity);
   mesh.name = 'riichi-sticks';
@@ -278,7 +240,9 @@ export function createStickMesh(
     dispose() {
       geometry.dispose();
       material.dispose();
-      texture.dispose();
+      albedo.dispose();
+      normalMap.dispose();
+      roughnessMap.dispose();
     },
   };
 }

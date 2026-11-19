@@ -405,7 +405,12 @@ describe('3D overlay: compass (3D-09)', () => {
     const planView = render(<PhysicalTable state={state} />);
     const planCompass = planView.container.querySelector('.physical-center');
     if (!planCompass) throw new Error('PhysicalTable has no compass');
-    const planNames = accessibleNames(planCompass);
+    // The 2D compass draws a decorative stick sprite in each corner; the 3D
+    // compass deliberately does not (the 3D model is the marker), so compare
+    // the names that carry information and ignore the sprite's own label.
+    const planNames = accessibleNames(planCompass).filter(
+      (name) => name !== 'Riichi stick',
+    );
     const planScores = Array.from(planCompass.querySelectorAll('.compass-score')).map(
       (element) => (element.textContent ?? '').replace(/\D/g, ''),
     );
@@ -441,11 +446,20 @@ describe('3D overlay: compass (3D-09)', () => {
         '',
       ),
     ).toBe(planWallText);
-    // One marker per declarer, on both tables; the pot (5) is not drawn.
+    // No stick icon in the 3D compass: the 3D models on the felt are the
+    // markers, and the corner names below still announce the declaration.
+    expect(sceneCompass.querySelectorAll('.renderer-3d-compass-stick')).toHaveLength(
+      0,
+    );
     expect(
-      sceneCompass.querySelectorAll('.renderer-3d-compass-stick'),
-    ).toHaveLength(planSticks);
+      sceneCompass.querySelectorAll('[aria-label="Riichi stick"]'),
+    ).toHaveLength(0);
+    // The 2D view still uses its sprite, and both views name the same two
+    // declarers. The 1000-point pot (5) is not drawn on either compass.
     expect(planSticks).toBe(2);
+    expect(
+      accessibleNames(sceneCompass).filter((name) => name.includes(', riichi')),
+    ).toHaveLength(planSticks);
     expect(accessibleNames(sceneCompass).join(' ')).not.toContain('5 sticks');
   });
 

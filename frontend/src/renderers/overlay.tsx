@@ -39,7 +39,6 @@ import {
   RegularShaa,
   RegularTon,
 } from 'riichi-mahjong-tiles';
-import { RiichiStick } from '../components/RiichiStick';
 import { handTileLabel } from '../handTileLabel';
 import { hitRectKey } from './contract';
 import type { CompassRect, HitRect, TableSnapshot } from './contract';
@@ -226,9 +225,9 @@ export interface TableCompassProps {
 }
 
 /**
- * The compass over the 3D table (3D-09): four score rows (grey wind glyph, big
- * Tenhou-split score and a riichi marker) around the projected physical plate,
- * plus the round and tiles-left in the middle.
+ * The compass over the 3D table (3D-09): four score rows (grey wind glyph and
+ * the big Tenhou-split score) around the projected physical plate, plus the
+ * round and tiles-left in the middle.
  *
  * It mirrors `PhysicalTable`'s compass structure so the two views read
  * identically to a screen reader: a "Compass" group, one side-labelled group per
@@ -236,8 +235,10 @@ export interface TableCompassProps {
  * a centre group named "Round {round} {hand}, {tiles} tiles remaining".
  *
  * The 1000-point pot is not shown here: `compass.riichiSticks` stays in the
- * table information drawer, so the per-seat markers on the felt are the only
- * riichi count on the 3D table.
+ * table information drawer, so the per-seat sticks on the felt are the only
+ * riichi count on the 3D table. The corners deliberately carry no stick icon —
+ * the user wants the 3D model alone (2026-11-19) — while the accessible name
+ * still says ", riichi" for each declarer, exactly as `PhysicalTable` does.
  */
 export function TableCompass({ snapshot, rect }: TableCompassProps) {
   const view = useMemo(() => compassView(snapshot), [snapshot]);
@@ -277,8 +278,9 @@ export function TableCompass({ snapshot, rect }: TableCompassProps) {
               }`}
               aria-label={seat.label}
               // One row in the seat's own frame: the wind glyph greyed to the
-              // left of the score, then the riichi marker. The row turns with
-              // its seat, so every player reads it upright.
+              // left of the score. The row turns with its seat, so every player
+              // reads it upright. No stick icon here: the 3D model is the
+              // declarer's marker.
               style={{ transform: `rotate(${seat.rotationDeg}deg)` }}
             >
               <WindGlyph
@@ -297,7 +299,6 @@ export function TableCompass({ snapshot, rect }: TableCompassProps) {
                   {seat.scoreText.tail}
                 </span>
               </span>
-              {seat.riichi && <RiichiStick className="renderer-3d-compass-stick" />}
             </div>
           </div>
         );

@@ -66,6 +66,19 @@ export const TABLE = {
 } as const;
 
 /**
+ * The real 1000-point stick, in millimetres (user revision 2026-11-19):
+ * 65 mm long, 7 mm wide and 3.5 mm thick, made of polystyrene resin. A common
+ * commercial tenbo is 69 x 7 x 3 mm; the user's 65 x 7 x 3.5 is the model's
+ * spec. Its longitudinal edges carry a 0.4 mm round-over (rendered in
+ * `three/sticks.ts`).
+ */
+export const STICK_MM = {
+  length: 65,
+  width: 7,
+  thickness: 3.5,
+} as const;
+
+/**
  * A point stick (1000 points) on the compass plate.
  *
  * The sticks are table furniture, not tiles: the layout never merges them into
@@ -84,19 +97,19 @@ export const TABLE = {
  * group.
  */
 export const STICK = {
-  lengthUnits: 1.2,
-  widthUnits: 0.22,
-  heightUnits: 0.1,
+  lengthUnits: STICK_MM.length / UNIT_MM,
+  widthUnits: STICK_MM.width / UNIT_MM,
+  heightUnits: STICK_MM.thickness / UNIT_MM,
   /**
    * Centre-line distance from the table centre, on the declarer's side.
    *
-   * The DOM score row's inner edge is roughly 1.1 units out and the centre
-   * group's outer edge roughly 0.8 units out at the reference aspect, so a
-   * 0.22-unit-wide bar centred at 0.95 sits in the gap between them on every
-   * side. It is a screen-layout choice expressed in world units, and the compass
-   * is the only thing that uses it.
+   * At 65 mm the bar is 2.32 units long, so a ring of four at the old 0.95
+   * would cross its neighbours (each half-length is 1.16). 1.35 is the first
+   * radius that clears them: the perpendicular bar's inner face is 1.225, and
+   * the strip left by the score rows (which sit against the plate's outer
+   * edge, ~1.95 out) leaves a 0.2-unit gap on the other side.
    */
-  radiusUnits: 0.95,
+  radiusUnits: 1.35,
 } as const;
 
 /** Seats around the table, in turn order from the human. */

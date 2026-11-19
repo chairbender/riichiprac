@@ -484,6 +484,32 @@ describe('3D board layout: wall, dora and sticks', () => {
         expect(orientedBoxesIntersect(box, orientedBox(tile.pose))).toBe(false);
       }
     }
+
+    // Four 65 mm bars share the compass ring; neighbouring seats' bars are a
+    // quarter-turn apart, so they must never meet at the corners.
+    const stickBox = (stick: (typeof board.sticks)[number]) => {
+      const { outward, right } = seatBasis(stick.seat);
+      return {
+        centre: stick.position,
+        axes: [right, [0, 1, 0] as const, outward] as const,
+        halfExtents: [
+          stick.sizeUnits[0] / 2,
+          stick.sizeUnits[1] / 2,
+          stick.sizeUnits[2] / 2,
+        ] as const,
+      };
+    };
+    for (let first = 0; first < board.sticks.length; first += 1) {
+      for (let second = first + 1; second < board.sticks.length; second += 1) {
+        expect(
+          orientedBoxesIntersect(
+            stickBox(board.sticks[first]),
+            stickBox(board.sticks[second]),
+          ),
+          `${board.sticks[first].id} x ${board.sticks[second].id}`,
+        ).toBe(false);
+      }
+    }
   });
 
   it('draws no stick for a seat that has not declared', () => {

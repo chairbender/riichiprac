@@ -283,6 +283,8 @@
 
 .renderer-3d-compass-seat--bottom {
   grid-area: 3 / 2 / 4 / 3;
+  /* Against the plate's outer edge, leaving the inner ring for the sticks. */
+  align-self: end;
 }
 
 .renderer-3d-compass-seat--right {
@@ -291,6 +293,7 @@
 
 .renderer-3d-compass-seat--top {
   grid-area: 1 / 2 / 2 / 3;
+  align-self: start;
 }
 
 .renderer-3d-compass-seat--left {
@@ -344,13 +347,6 @@
   font-size: 0.58em;
   font-weight: 600;
   letter-spacing: 0.04em;
-}
-
-/* Horizontal in its own frame; the seat's turn makes it lengthways. */
-.renderer-3d-compass-stick {
-  display: block;
-  width: 4.4em;
-  height: auto;
 }
 
 .renderer-3d-compass-wall {
