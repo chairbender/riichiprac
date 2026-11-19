@@ -2045,6 +2045,18 @@ verdict AGENTS.md §6 requires for 3D-20. Two rounds were rejected on the way
 here (the crevice shading, then nothing else); both are recorded below because
 the numbers that rejected them are what pointed at the real causes.
 
+**Follow-up (2026-11-19): a non-secure origin lost the carve.** Found while
+serving the board over a tailnet URL: `crypto.subtle` does not exist on a
+plain-HTTP origin other than `localhost`, the relief bridge's SHA-256 pin threw
+`hash-unavailable`, and the loader took its procedural fallback — so the 3D view
+drew fallback faces with only one console line to say so. The bridge now verifies
+with its own `sha256.ts` (`sha256HexSync`, plain JS, ~30 ms for the three ~3 MB
+atlases, tested against the standard vectors, `node:crypto` and the committed
+pins) and WebCrypto is only the fast path; `ReliefAssets.verification` reports
+`webcrypto` or `javascript`, `measure().reliefVerification` surfaces it, and one
+warning names HTTPS as the fix. Measured on the tailnet HTTP origin: `status:
+relief3d`, `reliefVerification: javascript`, the committed art drawn, no fallback.
+
 **Follow-up (2026-11-19): the glint on wall bevels.** With the seams closed the
 user reported a *different* defect: "very bright prominent white highlights" on
 the bevelled edge of some wall tiles, and only some. It is not the seam work and

@@ -205,6 +205,12 @@ export interface RendererStats {
   readonly atlasBytes: number;
   /** Which relief source the scene draws; absent before assets load (3D-03). */
   readonly relief?: ReliefStatus;
+  /**
+   * How the committed atlases' SHA-256 pins were verified: `webcrypto` normally,
+   * `javascript` on a non-secure origin (no `crypto.subtle`), null on the
+   * procedural fallback. 3D-20 follow-up.
+   */
+  readonly reliefVerification?: 'webcrypto' | 'javascript' | null;
   /** The carved face's live depth-march step count (0 = un-carved path, 3D-05). */
   readonly pomSteps?: number;
   readonly frameMsP50: number;

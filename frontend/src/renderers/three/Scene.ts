@@ -367,6 +367,7 @@ export class TableScene implements TableRenderer {
       instances: this.board?.tiles.count ?? this.hero?.mesh.count ?? 0,
       atlasBytes: view?.assets.atlasBytes ?? 0,
       relief: view?.assets.status,
+      reliefVerification: view?.assets.verification ?? null,
       pomSteps: view?.material.pomSteps(),
       frameMsP50: 0,
       frameMsP95: 0,

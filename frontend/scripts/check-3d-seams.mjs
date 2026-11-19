@@ -258,7 +258,8 @@ function printVariant(label, report) {
   const { widthPx, heightPx, antialias, drawCalls } = seams;
   console.log(
     `  ${label}: ${widthPx} x ${heightPx}, MSAA ${antialias ? 'on' : 'off'}, ` +
-      `${drawCalls} draw calls, ${report.stats?.instances ?? '?'} instances`,
+      `${drawCalls} draw calls, ${report.stats?.instances ?? '?'} instances, ` +
+      `relief ${report.stats?.relief ?? '?'} (${report.stats?.reliefVerification ?? '?'})`,
   );
   const glint = report.glint;
   if (glint) {

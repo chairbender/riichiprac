@@ -323,7 +323,69 @@ describe('relief3d: load', () => {
     expect(albedo?.colorSpace).toBe('srgb');
     expect(normal?.colorSpace).toBe('linear');
     expect(assets.atlasBytes).toBe(reliefGpuBytes('high').total);
+    // Node ships `crypto.subtle`, so this is the WebCrypto path; the two tests
+    // below cover the insecure-origin fallback.
+    expect(assets.verification).toBe('webcrypto');
     assets.dispose();
+  });
+
+  it('verifies with WebCrypto when it exists, and says so', async () => {
+    const digest = vi.fn(async () => new ArrayBuffer(32));
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: { subtle: { digest } },
+    });
+    try {
+      const factory = fakeFactory();
+      // The fake digest cannot match the pins, so the load must fall back — what
+      // matters here is that WebCrypto was the path taken, not the JS one.
+      const assets = await loadReliefAssets({
+        tier: 'high',
+        baseUrl: '/',
+        fetchImpl: reliefFetch(),
+        createTexture: factory.createTexture,
+        warn: () => {},
+      });
+      expect(digest).toHaveBeenCalledTimes(1);
+      expect(assets.status).toBe('fallback');
+      expect(assets.verification).toBeNull();
+      assets.dispose();
+    } finally {
+      if (original) Object.defineProperty(globalThis, 'crypto', original);
+      else delete (globalThis as { crypto?: unknown }).crypto;
+    }
+  });
+
+  it('still loads the committed carve when crypto.subtle is missing', async () => {
+    // The defect: an insecure origin (plain HTTP on a LAN/tailnet address) has no
+    // `crypto.subtle`, and the loader used to fall back to the procedural cells —
+    // silently losing the art. It must now verify with the JS implementation.
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: {} });
+    const warnings: string[] = [];
+    try {
+      const factory = fakeFactory();
+      const assets = await loadReliefAssets({
+        tier: 'high',
+        baseUrl: '/',
+        fetchImpl: reliefFetch(),
+        createTexture: factory.createTexture,
+        warn: (message) => warnings.push(message),
+      });
+      expect(assets.status).toBe('relief3d');
+      expect(assets.verification).toBe('javascript');
+      expect(factory.requests).toHaveLength(3);
+      // Exactly one warning, and it names the cause and the fix rather than
+      // pretending the fallback is normal.
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('not a secure context');
+      expect(warnings[0]).toContain('HTTPS');
+      assets.dispose();
+    } finally {
+      if (original) Object.defineProperty(globalThis, 'crypto', original);
+      else delete (globalThis as { crypto?: unknown }).crypto;
+    }
   });
 
   it('clamps anisotropy to the renderer maximum and never below 1', async () => {

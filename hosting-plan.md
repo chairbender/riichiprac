@@ -156,6 +156,23 @@ Acceptance criteria:
   `models/*.safetensors`.
 - `npm run dev` still works at `/` with no env vars set.
 
+## 3b. HTTPS is a functional requirement, not only a hardening one
+
+A **secure context** is required by `crypto.subtle`, and the 3D view's relief
+bridge used it to verify its committed atlases' SHA-256 pins. On a plain-HTTP
+origin other than `localhost` (a self-hosted LAN or tailnet URL, for example) that
+call was undefined, so the bridge took its fallback path and the view drew the
+procedural neutral cells instead of the carved art — silently, apart from one
+console line. Since 3D-20 (2026-11-19) the bridge verifies with its own
+`sha256HexSync` when `crypto.subtle` is missing, so the art survives an insecure
+origin; the load reports `reliefVerification: 'javascript'` in `measure()` and
+warns once. HTTPS is still what every deployment should use: it is what makes the
+native digest available, and other web-platform features (clipboard, workers with
+some APIs, service workers) depend on it too.
+
+Deployment checklist addition: confirm the served page is a secure context
+(`window.isSecureContext === true`) before judging anything about the 3D view.
+
 ## 4. MIME / wasm-opt conclusions (recorded, not changed)
 
 - GitHub Pages serves `.wasm` as `application/wasm` from its built-in MIME
