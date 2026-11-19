@@ -1732,14 +1732,20 @@ other field (including the recorded riichi discard) untouched; the store, the
 adapter tests the copy. It is review-only and disappears with the rest of the
 preview chrome at 3D-15 sign-off.
 
-**Visual sign-off:** the first pass was reviewed by the user on 2026-11-19 and
-four further rounds of feedback followed the same day (physical square and
-Tenhou score plate; the discards-touching size, bigger numbers with a grey wind
-at the left; the real 65 × 7 × 3.5 mm polystyrene bar with a carved pip and no
-DOM icon; then the elliptical cross-section). The revised look still needs the
-user's verdict — the plate's colour and thickness, the score and wind
-proportions, the split's size, and the stick's elliptical profile, sheen and
-carved pip — which is handed over with 3D-15's whole-board check (AGENTS.md §6).
+**Visual sign-off (2026-11-19): accepted — "Looks good now."** The first pass was
+reviewed by the user that day and seven further rounds followed before the
+verdict: the physical square and Tenhou score plate; the discards-touching size,
+bigger numbers and the grey wind at the left; the real 65 × 7 × 3.5 mm
+polystyrene bar with its carved pip and no DOM icon; the elliptical
+cross-section; the rectangular top view with abrupt, 0.4 mm-eased ends; the
+72 % scale with the score rows back inside the plate; the opponents' scores
+nudged outward; and the round/tiles-left group lifted to its final optical
+offset (`translateY(-0.32em)`). The delivered numbers are the plate at
+4.582 units touching the innermost discards, 21.3 px base type at 16:9
+(32 px score lead), the bar at 46.8 × 5.04 × 2.52 mm drawn at radius 0.98, and
+four per-seat riichi sticks driven by `?preview=sticks` for inspection. The
+whole-board look is re-checked once more at 3D-15; this unit's own visual
+question is closed.
 
 ---
 
