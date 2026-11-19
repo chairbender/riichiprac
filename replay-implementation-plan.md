@@ -2590,8 +2590,8 @@ right" judgement. For any visual change:
 4. state the numeric checks already run;
 5. wait for the user's verdict before calling it done.
 
-For the loader, prefer vitest DOM/ARIA/geometry assertions. For the felt/shells,
-follow AGENTS.md §6 and `tools/render/README.md`.
+For the loader, prefer vitest DOM/ARIA/geometry assertions. For a 3D carve or
+glyph asset, follow AGENTS.md §6 and `frontend/tools/relief3d/bake-relief3d.mjs --check`.
 
 ---
 
