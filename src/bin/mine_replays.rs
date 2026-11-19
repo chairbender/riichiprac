@@ -1746,7 +1746,7 @@ fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> 
         }
         Ok(report) => {
             println!(
-                "mine_replays label: {} replay(s) ({}, {} failed), {} decisions \
+                "mine_replays label: {} replay(s) ({} walked, {} failed), {} decisions \
                  ({} labelled, {} cached, {} retried, {} failed) in {} ms on {} worker thread(s)",
                 report.replays_found,
                 report.replays_walked,
