@@ -2039,6 +2039,12 @@ largest one-pixel luma step over nine parallel scan lines, MSAA off → on:
 **186.9 → 143.0 (23 %)** at 820 × 1180 @ DPR 2. A single scan line is grid-phase
 noise (it read −2 % on one run), which is why the probe averages nine.
 
+*Sign-off (2026-11-19).* The user reviewed the closed-gap board and the
+plate-only finish over Tailscale HTTPS and replied "Looks great." — the visual
+verdict AGENTS.md §6 requires for 3D-20. Two rounds were rejected on the way
+here (the crevice shading, then nothing else); both are recorded below because
+the numbers that rejected them are what pointed at the real causes.
+
 **Follow-up (2026-11-19): the glint on wall bevels.** With the seams closed the
 user reported a *different* defect: "very bright prominent white highlights" on
 the bevelled edge of some wall tiles, and only some. It is not the seam work and
