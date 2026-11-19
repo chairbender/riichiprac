@@ -15,6 +15,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
+  CompassRect,
   HeroCapture,
   HeroReport,
   HitRect,
@@ -40,6 +41,19 @@ vi.mock('./capabilities', async (importOriginal) => {
   return { ...actual, probeCapabilities: () => probe.value };
 });
 
+// The 2.5D SVG package bundles its own React (see `overlay.test.tsx`); the
+// compass's wind glyphs only need to be plain SVG elements in jsdom.
+vi.mock('riichi-mahjong-tiles', async () => {
+  const { createElement } = await import('react');
+  const Glyph = (props: Record<string, unknown>) => createElement('svg', props);
+  return {
+    RegularTon: Glyph,
+    RegularNan: Glyph,
+    RegularShaa: Glyph,
+    RegularPei: Glyph,
+  };
+});
+
 const hostMock = vi.hoisted(() => {
   interface MockState {
     created: number;
@@ -52,6 +66,7 @@ const hostMock = vi.hoisted(() => {
     report: unknown;
     captures: unknown[];
     rects: HitRect[];
+    compass: CompassRect | null;
     hitRectCalls: number;
     hover: unknown[];
   }
@@ -67,6 +82,7 @@ const hostMock = vi.hoisted(() => {
     report: null,
     captures: [],
     rects: [],
+    compass: null,
     hitRectCalls: 0,
     hover: [],
   };
@@ -99,6 +115,7 @@ const hostMock = vi.hoisted(() => {
         state.hitRectCalls += 1;
         return state.rects;
       },
+      compassRect: () => state.compass,
       setHoverTile: (tile: unknown) => {
         state.hover.push(tile);
       },
@@ -175,6 +192,7 @@ beforeEach(() => {
     report: null,
     captures: [],
     rects: [],
+    compass: null,
     hitRectCalls: 0,
     hover: [],
   });
@@ -523,6 +541,64 @@ describe('RendererHost interaction overlay (3D-08)', () => {
     expect(description?.textContent).toMatch(/buttons/);
     const canvas = document.querySelector('canvas');
     expect(canvas?.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
+describe('RendererHost compass overlay (3D-09)', () => {
+  const COMPASS: CompassRect = {
+    left: 300,
+    top: 200,
+    width: 240,
+    height: 180,
+    centreX: 420,
+    centreY: 290,
+  };
+
+  it('anchors the compass to the renderer’s projected well', async () => {
+    hostMock.state.compass = COMPASS;
+    render(
+      <RendererHost
+        snapshot={snapshot()}
+        onSelectTile={() => undefined}
+        fallback={fallbackTable()}
+      />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    const compass = await screen.findByRole('group', { name: 'Compass' });
+    // The square is the well's shorter side, centred on its projected centre.
+    expect(compass.style.left).toBe('330px');
+    expect(compass.style.top).toBe('200px');
+    expect(compass.style.width).toBe('180px');
+    expect(compass.style.height).toBe('180px');
+    expect(compass.getAttribute('data-centre-x')).toBe('420');
+    expect(compass.getAttribute('data-centre-y')).toBe('290');
+    expect(
+      screen.getByRole('group', {
+        name: 'Round East 1, 70 tiles remaining',
+      }),
+    ).toBeTruthy();
+  });
+
+  it('shows the compass even when only the scene is mounted (no hand handler)', async () => {
+    hostMock.state.compass = COMPASS;
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    expect(await screen.findByRole('group', { name: 'Compass' })).toBeTruthy();
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('drops the compass while the scene is not ready', async () => {
+    hostMock.state.compass = COMPASS;
+    probe.value = {
+      webgl2: false,
+      maxTextureSize: 0,
+      devicePixelRatio: 1,
+      unavailable: 'WebGL2 is not available in this browser',
+    };
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    expect(screen.queryByRole('group', { name: 'Compass' })).toBeNull();
+    expect(screen.getByText('fallback table')).toBeTruthy();
   });
 });
 

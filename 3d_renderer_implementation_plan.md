@@ -488,10 +488,18 @@ The canvas is an image. Everything a user can do or must hear is DOM:
 - Hand and drawn tile become absolutely positioned `<button>`s over the canvas,
   sized from the projected OBB with a 44 × 44 CSS px minimum, labelled exactly
   as `HandDock`'s tiles are, disabled when answered, in the same order.
-- The compass (four seats: wind symbol, score, riichi marker; centre: round and
-  tiles left; honba stays in the existing stage status line) is a DOM overlay
+- The compass (four seats: wind symbol, score; centre: round and tiles left;
+  honba stays in the existing stage status line) is a DOM overlay
   with the same group/role/label structure as `PhysicalTable`'s compass, and a
-  drift test compares the accessible names.
+  drift test compares the accessible names. Its **square** is real 3D table
+  furniture laid on the felt (`three/compassPlate.ts`, one draw, sized to touch
+  the innermost discard row on all four sides) so it obeys the camera; only its
+  numbers and glyphs are DOM, superimposed in screen space and therefore never
+  foreshortened. Each seat is one row with the wind glyph greyed to the left of
+  the score; the visible score is Tenhou's split plate (the hundreds large, the
+  trailing two digits small and grey) while the accessible name keeps the full
+  score. The corners carry no stick icon (the 3D bar on the plate is the
+  declarer's marker), but the corner name still ends ", riichi".
 - Hover/focus lifts the tile in 3D (bounded, reduced-motion aware) and never
   moves the button.
 - Tile faces, rivers, melds and walls are decorative and not individually
@@ -530,9 +538,10 @@ imply at the cap are 4 x (colour 4 B + depth 3 B) = 232 MB against 58 MB, i.e.
 runs once per pixel. `capabilities.backingStoreBytes(pixels, antialias)` states
 the numbers and a unit test pins them.
 
-Draw calls: **4 in steady state** (tiles, contact shadows, riichi sticks, felt)
-and a hard ceiling of **12** including debug. Instances: one tile mesh with
-capacity **320**. Triangles ≤ 200 k (320 × ≤ 600 tris + environment).
+Draw calls: **5 in steady state** (tiles, contact shadows, riichi sticks, the
+physical compass plate, felt) and a hard ceiling of **12** including debug.
+Instances: one tile mesh with capacity **320**. Triangles ≤ 200 k (320 × ≤ 600
+tris + environment).
 
 The instance count is worth stating because the starting proposal assumed 136:
 the wall alone is 4 × 17 × 2 = 136 tiles, and it is decorative but drawn full
@@ -1381,7 +1390,8 @@ and one fixture change (`boardFixture` flags the newest discard its
 
 *Draw shape.* The whole board is one `InstancedMesh` (capacity 320, count live),
 the contact shadows one instanced quad layer, the sticks one instanced box layer,
-and the felt one plane: **4 draw calls**, invariant to tile count. The fixture
+and the felt one plane: **4 draw calls**, invariant to tile count. (3D-09 added
+the physical compass plate as a fifth; see §2.8 and its own record.) The fixture
 board is 252 tiles / 203 grounded shadows; the widest board the layout gate
 builds is 280 tiles, so the capacity is a malformed-snapshot guard, not a
 budget. `boardMesh.test.ts` fails on > 320 instances or a non-finite matrix
@@ -1567,6 +1577,175 @@ accessible marker on that seat.
   table.
 
 **Gate:** frontend gate.
+
+**As landed (3D-09, 2026-11-19; revised the same day after user review).**
+Files: new `renderers/compassOverlay.ts` (pure compass model and box math) and
+`renderers/three/compassPlate.ts` (the physical square), `renderers/overlay.tsx`
+(`TableCompass` beside the unchanged hand overlay), `renderers/RendererHost.tsx`
+(reads and clears the projected well, mounts the compass whenever the scene is
+ready and not in the hero debug view), `renderers/RendererHost.css` (the
+screen-space number layer), `renderers/contract.ts` (`CompassRect`, optional
+`TableRenderer.compassRect()`), `renderers/three/hitTest.ts`
+(`compassPlateRect` + `compassPlateCorners`), `renderers/three/Scene.ts`
+(`compassRect()` on the same solved frame, and the plate in `buildBoard`),
+`renderers/three/{boardLayout,boardFixture,sticks}.ts` and
+`layoutConstants.ts` (per-seat sticks), `scripts/check-3d-layout.mjs`, and the
+tests `compassOverlay.test.ts`, `three/compassPlate.test.ts`,
+`overlay.test.tsx`, `RendererHost.test.tsx`, `three/drawCalls.test.ts`,
+`boardLayout.test.ts`, `sticks.test.ts` and `layoutConstants.test.ts`.
+
+*The square is 3D, the numbers are not.* User review (2026-11-19) rejected the
+first take, where the panel was a DOM box with a background: "the square needs
+to be an actual physical square that sits on the table, not something that
+floats over the 3d scene. The numbers / text themselves SHOULD be superimposed
+over the 3d scene, so they don't have perspective distortion, but the square
+itself should." The plate is therefore one real mesh on the felt: a rounded
+(0.28-unit corners), bevelled slab 0.08 units (2.24 mm) proud, extruded from a
+`Shape` in core three with the 2.5D panel's dark face (`#151b23`), and it
+foreshortens with the camera like the felt and the ponds. A second user
+revision the same day widened it: "the compass should extend out so it's
+touching the top row of discards for each player (the discards are placed right
+up against it)." `COMPASS_PLATE.sizeUnits` is therefore derived, not authored —
+the innermost pond row's inner edge on all four sides, less the chamfer and a
+0.004-unit hair of felt (4.58 units square; the physical edge stops 0.004 units
+short of a discard). The DOM layer lost its background, border and radius and
+is now only the numbers, wind glyphs and riichi markers, laid over an inscribed
+square of the plate's projected rectangle (`MIN_COMPASS_PX` floor), so nothing
+in the text is skewed. The plate is a fifth steady-state draw (§2.8), asserted
+by `drawCalls.test.ts`; `three/compassPlate.test.ts` pins its footprint, height,
+touch distance, one-mesh cost and that no tile on a full board can meet it. The
+per-seat riichi sticks now stand on its top face (`COMPASS_PLATE.topUnits +
+STICK.heightUnits / 2`) instead of the felt.
+
+*Anchor.* The compass adds no second camera: `compassPlateRect` projects the
+plate's four corners through the same `frameForAspect` frame `hitRects()` uses,
+publishes their bounding rectangle plus its centre, and the DOM square takes the
+rectangle's shorter side centred on that centre (floor `MIN_COMPASS_PX` = 132 px,
+so a stage whose plate projects smaller still reads). Measured: 355.7 × 266.1 px
+plate at 16:9 (1920 × 1080) → a 266 px square at font 21.3 px (score lead 1.5 em
+= 32 px); seven supported aspects plus 390 × 844 and 320 × 568 phones are all
+asserted. At each, the compass centre is within 0.4 % of the window of the
+independently projected world origin (gate: 2 %), the projected origin lies
+inside the square, and **no hand or draw button intersects it** — the human's
+topmost button is ≥ 271 px below the compass at 16:9, 56 px at 390 × 844 (a 90 px
+plate, grown to the 132 px floor) and 34 px at 320 × 568. Above the floor the
+square also stays inside the plate's rectangle.
+
+*Labels and structure.* `compassOverlay.ts` derives each corner from the
+snapshot using the human-anchored turn order the plan view uses, and
+`overlay.test.tsx` renders `PhysicalTable` and `TableCompass` for one state and
+compares the accessible names **in DOM order** — including the side group names
+and the round/tiles-left string — rather than restating them. The corner's
+accessible name keeps `PhysicalTable`'s raw integer score ("South wind, 26000
+points, riichi") while the visible plate uses Tenhou's split: the hundreds at
+1.5 em and the trailing two digits at 0.58 em in grey (`25000` → `250` + `00`),
+which is lossless and gives the digits room without shrinking them. Under it is
+the user's second-revision layout: one **row** per seat, with the wind glyph
+greyed (42 % opacity) to the LEFT of the score and the riichi marker after it;
+the row turns with its seat (`SIDE_ROTATION`'s 0/270/180/90), and the wind glyph,
+score and `RiichiStick` are the same components the 2D compass uses. The drift
+test compares the plates' **values** (the scene's `data-score` against the plan's
+rendered digits) and asserts each split recombines to its score, so the two
+presentations cannot disagree.
+
+*Riichi sticks.* `layoutBoard` now draws **one 3D stick per seat whose `riichi`
+flag is true**, on that seat's own side of the compass, lengthways along its
+edge (`BoardStick.seat` + `yawDeg`; `sticks.ts` composes the yaw). The
+1000-point pot is not drawn on the 3D table at all — the unit explicitly keeps
+`compass.riichiSticks` in the table information drawer — so the prior row of
+`riichiSticks` sticks on the human's side is gone. The layout gate now checks
+one stick per declarer, its side/radius/tangent, and clearance from every tile
+at its own yaw.
+
+*Sticks: the real bar, with a carved pip.* Two more user revisions the same
+day: the sticks belong "above the number (closer to the center)" and "the 3d
+stick models look awful, they're supposed to be rounded … that [sprite] is more
+accurate, but we want it as a 3d model"; then the model itself: "65mm long, 7mm
+wide, and 3.5mm thick. The material is Polystyrene resin. Every edge of the
+stick has rounded long edges, about .4mm … there should only be a center pip,
+not those weird grey lines on the sides … the center pip is actually 'carved
+out' and then painted on … use the same approach we used with the tiles."
+
+- **Dimensions and shape.** `STICK_MM` is 65 × 7 × 3.5 mm. The bar is drawn at
+  **72 %** of that (`STICK.modelScale`), a readability compromise the user asked
+  for so it fits inside the scores: 46.8 × 5.04 × 2.52 mm, i.e. 1.671 × 0.18 ×
+  0.09 units. Everything below is that scaled bar; the proportions and shape are
+  the real ones. The user's final shape note — "looking at the
+  stick from the long end, the cross-sectional profile of the stick should be
+  an ellipse, and "looking down on the stick like we do on the table, the
+  profile should be a rectangle (with only very very slightly rounded corners),
+  so the ends should terminate abruptly rather than being semi-ovals" — replaces
+  the earlier 0.4 mm bevel. The mesh is a **swept ellipse**, every cross-section
+  the same 7 × 3.5 mm ellipse, with **flat ends** and a 0.4 mm round easing only
+  the four plan corners: the top view is a 65 × 7 mm rectangle with abrupt ends.
+  That is what gives the continuous round on the long edges (an extruded
+  flat-topped slab could not). It is one instanced `BufferGeometry` built in
+  core three (40 segments around, 28 along the length, 4 across each end rim). The material is
+  `MeshPhysicalMaterial` (polystyrene `ior` 1.59) with a **clear coat** 0.5 at
+  roughness 0.07 and a per-texel roughness map, so it has the sheen the flat
+  matte box lacked. The grey end bands are gone; the only decoration is the
+  centre pip.
+- **The pip is carved and painted.** `three/stickMaps.ts` generates the same
+  three-part face the tiles use for their engraving — albedo with the paint
+  mixed in, a tangent normal of the recess wall and a roughness map — for a
+  3 mm pip (42 % of the bar's width, the sprite's own proportion) sunk 0.4 mm
+  through a 0.5 mm wall, with a baked 22 % cavity darkening (0.25 mm would be
+  sub-pixel at the stick's ~19 px on-screen width). The face is the
+  bar's plan projection (u along the length, v across the ellipse) maps the
+  pip to the top centre and the curved sides to the atlas's plain-ivory border,
+  so one material and one instanced draw still cover the whole bar. There is no
+  POM march: the pip is 0.4 mm deep, which is under half a pixel of parallax at
+  the reference angle, and the normal map carries the carve; the tiles' 0.55 mm
+  glyph wall is a different scale. `sticks.test.ts` pins the bar's extents, the
+  rounded-edge inset, the pip's albedo/normal/roughness, and the one draw.
+- **Position.** `STICK.radiusUnits` is **0.98**. The scaled bar is 1.671 units
+  long, so neighbours clear each other by 0.054 units (their inner faces are
+  0.89 from the centre against a 0.836 half-length); it sits in the 0.35-unit
+  band between the centre group (~0.8 out) and the score row's inner edge
+  (~1.21 out). The earlier revision had pushed the top/bottom score rows out to
+  the plate edge to make room for the full-size bar, which put them over the
+  discards; that is reverted, so the rows are centred in their thirds again and
+  the scores have a 0.46-unit margin to the plate's edge. One further user note
+  (2026-11-19) puts the **three opponents' scores** a little further out
+  (`translateX/translateY` of 0.5 em on the top/left/right seat groups) while
+  the human's bottom row stays where it is. The layout gate checks
+  stick-to-stick clearance as well as tile clearance.
+- **No DOM stick icon.** The user asked for the 3D model alone, so the 3D
+  compass's corner row is only the grey wind and the score; the corner's
+  accessible name still ends ", riichi" for each declarer, and the drift test
+  compares the informative names (ignoring `PhysicalTable`'s decorative sprite
+  label).
+
+*Interaction.* The compass is informational: no buttons, no tab stops, and the
+layer is `pointer-events: none` with only its labels re-enabling them, so the
+felt and the hand buttons stay reachable. It renders whether or not a hand
+handler is supplied, and is removed while the scene is loading, unsupported,
+failed or in the hero debug view.
+
+*Previewing the sticks.* A real hand often has nobody in riichi, so a reviewer
+could not see the per-seat felt sticks at all. `?preview=sticks` (added
+2026-11-19 at the user's request, alongside `?renderer=3d`) marks every seat
+riichi in the **3D view's copy** of the snapshot only: `withPreviewRiichi` in
+`snapshot.ts` copies the snapshot and flips each seat's flag, leaving every
+other field (including the recorded riichi discard) untouched; the store, the
+2D views and the answer never see it. The query parser tests the flag and the
+adapter tests the copy. It is review-only and disappears with the rest of the
+preview chrome at 3D-15 sign-off.
+
+**Visual sign-off (2026-11-19): accepted — "Looks good now."** The first pass was
+reviewed by the user that day and seven further rounds followed before the
+verdict: the physical square and Tenhou score plate; the discards-touching size,
+bigger numbers and the grey wind at the left; the real 65 × 7 × 3.5 mm
+polystyrene bar with its carved pip and no DOM icon; the elliptical
+cross-section; the rectangular top view with abrupt, 0.4 mm-eased ends; the
+72 % scale with the score rows back inside the plate; the opponents' scores
+nudged outward; and the round/tiles-left group lifted to its final optical
+offset (`translateY(-0.32em)`). The delivered numbers are the plate at
+4.582 units touching the innermost discards, 21.3 px base type at 16:9
+(32 px score lead), the bar at 46.8 × 5.04 × 2.52 mm drawn at radius 0.98, and
+four per-seat riichi sticks driven by `?preview=sticks` for inspection. The
+whole-board look is re-checked once more at 3D-15; this unit's own visual
+question is closed.
 
 ---
 

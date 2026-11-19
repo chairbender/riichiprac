@@ -6,7 +6,7 @@ import type {
   PlayerState,
 } from '../types/game';
 import { WALL } from './layoutConstants';
-import { snapshotFromGameState } from './snapshot';
+import { snapshotFromGameState, withPreviewRiichi } from './snapshot';
 
 const HAND_13 = [
   '1m',
@@ -716,5 +716,45 @@ describe('snapshotFromGameState: immutability', () => {
     expect(Object.isFrozen(snapshot.wall[0])).toBe(true);
     expect(Object.isFrozen(snapshot.compass)).toBe(true);
     expect(Object.isFrozen(snapshot.dora)).toBe(true);
+  });
+});
+
+describe('withPreviewRiichi (3D-09 preview only)', () => {
+  it('marks every seat riichi without changing anything else', () => {
+    const state = game({
+      players: [
+        player({ seat: 0 }),
+        player({ seat: 1, is_riichi: true, riichi_discard_index: 0, discards: [discard('2p', { is_riichi: true })] }),
+        player({ seat: 2 }),
+        player({ seat: 3 }),
+      ],
+    });
+    const real = snapshotFromGameState(state, 7, false);
+    const preview = withPreviewRiichi(real);
+
+    expect(preview.seats.map((seat) => seat.riichi)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+    // The seat that really declared keeps its recorded discard index; the
+    // others keep their null, so the river is untouched.
+    expect(preview.seats[1].riichiDiscardIndex).toBe(real.seats[1].riichiDiscardIndex);
+    expect(preview.seats.map((seat) => seat.riichiDiscardIndex)).toEqual(
+      real.seats.map((seat) => seat.riichiDiscardIndex),
+    );
+    // A copy, not a mutation: the real snapshot and everything else is intact.
+    expect(real.seats.map((seat) => seat.riichi)).toEqual([
+      false,
+      true,
+      false,
+      false,
+    ]);
+    expect(preview.revision).toBe(real.revision);
+    expect(preview.compass).toBe(real.compass);
+    expect(preview.wall).toBe(real.wall);
+    expect(preview.seats[0].concealed).toBe(real.seats[0].concealed);
+    expect(preview.locked).toBe(real.locked);
   });
 });

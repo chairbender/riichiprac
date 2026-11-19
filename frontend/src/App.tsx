@@ -15,7 +15,7 @@ import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
 import { RendererHost } from './renderers/RendererHost';
 import { resolveTableMount } from './renderers/resolveTableMount';
-import { snapshotFromGameState } from './renderers/snapshot';
+import { snapshotFromGameState, withPreviewRiichi } from './renderers/snapshot';
 import {
   DEFAULT_HOTSEAT_OPTIONS,
   HOTSEAT_SCENARIO_ID,
@@ -711,20 +711,30 @@ export const App = () => {
     setThreeRevision(threeRevisionRef.current);
   }, [gameState, tableMount.kind]);
 
+  /*
+   * `?preview=sticks` (3D-09) is a visual-review aid, not game state: it marks
+   * every seat riichi on the 3D table's copy only, so the per-seat felt sticks
+   * and compass markers can be inspected on any hand. The store, the 2D views
+   * and the answer never see it.
+   */
+  const previewSticks =
+    tableMount.kind === 'three' && tableMount.query.preview === 'sticks';
+
   const threeSnapshot = useMemo(() => {
     if (!gameState || tableMount.kind !== 'three') return null;
     try {
-      return snapshotFromGameState(
+      const snapshot = snapshotFromGameState(
         gameState,
         threeRevision,
         submittedAnswer !== null,
       );
+      return previewSticks ? withPreviewRiichi(snapshot) : snapshot;
     } catch {
       // A state the adapter refuses to describe is not drawn in 3D; the
       // standard view still renders below, so nothing takes the app down.
       return null;
     }
-  }, [gameState, tableMount.kind, threeRevision, submittedAnswer]);
+  }, [gameState, tableMount.kind, threeRevision, submittedAnswer, previewSticks]);
 
   const agreementHint =
     aiStatus === 'ready'

@@ -245,3 +245,138 @@
 .renderer-3d-hero-actions button:hover {
   background: #e3edff;
 }
+
+/*
+ * The compass (3D-09): the table's numbers as DOM over the felt, never 3D text.
+ *
+ * The square itself is NOT here: it is the physical plate the scene draws on
+ * the felt (`three/compassPlate.ts`), so it obeys the camera and is foreshortened
+ * like the rest of the table. This layer is only the numbers and wind glyphs,
+ * superimposed in screen space so they stay upright and undistorted. Inside it
+ * is `PhysicalTable`'s 3×3 compass: one turned corner per seat around the
+ * round / tiles-left centre. Only its own labels take pointer events, so the
+ * felt and the hand buttons stay reachable.
+ */
+.renderer-3d-compass {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: 1fr auto 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: 0.35em 0.45em;
+  padding: 0.3em;
+  box-sizing: border-box;
+  color: #8b94a7;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(4, 8, 11, 0.65);
+  pointer-events: none;
+}
+
+.renderer-3d-compass-seat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.renderer-3d-compass-seat--bottom {
+  grid-area: 3 / 2 / 4 / 3;
+}
+
+.renderer-3d-compass-seat--right {
+  grid-area: 2 / 3 / 3 / 4;
+  /* The opponents' scores sit a little further out; the player's (bottom) does
+     not move. (User, 2026-11-19.) */
+  transform: translateX(0.5em);
+}
+
+.renderer-3d-compass-seat--top {
+  grid-area: 1 / 2 / 2 / 3;
+  transform: translateY(-0.5em);
+}
+
+.renderer-3d-compass-seat--left {
+  grid-area: 2 / 1 / 3 / 2;
+  transform: translateX(-0.5em);
+}
+
+/*
+ * One player's corner (user revision 2026-11-19): a single row with the wind
+ * glyph greyed to the LEFT of the score, then the riichi marker. The row turns
+ * with its seat, so every player reads it upright.
+ */
+.renderer-3d-compass-player {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.28em;
+  pointer-events: auto;
+}
+
+/* The symbol alone; the filter clears the glyph's own blue and turns it white,
+   and the opacity greys it back so the numbers carry the emphasis. */
+.renderer-3d-compass-wind {
+  display: block;
+  width: 1.15em;
+  height: 1.15em;
+  transform: translateY(0.08em);
+  filter: brightness(0) invert(1);
+  opacity: 0.42;
+}
+
+/*
+ * Tenhou's score plate: the hundreds large, the trailing two digits small and
+ * grey (`25,000` reads as `250` + `00`). The split is lossless, so the plate
+ * and the corner's accessible name always state the same score.
+ */
+.renderer-3d-compass-score {
+  display: inline-flex;
+  align-items: baseline;
+  color: #e7ecf3;
+  font-size: 1.5em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.renderer-3d-compass-score-tail {
+  margin-left: 0.05em;
+  color: #8b94a7;
+  font-size: 0.58em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.renderer-3d-compass-wall {
+  grid-area: 2 / 2 / 3 / 3;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  /* A hair above the geometric centre: the round and tiles-left read as
+     optically centred against the plate's perspective (user, 2026-11-19). */
+  transform: translateY(-0.32em);
+  pointer-events: auto;
+}
+
+.renderer-3d-compass-round {
+  color: #a5d8ff;
+  font-size: 1em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.renderer-3d-compass-count {
+  color: #e7ecf3;
+  font-size: 1.35em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}

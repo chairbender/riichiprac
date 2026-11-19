@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CAMERA,
+  COMPASS_PLATE,
   DORA,
   HAND,
   LIGHT,
@@ -265,19 +266,35 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     ).toBeLessThanOrEqual(TABLE.matSizeUnits / 2);
   });
 
-  it('keeps a point stick between the compass well and the near pond row', () => {
-    expect(STICK.widthUnits).toBeLessThan(
-      POND.rowRadiiUnits[POND.rows - 1] -
-        TILE.heightUnits / 2 -
-        TABLE.compassWellUnits / 2,
-    );
-    expect(STICK.radiusUnits - STICK.widthUnits / 2).toBeGreaterThan(
+  it('stretches the compass plate to touch the innermost discard row', () => {
+    const pondInnerEdge =
+      POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
+    const physicalHalf = COMPASS_PLATE.sizeUnits / 2 + COMPASS_PLATE.bevelUnits;
+    // Touching, not overlapping: the chamfer stops a hair short of a discard.
+    expect(physicalHalf).toBeLessThan(pondInnerEdge);
+    expect(pondInnerEdge - physicalHalf).toBeLessThan(0.01);
+    // It clears the well entirely and still sits below every tile.
+    expect(COMPASS_PLATE.sizeUnits / 2).toBeGreaterThan(
       TABLE.compassWellUnits / 2,
     );
+    expect(COMPASS_PLATE.topUnits).toBeLessThan(TILE.thicknessUnits);
+  });
+
+  it('keeps a declarer’s point stick on the compass plate', () => {
+    // Inside the plate's footprint, so the stick stands on its top face.
+    expect(STICK.radiusUnits - STICK.widthUnits / 2).toBeGreaterThan(0);
     expect(STICK.radiusUnits + STICK.widthUnits / 2).toBeLessThan(
-      POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2,
+      COMPASS_PLATE.sizeUnits / 2,
     );
-    expect(STICK.pitchUnits).toBeGreaterThan(STICK.widthUnits);
+    // The stick's top stays below a lying tile's face, so it reads as an inlay.
+    expect(COMPASS_PLATE.topUnits + STICK.heightUnits).toBeLessThan(
+      TILE.thicknessUnits,
+    );
+    // The stick lies lengthways along its own seat's edge; neighbouring seats'
+    // sticks are a quarter-turn apart, so their footprints never meet.
+    expect(STICK.radiusUnits - STICK.widthUnits / 2).toBeGreaterThan(
+      STICK.lengthUnits / 2,
+    );
   });
 
   it('carries the framing solver\u2019s inputs', () => {

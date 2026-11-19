@@ -164,7 +164,8 @@ function widestFixture(fixture) {
     meldCounts: [4, 4, 4, 4],
     kan: true,
     doraCount: 5,
-    riichiSticks: 6,
+    // Every seat declares: the most per-seat riichi sticks this board can draw.
+    riichiSeats: [0, 1, 2, 3],
   });
 }
 
@@ -185,7 +186,7 @@ async function main() {
   console.log('3D layout gate (3D-06)\n');
   console.log(`fixture: human seat ${humanSeat}, ` +
     `${fixture.dora.length} dora, ` +
-    `${fixture.compass.riichiSticks} sticks, ` +
+    `${fixture.seats.filter((seat) => seat.riichi).length} declarers, ` +
     `${fixture.seats.reduce((sum, seat) => sum + seat.river.length, 0)} discards\n`);
 
   /* ---------------------------- constants ---------------------------- */
@@ -194,6 +195,8 @@ async function main() {
     ['tile body (w x h x t)', `${formatNumber(C.TILE.widthUnits)} x ${formatNumber(C.TILE.heightUnits)} x ${formatNumber(C.TILE.thicknessUnits)}`],
     ['row gap / bevel', `${formatNumber(C.TILE.gapUnits, 4)} / ${formatNumber(C.TILE.bevelUnits)}`],
     ['mat / compass well', `${C.TABLE.matSizeUnits} / ${C.TABLE.compassWellUnits}`],
+    ['compass plate size / top', `${formatNumber(C.COMPASS_PLATE.sizeUnits, 4)} / ${formatNumber(C.COMPASS_PLATE.topUnits, 4)}`],
+    ['plate edge to innermost discard', formatNumber((C.POND.rowRadiiUnits[C.POND.rows - 1] - C.TILE.heightUnits / 2) - (C.COMPASS_PLATE.sizeUnits / 2 + C.COMPASS_PLATE.bevelUnits), 4)],
     ['wall runs x stacks x tiers', `${C.WALL.runs} x ${C.WALL.stacksPerRun} x ${C.WALL.tiers}`],
     ['wall ring radius / end-run radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.endRunRadiusUnits, 6)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
     ['wall draw end (slot, tiers at seat right)', `${C.WALL.drawEndSlot}, ${C.WALL.drawEndTiers} (${C.WALL.drawEndIsSeatRight})`],
@@ -462,29 +465,62 @@ async function main() {
   });
   check('the four seats are exact rotations of each other', seatOk, 'yaw 0/90/180/270°');
 
-  const sticksOk = board.sticks.every((stick) => {
-    const box = {
+  const declarers = fixture.seats.filter((seat) => seat.riichi);
+  const sticksOk =
+    board.sticks.length === declarers.length &&
+    board.sticks.every((stick) => {
+      // Each stick lies on its own declarer's side, lengthways along the edge.
+      const yaw = (stick.yawDeg * Math.PI) / 180;
+      const right = [Math.cos(yaw), 0, -Math.sin(yaw)];
+      const outward = [Math.sin(yaw), 0, Math.cos(yaw)];
+      const radial =
+        stick.position[0] * outward[0] + stick.position[2] * outward[2];
+      const tangential =
+        stick.position[0] * right[0] + stick.position[2] * right[2];
+      const box = {
+        centre: stick.position,
+        axes: [right, [0, 1, 0], outward],
+        halfExtents: stick.sizeUnits.map((extent) => extent / 2),
+      };
+      return (
+        declarers.some((seat) => seat.seat === stick.seat) &&
+        close(radial, C.STICK.radiusUnits) &&
+        close(tangential, 0) &&
+        // Standing on the compass plate, inside its footprint.
+        close(
+          stick.position[1] - C.STICK.heightUnits / 2,
+          C.COMPASS_PLATE.topUnits,
+        ) &&
+        radial + C.STICK.widthUnits / 2 < C.COMPASS_PLATE.sizeUnits / 2 &&
+        board.tiles.every(
+          (tile) => !L.orientedBoxesIntersect(box, L.orientedBox(tile.pose)),
+        )
+      );
+    });
+  const stickBoxes = board.sticks.map((stick) => {
+    const yaw = (stick.yawDeg * Math.PI) / 180;
+    return {
       centre: stick.position,
       axes: [
-        [1, 0, 0],
+        [Math.cos(yaw), 0, -Math.sin(yaw)],
         [0, 1, 0],
-        [0, 0, 1],
+        [Math.sin(yaw), 0, Math.cos(yaw)],
       ],
       halfExtents: stick.sizeUnits.map((extent) => extent / 2),
     };
-    return board.tiles.every(
-      (tile) => !L.orientedBoxesIntersect(box, L.orientedBox(tile.pose)),
-    );
   });
+  let sticksApart = true;
+  for (let first = 0; first < stickBoxes.length; first += 1) {
+    for (let second = first + 1; second < stickBoxes.length; second += 1) {
+      if (L.orientedBoxesIntersect(stickBoxes[first], stickBoxes[second])) {
+        sticksApart = false;
+      }
+    }
+  }
   check(
-    'riichi sticks sit clear of every tile and the compass well',
-    sticksOk &&
-      board.sticks.every(
-        (stick) =>
-          stick.position[2] - C.STICK.widthUnits / 2 >
-          C.TABLE.compassWellUnits / 2,
-      ),
-    `${board.sticks.length} sticks`,
+    'one riichi stick per declarer sits on that seat’s side, clear of every tile and neighbour',
+    sticksOk && sticksApart,
+    `${board.sticks.length} sticks for ${declarers.length} declarers`,
   );
 
   check(

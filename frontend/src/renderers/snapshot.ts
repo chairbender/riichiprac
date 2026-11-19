@@ -253,6 +253,27 @@ function deepFreeze<T>(value: T): T {
 }
 
 /**
+ * Debug preview only (`?preview=sticks`, 3D-09): the same table with every seat
+ * marked riichi.
+ *
+ * A real hand often has no declaration, which makes the per-seat felt sticks
+ * and the compass's riichi markers invisible to a reviewer. This copy lets the
+ * 3D view show all four without touching the game state, the snapshot adapter
+ * or the answer: the store never sees it, and it is applied only to the 3D
+ * view's snapshot. Every other field, including each seat's recorded
+ * `riichiDiscardIndex`, is left exactly as the real state had it.
+ */
+export function withPreviewRiichi(snapshot: TableSnapshot): TableSnapshot {
+  return {
+    ...snapshot,
+    seats: snapshot.seats.map((seat) => ({
+      ...seat,
+      riichi: true,
+    })) as unknown as TableSnapshot['seats'],
+  };
+}
+
+/**
  * Build the immutable snapshot for one table.
  *
  * @param state   The serialized Rust state. Read only.

@@ -64,6 +64,7 @@ import type {
 } from '../contract';
 import {
   CAMERA,
+  COMPASS_PLATE,
   DORA,
   HAND,
   MELD,
@@ -133,9 +134,16 @@ export interface BoardTile {
 /** One riichi stick on the felt. Table furniture, not a tile. */
 export interface BoardStick {
   readonly id: string;
-  /** Body centre; sticks lie flat along +X with no rotation (`STICK`). */
+  /**
+   * The declarer whose side of the compass the stick sits on (3D-09: one stick
+   * per seat whose `riichi` flag is true, exactly as `PhysicalTable` draws it).
+   */
+  readonly seat: Seat;
+  /** Body centre; the stick lies lengthwise along its seat's edge. */
   readonly position: Vec3;
-  /** Full extents along X, Y and Z. */
+  /** Rotation about world +Y, degrees: the seat's own yaw. */
+  readonly yawDeg: number;
+  /** Full extents along X, Y and Z, before the yaw. */
   readonly sizeUnits: Vec3;
 }
 
@@ -740,25 +748,31 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
     }
   }
 
-  const sticks: BoardStick[] = Array.from(
-    { length: snapshot.compass.riichiSticks },
-    (_, index) => {
-      const count = snapshot.compass.riichiSticks;
-      return {
-        id: `stick-${index}`,
-        position: [
-          (index - (count - 1) / 2) * STICK.pitchUnits,
-          STICK.heightUnits / 2,
-          STICK.radiusUnits,
-        ] as Vec3,
-        sizeUnits: [
-          STICK.lengthUnits,
-          STICK.heightUnits,
-          STICK.widthUnits,
-        ] as Vec3,
-      };
-    },
-  );
+  /*
+   * One point stick per declarer (3D-09), on that seat's own side of the
+   * compass and lengthwise along its edge. The 1000-point pot is deliberately
+   * not drawn here: `compass.riichiSticks` is shown in the table information
+   * drawer, and drawing it as a row on the felt would read as a second,
+   * different count (plan 3D-09 acceptance).
+   */
+  const sticks: BoardStick[] = snapshot.seats
+    .filter((seatState) => seatState.riichi)
+    .map((seatState) => ({
+      id: `stick-seat-${seatState.seat}`,
+      seat: seatState.seat,
+      position: seatPoint(
+        seatState.seat,
+        0,
+        STICK.radiusUnits,
+        COMPASS_PLATE.topUnits + STICK.heightUnits / 2,
+      ),
+      yawDeg: seatYawDeg(seatState.seat),
+      sizeUnits: [
+        STICK.lengthUnits,
+        STICK.heightUnits,
+        STICK.widthUnits,
+      ] as Vec3,
+    }));
 
   return {
     humanSeat,

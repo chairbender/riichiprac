@@ -66,22 +66,67 @@ export const TABLE = {
 } as const;
 
 /**
- * A point stick (1000 points), lying flat next to the compass well.
+ * The real 1000-point stick, in millimetres (user revision 2026-11-19):
+ * 65 mm long, 7 mm wide and 3.5 mm thick, made of polystyrene resin. A common
+ * commercial tenbo is 69 x 7 x 3 mm; the user's 65 x 7 x 3.5 is the model's
+ * spec. Its cross-section — looking down the long axis — is an **ellipse**
+ * (the user's final shape note), so the long edges have no flat band and no
+ * separate round-over; `three/sticks.ts` sweeps that ellipse along the length
+ * and cuts it off flat, so the top view is a rectangle whose only easing is a
+ * 0.4 mm round on the four end corners.
+ */
+export const STICK_MM = {
+  length: 65,
+  width: 7,
+  thickness: 3.5,
+} as const;
+
+/**
+ * A point stick (1000 points) on the compass plate.
  *
  * The sticks are table furniture, not tiles: the layout never merges them into
- * the tile list and the collision gate skips them. They sit in the free band
- * between the compass well (half-width 2) and the human's nearest pond row
- * (inner edge 2.2886), a 0.29-unit annulus wide enough for the 0.22-unit width,
- * and they lie along +X so the row reads from the camera.
+ * the tile list and the collision gate skips them. 3D-09 draws **one stick per
+ * declarer**, on that seat's side of the compass, lengthways along its edge
+ * (the same place `PhysicalTable` puts a seat's stick). The 1000-point pot
+ * (`compass.riichiSticks`) is not drawn on the 3D table: it stays in the table
+ * information drawer, so the two never read as the same thing.
+ *
+ * Since the plate extends to the discards ({@link COMPASS_PLATE}), the sticks
+ * stand on its top face rather than on the felt; `layoutBoard` places their
+ * centres at `COMPASS_PLATE.topUnits + heightUnits / 2`. They sit **inboard of
+ * the score row** — the user's third revision (2026-11-19): "the sticks should
+ * go above the number (closer to the center) as there is a nice space there on
+ * all sides" — in the clear band between the number row and the round/tiles-left
+ * group.
  */
+/**
+ * The compass sticks are drawn at **72 %** of the real 65 mm bar.
+ *
+ * The model's proportions, elliptical cross-section, end cut and pip are the
+ * real thing; only its scale is a readability compromise for the compass. A
+ * full-size 65 mm bar (2.32 units) cannot sit between the score row and the
+ * centre group without either crossing its neighbours or pushing the scores
+ * out over the discards (user, 2026-11-19: "scale them down (proportionally)
+ * so they can sit closer to the center and leave space for the scores").
+ * At 72 % the bar is 46.8 mm long and the four fit the inner ring cleanly.
+ */
+const STICK_MODEL_SCALE = 0.72;
+
 export const STICK = {
-  lengthUnits: 1.2,
-  widthUnits: 0.22,
-  heightUnits: 0.1,
-  /** Centre-line distance from the table centre, on the human's (+Z) side. */
-  radiusUnits: 2.144,
-  /** Centre-to-centre step along the row. */
-  pitchUnits: 0.3,
+  /** Linear scale from the real 65 x 7 x 3.5 mm spec to the drawn bar. */
+  modelScale: STICK_MODEL_SCALE,
+  lengthUnits: (STICK_MM.length / UNIT_MM) * STICK_MODEL_SCALE,
+  widthUnits: (STICK_MM.width / UNIT_MM) * STICK_MODEL_SCALE,
+  heightUnits: (STICK_MM.thickness / UNIT_MM) * STICK_MODEL_SCALE,
+  /**
+   * Centre-line distance from the table centre, on the declarer's side.
+   *
+   * The scaled bar is 1.671 units long and 0.18 wide, so neighbours need
+   * `r - 0.09 > 0.836`; 0.98 clears them by 0.054 and sits in the 0.35-unit
+   * band between the centre group (~0.8 out) and the score row's inner edge
+   * (~1.15 out, once the row is centred in its third of the plate again).
+   */
+  radiusUnits: 0.98,
 } as const;
 
 /** Seats around the table, in turn order from the human. */
@@ -250,6 +295,51 @@ export const POND = {
   sidewaysPitchUnits: TILE.heightUnits,
   /** 18 pond cells plus the four overflow anchors. */
   capacity: 18 + 4,
+} as const;
+
+/**
+ * The physical compass square (3D-09, user revision 2026-11-19).
+ *
+ * The user asked for the square to "extend out so it's touching the top row of
+ * discards for each player": the plate's half-width is therefore the innermost
+ * pond row's **inner edge** (`rowRadiiUnits[rows - 1]` is the row nearest the
+ * table centre; a lying tile's radial half-extent is half its long axis). A
+ * 0.008-unit gap keeps it touching without interpenetrating, which the tile
+ * collision gate would otherwise flag.
+ *
+ * The numbers and wind glyphs are DOM over this plate, so the DOM box grows
+ * with it; only the plate itself is 3D.
+ */
+const COMPASS_PLATE_GAP_UNITS = 0.008;
+const COMPASS_PLATE_BEVEL_UNITS = 0.015;
+const COMPASS_PLATE_THICKNESS_UNITS = 0.08;
+/** The innermost pond row's edge, which the plate's chamfer must not cross. */
+const POND_INNER_EDGE_UNITS =
+  POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
+
+export const COMPASS_PLATE = {
+  /**
+   * Exactly spans the clear middle: the innermost pond row on all four sides.
+   * The extrusion's chamfer grows the footprint by `bevelUnits`, so the nominal
+   * square is inset by that much, leaving a 4 µm-scale hair of felt between the
+   * plate and the first discard (which is what "touching" means without the
+   * collision gate seeing an overlap).
+   */
+  sizeUnits:
+    2 * (POND_INNER_EDGE_UNITS - COMPASS_PLATE_BEVEL_UNITS) -
+    COMPASS_PLATE_GAP_UNITS,
+  /** Rounded corners, so it reads as a finished panel rather than a cut slab. */
+  cornerRadiusUnits: 0.28,
+  /** 2.24 mm proud of the felt: an inlay, not a tray. */
+  thicknessUnits: COMPASS_PLATE_THICKNESS_UNITS,
+  /** The small chamfer on both faces. */
+  bevelUnits: COMPASS_PLATE_BEVEL_UNITS,
+  /** The top face's height: the slab plus both chamfers. Sticks rest on this. */
+  topUnits: COMPASS_PLATE_THICKNESS_UNITS + 2 * COMPASS_PLATE_BEVEL_UNITS,
+  /** Lacquer face: the 2.5D compass panel's colour (`#171c24`), a shade deeper. */
+  topColor: '#151b23',
+  roughness: 0.46,
+  metalness: 0,
 } as const;
 
 /**

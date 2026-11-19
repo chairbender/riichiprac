@@ -237,6 +237,25 @@ export interface HandTileRef {
 }
 
 /**
+ * The projected compass square (3D-09), in CSS pixels of the full-screen stage.
+ *
+ * The square is the physical plate laid on the felt, sized to touch the
+ * innermost discard row on all four sides. `left/top/width/height` are the
+ * bounding box of its four projected corners (the perspective outline is a
+ * trapezoid, so a DOM box can only cover it); `centreX/centreY` is that box's
+ * centre, which is where the DOM compass sits. The plate is a picture, so the
+ * numbers over it are DOM, never 3D text (plan §2.7).
+ */
+export interface CompassRect {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+  readonly centreX: number;
+  readonly centreY: number;
+}
+
+/**
  * The stable key that joins a {@link HitRect} to the hand buttons the overlay
  * renders (3D-08). One function, used by both sides, so a rect can never be
  * matched to the wrong tile by a string built twice.
@@ -462,6 +481,12 @@ export interface TableRenderer {
   setQuality(tier: QualityTier): void;
   /** Pure projection of interactive tiles to CSS rects, for the DOM overlay. */
   hitRects(): readonly HitRect[];
+  /**
+   * The projected compass well, for the DOM compass overlay (3D-09). Like
+   * `hitRects()` it is pure and never creates DOM; null before a board is laid
+   * out. Optional so a renderer without a compass can simply ignore it.
+   */
+  compassRect?(): CompassRect | null;
   /**
    * Report which hand button the pointer/focus rests on, or null when none
    * (3D-08). The overlay calls it once per change; 3D-12 turns it into the
