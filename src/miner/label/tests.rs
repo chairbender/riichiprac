@@ -2,9 +2,9 @@
 //! the label cache. The two checkpoint-dependent tests skip with an explicit
 //! message when the (uncommitted) Mortal weights are absent.
 
-use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use rusqlite::Connection;
 
@@ -90,13 +90,13 @@ fn canned_evaluation(
 
 pub(super) struct CannedEvaluator {
     identity: ModelIdentity,
-    q: Box<dyn Fn(&ActionInfo) -> f32>,
-    fail: Cell<bool>,
-    calls: Cell<usize>,
+    q: Box<dyn Fn(&ActionInfo) -> f32 + Send + Sync>,
+    fail: AtomicBool,
+    calls: AtomicUsize,
 }
 
 impl CannedEvaluator {
-    pub(super) fn new(q: impl Fn(&ActionInfo) -> f32 + 'static) -> Self {
+    pub(super) fn new(q: impl Fn(&ActionInfo) -> f32 + Send + Sync + 'static) -> Self {
         Self::with_identity(identity(), q)
     }
 
@@ -104,18 +104,18 @@ impl CannedEvaluator {
     /// optional multi-model vote tests.
     pub(super) fn with_identity(
         identity: ModelIdentity,
-        q: impl Fn(&ActionInfo) -> f32 + 'static,
+        q: impl Fn(&ActionInfo) -> f32 + Send + Sync + 'static,
     ) -> Self {
         Self {
             identity,
             q: Box::new(q),
-            fail: Cell::new(false),
-            calls: Cell::new(0),
+            fail: AtomicBool::new(false),
+            calls: AtomicUsize::new(0),
         }
     }
 
     pub(super) fn calls(&self) -> usize {
-        self.calls.get()
+        self.calls.load(Ordering::Relaxed)
     }
 }
 
@@ -125,8 +125,8 @@ impl StateEvaluator for CannedEvaluator {
     }
 
     fn evaluate(&self, state: &GameState) -> Result<Evaluation, LabelError> {
-        self.calls.set(self.calls.get() + 1);
-        if self.fail.get() {
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        if self.fail.load(Ordering::Relaxed) {
             return Err(LabelError::Evaluation("canned failure".to_string()));
         }
         Ok(canned_evaluation(state, &self.identity, self.q.as_ref()))
@@ -680,7 +680,7 @@ fn a_finished_label_is_never_re_evaluated_and_a_failure_is_retried() {
         super::state_hash(&first.state),
         super::state_hash(&other.state)
     );
-    evaluator.fail.set(true);
+    evaluator.fail.store(true, Ordering::Relaxed);
     assert!(
         label_decision(
             &cache,
@@ -706,7 +706,7 @@ fn a_finished_label_is_never_re_evaluated_and_a_failure_is_retried() {
         other => panic!("expected a failure row, got {other:?}"),
     }
 
-    evaluator.fail.set(false);
+    evaluator.fail.store(false, Ordering::Relaxed);
     let retried = label_decision(
         &cache,
         &evaluator,

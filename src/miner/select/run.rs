@@ -34,7 +34,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use rayon::prelude::*;
 use rusqlite::Connection;
@@ -356,6 +356,7 @@ pub fn run_selection(
     root: &DataRoot,
     options: &SelectionOptions,
 ) -> Result<SelectionOutcome, SelectionError> {
+    let started = Instant::now();
     options
         .config
         .validate()
@@ -729,6 +730,8 @@ pub fn run_selection(
         review_queue: relative(root, &paths.queue)?,
         held_out_queue: relative(root, &paths.held_out)?,
         report_path: relative(root, &paths.report)?,
+        workers,
+        wall_time_ms: crate::miner::parallel::elapsed_ms(started),
         notes,
         errors,
     };

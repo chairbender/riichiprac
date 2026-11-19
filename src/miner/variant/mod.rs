@@ -529,6 +529,9 @@ pub enum VariantError {
     /// A report could not be serialised.
     #[error("variant report error: {0}")]
     Report(String),
+    /// The worker pool could not start.
+    #[error("{0}")]
+    Workers(String),
 }
 
 impl VariantError {

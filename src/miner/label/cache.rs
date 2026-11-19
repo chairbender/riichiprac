@@ -16,12 +16,12 @@ use std::time::SystemTime;
 
 use rusqlite::{Connection, OptionalExtension, params};
 
-use super::{LabelError, LabelOptions, ModelIdentity, ModelLabel, state_hash};
+use super::{LabelDisposition, LabelError, LabelOptions, ModelIdentity, ModelLabel, state_hash};
 use crate::miner::storage::utc_stamp;
 
 /// One cache key: the model-visible state plus the model/classifier/options that
 /// produced the label.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LabelKey {
     /// SHA-256 of the v4 observation ([`super::state_hash`]).
     pub state_hash: String,
@@ -75,11 +75,69 @@ pub struct LabelCache<'connection> {
     connection: &'connection Connection,
 }
 
+/// The cache's answer before an evaluation runs.
+///
+/// [`LabelCache::claim`] and [`LabelCache::settle`] split the cache protocol in
+/// two so a parallel stage can do the lookup and the write under its database
+/// lock and the (expensive) forward pass outside it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CacheClaim {
+    /// A finished label; no evaluation is needed.
+    Hit(Box<ModelLabel>),
+    /// The key needs an evaluation. `retrying` is true when a previous attempt
+    /// failed, so a success is reported as a retry rather than a first label.
+    Evaluate {
+        /// A previous attempt at this key failed.
+        retrying: bool,
+    },
+}
+
 impl<'connection> LabelCache<'connection> {
     /// Wrap an open, migrated miner DB connection.
     #[must_use]
     pub fn new(connection: &'connection Connection) -> Self {
         Self { connection }
+    }
+
+    /// Look up one key and say whether an evaluation is needed.
+    pub fn claim(&self, key: &LabelKey) -> Result<CacheClaim, LabelError> {
+        match self.lookup(key)? {
+            CacheLookup::Hit(label) => Ok(CacheClaim::Hit(label)),
+            CacheLookup::Miss => Ok(CacheClaim::Evaluate { retrying: false }),
+            CacheLookup::Failed { .. } => Ok(CacheClaim::Evaluate { retrying: true }),
+        }
+    }
+
+    /// Record one evaluation outcome and describe it as a disposition.
+    ///
+    /// A success is stored against the key; a failure records the error and the
+    /// incremented attempt count, and is returned to the caller unchanged.
+    pub fn settle(
+        &self,
+        key: &LabelKey,
+        claim: &CacheClaim,
+        outcome: Result<ModelLabel, LabelError>,
+    ) -> Result<LabelDisposition, LabelError> {
+        let retrying = match claim {
+            CacheClaim::Evaluate { retrying } => *retrying,
+            CacheClaim::Hit(label) => {
+                return Ok(LabelDisposition::Cached(label.as_ref().clone()));
+            }
+        };
+        match outcome {
+            Ok(label) => {
+                self.record_success(key, &label)?;
+                Ok(if retrying {
+                    LabelDisposition::Retried(label)
+                } else {
+                    LabelDisposition::Labelled(label)
+                })
+            }
+            Err(err) => {
+                self.record_failure(key, &err.to_string())?;
+                Err(err)
+            }
+        }
     }
 
     /// Look up one key.

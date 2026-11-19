@@ -530,6 +530,8 @@ pub fn run_fixture_pipeline(root: &DataRoot, options: &QaOptions) -> Result<QaRe
             generated_at: Some(started.clone()),
             publish: true,
             persist: false,
+            workers: 1,
+            progress: false,
             dry_run: false,
         },
         None,

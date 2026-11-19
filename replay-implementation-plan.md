@@ -2472,9 +2472,13 @@ from available cores, parallelise per game/replay/state, merge deterministic
 results in file order, and print phase/file progress. `--workers 1`, a fixture
 plan or a small `--limit` are the bounded modes for tests, fixtures and initial
 development only; a single-threaded production batch is a defect unless the
-operator explicitly asks for it. Selection already implements this
-(`select --workers 0`, default); the remaining serial stages are tracked as
-pipeline work, not accepted defaults.
+operator explicitly asks for it. Every implemented stage now honours it:
+`select`, `extract`, `label` and `transform` take `--workers N` (default `0` =
+every available core) and `--progress`, parallelise per replay file or base
+scenario, merge in the serial order, and record the worker count and wall time
+in their reports (Q2p). The remaining stages (`corpus`, `ingest`, `triggers`)
+are stubs or one-pass reports; give them the same contract when they are built
+out.
 
 Define these once; unit gates reference them.
 

@@ -102,7 +102,8 @@ cargo run --features miner --bin mine_replays -- label \
   --weights frontend/public/models/mortal_298k.safetensors \
   [--models OTHER.safetensors,...] [--calibration CAL.json] \
   [--replays DIR] [--family NAME] [--limit N] \
-  [--classifier-version V] [--gamma F] [--pts a,b,c,d] \
+  [--classifier-version V] [--workers N] [--progress] \
+  [--gamma F] [--pts a,b,c,d] \
   [--trigger book,defensive_riichi,...] [--json]
 ```
 
@@ -118,6 +119,20 @@ is single-model, which is the normal path and is never described as an ensemble
 or a consensus. `--calibration` applies a versioned Q→point calibration (see
 "Q→point calibration" below); it is recomputed from the cached raw Q values, so
 changing it never re-runs the model.
+
+`--workers N` (default `0` = every available core, Q2p) labels replay files in
+parallel: workers walk their own files and run the forward pass outside the
+database lock, and the cache lookup and every write happen under the stage's
+single connection lock. Two decisions with the same model-visible state share
+**one** evaluation (the first to claim the key evaluates it and the rest reuse
+the cache row), so `decisions_labelled` still equals the forward passes and the
+report matches a `--workers 1` run; it records the resolved `workers` and
+`wall_time_ms`. `--progress` prints the measured file count. A position that
+differs only in something the model observation does not carry (the actor's
+permanent-furiten flag, the replay's generator identity) keeps the first label
+recorded for its state hash; when several workers meet such a shared state the
+one that claims it can differ from the serial order, so a corpus that mixes
+those positions may record the other of the two labels.
 
 `--trigger` is the S1 cheap prefilter: a decision whose selected trigger does not
 fire is skipped **before** the forward pass. The accepted names are `book`,
@@ -180,6 +195,55 @@ trusts a saved verdict), appends `--accept`/`--reject` verdicts to
 prints one item's report; `--list` lists every item; `--dry-run` writes no
 dispositions. A queue is never rewritten: the disposition log is append-only and
 the latest verdict per item wins.
+
+## Parallel execution (Q2p)
+
+`AGENTS.md` §5b and `replay-implementation-plan.md` §7.1 require the offline
+stages to use the whole machine. `src/miner/parallel.rs` holds the shared
+contract every implemented stage now uses:
+
+- `--workers N`, default `0`, resolves to every available core
+  (`select`, `extract`, `label`, `transform`); `--workers 1` is the bounded mode
+  for tests, fixtures and debugging, and it is the mode the Q1 harness runs.
+- The unit of work is one replay file (`extract`, `label`) or one base scenario
+  (`transform`), and the per-unit results merge in the **serial** order (file
+  order, base order). Dedupe, the early stop, the caps and every report counter
+  therefore see the sequence a single-threaded run would see, so a parallel run
+  writes the same rows and reports as `--workers 1` apart from the two
+  shared-cache cases listed below.
+- SQLite keeps a single writer, so the stage's connection sits behind
+  `SharedDb`. Only the short statement work happens inside the lock; the
+  expensive part (the replay walk, the model forward pass) runs outside it.
+  `label` additionally shares one evaluation per model-visible state within a
+  run, which is what keeps `decisions_labelled` equal to the forward-pass count
+  and one cache row per unique state.
+- `--progress` prints a phase header (`<stage>: N replay file(s), W worker
+  thread(s)`) and one line per tenth of the shard, so a long run reports
+  measured progress instead of a guess.
+- Each report records the resolved `workers` and the run's `wall_time_ms`
+  alongside its existing counters.
+
+Two documented exceptions, both about a shared label cache row rather than the
+shipped output: `label` keeps the first label recorded for a state hash when
+positions differ only in something the model observation does not carry (the
+actor's permanent-furiten flag, the replay's generator identity), and
+`transform` reports `labels.evaluated`/`labels.cached` as its workers saw the
+cache when two bases produce the same transformed state. The shipped set, the
+rows and every other counter are unaffected.
+
+Q2p evidence (14 cores, 2026-11-18) is recorded in
+[`q2-scale-up-1000.md`](q2-scale-up-1000.md) and
+[`testdata/reports/q2-scale-1k/`](testdata/reports/q2-scale-1k/): the 544-game
+shard extracts in 12 min 28 s and labels in 9 min 26 s on 14 threads (the label
+pass reports 6,412 s CPU over 566 s wall = 11.3 cores busy), the extract rows are
+identical to the serial Q2 pass in every column, and the label pass produces the
+same 40,429 cache rows, 41,009 labels and `label_kind` split. The same property
+is asserted on fixtures by
+`extract::tests::parallel_and_serial_extraction_write_the_same_rows_and_report`,
+`label::run::tests::parallel_and_serial_label_runs_write_the_same_rows_and_report`
+and `variant::tests::a_parallel_stage_matches_the_serial_stage`, and the CLI
+parses the flags on all three commands
+(`tests::the_offline_stages_parse_their_worker_and_progress_flags`).
 
 ## Data root
 
@@ -626,7 +690,8 @@ and upserts one row per reconstructed decision.
 
 ```bash
 cargo run --release --features miner --bin mine_replays -- extract \
-  [--replays DIR] [--family NAME] [--limit N] [--dry-run] [--json]
+  [--replays DIR] [--family NAME] [--limit N] \
+  [--workers N] [--progress] [--dry-run] [--json]
 ```
 
 `decisions` stores:
@@ -652,6 +717,12 @@ Extraction is model-free and can run before or after `label`; `label` reads the
 decision id/state from its own walk and writes the label columns when a row
 exists. The Q2 pack run extracts the selected corpus families only, so a
 100-scenario pack does not pay for 999 games of unrelated state.
+
+`--workers N` (default `0` = every available core, Q2p) walks replay files in
+parallel: a worker walks its own files and upserts their rows under the stage's
+single database lock, and the per-file counts merge in file order. The report
+therefore matches a `--workers 1` run and records the resolved `workers` and
+`wall_time_ms`; `--progress` prints the measured file count.
 
 ## Mortal labeler contract (L1)
 
@@ -1066,6 +1137,7 @@ cargo run --features miner --bin mine_replays -- transform \
   [--queue FILE] [--pack-id ID] [--variants N] [--max-per-base N] \
   [--share F] [--pack-size N] [--min-yield F] [--seed TEXT] \
   [--yield-policy FILE] [--weights MORTAL.safetensors] \
+  [--workers N] [--progress] \
   [--out DIR] [--pack] [--dry-run] [--json]
 
 # The §4.7 rehearsal: generated book puzzles, no corpus or checkpoint.
@@ -1082,6 +1154,17 @@ ship a pack with a pending disposition). `--pack` assembles the bases and the
 gated variants and publishes through P1a, which re-runs the
 source/licence, provenance, answer, spoiler and variant-honesty gate; a
 rehearsal supplies P1a's fixture provenance, so it needs no corpus.
+
+`--workers N` (default `0` = every available core, Q2p) plans and gates bases in
+parallel: each worker transforms its base and re-runs its label outside the
+database lock, and the results merge in base order, where dedupe, the early stop
+and the caps apply exactly as the serial run applies them. The shipped set,
+the rejected list and the report therefore do not depend on the worker count
+(the report records the resolved `workers` and `wall_time_ms`; `--progress`
+prints the base count). One overlap is recorded rather than hidden: two bases
+whose chains produce the same transformed state share one cache row, so
+`labels.evaluated`/`labels.cached` can differ between a serial and a parallel
+run by that overlap while the shipped set stays identical.
 
 ### Outputs
 

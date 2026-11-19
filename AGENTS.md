@@ -207,6 +207,15 @@ testing/initial development or the operator explicitly asks for it. Do not trade
 throughput for quiet defaults: a 500-game labelling or selection pass should use
 all cores.
 
+Status (Q2p, 2026-11-18): every implemented batch stage honours this —
+`select`, `extract`, `label` and `transform` take `--workers N` (default `0` =
+every available core) and `--progress`, parallelise per replay file or base,
+merge in the serial order, and record the resolved worker count and wall time in
+their reports. The shared pool/progress/shared-connection helpers live in
+`src/miner/parallel.rs`, and the contract plus its tests are described in
+`replay-miner-operations.md` ("Parallel execution (Q2p)"). The measured evidence
+for the 544-game extract and label passes is in `q2-scale-up-1000.md`.
+
 ## 6. Visual Work: Do Not Look and Judge; Ask the User
 
 **Rule.** An agent working in this repo must not form a visual, aesthetic, or "does this look right"

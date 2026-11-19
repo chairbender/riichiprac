@@ -69,6 +69,11 @@ pub struct VariantRunOptions {
     pub publish: bool,
     /// Write the bases and variants to the DB (queue runs only).
     pub persist: bool,
+    /// Worker threads for the offline stage. `0` uses every available core; `1`
+    /// is the bounded mode for tests, fixtures and debugging.
+    pub workers: usize,
+    /// Print base/attempt progress to stderr.
+    pub progress: bool,
     /// Build and report without writing anything.
     pub dry_run: bool,
 }
@@ -84,6 +89,8 @@ impl Default for VariantRunOptions {
             generated_at: None,
             publish: false,
             persist: true,
+            workers: 0,
+            progress: false,
             dry_run: false,
         }
     }
@@ -203,6 +210,7 @@ pub fn run_variants(
     }
     let pack_id = options.pack_id.clone().unwrap_or(default_pack_id);
 
+    let started = std::time::Instant::now();
     let cuts = cuts_for(&bases)?;
     let stage = VariantStage {
         config: &options.config,
@@ -214,7 +222,8 @@ pub fn run_variants(
         pack_id: pack_id.clone(),
         generated_at: now.clone(),
     };
-    let outcome = stage.run(&bases)?;
+    let mut outcome = stage.run_with(&bases, options.workers, options.progress)?;
+    outcome.report.wall_time_ms = crate::miner::parallel::elapsed_ms(started);
     let mut report = outcome.report;
     report.notes.push(queue_note);
     for error in base_notes {

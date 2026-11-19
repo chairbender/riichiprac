@@ -46,6 +46,7 @@ pub mod funnel;
 pub mod label;
 pub mod licence;
 pub mod pack;
+pub mod parallel;
 pub mod provenance;
 pub mod qa;
 pub mod select;
@@ -94,6 +95,7 @@ pub use pack::{
     read_manifest_or_default, read_pack, render_pack_report, run_assembly, upsert_manifest_entry,
     verify_hosted_dir, write_games_atomic, write_manifest_atomic,
 };
+pub use parallel::{Progress, SharedDb, elapsed_ms, resolve_workers, worker_pool};
 pub use provenance::{
     AgentKind, AgentSpec, CorpusId, GameProvenance, GeneratorInfo, IdError, LogRef, MatchPlan,
     MatchPlanId, ProvenanceError, ReplayId, RuleProfile, SeedSchedule, ValidationStatus,

@@ -5,8 +5,8 @@
 //! scripted [`StateEvaluator`] and the real L1 label cache, which is the same
 //! code path the real labeler uses with a checkpoint.
 
-use std::cell::Cell;
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use rusqlite::Connection;
 
@@ -15,13 +15,13 @@ use crate::ai::finalize::correct_action_from_info;
 use crate::ai::wasm_bridge::{ActionEvaluation, Evaluation};
 use crate::classifier::{self, Allowed, TransformPolicy};
 use crate::generator::{ScenarioId, support::state_validation::validate_reachable_state};
-use crate::miner::label::cache::LabelCache;
 use crate::miner::label::thresholds::{PercentileConfig, PercentileCuts};
 use crate::miner::label::{LabelError, LabelOptions, ModelIdentity, StateEvaluator};
 use crate::miner::pack::{
     LabelCheck, LabelCheckKind, Pack, PackAuditContext, PackScenario, ScenarioKey, accepted_for,
     audit_pack, find_spoiler, fixture_games, pack_report,
 };
+use crate::miner::parallel::SharedDb;
 use crate::miner::provenance::GameProvenance;
 use crate::miner::select::dedupe::exact_state_hash;
 use crate::miner::storage::migrate;
@@ -215,6 +215,70 @@ fn the_shipped_set_is_reproducible_for_one_seed() {
             .collect::<Vec<_>>()
     };
     assert_eq!(hashes(&one), hashes(&two));
+}
+
+/// Q2p: `--workers 4` must ship, reject and report the same set as the serial
+/// run. The gate results are computed per base in parallel and merged in base
+/// order, so the dedupe, the early stop and the caps see exactly the serial
+/// sequence.
+#[test]
+fn a_parallel_stage_matches_the_serial_stage() {
+    let bases = sample_bases();
+    let config = VariantConfig {
+        variants_per_base: 2,
+        min_yield: 0.0,
+        ..VariantConfig::default()
+    };
+    let serial = run_stage(bases, &config, None);
+    let cuts = empty_cuts();
+    let parallel = VariantStage {
+        config: &config,
+        deps: stage_deps(&cuts, None),
+        pack_id: "test-pack".to_string(),
+        generated_at: STAMP.to_string(),
+    }
+    .run_with(bases, 4, false)
+    .expect("the parallel stage runs");
+
+    assert_eq!(serial.report.workers, 1);
+    assert_eq!(parallel.report.workers, 4);
+    assert!(
+        !parallel.variants.is_empty(),
+        "the rehearsal ships variants"
+    );
+    let ids = |outcome: &super::StageOutcome| {
+        outcome
+            .variants
+            .iter()
+            .map(|record| record.id.to_string())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(ids(&serial), ids(&parallel), "same shipped set, in order");
+    assert_eq!(
+        serial.rejected, parallel.rejected,
+        "same rejected chains, in order"
+    );
+    assert_eq!(
+        serial.report.attempts, parallel.report.attempts,
+        "the early stop is decided in base order"
+    );
+    assert_eq!(serial.report.preserved, parallel.report.preserved);
+    assert_eq!(serial.report.shipped, parallel.report.shipped);
+    assert_eq!(serial.report.pair_yield, parallel.report.pair_yield);
+    assert_eq!(serial.report.disabled_pairs, parallel.report.disabled_pairs);
+    assert_eq!(serial.report.share, parallel.report.share);
+    assert_eq!(serial.report.labels, parallel.report.labels);
+    assert_eq!(serial.report.errors, parallel.report.errors);
+    let comparable = |report: &super::report::VariantReport| {
+        let mut value = serde_json::to_value(report).expect("report json");
+        value.as_object_mut().expect("an object").remove("workers");
+        value
+    };
+    assert_eq!(
+        comparable(&serial.report),
+        comparable(&parallel.report),
+        "the report differs only by the recorded worker count"
+    );
 }
 
 #[test]
@@ -699,7 +763,7 @@ struct ScriptedEvaluator {
     variant_top: String,
     base_gap: f32,
     variant_gap: f32,
-    calls: Cell<usize>,
+    calls: AtomicUsize,
 }
 
 impl ScriptedEvaluator {
@@ -716,7 +780,7 @@ impl ScriptedEvaluator {
             variant_top: variant_top.to_string(),
             base_gap: gap,
             variant_gap: gap,
-            calls: Cell::new(0),
+            calls: AtomicUsize::new(0),
         }
     }
 
@@ -779,7 +843,7 @@ impl StateEvaluator for ScriptedEvaluator {
     }
 
     fn evaluate(&self, state: &GameState) -> Result<Evaluation, LabelError> {
-        self.calls.set(self.calls.get() + 1);
+        self.calls.fetch_add(1, Ordering::Relaxed);
         let hash = exact_state_hash(state);
         if hash == self.base_hash {
             Ok(self.evaluate_with(&self.base_top, self.base_gap, state))
@@ -848,12 +912,9 @@ fn top_action_of(base: &BaseScenario) -> String {
     crate::verdict::mortal_action_for_correct(answer)
 }
 
-fn labeler_and_cache<'a>(
-    evaluator: &'a ScriptedEvaluator,
-    connection: &'a Connection,
-) -> (LabelCache<'a>, LabelOptions) {
-    let _ = evaluator;
-    (LabelCache::new(connection), LabelOptions::default())
+/// The shared miner database the gate labels through, plus the label options.
+fn labeler_db(connection: Connection) -> (SharedDb, LabelOptions) {
+    (SharedDb::new(connection), LabelOptions::default())
 }
 
 #[test]
@@ -889,10 +950,10 @@ fn a_mortal_variant_whose_top_one_flips_is_rejected() {
     let evaluator = ScriptedEvaluator::new(&base, &top, &other, 0.2);
     let connection = Connection::open_in_memory().expect("memory db");
     migrate(&connection).expect("migrate");
-    let (cache, options) = labeler_and_cache(&evaluator, &connection);
+    let (db, options) = labeler_db(connection);
     let labeler = VariantLabeler {
         evaluator: &evaluator,
-        cache: &cache,
+        db: &db,
         options,
     };
     let cuts = empty_cuts();
@@ -920,10 +981,10 @@ fn a_mortal_variant_with_a_stable_top_one_ships_and_uses_the_cache() {
     let evaluator = ScriptedEvaluator::new(&base, &top, &variant_top, 0.2);
     let connection = Connection::open_in_memory().expect("memory db");
     migrate(&connection).expect("migrate");
-    let (cache, options) = labeler_and_cache(&evaluator, &connection);
+    let (db, options) = labeler_db(connection);
     let labeler = VariantLabeler {
         evaluator: &evaluator,
-        cache: &cache,
+        db: &db,
         options,
     };
     let cuts = empty_cuts();
@@ -936,10 +997,14 @@ fn a_mortal_variant_with_a_stable_top_one_ships_and_uses_the_cache() {
 
     // A second gate run over the same transformed state is a cache hit and does
     // not evaluate again.
-    let calls = evaluator.calls.get();
+    let calls = evaluator.calls.load(Ordering::Relaxed);
     let again = super::gate::check(&base, &chain, &deps).expect("the label survives");
     assert_eq!(again.label_use, LabelUse::Cached);
-    assert_eq!(evaluator.calls.get(), calls, "the cache served the label");
+    assert_eq!(
+        evaluator.calls.load(Ordering::Relaxed),
+        calls,
+        "the cache served the label"
+    );
 }
 
 #[test]
@@ -955,10 +1020,10 @@ fn a_mortal_variant_that_leaves_the_close_call_band_is_rejected() {
     evaluator.variant_gap = 1.0;
     let connection = Connection::open_in_memory().expect("memory db");
     migrate(&connection).expect("migrate");
-    let (cache, options) = labeler_and_cache(&evaluator, &connection);
+    let (db, options) = labeler_db(connection);
     let labeler = VariantLabeler {
         evaluator: &evaluator,
-        cache: &cache,
+        db: &db,
         options,
     };
     // Ten tiny gaps and ten large ones: close ≤ 0.005, confident ≥ 5.0.
