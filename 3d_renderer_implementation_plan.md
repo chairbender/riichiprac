@@ -1432,13 +1432,14 @@ tiles, and every quad sits below a tile's top surface — so the depth test, not
 ordering hack, keeps a quad off a tile body. Tests assert all of that
 numerically, including the v13 constants, the band's edge alpha and its anchor.
 
-*Handoff (open).* The look of the board and the contact rim is the user's call
-(AGENTS.md §6): `cd frontend && npm run dev` → `?renderer=3d`. Questions: does
-the board read as the same table as the rendered 2.5D view, do the shadows read
-as contact rather than a drop shadow under a floating tile, and does the
-highlight/tsumogiri pair read as distinct without looking like a bug? The
-waterfall/deal-in motion and the perf HUD are 3D-12/3D-13 and are not in this
-unit.
+*Handoff (accepted 2026-11-18).* The board, the squared wall ring, the closer
+camera, the hand bands and the radial casts were reviewed in the live view over
+several rounds and signed off ("That looks good now"). The private-hand shade
+(3D-18) was rejected in favour of the radial cast shadows (3D-19). The
+waterfall/deal-in motion and the perf HUD remain 3D-12/3D-13; the antialiasing
+and touching-tile seam work is the designated successor task **261118-2243**
+("3D R20: anti-aliasing and white seams between touching tiles"), to be started
+by landing this one with `cc-task land-next`.
 
 **Board handoff follow-up (2026-11-18, same day).** The first render produced
 four layout corrections, all recorded in §2.4's "Board handoff revisions" and
@@ -1932,6 +1933,23 @@ end casts + the human's band + 3 hand casts), one instanced draw. The near wall'
 human's band overlap between 6.8 and 7.7 units from the centre — physically where
 a centre lamp's wall shadow would fall — so that strip reads darker than either
 alone; the hand's own band is untouched.
+
+---
+
+### 3D-20 — Anti-aliasing and white seams between touching tiles
+
+**Goal.** Remove the aliasing on tile silhouettes/bevels and the bright line that
+shows through the 0.3 mm groove where two tiles are in contact, without breaking
+the draw-call budget or the layout's no-overlap invariant.
+
+**Depends on:** 3D-07.
+
+**Deliverables / acceptance:** held in the task body of **261118-2243** ("3D R20:
+anti-aliasing and white seams between touching tiles") until the unit starts, so
+this plan does not duplicate a spec that is still being refined. The plan-level
+constraints bind: no 2.5D-pipeline diff, `drawCalls ≤ 4` in the default scene,
+`measure()` reporting intact, `check-3d-layout.mjs` green, and AGENTS.md §6 (a
+numeric probe or the user's verdict, never an agent's look).
 
 ---
 
