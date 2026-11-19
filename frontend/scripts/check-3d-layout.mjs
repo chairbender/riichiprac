@@ -192,7 +192,7 @@ async function main() {
     ['row gap / bevel', `${formatNumber(C.TILE.gapUnits, 4)} / ${formatNumber(C.TILE.bevelUnits)}`],
     ['mat / compass well', `${C.TABLE.matSizeUnits} / ${C.TABLE.compassWellUnits}`],
     ['wall runs x stacks x tiers', `${C.WALL.runs} x ${C.WALL.stacksPerRun} x ${C.WALL.tiers}`],
-    ['wall ring radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
+    ['wall ring radius / end-run radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.endRunRadiusUnits, 6)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
     ['wall draw end (slot, tiers at seat right)', `${C.WALL.drawEndSlot}, ${C.WALL.drawEndTiers} (${C.WALL.drawEndIsSeatRight})`],
     ['pond rows x columns (+overflow)', `${C.POND.rows} x ${C.POND.columns} (+${C.POND.overflowColumns})`],
     ['pond radii (nearest first)', formatMatrix3(C.POND.rowRadiiUnits)],
@@ -268,6 +268,32 @@ async function main() {
     `${board.wall.length} = ${C.WALL.tileCount} - ${fixture.dora.length}`,
   );
 
+  const runRadiusOk = [0, 1, 2, 3].every((run) => {
+    const expected = L.wallRunRadius(run, fixture.humanSeat);
+    return board.wall
+      .filter((tile) => Math.floor(tile.slot / C.WALL.slotsPerRun) === run)
+      .every((tile) => {
+        const outward = L.seatPoint(run, 0, 1, 0);
+        const radius =
+          tile.pose.position[0] * outward[0] + tile.pose.position[2] * outward[2];
+        return close(radius, expected, 1e-9);
+      });
+  });
+  check(
+    'front/back runs sit on the inset radius, side runs on the ring',
+    runRadiusOk,
+    `end ${formatNumber(C.WALL.endRunRadiusUnits, 4)} / side ${formatNumber(C.WALL.radiusUnits, 4)}`,
+  );
+  check(
+    'a front/back run\u2019s outer face is flush with a side run\u2019s end tile',
+    close(
+      C.WALL.endRunRadiusUnits + C.TILE.heightUnits / 2,
+      C.WALL.runHalfLengthUnits,
+      1e-9,
+    ),
+    `${formatNumber(C.WALL.runHalfLengthUnits, 6)} units`,
+  );
+
   const farSeat = (humanSeat + 2) % C.SEATS.count;
   const doraTiles = board.foreground.filter((tile) => tile.zone === 'dora');
   check(
@@ -277,7 +303,7 @@ async function main() {
       const radius =
         tile.pose.position[0] * outward[0] + tile.pose.position[2] * outward[2];
       return (
-        close(radius, C.WALL.radiusUnits) &&
+        close(radius, L.wallRunRadius(farSeat, humanSeat)) &&
         close(tile.pose.position[1], L.wallTierHeightUnits(1)) &&
         tile.pose.tiltDeg === -90
       );

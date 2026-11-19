@@ -333,11 +333,26 @@ and they supersede the reference values above where they differ.
   is the one formula now (`thickness / 2` bottom, `tierStepUnits + thickness / 2`
   top); the layout, the dora indicators and `hero.ts` all call it.
 - **Hands sit much closer to the wall.** `HAND.backRadiusUnits` 10.6 → **8.35**,
-  i.e. the hand's front edge is 30 mm behind the wall's outer face instead of
-  92 mm. `MELD.rowRadiusUnits` follows the hand, and extra meld rows now step
-  **toward the player** (`+index * rowPitch`) — the doc always said "nearer the
-  player", the code stepped inward, and with the hand at 8.35 that would put rows
-  2–3 inside the wall ring (the overlap the change surfaced).
+  i.e. the hand's front edge is 24 mm in front of a **side** run's outer face
+  instead of 24 mm in front of the mat edge. That is the floor: a side run
+  occupies the band beside every seat's hand, so the hand cannot come further in
+  without the two overlapping (the layout gate caught exactly that during the
+  wall-ring change). `MELD.rowRadiusUnits` follows the hand, and extra meld rows
+  now step **toward the player** (`+index * rowPitch`) — the doc always said
+  "nearer the player", the code stepped inward, and with the hand at 8.35 that
+  would put rows 2–3 inside the wall ring (the overlap the change surfaced).
+- **The wall ring is squared.** The front and back runs (the human's own edge and
+  the far edge) moved from the ring radius 7.0 to **`WALL.endRunRadiusUnits`
+  5.9607**, so their outer face is flush with a side run's end tile at
+  `WALL.runHalfLengthUnits` 6.4607 — "their outside edge lines up with the edge
+  of the left/right walls". The side runs stay on 7.0. All four cannot be inset:
+  a 17-stack run already spans its whole side of the ring, so a smaller square
+  would overlap two stacks at every corner. Consequence for the framing: the
+  board's vertical extremes are the **hands** (z ±8.94) and the side players'
+  meld rows, not the walls, so the camera stays at 55.56 at 16:9 — the wall move
+  is composition, not extra zoom. `wallRunRadius(run, humanSeat)` is the one rule
+  (the inset follows the human, so it also moves when the human seat changes),
+  and the dora indicators ride the far run's inset radius.
 - **The fit subject is the board, not the mat.** `framingPoints` is the tile
   corners; the 25-unit mat is no longer in the fit, so the mat crops and the
   felt (a procedural square sized from the frame) runs off the edges. The
@@ -1387,14 +1402,17 @@ waterfall/deal-in motion and the perf HUD are 3D-12/3D-13 and are not in this
 unit.
 
 **Board handoff follow-up (2026-11-18, same day).** The first render produced
-three layout corrections, all recorded in §2.4's "Board handoff revisions" and
+four layout corrections, all recorded in §2.4's "Board handoff revisions" and
 landed here: the wall's top tier sits on the bottom tier (the thickness was
 counted twice, so the top row floated), the hands moved from radius 10.6 to 8.35
-(and meld rows step toward the player so they clear the wall), and the camera
-frames the board rather than the mat with the 76-unit floor deleted — 16:9 now
-solves to 55.56, the tiles are ~37 % larger and the human hand sits 3.82 % above
-the bottom edge. `check-3d-layout.mjs` gates all three numbers; the look is
-still the user's call at the same URL.
+(and meld rows step toward the player so they clear the wall), the camera frames
+the board rather than the mat with the 76-unit floor deleted — 16:9 now solves to
+55.56, the tiles are ~37 % larger and the human hand sits 3.82 % above the bottom
+edge — and the front/back wall runs are inset to 5.9607 so the ring's front and
+back edges line up with the side runs' end tiles (a composition change; the
+camera is unchanged because the hands, not the walls, are the vertical extremes).
+`check-3d-layout.mjs` gates all of it, including the hand's bottom sliver and the
+two run radii; the look is still the user's call at the same URL.
 
 ---
 

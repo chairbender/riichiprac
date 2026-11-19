@@ -36,6 +36,7 @@ import {
   poseMatrix,
   seatPoint,
   frameForAspect,
+  wallRunRadius,
   wallTierHeightUnits,
 } from './boardLayout';
 import type { TilePose, Vec3 } from './boardLayout';
@@ -147,7 +148,14 @@ export const HERO_SLOTS: readonly HeroSlot[] = [
     label: 'dora indicator (far wall, face-up)',
     face: '1z',
     faceUp: true,
-    pose: lyingHeroPose(2, WALL.radiusUnits, WALL_TOP_TIER_UNITS, wallStackW(DORA_STACK)),
+    // The hero view is the human-at-seat-0 board, where run 2 is the far (inset)
+  // run; `boardLayout.wallRunRadius` is the same rule the layout applies.
+  pose: lyingHeroPose(
+    2,
+    wallRunRadius(2, 0),
+    WALL_TOP_TIER_UNITS,
+    wallStackW(DORA_STACK),
+  ),
   },
   {
     id: 'back',
@@ -157,7 +165,12 @@ export const HERO_SLOTS: readonly HeroSlot[] = [
     pose: {
       // The far seat's frame: its right is -X, which is what turns the wall run
       // (and the back's 180° yaw) the same way the board does.
-      position: seatPoint(2, wallStackW(BACK_STACK), WALL.radiusUnits, WALL_TOP_TIER_UNITS),
+      position: seatPoint(
+        2,
+        wallStackW(BACK_STACK),
+        wallRunRadius(2, 0),
+        WALL_TOP_TIER_UNITS,
+      ),
       yawDeg: 180,
       tiltDeg: 90,
       rollDeg: 0,

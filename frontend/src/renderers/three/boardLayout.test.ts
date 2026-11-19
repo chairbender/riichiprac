@@ -25,6 +25,7 @@ import {
   projectToPixels,
   referenceFrame,
   seatPoint,
+  wallRunRadius,
   wallTierHeightUnits,
   type BoardTile,
 } from './boardLayout';
@@ -339,6 +340,54 @@ describe('3D board layout: wall, dora and sticks', () => {
     }
   });
 
+  it('insets the front and back runs so the ring\u2019s edges line up', () => {
+    // The human's and the far runs are the end runs; the other two are sides.
+    expect(wallRunRadius(0, 0)).toBe(WALL.endRunRadiusUnits);
+    expect(wallRunRadius(2, 0)).toBe(WALL.endRunRadiusUnits);
+    expect(wallRunRadius(1, 0)).toBe(WALL.radiusUnits);
+    expect(wallRunRadius(3, 0)).toBe(WALL.radiusUnits);
+    // The inset follows the human: with the human at seat 1, runs 1 and 3 are
+    // the end runs.
+    expect(wallRunRadius(1, 1)).toBe(WALL.endRunRadiusUnits);
+    expect(wallRunRadius(3, 1)).toBe(WALL.endRunRadiusUnits);
+    expect(wallRunRadius(0, 1)).toBe(WALL.radiusUnits);
+
+    // Every wall tile sits on its own run's radius.
+    for (const tile of board.wall) {
+      const run = Math.floor(tile.slot / WALL.slotsPerRun);
+      expect(radialUnits(run as Seat, tile.pose.position)).toBeCloseTo(
+        wallRunRadius(run as Seat, fixture.humanSeat),
+        9,
+      );
+    }
+
+    // The near end run's outer face is flush with a side run's end tile in
+    // world space: both are `WALL.runHalfLengthUnits` from the centre line.
+    const nearRun = board.wall.filter(
+      (tile) =>
+        Math.floor(tile.slot / WALL.slotsPerRun) === fixture.humanSeat &&
+        tile.slot % WALL.tiers === 0,
+    );
+    expect(nearRun.length).toBeGreaterThan(0);
+    const tile = nearRun[0];
+    expect(tile.pose.position[2] + TILE.heightUnits / 2).toBeCloseTo(
+      WALL.runHalfLengthUnits,
+      9,
+    );
+    // Side runs still reach further out than that, which is why the hand ring
+    // cannot move in past them.
+    const sideRun = board.wall.find(
+      (entry) =>
+        Math.floor(entry.slot / WALL.slotsPerRun) ===
+        ((fixture.humanSeat + 1) % 4),
+    );
+    expect(sideRun).toBeDefined();
+    if (!sideRun) return;
+    expect(Math.abs(sideRun.pose.position[0]) + TILE.heightUnits / 2).toBeGreaterThan(
+      WALL.runHalfLengthUnits,
+    );
+  });
+
   it('reveals dora on the far wall\u2019s top tier, replacing wall tiles', () => {
     const farSeat = ((fixture.humanSeat + 2) % 4) as Seat;
     const dora = board.foreground.filter((tile) => tile.zone === 'dora');
@@ -346,8 +395,9 @@ describe('3D board layout: wall, dora and sticks', () => {
     dora.forEach((tile, index) => {
       expect(tile.pose.tiltDeg).toBe(-90);
       expect(tile.faceUp).toBe(true);
+      // The far run is an inset end run, not a side run.
       expect(radialUnits(farSeat, tile.pose.position)).toBeCloseTo(
-        WALL.radiusUnits,
+        wallRunRadius(farSeat, fixture.humanSeat),
         9,
       );
       expect(tile.pose.position[1]).toBeCloseTo(wallTierHeightUnits(1), 9);

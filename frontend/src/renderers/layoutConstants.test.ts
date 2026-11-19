@@ -69,6 +69,31 @@ describe('3D layout constants: wall', () => {
     expect(WALL.runSpanUnits).toBeCloseTo(12.932142857, 8);
   });
 
+  it('squares the ring: the end runs are inset, the side runs are not', () => {
+    // A run's end tile reaches `runHalfLengthUnits` from the table centre line.
+    expect(WALL.runHalfLengthUnits).toBeCloseTo(
+      ((WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits + TILE.widthUnits / 2,
+      12,
+    );
+    expect(WALL.runHalfLengthUnits).toBeCloseTo(6.4607142857, 9);
+    // The front/back runs' outer face is flush with a side run's end tile, so
+    // the ring's front and back edges line up with the side walls.
+    expect(WALL.endRunRadiusUnits).toBeCloseTo(
+      WALL.runHalfLengthUnits - TILE.heightUnits / 2,
+      12,
+    );
+    expect(
+      WALL.endRunRadiusUnits + TILE.heightUnits / 2 - WALL.runHalfLengthUnits,
+    ).toBeCloseTo(0, 12);
+    // The protrusion the inset removes: the side runs still reach further out
+    // than the end runs' faces, which is the 1-unit band a square ring cannot
+    // fill without the corner stacks overlapping.
+    expect(WALL.radiusUnits + TILE.heightUnits / 2).toBeGreaterThan(
+      WALL.runHalfLengthUnits,
+    );
+    expect(WALL.endRunRadiusUnits).toBeLessThan(WALL.radiusUnits);
+  });
+
   it('omits each run\u2019s draw-end top tile', () => {
     expect(WALL.drawEndSlot).toBe(16);
     expect(WALL.drawEndTiers).toBe(1);
@@ -105,14 +130,19 @@ describe('3D layout constants: human hand', () => {
     expect(HAND.drawGapUnits).toBe(0.2625);
     expect(HAND.drawOffsetUnits).toBeCloseTo(5.576785714, 9);
     // The board handoff (2026-11-18) moved the hand in from the reference's
-    // 10.6 so it sits 30 mm behind the wall ring, not a hand's width away.
-    expect(HAND.backRadiusUnits).toBe(8.35);
-    expect(HAND.backRadiusUnits - TILE.thicknessUnits / 2).toBeGreaterThan(
-      WALL.radiusUnits,
+    // 10.6. Its floor is a *side* run's outer face, because a side run occupies
+    // the band beside the hand: radius + tileHeight / 2 + wallGapUnits.
+    expect(HAND.backRadiusUnits).toBeCloseTo(
+      WALL.radiusUnits + TILE.heightUnits / 2 + HAND.wallGapUnits,
+      12,
     );
-    expect(
-      HAND.backRadiusUnits - TILE.thicknessUnits / 2 - WALL.radiusUnits,
-    ).toBeLessThan(1.5);
+    expect(HAND.backRadiusUnits).toBeCloseTo(8.35, 12);
+    expect(HAND.wallGapUnits).toBeGreaterThan(0.5);
+    expect(HAND.wallGapUnits).toBeLessThan(1.2);
+    // The near wall is an inset end run, so it sits further behind the hand.
+    expect(HAND.backRadiusUnits).toBeGreaterThan(
+      WALL.endRunRadiusUnits + TILE.heightUnits / 2,
+    );
   });
 
   it('uses the signed-off 40\u00b0 recline with a numeric readability gate', () => {
@@ -208,10 +238,13 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
       MELD.maxRowUnits,
     );
     // Rows step toward the player, so the *first* row is the one nearest the
-    // wall: it must clear the wall's outer face, and the last row must stay on
-    // the mat.
+    // wall: it must clear both the end run's outer face and the side run's, and
+    // the last row must stay on the mat.
     expect(MELD.rowRadiusUnits - TILE.heightUnits / 2).toBeGreaterThan(
-      WALL.radiusUnits + TILE.thicknessUnits / 2,
+      WALL.radiusUnits + TILE.heightUnits / 2,
+    );
+    expect(MELD.rowRadiusUnits - TILE.heightUnits / 2).toBeGreaterThan(
+      WALL.endRunRadiusUnits + TILE.heightUnits / 2,
     );
     expect(
       MELD.rowRadiusUnits +

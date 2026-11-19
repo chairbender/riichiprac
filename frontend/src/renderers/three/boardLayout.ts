@@ -355,6 +355,22 @@ export function orientedBoxesIntersect(
   return true;
 }
 
+/**
+ * A wall run's centre-line radius.
+ *
+ * The runs at the human's own edge and the far edge are the **end** runs: they
+ * are inset so their outer face is flush with a side run's end tile
+ * ({@link WALL.endRunRadiusUnits}). The two side runs stay on the committed
+ * ring. Everything that places a wall tile — the decorative runs and the dora
+ * indicators — goes through this function, so the two can never disagree.
+ */
+export function wallRunRadius(run: Seat, humanSeat: Seat): number {
+  const farSeat = ((humanSeat + 2) % SEATS.count) as Seat;
+  return run === humanSeat || run === farSeat
+    ? WALL.endRunRadiusUnits
+    : WALL.radiusUnits;
+}
+
 /** Is `slot` under a dora indicator on the far run's top tier? */
 function doraStack(index: number): number {
   return WALL.drawEndSlot - DORA.firstStackFromDrawEnd - index;
@@ -588,7 +604,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
       lyingPose(
         farSeat,
         (doraStack(index) - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits,
-        WALL.radiusUnits,
+        wallRunRadius(farSeat, humanSeat),
         wallTierHeightUnits(DORA.tier),
         // The far wall's own frame would turn the glyph away from the viewer, so
         // a revealed indicator is oriented the human's way: it is the one wall
@@ -635,7 +651,12 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
         tile,
         null,
         {
-          position: seatPoint(run as Seat, w, WALL.radiusUnits, height),
+          position: seatPoint(
+            run as Seat,
+            w,
+            wallRunRadius(run as Seat, humanSeat),
+            height,
+          ),
           yawDeg: seatYawDeg(run as Seat),
           tiltDeg: 90,
           rollDeg: 0,
