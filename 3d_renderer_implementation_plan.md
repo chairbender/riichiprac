@@ -1678,11 +1678,12 @@ out' and then painted on … use the same approach we used with the tiles."
 - **The pip is carved and painted.** `three/stickMaps.ts` generates the same
   three-part face the tiles use for their engraving — albedo with the paint
   mixed in, a tangent normal of the recess wall and a roughness map — for a
-  3 mm pip (42 % of the bar's width, the sprite's own proportion) sunk 0.3 mm
-  through a 0.25 mm wall, with a baked 18 % cavity darkening. The face is the
+  3 mm pip (42 % of the bar's width, the sprite's own proportion) sunk 0.4 mm
+  through a 0.5 mm wall, with a baked 22 % cavity darkening (0.25 mm would be
+  sub-pixel at the stick's ~19 px on-screen width). The face is the
   atlas's top half and the rounded side wall its plain-ivory bottom half, so
   one material and one instanced draw still cover the whole bar. There is no
-  POM march: the pip is 0.3 mm deep, which is under half a pixel of parallax at
+  POM march: the pip is 0.4 mm deep, which is under half a pixel of parallax at
   the reference angle, and the normal map carries the carve; the tiles' 0.55 mm
   glyph wall is a different scale. `sticks.test.ts` pins the bar's extents, the
   rounded-edge inset, the pip's albedo/normal/roughness, and the one draw.

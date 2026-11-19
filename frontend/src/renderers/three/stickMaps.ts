@@ -22,9 +22,9 @@
  * half, sampled at a plain ivory texel. One material therefore covers the whole
  * bar without wrapping the pip around its edge.
  *
- * **No parallax march.** The pip is 0.3 mm deep on a 3.5 mm bar. At the
+ * **No parallax march.** The pip is 0.4 mm deep on a 3.5 mm bar. At the
  * reference camera's ~40° the displacement of a surface point is
- * 0.3 × tan(40°) ≈ 0.25 mm, under half a pixel on the finished stick, so the
+ * 0.4 × tan(40°) ≈ 0.34 mm, under half a pixel on the finished stick, so the
  * normal map carries the carve and POM would only add cost. The tiles' 0.55 mm
  * glyph wall is a different scale; this is the "shading only" end of the tile
  * carve, which the 2.5D decals already ship.
@@ -37,12 +37,16 @@ export const STICK_CARVE = {
   /** A 3 mm pip on a 7 mm bar: the sprite's own proportion (42 % of the width). */
   pipDiameterMm: 3,
   pipRadiusUnits: 3 / 2 / UNIT_MM,
-  /** The bevelled wall between the painted floor and the face: 0.25 mm. */
-  wallMm: 0.25,
-  wallUnits: 0.25 / UNIT_MM,
-  /** The engraving's depth: 0.3 mm (the tile carve is 0.55 mm). */
-  depthMm: 0.3,
-  depthUnits: 0.3 / UNIT_MM,
+  /**
+   * The bevelled wall between the painted floor and the face. 0.5 mm is
+   * generous for a moulded pip but keeps the recess visible at the stick's
+   * on-screen width (~19 px); at 0.25 mm the whole wall is sub-pixel.
+   */
+  wallMm: 0.5,
+  wallUnits: 0.5 / UNIT_MM,
+  /** The engraving's depth: 0.4 mm (the tile carve is 0.55 mm). */
+  depthMm: 0.4,
+  depthUnits: 0.4 / UNIT_MM,
   /** The sprite's palette. */
   bodyRgb: [248, 249, 250] as const,
   paintRgb: [224, 49, 49] as const,
@@ -51,7 +55,7 @@ export const STICK_CARVE = {
   wallRoughness: 0.32,
   paintRoughness: 0.1,
   /** The cavity darkening baked into the albedo: 18 % at the deepest point. */
-  cavityStrength: 0.18,
+  cavityStrength: 0.22,
   /** The procedural atlas, in texels (power of two for mipmaps). */
   textureWidth: 256,
   textureHeight: 256,
