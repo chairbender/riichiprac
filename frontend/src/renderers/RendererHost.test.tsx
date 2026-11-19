@@ -15,6 +15,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
+  CarveCapture,
+  CarveReport,
   CompassRect,
   HeroCapture,
   HeroReport,
@@ -65,6 +67,8 @@ const hostMock = vi.hoisted(() => {
     fail: Error | null;
     report: unknown;
     captures: unknown[];
+    carveReport: unknown;
+    carveCaptures: unknown[];
     rects: HitRect[];
     compass: CompassRect | null;
     hitRectCalls: number;
@@ -81,6 +85,8 @@ const hostMock = vi.hoisted(() => {
     fail: null,
     report: null,
     captures: [],
+    carveReport: null,
+    carveCaptures: [],
     rects: [],
     compass: null,
     hitRectCalls: 0,
@@ -123,6 +129,8 @@ const hostMock = vi.hoisted(() => {
       measure: () => stats,
       heroReport: () => state.report as never,
       heroCaptures: () => state.captures as never,
+      carveReport: () => state.carveReport as never,
+      carveCaptures: () => state.carveCaptures as never,
       dispose: () => {
         if (disposed) return;
         disposed = true;
@@ -191,6 +199,8 @@ beforeEach(() => {
     fail: null,
     report: null,
     captures: [],
+    carveReport: null,
+    carveCaptures: [],
     rects: [],
     compass: null,
     hitRectCalls: 0,
@@ -688,5 +698,116 @@ describe('RendererHost hero debug view (3D-05)', () => {
       expect(screen.getByText(/tile shader failed to compile or link/)).toBeTruthy(),
     );
     expect(screen.getByText('fallback table')).toBeTruthy();
+  });
+});
+
+function carveReportFixture(): CarveReport {
+  return {
+    tier: 'high',
+    debug: 'shadow',
+    pomSteps: 12,
+    shadowSteps: 4,
+    shadowStrength: 0.45,
+    shadowBias: 0.02,
+    shadowSoftness: 0.35,
+    carveDepthMm: 0.55,
+    heightScale: 0.25,
+    maxParallaxTexels: 8,
+    shadowMaxTexels: 6,
+    parallax: {
+      id: 'parallax:board:meld-1-2',
+      label: 'meld seat 1 #2',
+      angleDeg: 47.98,
+      texels: 2.18,
+      clamped: false,
+    },
+    shadow: {
+      id: 'shadow:board:dora-0',
+      label: 'dora #0',
+      angleDeg: 35.03,
+      texels: 5.51,
+      clamped: false,
+    },
+  };
+}
+
+describe('RendererHost carve debug view (3D-10)', () => {
+  it('prints the live step counts and the active mode’s numeric legend', async () => {
+    hostMock.state.carveReport = carveReportFixture();
+    const { container } = render(
+      <RendererHost snapshot={snapshot()} debug="shadow" fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    expect(screen.getByText('Carve debug · shadow (code 6)')).toBeTruthy();
+    expect(container.querySelector('[data-stat="pom-steps"]')?.textContent).toBe('12');
+    expect(container.querySelector('[data-stat="shadow-steps"]')?.textContent).toBe('4');
+    expect(screen.getByText(/key visibility \(1 lit, 0 fully occluded\)/)).toBeTruthy();
+    expect(screen.getByText('47.98°')).toBeTruthy();
+    expect(screen.getByText('2.18')).toBeTruthy();
+    expect(screen.getByText('35.03°')).toBeTruthy();
+    expect(screen.getByText('5.51')).toBeTruthy();
+    expect(screen.getByText(/bias 0\.020/)).toBeTruthy();
+  });
+
+  it('prints each query mode’s legend, including the two kill switches', async () => {
+    const cases: [string, RegExp][] = [
+      ['albedo', /pigment \(sRGB atlas sample\)/],
+      ['height', /1 = open face, 0 = the carve floor/],
+      ['normal', /tangent normal × 0\.5/],
+      ['steps', /depth steps taken/],
+      ['flags', /R = face-up/],
+      ['pom-off', /depth steps 0/],
+      ['shadow-off', /shadow steps 0/],
+      ['wireframe', /wireframe on/],
+    ];
+    for (const [mode, legend] of cases) {
+      hostMock.state.carveReport = { ...carveReportFixture(), debug: mode as never };
+      const { unmount } = render(
+        <RendererHost snapshot={snapshot()} debug={mode as never} fallback={fallbackTable()} />,
+      );
+      await waitFor(() => expect(hostMock.state.live).toBe(1));
+      expect(screen.getByText(legend), mode).toBeTruthy();
+      unmount();
+      cleanup();
+    }
+  });
+
+  it('exports the 4K state sheets on demand', async () => {
+    hostMock.state.carveReport = carveReportFixture();
+    hostMock.state.carveCaptures = [
+      {
+        name: 'carve-board-states.png',
+        pngDataUrl: 'data:image/png;base64,AA==',
+        width: 3840,
+        height: 2160,
+      },
+      {
+        name: 'carve-pond-states.png',
+        pngDataUrl: 'data:image/png;base64,AA==',
+        width: 3840,
+        height: 2160,
+      },
+    ] as CarveCapture[];
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    render(<RendererHost snapshot={snapshot()} debug="shadow" fallback={fallbackTable()} />);
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    const button = screen.getByRole('button', { name: /Export carve sheets/ });
+    act(() => {
+      button.click();
+    });
+
+    expect(click).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/2 4K state sheets downloaded/)).toBeTruthy();
+  });
+
+  it('renders no carve panel without a debug mode', async () => {
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    expect(screen.queryByText(/Carve debug/)).toBeNull();
   });
 });

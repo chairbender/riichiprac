@@ -536,7 +536,7 @@ expressed as `min(devicePixelRatio, 2)` **and** an area limit:
 
 | Tier | Backing store | POM steps | Shadow march | DPR cap | Target |
 | --- | --- | --- | --- | --- | --- |
-| high (desktop) | ≤ 8.29 MP | 12 | 3 | 2.0 | 60 fps (16.7 ms) |
+| high (desktop) | ≤ 8.29 MP | 12 | 4 | 2.0 | 60 fps (16.7 ms) |
 | balanced | ≤ 4.67 MP | 8 | 2 | 1.5 | 60 fps |
 | compat (mobile / weak) | ≤ 2.07 MP | 0 (normal + AO only) | 0 | 1.0 | 30 fps floor (33 ms) |
 
@@ -546,6 +546,11 @@ imply at the cap are 4 x (colour 4 B + depth 3 B) = 232 MB against 58 MB, i.e.
 +174 MB — buffers, not fill: the fragment shader (and so the POM march) still
 runs once per pixel. `capabilities.backingStoreBytes(pixels, antialias)` states
 the numbers and a unit test pins them.
+
+**Self-shadow step count (3D-10, 2026-11-19).** This table originally said
+3 / 2 / 0 for the shadow march, written before the shader existed. 3D-10's
+deliverable, 3D-S1's fallback and the unit's gate all name **4 / 2 / 0**, so the
+table now matches the shipped `SHADOW_STEPS`; see 3D-10's as-built note.
 
 Draw calls: **5 in steady state** (tiles, contact shadows, riichi sticks, the
 physical compass plate, felt) and a hard ceiling of **12** including debug.
@@ -1792,6 +1797,111 @@ observable, and lock the per-tier step counts against the measured budget.
   whether the shadow is too strong on the small glyphs. Record verdict.
 
 **Gate:** frontend gate + user verdict.
+
+**As built (3D-10, 2026-11-19).** Files: `three/materials/tile.frag.ts` (the
+light-space march, the `shadow` debug view), `three/tileMaterial.ts`
+(`SHADOW_STEPS` 4/2/0, `SHADOW_MAX_STEPS` 8, `SHADOW_CALIBRATION`, the shadow
+uniforms and handle controls, `shadowStepsFor`, `shadowReachTexels`),
+`three/carveReport.ts` (the pure worst-case readings),
+`three/{carveReport,carveShadow,debugPath}.test.ts`, `contract.ts` (`DEBUG_MODES`
+gains `shadow` and `shadow-off`, `RendererStats.shadowSteps`, `CarveReport` /
+`CarveCapture`, the two optional renderer methods), `capabilities.ts`,
+`debugLegend.ts` (new, pure: the codes plus each mode's numeric legend),
+`Scene.ts` (`measure().shadowSteps`, `carveReport()`, `carveCaptures()`, the
+macro camera), `RendererHost.tsx` / `.css` (the carve HUD), and
+`RendererHost.test.tsx`. No 2.5D file, no committed asset and no layout constant
+changed; `POM_MAX_TEXELS` stays 8.
+
+*The march.* After the depth march resolves the plate UV, the fragment walks
+toward the key in the plate's tangent frame: at step `t` the ray's normalized
+depth is `surfaceDepth - t`, and a sampled height above it occludes. The reach is
+the same plate/cell conversion as the parallax offset (physical carve depth
+through the key's tangent angle), clamped to 6 texels — **inside** the 8-texel
+parallax gate. The term multiplies the key irradiance only (fill and ambient are
+not shadowed); the open face can never shadow itself because its ray starts at
+depth 0 and the bias (0.02 normalized = 0.011 mm) is above the map's
+quantization. `uShadowSteps = 0` skips the block entirely, so `compat` and
+`?debug=shadow-off` are the unshadowed 3D-05 path.
+
+*Calibration numbers.* `SHADOW_CALIBRATION` = depth 0.55 mm (the physical groove,
+not the 0.25 POM displacement scale), strength **0.45**, bias **0.02**,
+softness **0.35** (0.19 mm), reach clamp **6 texels**. An offline model of the
+march over the committed `1p` height channel (same arithmetic, 4 steps) reads:
+
+| attitude | key angle | reach | open face visibility | groove floor visibility | carved px touched | whole-cell key loss |
+| --- | --- | --- | --- | --- | --- | --- |
+| human hand (reclined 40°) | 33.15° | 5.03 px | 1.0000 | 0.932 | 18.3 % | 1.95 % |
+| pond (lying) | 35.03° | 5.39 px | 1.0000 | 0.918 | 20.4 % | 2.34 % |
+| dora (far wall) | 35.03° | 5.39 px | 1.0000 | 0.918 | 20.4 % | 2.34 % |
+
+So the term is a groove effect with no acne on the open face; a floor pixel that
+is beside a lit wall loses at most 0.45 of the key (≈ 31 % of the pixel's total
+irradiance, since the key is ≈ 70 % of it). The board's worst readings at all
+seven supported aspects are shadow 35.03° → **5.51 texels** (the dora) and
+parallax 47.98° → **2.18 texels** (a far meld at 4:3), both under their clamps;
+`carveReport.test.ts` prints the per-aspect table.
+
+*Debug modes.* `?debug=albedo|height|normal|steps|flags|shadow|pom-off|
+shadow-off|wireframe` (plus `hero`) mount the real table. `shadow` is the new
+false-colour view: R = the key's visibility (1 lit, 0 occluded), G = the shadow
+term. Each mode has one numeric legend in `debugLegend.ts`, printed in the carve
+HUD together with the live tier, both step counts, the clamp values and the two
+worst reaches. The HUD is `aria-label="3D carve measurements"` in the top-right
+corner (the hero panel keeps the bottom-left). `debugPath.test.ts` pins that the
+shader's debug chain assigns only `colour` (the flood property), that every mode
+has a legend whose code matches the shader, and that `boardLayout.ts` /
+`hitTest.ts` / `Scene.syncState` / `Scene.hitRects` never read a debug mode.
+
+*Handoff export.* `carveCaptures()` renders a 4K (3840 × 2160 across the 2 x 2
+matrix) labelled sheet per view: four panels = depth 0 / the tier's count, each
+with the self-shadow off / its count. The board view exports three —
+`carve-board-states.png`, `carve-pond-states.png`, `carve-wall-states.png` (the
+last two are macro shots down the board's own incidence ray) — and the hero view
+exports `carve-hero-states.png`. Export always shades normally (a false-colour
+debug mode is temporarily cleared) and restores the live state afterwards.
+Verified end-to-end in a real browser through a direct scene probe (no app
+overlay): the three board sheets come out 3840 × 2224 (the extra 64 px is the
+panel captions) at 4.3 / 6.7 / 4.6 MB, and the pond sheet's four quadrant mean
+lumas are 116.80 / 117.41 / 116.68 / 117.32 — i.e. the self-shadow is darker by
+0.12 and 0.09 at the two depth counts, and depth 12 is brighter by 0.61 / 0.64
+than depth 0. The matrix changes exactly the two uniforms it says it does.
+
+*Real-browser checks (Chrome + ANGLE/SwiftShader).* The hero view's probes all
+pass with the shadow on: face ivory `#f6f0ec` vs `#f5f0eb` (ΔE 0.63), blue back
+ΔE 0.00, paint and bevel probes pass, and the POM-off comparison is within
+tolerance. The carve HUD reads depth 12 / shadow 4, parallax worst 44.65° → 1.94,
+shadow worst 35.03° → 5.51. `?debug=shadow` renders the board with every open
+face at R = visibility 1 (the sampled pixels read luma 54, i.e. pure red), and
+`node scripts/check-3d-seams.mjs --debug=pom-off` passes on a full board, so the
+0-step baseline is still the seam gate's baseline.
+
+A real A/B (the fixture board at 1366 × 768, MSAA on) between the lit view and
+`?debug=shadow-off` measures the term itself: **13,627 px differ (1.30 % of the
+frame), every one darker with the self-shadow on, mean |Δluma| 4.68 over the
+changed pixels and max 19.1**; the other 98.7 % of the frame is byte-identical.
+That is the groove-only, key-only effect the offline model predicts, rendered by
+the shipped shader rather than modelled.
+
+*Handoff (accepted 2026-11-19).* The user reviewed the live board and the four
+4K sheets (`?renderer=3d` against `?debug=shadow-off`, plus the exported state
+matrix) and recorded the verdict **"Looks fine."** That accepts the carve with
+the self-shadow at the shipped calibration — strength 0.45, 4 steps at `high`,
+6-texel reach — and answers both named questions in the affirmative: the ink
+reads beside a lit near wall (the groove shadow is visible where the key crosses
+the wall) and the self-shadow does not muddy the small glyphs. No calibration
+change was requested, so `SHADOW_CALIBRATION` and `SHADOW_STEPS` stand as
+measured above. The named questions, for the record, were: **(1)** does the ink
+read behind a lit near wall — i.e. is a groove's shadow visible where the key
+crosses the wall, or does the paint look flat? **(2)** is the self-shadow too
+strong on the small glyphs — do the thin strokes read muddy rather than
+engraved? The live A/B needs no image: `?debug=pom-off` is carve off,
+`?debug=shadow-off` is a lit carve with no self-shadow.
+
+One follow-up recorded, not changed: the shader still integrates against
+**0.55 mm** (3D-05's calibration) while the only surviving carve manifest,
+`relief3d.json`, is **0.495 mm** deep. `tileMaterial.ts` documents the
+difference; aligning it would shorten both marches ~10% and is a calibration
+decision for a later unit, not a drive-by edit.
 
 ---
 

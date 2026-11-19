@@ -171,6 +171,16 @@
   letter-spacing: 0.02em;
 }
 
+/* The 3D-10 carve panel: the same dense debug chrome as the hero panel, in the
+   opposite corner so the two can be open together in the hero view. */
+.renderer-3d-carve {
+  top: 12px;
+  right: 12px;
+  bottom: auto;
+  left: auto;
+  max-width: min(560px, calc(100% - 24px));
+}
+
 .renderer-3d-hero-note {
   margin: 6px 0 0;
   color: #b8c4d2;

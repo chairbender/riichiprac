@@ -23,6 +23,7 @@ import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } f
 import type { ReactNode } from 'react';
 import { antiAliasFor, probeCapabilities } from './capabilities';
 import type {
+  CarveReport,
   CompassRect,
   DebugMode,
   HandTileRef,
@@ -32,6 +33,8 @@ import type {
   TableRenderer,
   TableSnapshot,
 } from './contract';
+import { legendFor } from './debugLegend';
+import type { DebugLegend } from './debugLegend';
 import {
   BOARD_FAILED_EVENT,
   BOARD_READY_EVENT,
@@ -277,6 +280,98 @@ function downloadDataUrl(name: string, dataUrl: string): void {
 }
 
 /**
+ * The 3D-10 carve HUD: the live step counts, the two clamped reaches, each
+ * debug mode's channel legend, and the handoff export.
+ *
+ * It exists so a debug view is a *measurement*: the legend says which channel is
+ * what and the numbers say what the tier actually runs, so the user never has to
+ * infer either from the picture (AGENTS.md §6). It is debug-only chrome, floats
+ * over the scene in the opposite corner from the hero panel, and takes pointer
+ * events only inside its own box.
+ */
+interface CarveHudProps {
+  readonly report: CarveReport | null;
+  readonly legend: DebugLegend | null;
+  readonly exported: number;
+  readonly onRefresh: () => void;
+  readonly onExport: () => void;
+}
+
+function CarveHud({ report, legend, exported, onRefresh, onExport }: CarveHudProps) {
+  return (
+    <aside
+      className="renderer-3d-hero renderer-3d-carve"
+      aria-label="3D carve measurements"
+    >
+      <h3 className="renderer-3d-hero-title">
+        Carve debug{legend ? ` · ${legend.label}` : ''}
+        {legend ? ` (code ${legend.code})` : ''}
+      </h3>
+      {!report && <p className="renderer-3d-hero-note">Loading the carved tile…</p>}
+      {report && (
+        <>
+          <dl className="renderer-3d-hero-facts">
+            <dt>tier</dt>
+            <dd>{report.tier}</dd>
+            <dt>depth steps</dt>
+            <dd data-stat="pom-steps">{report.pomSteps}</dd>
+            <dt>shadow steps</dt>
+            <dd data-stat="shadow-steps">{report.shadowSteps}</dd>
+            <dt>carve</dt>
+            <dd>
+              {report.carveDepthMm} mm × {report.heightScale.toFixed(2)} · parallax clamp{' '}
+              {report.maxParallaxTexels} texels
+            </dd>
+            <dt>shadow</dt>
+            <dd>
+              strength {report.shadowStrength.toFixed(2)} · bias {report.shadowBias.toFixed(3)} ·
+              softness {report.shadowSoftness.toFixed(2)} · clamp {report.shadowMaxTexels} texels
+            </dd>
+          </dl>
+          <table className="renderer-3d-hero-table">
+            <caption>worst-case carve offsets over the face-up tiles</caption>
+            <thead>
+              <tr>
+                <th scope="col">term</th>
+                <th scope="col">surface</th>
+                <th scope="col">angle</th>
+                <th scope="col">texels</th>
+                <th scope="col">clamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[report.parallax, report.shadow].map((reading) => (
+                <tr key={reading.id}>
+                  <th scope="row">{reading.id.split(':')[0]}</th>
+                  <td>{reading.label}</td>
+                  <td>{reading.angleDeg.toFixed(2)}°</td>
+                  <td>{reading.texels.toFixed(2)}</td>
+                  <td>{reading.clamped ? 'bounded' : 'under'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {legend && <p className="renderer-3d-hero-note">{legend.legend}</p>}
+        </>
+      )}
+      <div className="renderer-3d-hero-actions">
+        <button type="button" onClick={onRefresh}>
+          Refresh numbers
+        </button>
+        <button type="button" onClick={onExport}>
+          Export carve sheets (4K)
+        </button>
+      </div>
+      {exported > 0 && (
+        <p className="renderer-3d-hero-note" role="status">
+          {exported} 4K state sheets downloaded (carve-&lt;view&gt;-states.png).
+        </p>
+      )}
+    </aside>
+  );
+}
+
+/**
  * Mount the 3D renderer.
  *
  * The effect is deliberately StrictMode-safe: the dynamic import's result is
@@ -305,6 +400,8 @@ export function RendererHost({
   const [status, setStatus] = useState<HostStatus>({ state: 'idle', message: null });
   const [heroReport, setHeroReport] = useState<HeroReport | null>(null);
   const [heroExported, setHeroExported] = useState(0);
+  const [carveReport, setCarveReport] = useState<CarveReport | null>(null);
+  const [carveExported, setCarveExported] = useState(0);
   const [hitRects, setHitRects] = useState<readonly HitRect[]>([]);
   const [compassRect, setCompassRect] = useState<CompassRect | null>(null);
 
@@ -338,6 +435,19 @@ export function RendererHost({
     refreshHero();
   }, [refreshHero]);
 
+  const refreshCarve = useCallback(() => {
+    setCarveReport(rendererRef.current?.carveReport?.() ?? null);
+  }, []);
+
+  const exportCarve = useCallback(() => {
+    const captures = rendererRef.current?.carveCaptures?.() ?? [];
+    for (const capture of captures) {
+      downloadDataUrl(capture.name, capture.pngDataUrl);
+    }
+    setCarveExported(captures.length);
+    refreshCarve();
+  }, [refreshCarve]);
+
   // Once per mount: a probe that never leaks its context. Done in render rather
   // than an effect so the first paint already knows whether to show a canvas.
   const capabilities = useMemo(() => probeCapabilities(), []);
@@ -364,6 +474,8 @@ export function RendererHost({
 
     setHeroReport(null);
     setHeroExported(0);
+    setCarveReport(null);
+    setCarveExported(0);
 
     const measure = () => {
       if (!renderer) return;
@@ -376,8 +488,10 @@ export function RendererHost({
       renderer.setSize(width, height, globalThis.devicePixelRatio || 1);
       // The overlay's rects live in the same solved frame.
       refreshHitRects();
-      // The probes are screen-space: a resize moves them.
+      // The probes and the carve bounds are screen-space / camera-derived: a
+      // resize moves them.
       if (debug === 'hero') refreshHero();
+      if (debug !== null) refreshCarve();
     };
 
     setStatus({ state: 'loading', message: null });
@@ -423,6 +537,7 @@ export function RendererHost({
     // mounted (and if they failed), so the HUD never polls.
     const onHeroReady = () => {
       setHeroReport(renderer?.heroReport?.() ?? null);
+      if (debug !== null) refreshCarve();
     };
     const onFailed = (event: Event) => {
       const detail = (event as CustomEvent<string>).detail;
@@ -440,6 +555,7 @@ export function RendererHost({
       if (cancelled) return;
       setStatus({ state: 'ready', message: null });
       refreshHitRects();
+      if (debug !== null) refreshCarve();
     };
     canvas.addEventListener(HERO_READY_EVENT, onHeroReady);
     canvas.addEventListener(HERO_FAILED_EVENT, onFailed);
@@ -502,6 +618,7 @@ export function RendererHost({
     debug,
     perfHud,
     reducedMotion,
+    refreshCarve,
     refreshHero,
     refreshHitRects,
     resolvedTier,
@@ -559,6 +676,15 @@ export function RendererHost({
             exported={heroExported}
             onRefresh={refreshHero}
             onExport={exportHero}
+          />
+        )}
+        {debug !== null && status.state === 'ready' && (
+          <CarveHud
+            report={carveReport}
+            legend={legendFor(debug)}
+            exported={carveExported}
+            onRefresh={refreshCarve}
+            onExport={exportCarve}
           />
         )}
         {status.message && (
