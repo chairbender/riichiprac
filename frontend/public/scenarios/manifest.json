@@ -1,18 +1,19 @@
 {
   "schema": "riichiprac.scenario-pack-manifest",
   "version": 1,
-  "updated_at": "2026-11-18T00:00:00Z",
+  "updated_at": "2026-11-19T00:00:00Z",
   "packs": [
     {
       "id": "replay.ch8-defense.2026-11",
-      "path": "replay.ch8-defense.2026-11-3bdcc1736670.json.gz",
-      "sha256": "3bdcc1736670aba63b9c9fd8d8fce8426a8a8d1799f8b125d2397a3cc782ef17",
-      "bytes": 1047001,
-      "scenario_count": 1038,
+      "path": "replay.ch8-defense.2026-11-6ae2c924e80c.json.gz",
+      "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43",
+      "bytes": 2260809,
+      "scenario_count": 2211,
       "lesson_ids": [
         "defense_safety_chart",
         "defense_stuck_heuristic",
         "fold_to_riichi",
+        "kabe_double_one_chance",
         "kabe_one_chance",
         "push_or_fold",
         "suji_kabe_safety"

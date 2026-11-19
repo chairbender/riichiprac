@@ -415,6 +415,10 @@ enum Command {
         #[arg(long, value_name = "LIST", value_delimiter = ',')]
         reject: Vec<String>,
 
+        /// Bulk verdicts document to apply in one run (Q2r2).
+        #[arg(long, value_name = "FILE")]
+        verdicts: Option<PathBuf>,
+
         /// Note recorded on every new disposition.
         #[arg(long, value_name = "TEXT")]
         note: Option<String>,
@@ -461,7 +465,7 @@ enum PackAction {
         #[arg(long, value_name = "N")]
         max_bytes: Option<u64>,
 
-        /// Scenario-count ceiling (default: 2000).
+        /// Scenario-count ceiling (default: 5000).
         #[arg(long, value_name = "N")]
         max_scenarios: Option<usize>,
 
@@ -894,13 +898,15 @@ fn main() -> ExitCode {
             held_out,
             accept,
             reject,
+            verdicts,
             note,
             list,
             show,
             dry_run,
             json,
         } => run_review_command(
-            &root, queue, pack, held_out, &accept, &reject, note, list, show, dry_run, json,
+            &root, queue, pack, held_out, &accept, &reject, verdicts, note, list, show, dry_run,
+            json,
         ),
         command => {
             eprintln!(
@@ -1608,6 +1614,7 @@ fn run_review_command(
     held_out: bool,
     accept: &[String],
     reject: &[String],
+    verdicts: Option<PathBuf>,
     note: Option<String>,
     list: bool,
     show: Option<String>,
@@ -1649,6 +1656,7 @@ fn run_review_command(
         queue: path,
         accept: accept.to_vec(),
         reject: reject.to_vec(),
+        verdicts,
         note,
         dry_run,
     }) {
@@ -2232,6 +2240,8 @@ mod tests {
             "s2-smoke-001,s2-smoke-002",
             "--reject",
             "s2-smoke-003",
+            "--verdicts",
+            "verdicts.json",
             "--note",
             "ambiguous",
             "--list",
@@ -2243,6 +2253,7 @@ mod tests {
                 held_out,
                 accept,
                 reject,
+                verdicts,
                 note,
                 list,
                 ..
@@ -2254,6 +2265,10 @@ mod tests {
                     vec!["s2-smoke-001".to_string(), "s2-smoke-002".to_string()]
                 );
                 assert_eq!(reject, vec!["s2-smoke-003".to_string()]);
+                assert_eq!(
+                    verdicts.as_deref(),
+                    Some(std::path::Path::new("verdicts.json"))
+                );
                 assert_eq!(note.as_deref(), Some("ambiguous"));
                 assert!(list);
             }

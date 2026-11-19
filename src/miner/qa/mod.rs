@@ -480,6 +480,7 @@ pub fn run_fixture_pipeline(root: &DataRoot, options: &QaOptions) -> Result<QaRe
         queue: selection.paths.queue.clone(),
         accept: queue_ids,
         reject: Vec::new(),
+        verdicts: None,
         note: Some("Q1 fixture auto-accept".to_string()),
         dry_run: false,
     })?;
@@ -498,6 +499,7 @@ pub fn run_fixture_pipeline(root: &DataRoot, options: &QaOptions) -> Result<QaRe
             queue: selection.paths.held_out.clone(),
             accept: held_ids,
             reject: Vec::new(),
+            verdicts: None,
             note: Some("Q1 held-out QA auto-accept".to_string()),
             dry_run: false,
         })?;

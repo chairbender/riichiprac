@@ -1,0 +1,59 @@
+
+== Build the miner (release) ==
+    Finished `release` profile [optimized] target(s) in 0.11s
+
+== Run the fixture pipeline (run A) ==
+
+== Run the fixture pipeline (run B) ==
+
+== G10: the same inputs produce the same pack hash ==
+pack sha256: 9cbf1e4a3eccbcc4e5ac2e087be0923f41720a2b0a428361ddf8db3910347c96
+pack bytes:  26807
+scenarios:   36
+selected:    8 (+2 held out)
+variants:    24 shipped / 48 attempted
+snapshot:    ok
+
+== P2/P3: verify the staged hosting directory ==
+pack hosting: /home/kylehipke/workspaces/riichiprac-261118-202827/target/q1/run-a/hosted
+  q1-rehearsal · 26807 B · 36 scenario(s) · sha256:9cbf1e4a3ecc
+  1 pack(s), 26807 body bytes of 50000000 allowed, 931 byte manifest
+  PASS (41 checks)
+
+== G9: load the pipeline pack through the frontend loader ==
+
+ RUN  v2.1.9 /home/kylehipke/workspaces/riichiprac-261118-202827/frontend
+
+ ✓ src/services/packLoader.q1.test.ts (1 test) 22ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  04:30:34
+   Duration  388ms (transform 93ms, setup 0ms, collect 99ms, tests 22ms, environment 0ms, prepare 53ms)
+
+
+== Gate matrix: every hard gate has a failing fixture ==
+   Compiling riichiprac v0.1.0 (/home/kylehipke/workspaces/riichiprac-261118-202827)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 19.13s
+     Running tests/q1_gates.rs (target/debug/build/riichiprac/85899a3cbddb58f5/out/q1_gates-85899a3cbddb58f5)
+
+running 10 tests
+test g1_parser_rejects_malformed_jsonl ... ok
+test g3_a_corpus_family_must_be_a_slug ... ok
+test g4_classifier_positive_and_near_miss ... ok
+test g2_reconstruction_rejects_an_impossible_table ... ok
+test g6_selection_rejects_an_illegal_answer ... ok
+test g11_storage_snapshot_integrity_and_content_addressed_paths ... ok
+test g0_source_and_provenance_fail_closed ... ok
+test g5_label_cache_hits_and_q_values_are_kept ... ok
+test g8_pack_audit_rejects_a_bad_source_licence_answer_spoiler_and_budget ... ok
+test g7_variant_gate_rejects_a_changed_answer ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+
+== Q1 verdict ==
+PASS
+  pack:    /home/kylehipke/workspaces/riichiprac-261118-202827/target/q1/run-a/packs/q1-rehearsal-9cbf1e4a3ecc.json.gz
+  hosted:  /home/kylehipke/workspaces/riichiprac-261118-202827/target/q1/run-a/hosted
+  reports: /home/kylehipke/workspaces/riichiprac-261118-202827/target/q1/run-a.json /home/kylehipke/workspaces/riichiprac-261118-202827/target/q1/run-b.json

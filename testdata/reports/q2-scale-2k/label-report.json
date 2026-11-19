@@ -1,0 +1,174 @@
+{
+  "schema": "riichiprac.label-report-merged",
+  "version": 1,
+  "families": {
+    "mortal_mirror": {
+      "model": "mortal_298k.safetensors",
+      "model_sha256": "afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128",
+      "labelers": [
+        "mortal_298k.safetensors"
+      ],
+      "classifier_version": "1",
+      "replays_found": 750,
+      "replays_walked": 750,
+      "replays_failed": 0,
+      "decisions_seen": 383240,
+      "decisions_dropped": 0,
+      "decisions_cached": 18312,
+      "decisions_labelled": 35086,
+      "decisions_retried": 0,
+      "decisions_failed": 0,
+      "decisions_triggered": 53398,
+      "decisions_filtered_out": 329842,
+      "trigger_hits": {
+        "book": 53398
+      },
+      "book_labels": 53398,
+      "stable": 31344,
+      "contested": 22054,
+      "mortal_only": 0,
+      "book_conflicts": 0,
+      "workers": 14,
+      "wall_time_ms": 1136072,
+      "errors": []
+    },
+    "mortal_sampling_sweep": {
+      "model": "mortal_298k.safetensors",
+      "model_sha256": "afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128",
+      "labelers": [
+        "mortal_298k.safetensors"
+      ],
+      "classifier_version": "1",
+      "replays_found": 748,
+      "replays_walked": 748,
+      "replays_failed": 0,
+      "decisions_seen": 379928,
+      "decisions_dropped": 0,
+      "decisions_cached": 18289,
+      "decisions_labelled": 34482,
+      "decisions_retried": 0,
+      "decisions_failed": 0,
+      "decisions_triggered": 52771,
+      "decisions_filtered_out": 327157,
+      "trigger_hits": {
+        "book": 52771
+      },
+      "book_labels": 52771,
+      "stable": 31557,
+      "contested": 21214,
+      "mortal_only": 0,
+      "book_conflicts": 0,
+      "workers": 14,
+      "wall_time_ms": 1176309,
+      "errors": []
+    },
+    "akochan_tactics": {
+      "model": "mortal_298k.safetensors",
+      "model_sha256": "afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128",
+      "labelers": [
+        "mortal_298k.safetensors"
+      ],
+      "classifier_version": "1",
+      "replays_found": 14,
+      "replays_walked": 14,
+      "replays_failed": 0,
+      "decisions_seen": 8063,
+      "decisions_dropped": 0,
+      "decisions_cached": 1648,
+      "decisions_labelled": 0,
+      "decisions_retried": 0,
+      "decisions_failed": 0,
+      "decisions_triggered": 1648,
+      "decisions_filtered_out": 6415,
+      "trigger_hits": {
+        "book": 1648
+      },
+      "book_labels": 1648,
+      "stable": 1119,
+      "contested": 529,
+      "mortal_only": 0,
+      "book_conflicts": 0,
+      "workers": 14,
+      "wall_time_ms": 5673,
+      "errors": []
+    },
+    "akochan_vs_mortal": {
+      "model": "mortal_298k.safetensors",
+      "model_sha256": "afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128",
+      "labelers": [
+        "mortal_298k.safetensors"
+      ],
+      "classifier_version": "1",
+      "replays_found": 15,
+      "replays_walked": 15,
+      "replays_failed": 0,
+      "decisions_seen": 7637,
+      "decisions_dropped": 0,
+      "decisions_cached": 1087,
+      "decisions_labelled": 0,
+      "decisions_retried": 0,
+      "decisions_failed": 0,
+      "decisions_triggered": 1087,
+      "decisions_filtered_out": 6550,
+      "trigger_hits": {
+        "book": 1087
+      },
+      "book_labels": 1087,
+      "stable": 623,
+      "contested": 464,
+      "mortal_only": 0,
+      "book_conflicts": 0,
+      "workers": 14,
+      "wall_time_ms": 4558,
+      "errors": []
+    },
+    "heterogeneous_table": {
+      "model": "mortal_298k.safetensors",
+      "model_sha256": "afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128",
+      "labelers": [
+        "mortal_298k.safetensors"
+      ],
+      "classifier_version": "1",
+      "replays_found": 15,
+      "replays_walked": 15,
+      "replays_failed": 0,
+      "decisions_seen": 8184,
+      "decisions_dropped": 0,
+      "decisions_cached": 1673,
+      "decisions_labelled": 0,
+      "decisions_retried": 0,
+      "decisions_failed": 0,
+      "decisions_triggered": 1673,
+      "decisions_filtered_out": 6511,
+      "trigger_hits": {
+        "book": 1673
+      },
+      "book_labels": 1673,
+      "stable": 1101,
+      "contested": 572,
+      "mortal_only": 0,
+      "book_conflicts": 0,
+      "workers": 14,
+      "wall_time_ms": 6931,
+      "errors": []
+    }
+  },
+  "totals": {
+    "replays_found": 1542,
+    "replays_walked": 1542,
+    "replays_failed": 0,
+    "decisions_seen": 787052,
+    "decisions_dropped": 0,
+    "decisions_cached": 41009,
+    "decisions_labelled": 69568,
+    "decisions_retried": 0,
+    "decisions_failed": 0,
+    "decisions_triggered": 110577,
+    "decisions_filtered_out": 676475,
+    "book_labels": 110577,
+    "stable": 65744,
+    "contested": 44833,
+    "mortal_only": 0,
+    "book_conflicts": 0
+  }
+}

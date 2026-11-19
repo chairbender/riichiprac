@@ -900,6 +900,24 @@ fn the_config_rejects_a_path_unsafe_pack_id() {
     assert_eq!(config.held_out_target(), 10);
 }
 
+#[test]
+fn the_queue_size_may_exceed_a_pack_body() {
+    let config = SelectionConfig {
+        pack_id: "s2-smoke".to_string(),
+        pack_size: 2_500,
+        ..SelectionConfig::default()
+    };
+    config
+        .validate()
+        .expect("a 2.5k review queue is not a pack body");
+    let config = SelectionConfig {
+        pack_id: "s2-smoke".to_string(),
+        pack_size: 5_001,
+        ..SelectionConfig::default()
+    };
+    assert!(config.validate().is_err(), "the 5,000 ceiling still binds");
+}
+
 // --- Review queue tests ---------------------------------------------------
 
 #[test]
@@ -933,6 +951,7 @@ fn dispositions_are_append_only_and_the_latest_wins() {
         queue: queue_path.clone(),
         accept: vec![item.queue_id.clone()],
         reject: Vec::new(),
+        verdicts: None,
         note: Some("good drill".to_string()),
         dry_run: false,
     })
@@ -946,6 +965,7 @@ fn dispositions_are_append_only_and_the_latest_wins() {
         queue: queue_path,
         accept: Vec::new(),
         reject: vec![item.queue_id.clone()],
+        verdicts: None,
         note: Some("ambiguous".to_string()),
         dry_run: false,
     })
@@ -975,6 +995,7 @@ fn a_dry_run_review_writes_no_dispositions() {
         queue: queue_path,
         accept: vec![item.queue_id.clone()],
         reject: Vec::new(),
+        verdicts: None,
         note: None,
         dry_run: true,
     })
@@ -1210,6 +1231,7 @@ fn a_shard_run_writes_the_queue_the_report_and_the_latest_pointer() {
         queue: outcome.paths.queue.clone(),
         accept: Vec::new(),
         reject: Vec::new(),
+        verdicts: None,
         note: None,
         dry_run: true,
     })

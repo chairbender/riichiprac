@@ -2372,6 +2372,17 @@ counted as an implementation unit.
 > ~45 minutes) with measured progress. The pack passes audit, 41/41 hosting,
 > 23/23 ch8 content and 8/8 serving checks. Details:
 > [`q2-scale-up-1000.md`](q2-scale-up-1000.md).
+>
+> **Q2s (2026-11-19).** The pack is scaled to **2,211 real bases, 0 variants**
+> (2,260,809 bytes, seven ch. 8 lessons, 1,257 source replays, 2,211 unique
+> hands, 0 adjacent same-replay bases). Two 500-game `mortal_mirror` /
+> `mortal_sampling_sweep` runs grow the corpus to 1,542 scoped games / 787,052
+> decisions; the label pass produces 110,577 book labels (65,744 stable), and
+> `select --size 2250` returns 2,250 reviewed bases with all cores in 55 min.
+> Q2r2 adds bulk mechanical dispositions (`review --verdicts`) and a 251-row
+> stratified sampled sheet, so the ~2.3k queue is reviewable without
+> one-at-a-time app review. Details:
+> [`q2-scale-up-2000.md`](q2-scale-up-2000.md).
 
 ### 5.4 Critical path and parallel tracks
 

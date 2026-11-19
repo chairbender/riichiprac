@@ -228,9 +228,13 @@ impl SelectionConfig {
                 self.pack_id
             ));
         }
-        if !(1..=2_000).contains(&self.pack_size) {
+        if !(1..=5_000).contains(&self.pack_size) {
+            // The selection queue is not itself a pack body: assembly owns the
+            // final scenario ceiling (`pack assemble --max-scenarios`). A large
+            // reviewed pool is legitimate, because the pack's unique-hand and
+            // lesson-floor rules drop rows after review.
             return Err(format!(
-                "`pack_size` {} is outside 1..=2000",
+                "`pack_size` {} is outside 1..=5000",
                 self.pack_size
             ));
         }

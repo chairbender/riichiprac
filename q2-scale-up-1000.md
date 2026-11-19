@@ -197,3 +197,9 @@ a Mortal-base queue run parallelises the label re-run as well.
   not scale past about 1k.
 - Variants stay disabled; a future design must change the decision, not just
   relabel the tiles.
+
+The 2k follow-up is recorded in [`q2-scale-up-2000.md`](q2-scale-up-2000.md):
+two further `mortal_mirror` / `mortal_sampling_sweep` family runs (500 games
+each) extend the same corpus, and Q2r2 adds bulk verdicts plus a stratified
+sampled review sheet so the ~2,250-candidate queue is reviewable.
+

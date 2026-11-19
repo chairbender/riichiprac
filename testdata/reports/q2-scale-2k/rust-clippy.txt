@@ -1,0 +1,3 @@
+    Checking riichiprac v0.1.0 (/home/kylehipke/workspaces/riichiprac-261118-202827)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 13.56s
+clippy=0

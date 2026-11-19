@@ -1,0 +1,392 @@
+{
+  "assembly": {
+    "audit_clean": true,
+    "audited": true,
+    "bases": 2211,
+    "bytes": 2260809,
+    "drop_counts": {
+      "base_dropped": 37,
+      "duplicate_hand": 44,
+      "lesson_too_small": 2,
+      "variants_disabled": 2159
+    },
+    "max_scenarios": 3000,
+    "review": {
+      "accepted": 2250,
+      "checked": true,
+      "items": 2250,
+      "rejected": 0
+    },
+    "scenarios": 2211,
+    "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43",
+    "variants": 0
+  },
+  "body": {
+    "bytes": 2260809,
+    "gzip_ratio": 0.104,
+    "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43"
+  },
+  "checks": {
+    "audit_findings": 0,
+    "ch8_pack": "23/23",
+    "frontend_build": "pass",
+    "frontend_lint": "pass",
+    "frontend_tests": "611 passed, 1 skipped",
+    "hosting_dist": "41/41",
+    "hosting_source": "41/41",
+    "q1_end_to_end": "PASS",
+    "rust_clippy": "clean",
+    "rust_fmt": "clean",
+    "rust_lib_tests": "1132 passed, 0 failed, 4 ignored",
+    "rust_wasm_check": "clean",
+    "serving": "8/8"
+  },
+  "corpus": {
+    "decisions_inserted": 508535,
+    "decisions_seen": 787052,
+    "decisions_updated": 278517,
+    "replays_failed": 0,
+    "replays_found": 1542,
+    "replays_walked": 1542
+  },
+  "labels": {
+    "book_labels": 110577,
+    "cached": 41009,
+    "contested": 44833,
+    "evaluated": 69568,
+    "failed": 0,
+    "stable": 65744
+  },
+  "load": {
+    "body_bytes": 2260809,
+    "cache": "the manifest loads first (799 B); the body is fetched lazily and cached in IndexedDB; packLoader tests and the Q1 loader smoke pass",
+    "gunzip_ms": 34.75,
+    "json_bytes": 21743261,
+    "manifest_bytes": 799,
+    "parse_ms": 103.63
+  },
+  "manifest_entry": {
+    "book_sections": [
+      "ch8.1",
+      "ch8.2",
+      "ch8.3"
+    ],
+    "bytes": 2260809,
+    "data_commercial_use": false,
+    "id": "replay.ch8-defense.2026-11",
+    "lesson_ids": [
+      "defense_safety_chart",
+      "defense_stuck_heuristic",
+      "fold_to_riichi",
+      "kabe_double_one_chance",
+      "kabe_one_chance",
+      "push_or_fold",
+      "suji_kabe_safety"
+    ],
+    "licence": "CC-BY-4.0",
+    "path": "replay.ch8-defense.2026-11-6ae2c924e80c.json.gz",
+    "requires_model": false,
+    "scenario_count": 2211,
+    "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43"
+  },
+  "pack": {
+    "adjacent_same_replay_bases": 0,
+    "agents": [
+      "akochan",
+      "efficiency-safety-v1",
+      "isolated-first-v1",
+      "mortal-298k"
+    ],
+    "book_sections": [
+      "ch8.1",
+      "ch8.2",
+      "ch8.3"
+    ],
+    "corpus_id": "c8-smoke-2026-11",
+    "data_commercial_use": false,
+    "duplicate_hand_strings": 0,
+    "largest_hand_share": 0.000452,
+    "lessons": {
+      "defense_safety_chart": 766,
+      "defense_stuck_heuristic": 32,
+      "fold_to_riichi": 731,
+      "kabe_double_one_chance": 13,
+      "kabe_one_chance": 17,
+      "push_or_fold": 295,
+      "suji_kabe_safety": 357
+    },
+    "licence": "CC-BY-4.0",
+    "replays": 1257,
+    "scenarios": 2211,
+    "unique_hand_strings": 2211
+  },
+  "pack_id": "replay.ch8-defense.2026-11",
+  "review": {
+    "accepted": 2250,
+    "invalid": 0,
+    "items": 2250,
+    "pending": 0,
+    "rejected": 0,
+    "sample_report": "testdata/reports/q2-scale-2k/review-sample.json",
+    "sampled": 251,
+    "valid": 2250
+  },
+  "scale_decision": "shipped 2,211 real bases with 0 variants; the 2k target is met after the unique-hand and lesson-floor drops, all bases are stable book answers, and Q2r2 makes the review scalable (one bulk mechanical pass + a 251-row stratified sample). Variants stay disabled; the next lever is more real games, not relabelled copies. The 2,000-scenario audit ceiling was raised to 5,000 as a sanity split bound (the byte budget remains the real guard).",
+  "schema": "riichiprac.pack-measurements",
+  "selection": {
+    "candidates_valid": 53991,
+    "cap_relaxed": 900,
+    "corpus_mix": [
+      {
+        "bucket": "akochan_tactics",
+        "candidates": 945,
+        "cap": 30,
+        "cap_reached": false,
+        "selected": 28
+      },
+      {
+        "bucket": "akochan_vs_mortal",
+        "candidates": 518,
+        "cap": 30,
+        "cap_reached": false,
+        "selected": 25
+      },
+      {
+        "bucket": "heterogeneous_table",
+        "candidates": 934,
+        "cap": 30,
+        "cap_reached": true,
+        "selected": 30
+      },
+      {
+        "bucket": "mortal_mirror",
+        "candidates": 25616,
+        "cap": 1200,
+        "cap_reached": false,
+        "selected": 1065
+      },
+      {
+        "bucket": "mortal_sampling_sweep",
+        "candidates": 25865,
+        "cap": 1200,
+        "cap_reached": false,
+        "selected": 1102
+      }
+    ],
+    "decisions_labelled": 110577,
+    "decisions_seen": 787052,
+    "extracted_only": true,
+    "funnel": {
+      "counts": {
+        "book_matches": 110577,
+        "decision_points": 787052,
+        "games_parsed": 1542,
+        "games_requested": 1542,
+        "games_valid": 1542,
+        "gate_passed": 53991,
+        "held_out": 113,
+        "mortal_labelled": 110577,
+        "packed": 0,
+        "reconstructed": 787052,
+        "selected": 2250,
+        "trigger_hits": 646277
+      },
+      "rejections": {
+        "no_label": 676475,
+        "out_of_scope": 11753,
+        "scope_not_stable_book": 44833
+      }
+    },
+    "held_out": 113,
+    "lesson_counts": [
+      {
+        "candidates": 53878,
+        "family": "book",
+        "quota": 675,
+        "selected": 925
+      },
+      {
+        "candidates": 0,
+        "family": "contested",
+        "quota": 113,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 0,
+        "family": "mortal_best",
+        "quota": 225,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 450,
+        "family": "mistake",
+        "quota": 225,
+        "selected": 185,
+        "shortfall": "pack_full"
+      },
+      {
+        "candidates": 4796,
+        "family": "close_call",
+        "quota": 225,
+        "selected": 308
+      },
+      {
+        "candidates": 0,
+        "family": "speed_value",
+        "quota": 180,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 53878,
+        "family": "coverage",
+        "quota": 338,
+        "selected": 463
+      },
+      {
+        "candidates": 42608,
+        "family": "table_read",
+        "quota": 157,
+        "selected": 215
+      },
+      {
+        "candidates": 53878,
+        "family": "placement",
+        "quota": 112,
+        "selected": 154
+      },
+      {
+        "candidates": 0,
+        "family": "multi_step",
+        "quota": 0,
+        "selected": 0
+      }
+    ],
+    "max_per_replay": 2,
+    "notes": [
+      "games_generated is 0: selection consumes an existing corpus",
+      "packed is 0: P1a/P1b assemble, audit and ship the pack",
+      "a pack may not ship until every review-queue item has a disposition (P1b enforces it)",
+      "119938 selection attempt(s) were skipped because a section/kind/turn cap was full",
+      "91123 selection attempt(s) were skipped because a source replay hit its per-replay cap",
+      "scope: sections=ch8; corpus=mortal_mirror,mortal_sampling_sweep,akochan_tactics,akochan_vs_mortal,heterogeneous_table; stable book labels only",
+      "900 scenario(s) were selected beyond a section/kind/turn cap: the remaining pool had no candidate inside the cap, so the pack filled the slot instead of reporting a shortfall",
+      "review queue: 2250 item(s); held-out QA: 113 item(s)"
+    ],
+    "relaxed_fill": 900,
+    "replay_families": [
+      {
+        "bucket": "akochan_tactics",
+        "candidates": 945,
+        "cap": 30,
+        "cap_reached": false,
+        "selected": 28
+      },
+      {
+        "bucket": "akochan_vs_mortal",
+        "candidates": 518,
+        "cap": 30,
+        "cap_reached": false,
+        "selected": 25
+      },
+      {
+        "bucket": "heterogeneous_table",
+        "candidates": 934,
+        "cap": 30,
+        "cap_reached": true,
+        "selected": 30
+      },
+      {
+        "bucket": "mortal_mirror",
+        "candidates": 25616,
+        "cap": 1200,
+        "cap_reached": false,
+        "selected": 1065
+      },
+      {
+        "bucket": "mortal_sampling_sweep",
+        "candidates": 25865,
+        "cap": 1200,
+        "cap_reached": false,
+        "selected": 1102
+      }
+    ],
+    "replays_failed": 0,
+    "replays_walked": 1542,
+    "section_mix": [
+      {
+        "bucket": "ch8.1",
+        "candidates": 4866,
+        "cap": 900,
+        "cap_reached": false,
+        "selected": 297
+      },
+      {
+        "bucket": "ch8.2",
+        "candidates": 19548,
+        "cap": 900,
+        "cap_reached": true,
+        "relaxed": 280,
+        "selected": 1180
+      },
+      {
+        "bucket": "ch8.3",
+        "candidates": 29464,
+        "cap": 900,
+        "cap_reached": false,
+        "selected": 773
+      }
+    ],
+    "sections": [
+      {
+        "bucket": "ch8.1",
+        "candidates": 4866,
+        "cap": 900,
+        "cap_reached": false,
+        "selected": 297
+      },
+      {
+        "bucket": "ch8.2",
+        "candidates": 19548,
+        "cap": 900,
+        "cap_reached": true,
+        "relaxed": 280,
+        "selected": 1180
+      },
+      {
+        "bucket": "ch8.3",
+        "candidates": 29464,
+        "cap": 900,
+        "cap_reached": false,
+        "selected": 773
+      }
+    ],
+    "selected": 2250,
+    "size_requested": 2250,
+    "wall_minutes": 54.6,
+    "workers": 14
+  },
+  "storage": {
+    "decisions": 787052,
+    "integrity_check": "ok",
+    "pack_scenarios": 2211,
+    "replays": 1997,
+    "selected_scenarios": 4453,
+    "snapshot": "snapshots/miner-20261119-042726.sqlite",
+    "snapshot_bytes": 4972216320,
+    "snapshot_sha256": "1d66e7427f5fb0bfe3a263ef44ed077a9af65c6e8a8b8349aad5e0940cb52141"
+  },
+  "variant_stage": {
+    "attempts": 11250,
+    "bases": 2250,
+    "effective_cap": 1,
+    "note": "variants remain disabled: assembly drops every variant row",
+    "preserved": 7254,
+    "shipped_for_report": 2203,
+    "shipped_in_pack": 0,
+    "wall_time_ms": 178831
+  },
+  "version": 1
+}
