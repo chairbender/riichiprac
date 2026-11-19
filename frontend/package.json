@@ -18,6 +18,7 @@
     "lying:samples": "vite-node scripts/export-lying-samples.ts",
     "lying:review": "vite-node scripts/review-lying-samples.ts",
     "lying:export": "vite-node scripts/export-lying-catches.ts",
+    "shadows:review": "vite-node scripts/review-dynamic-shadows.ts",
     "tune:carved": "vite-node scripts/tune-carved.ts"
   },
   "dependencies": {

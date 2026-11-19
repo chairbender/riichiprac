@@ -180,6 +180,34 @@ Steps:
 4. Pass 4 — interactive tile elevation: when a `hand_south` tile is hovered or selected (body shifted by dy = -0.025), keep its `shadow_mat` anchored at the resting position (y0), scaled 0.92x and at 0.75x opacity, and suppress `ao_seam_left`/`ao_seam_right` on both the elevated tile and its immediate neighbours while it is lifted.
 5. Acceptance: adding or removing tiles in a river or wall updates mat shadows and crevice shading with zero double-darkened overlaps; lifting a hand tile separates it from its base shadow and its neighbours' bevel shadows.
 
+**Landed runtime (2026-11-18, task 261117-004151).** The passes are `frontend/src/table/boardShadows.ts` (plan + compositor) over `frontend/src/table/shadowManifest.ts` (the two 4A manifests and the bucket rules). The renderer that owns the frame loop is the rendered view (261118-1657), which is parked and not merged; the module therefore takes a `ShadowBoard` (zones placed in board @1x px — structurally the parked view's `BoardZone[]`) and exposes exactly three call sites:
+
+```
+// once, between board_bg and the first tile body
+shadows.drawMatShadowPass(ctx);
+// per zone, per body, in painter order
+shadows.drawWallStackShadow(ctx, zoneIndex, bodyIndex); // after the body
+blitBody(...);
+shadows.drawCreviceSeams(ctx, zoneIndex, bodyIndex);    // after the body
+```
+
+`update()` re-plans and repaints only the zone masks whose signature changed, so a one-tile change does not repaint the board. Decisions taken, with the measurement or source for each:
+
+* **Mat shadows use MAX alpha via a transmittance layer, then `multiply`.** `shadows.json` requires MAX (never straight-over) and declares `composite.model: multiply`. Canvas 2D has no per-pixel max on alpha, so each sprite is pre-flattened onto white — which turns its alpha into the grey `b = 1 - alpha` — and the zone buffers merge with `darken`, which for an opaque source is exactly `min(b)` = MAX alpha. The merged layer is drawn once with `multiply` (`dest * b`), the manifest's own model. Measured: an 18-tile river's 181,719 shadowed pixels are never darker than the darkest single-tile render at that pixel (worst difference 0.00 luma); straight-over alpha would peak at 0.80 instead of 0.55 for two crossing 0.55 shadows.
+* **One mat shadow per wall *stack*, at `layer_0`.** Task 4A grounds the three horizontal wall buckets and publishes their shadow at the bottom tier, so the pass draws `zone.shadows` (the layout already excludes `layer_1`) and a raised tile adds no second footprint.
+* **The stack decal is keyed off live cells, not the layout.** It is drawn after a stack's `layer_0` body only when a `tier: 1` body exists at the same slot; the upper body then covers its inner part and the band on the lower tile stays visible (measured: 2,213 px, up to 54 luma). Remove the upper tile from the plan and both the body and the decal are gone.
+* **Adjacency is logical, the side is geometric.** Neighbours come from the live cells (`row/column`, `column`, `slot/tier`, hand row slot), so the newest river tile, the end of a broken wall and the separated drawn tile write no overlay. The *edge* is resolved through the tile's own plate axes (`screenRotationOfQuad`), so a sideways riichi tile or a reversed seat quad still gets the mask on the side that faces the neighbour. The tier crevice of a wall stack is deliberately **not** an AO mask: 4A models it as the one measured stack decal, so a second overlay there would be a hidden duplicate.
+* **Masks map straight onto `faceQuad`.** `ao_seams.json` authors `left` at `u = 0`, `right` at `u = 1`, `top` at `v = 0`, `bottom` at `v = 1`, so the whole image maps with no rotation — which is what keeps the fade on its authored axis (0.10 of the short side along u, 0.075 of the long side along v). Drawn at 0.6 of the mask's own 35 % peak (inside the 50-70 % band).
+* **Elevation is 0.025 of a 1080-tall frame = 27 px**, per this task's step 4. The architecture's older Phase 5.1 said `drawY -= 12`; Task 6A is newer and specific, so 27 px wins — changing it is a one-constant edit. The lifted tile's shadow stays at its resting pivot, scaled 0.92 and at 0.75 opacity; only the crevices *facing* the lifted tile are dropped (the lifted tile's own left/right and the facing side of each neighbour), because a neighbour's far side still abuts a resting tile. Measured on the proof sheet: 1,202 pixels beside the lifted tile brighten, most by 21 luma, and the hand's seam count falls 24 → 20.
+* **Zone lean is honoured.** The side ponds carry a 1° group rotation about `pivotX/pivotY`; the mat mask is painted inside the same rotation (with rotated bounds) and the decal/seam passes apply it, so a leaning pond's shadows lean with its bodies.
+
+The per-axis offsets `dy = -0.025` and the `0.92`/`0.75` elevation numbers live in `boardShadows.ts` as `HAND_LIFT_PX`, `LIFTED_SHADOW_SCALE` and `LIFTED_SHADOW_OPACITY`.
+
+**Proof renders (uncommitted, gitignored).** `cd frontend && npm run shadows:review` writes `tools/render/build/review/shadows/task6a-dynamic-shadows.png` (2190 × 1279, @1x: a river at 1/5/18 tiles with a bodies-only "before", a wall with the decal on/off and with its upper tier drawn, and a hand at rest vs lifted) plus `task6a-numbers.json`, and prints the numbers above. The panels are placed by the script's own harness, not by the rendered view's `boardPlan.ts`; the shadow mechanics are the real ones. **Visual sign-off is the user's (AGENTS.md §6).**
+
+**Still to do when the rendered view lands:** call the three hooks from `BoardRenderer.ts`'s zone loop, and drop a drawn upper tier from the wall zone's `bodies` (not just hide it) so pass 2 updates. Opponent hands (`hand_north`/`hand_west`/`hand_east`) need 261118-2034's blue-back blanks; the hand bucket rules for them are implemented and unit-tested against the layout, and no proof render shows them.
+
+
 ## Task 7: Verification & Visual Calibration
 
 Objective: validate perspective consistency, legibility and responsive scaling across target aspect ratios.

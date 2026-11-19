@@ -1790,3 +1790,35 @@ inward-facing basis; `scripts/check-table-layout.mjs` re-checks the committed
 file without Blender and also projects each basis through the layout camera to
 prove it runs along the slot's published screen quad edges.
 
+
+## 17. Task 6A: adjacency-aware dynamic shadow passes (landed 2026-11-18)
+
+`frontend/src/table/boardShadows.ts` owns the four passes the 2.5D runtime was
+missing, and `shadowManifest.ts` parses the two Task 4A manifests
+(`shadows.json`, `ao_seams.json`) and resolves which bucket a placed tile uses.
+They run in the rendered view's zone loop — mat layer once after `board_bg`,
+then per body the stack decal and the crevice masks — so a river that grows, a
+wall that breaks and a lifted hand all follow the live state with no baked
+per-sprite shadow.
+
+**The mat pass is a transmittance layer, not stacked alpha.** `shadows.json`
+requires the penumbras to merge at MAX alpha and declares the composite model
+`multiply`. Each sprite is pre-flattened onto white (alpha becomes the grey
+`b = 1 - alpha`), the per-zone buffers merge with `darken` (for an opaque source
+that is exactly `min(b)`), and the merged layer is multiplied onto the felt once.
+Two crossing 0.55 shadows therefore peak at 0.55 rather than 0.80; the review
+script measures 0.00 luma of extra darkening across an 18-tile river's 181,719
+shadowed pixels.
+
+**Adjacency is logical; the edge is geometric.** Neighbours come from the live
+cells (`row/column`, `column`, `slot/tier`, hand row slot), so no overlay is
+drawn on an open edge: the newest discard, the end of a broken wall, the
+separated drawn tile. The mask for an occupied edge is chosen through the tile's
+own plate axes, so a sideways riichi tile or an opposite seat's reversed quad
+still darkens the bevel that faces its neighbour. The wall stack's tier crevice
+is the Task 4A stack decal instead of a second AO mask.
+
+The rendered view (task 261118-1657) still owns the frame loop and is parked;
+until it lands, the proof renders come from `npm run shadows:review` in
+`frontend/`, and its two panels' placement is the script's harness rather than
+`boardPlan.ts`.

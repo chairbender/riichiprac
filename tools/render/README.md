@@ -572,8 +572,7 @@ for all four). 512 × 512 is at least twice the largest `faceQuad` side in
 pixels, so a mask is never upscaled onto a tile, and the check derives that
 bound from `blanks.json` rather than assuming it.
 
-**Gates.** `check-shadow-assets.mjs` cross-references both manifests against
-`table_layout.json` and `blanks.json`: exact bucket coverage, black-ink sprites
+**Gates.** `check-shadow-assets.mjs` cross-references both manifests against`table_layout.json` and `blanks.json`: exact bucket coverage, black-ink sprites
 with transparent padding borders, `crop + pivot` landing on the documented
 anchor, a contact core inside the body footprint and a cast penumbra outside it
 on at least two sides, the stack decals masked to their bottom body, and the
@@ -590,6 +589,18 @@ shadow, B the wall-stack band, C the mask gradients) on 2026-11-18 and approved
 the set, including the darker crevice band under each wall stack. The numeric
 gates are `bash tools/render/bake-board-assets.sh --check`: Task 4 reports 1002
 checks, Task 4A reports 575 checks, both 0 failures.
+
+**The runtime consumer (Task 6A, landed 2026-11-18).**
+`frontend/src/table/boardShadows.ts` draws these four asset families from the
+live board state; `shadowManifest.ts` parses both manifests and decides which
+bucket a placed tile uses. The mat pass merges penumbras at MAX alpha by
+flattening each sprite onto white (`b = 1 - alpha`) and merging with `darken`,
+then composites the merged layer once with `multiply` — the manifest's model —
+so a growing river never double-darkens. Proof sheet:
+`cd frontend && npm run shadows:review` →
+`tools/render/build/review/shadows/task6a-dynamic-shadows.png` (gitignored).
+The 4A bakes are unchanged by it: no asset was re-rendered, and
+`bake-board-assets.sh --check` still passes.
 
 ## Directory layout
 

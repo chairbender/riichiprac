@@ -122,6 +122,12 @@ export interface LayoutZone {
   readonly id: string;
   readonly kind: LayoutZoneKind;
   readonly side: TableSide | null;
+  /**
+   * The wall run for a front/back wall zone (`front` is the human side, `back`
+   * the far one); absent on side walls and on every other zone kind. Task 6A's
+   * shadow passes need it to pick the seat's stack decal and mat-shadow bucket.
+   */
+  readonly wall?: WallSide;
   /** Architecture Task 4.1 paint layer. */
   readonly layer: ZoneLayer;
   /** Zones that share one blurred shadow union (§10.12). */
@@ -619,6 +625,7 @@ function finishZone(manifest: ShellsManifest, seed: ZoneSeed): LayoutZone {
     id: seed.id,
     kind: seed.kind,
     side: seed.side,
+    ...(seed.wall === undefined ? {} : { wall: seed.wall }),
     layer: zoneLayer(seed.kind, seed.side, seed.wall),
     shadowGroup: zoneShadowGroup(seed.kind, seed.side),
     bodies: seed.bodies.map(finalize),
