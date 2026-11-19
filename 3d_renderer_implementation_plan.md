@@ -1648,13 +1648,31 @@ rendered digits) and asserts each split recombines to its score, so the two
 presentations cannot disagree.
 
 *Riichi sticks.* `layoutBoard` now draws **one 3D stick per seat whose `riichi`
-flag is true**, on that seat's own side of the well at `STICK.radiusUnits`,
-lengthways along its edge (`BoardStick.seat` + `yawDeg`; `sticks.ts` composes the
-yaw). The 1000-point pot is not drawn on the 3D table at all — the unit
-explicitly keeps `compass.riichiSticks` in the table information drawer — so the
-prior row of `riichiSticks` sticks on the human's side is gone. The layout gate
-now checks one stick per declarer, its side/radius/tangent, and clearance from
-every tile at its own yaw.
+flag is true**, on that seat's own side of the compass, lengthways along its
+edge (`BoardStick.seat` + `yawDeg`; `sticks.ts` composes the yaw). The
+1000-point pot is not drawn on the 3D table at all — the unit explicitly keeps
+`compass.riichiSticks` in the table information drawer — so the prior row of
+`riichiSticks` sticks on the human's side is gone. The layout gate now checks
+one stick per declarer, its side/radius/tangent, and clearance from every tile
+at its own yaw.
+
+*Sticks: modelled from the sprite, and moved inboard.* The user's third
+revision the same day: "the sticks should go above the number (closer to the
+center) as there is a nice space there on all sides", and "the 3d stick models
+look awful, they're supposed to be rounded … it looks like there is a sprite
+for one you put next to the score, that one is more accurate, but we want it as a
+3d model." Two changes follow. (1) `STICK.radiusUnits` moves 2.144 → **0.95**,
+placing the bar in the clear band between each score row's inner edge (~1.1
+units) and the centre group's outer edge (~0.8), on all four sides. (2) The
+model is no longer a `BoxGeometry`: `three/sticks.ts` extrudes a **stadium**
+(semicircular ends) with a 0.02-unit bevel on a 1.2 × 0.22 × 0.1 bar, taking its
+reference from `components/RiichiStick.tsx`'s 100 × 24 sprite — white `#f8f9fa`
+body, `#adb5bd` bands at 8–15 % and 85–92 % of the length, and a `#e03131` dot
+whose radius is 21 % of the bar's width. The 256 × 64 procedural face texture is
+mapped only onto the caps (the side wall samples one plain ivory texel), so the
+instanced layer is still one draw. The geometry is authored at full size, so an
+instance matrix is a pure rotation; `sticks.test.ts` pins the capsule's extents,
+the absence of a square corner, the printed face and the one-draw layer.
 
 *Interaction.* The compass is informational: no buttons, no tab stops, and the
 layer is `pointer-events: none` with only its labels re-enabling them, so the
@@ -1673,10 +1691,12 @@ adapter tests the copy. It is review-only and disappears with the rest of the
 preview chrome at 3D-15 sign-off.
 
 **Visual sign-off:** the first pass was reviewed by the user on 2026-11-19 and
-the two changes above follow that review (physical square, Tenhou score plate).
-The revised look still needs the user's verdict — the plate's colour and
-thickness, the split's proportions, and the compass's readability at 16:9 and on
-a phone — which is handed over with 3D-15's whole-board check (AGENTS.md §6).
+two further rounds of feedback followed the same day (physical square and
+Tenhou score plate; then the discards-touching size, bigger numbers with a grey
+wind at the left, and the capsule stick model moved inboard). The revised look
+still needs the user's verdict — the plate's colour and thickness, the score and
+wind proportions, the split's size, and the stick's rounded profile and new
+position — which is handed over with 3D-15's whole-board check (AGENTS.md §6).
 
 ---
 

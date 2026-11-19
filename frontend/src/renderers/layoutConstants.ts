@@ -77,16 +77,26 @@ export const TABLE = {
  *
  * Since the plate extends to the discards ({@link COMPASS_PLATE}), the sticks
  * stand on its top face rather than on the felt; `layoutBoard` places their
- * centres at `COMPASS_PLATE.topUnits + heightUnits / 2`. They sit near their
- * declarer's edge, inside the plate and clear of the DOM numbers, which occupy
- * the middle band of each side.
+ * centres at `COMPASS_PLATE.topUnits + heightUnits / 2`. They sit **inboard of
+ * the score row** — the user's third revision (2026-11-19): "the sticks should
+ * go above the number (closer to the center) as there is a nice space there on
+ * all sides" — in the clear band between the number row and the round/tiles-left
+ * group.
  */
 export const STICK = {
   lengthUnits: 1.2,
   widthUnits: 0.22,
   heightUnits: 0.1,
-  /** Centre-line distance from the table centre, on the declarer's side. */
-  radiusUnits: 2.144,
+  /**
+   * Centre-line distance from the table centre, on the declarer's side.
+   *
+   * The DOM score row's inner edge is roughly 1.1 units out and the centre
+   * group's outer edge roughly 0.8 units out at the reference aspect, so a
+   * 0.22-unit-wide bar centred at 0.95 sits in the gap between them on every
+   * side. It is a screen-layout choice expressed in world units, and the compass
+   * is the only thing that uses it.
+   */
+  radiusUnits: 0.95,
 } as const;
 
 /** Seats around the table, in turn order from the human. */
