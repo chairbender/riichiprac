@@ -360,7 +360,7 @@
   gap: 0.1em;
   /* A hair above the geometric centre: the round and tiles-left read as
      optically centred against the plate's perspective (user, 2026-11-19). */
-  transform: translateY(-0.12em);
+  transform: translateY(-0.22em);
   pointer-events: auto;
 }
 
