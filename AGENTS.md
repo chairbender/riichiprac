@@ -175,6 +175,37 @@ their reports. The shared pool/progress/shared-connection helpers live in
 `replay-miner-operations.md` ("Parallel execution (Q2p)"). The measured evidence
 for the 544-game extract and label passes is in `q2-scale-up-1000.md`.
 
+## 5c. Model weights in worktrees (Mortal tensors)
+
+`frontend/public/models/mortal_298k.safetensors` is **gitignored**, so a fresh
+worktree does not have it. The app's Mortal evaluation and
+`mine_replays label --weights` both need it.
+
+**Canonical copy on this machine (the main checkout):**
+
+```
+/home/kylehipke/workspaces/riichiprac/frontend/public/models/mortal_298k.safetensors
+```
+
+43,555,532 bytes, SHA-256
+`afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128`.
+
+To use it in a worktree, either point `--weights` at the path above, or copy it
+into the worktree so the dev server serves `/models/mortal_298k.safetensors`:
+
+```bash
+cp /home/kylehipke/workspaces/riichiprac/frontend/public/models/mortal_298k.safetensors \
+   frontend/public/models/mortal_298k.safetensors
+```
+
+Do not commit the file and do not re-download a different checkpoint: the hash
+above is the `mortal_298k` labeler identity used by the replay packs. If the
+main checkout is missing, other copies live under
+`~/migration-kit/opencode-migration-*/workspaces/*/frontend/public/models/`, but
+verify the SHA-256 before use. `cargo test --features miner` and the labeler
+tests skip or fail closed when the weights are absent; the app itself runs
+without them until Mortal is requested.
+
 ## 6. Visual Work: Do Not Look and Judge; Ask the User
 
 **Rule.** An agent working in this repo must not form a visual, aesthetic, or "does this look right"
