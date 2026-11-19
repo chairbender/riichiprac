@@ -1515,6 +1515,21 @@ keyboard and screen reader.
   transforms both come from `frameForAspect` on the same `BoardLayout` (a drift
   test projects the hand OBBs through the frame and compares).
 
+**As landed (2026-11-19).** `hitTest.ts` projects each tile's body OBB through
+the scene's own frame. Targets aim for 44 × 44 CSS px and clamp to the tile's
+cell when the projection is smaller, and adjacent targets split at the projected
+midpoint of their centres so no two ever overlap (a phone at 390 × 844 therefore
+gets the largest non-overlapping target, not an overlapping 44 px one; the
+reference aspect clears 44 px on both axes). The overlay's DOM order is
+`HandDock`'s display sort — both call `handTileLabel` and `handOverlay.ts`'s
+`overlayHandTiles` — while each button is positioned on its own tile's rect.
+`App` passes its `selectTile`, `callRiichi` and `callKan` straight through, so
+the click path has no renderer in it. `TableRenderer.setHoverTile(tile | null)`
+is the optional seam 3D-12 fills; the overlay calls it once per hover/focus
+change and suppresses it under `prefers-reduced-motion`. The overlay is the
+first floating-layer element: absolutely positioned over the full-window stage,
+`pointer-events: none` except for its buttons.
+
 **Gate:** frontend gate.
 
 ---
@@ -2182,7 +2197,7 @@ which files it touched.
 | R4 | Merge contention with the parallel 2.5D view work in `App.tsx`, `useSettingsStore.ts`, `AppControls.tsx`, `AGENTS.md` (conflicts, not dependencies) | high / low | keep the 3D diff to the mount point; rebase and resolve by hand; neither chain waits for the other | 3D-02, 3D-14 |
 | R5 | Mobile GPU memory (58 MB atlas + existing 43 MB model) or thermal throttling | medium / medium | compat tier half-res, 0 POM, on-demand frames, 30 fps floor, auto-fallback remembered per session | 3D-11 |
 | R6 | The wall is decorative, so a "full wall + 14-tile hands" picture is physically impossible | certain / low | documented; depletion needs a Rust wall census, out of v1 (non-goal) | plan |
-| R7 | The DOM overlay drifts from the 3D camera (buttons not aligned with tiles) | medium / high (usability) | single projection source (`hitRects()`), tests at two aspects, user check on the final board | 3D-08 |
+| R7 | The DOM overlay drifts from the 3D camera (buttons not aligned with tiles) | medium / high (usability) | single projection source (`hitRects()`), tests at two aspects, user check on the final board. **Closed in 3D-08** by the drift test that re-projects the hand OBBs through `frameForAspect`; the remaining user check is 3D-15's | 3D-08 |
 | R8 | Shading/looks cannot be verified in CI | certain / medium | numeric probes for colours and POM displacement, debug modes, explicit user handoffs, no self-approval | all |
 | R9 | A new runtime dependency is more than the repo wants | low / medium | lazy chunk, budget gate, exact pin, MIT notice; the renderer interface keeps the choice reversible | 3D-02, 3D-16 |
 | R11 | The committed Task 4B carve is too soft to match the approved 2.5D decals at a live-lit face (0.655 mm wall, empty flat floor) | seen / medium (looks) | measure against the decals (3D-05's report), bake a 3D-owned set at the decal profile (3D-17), keep decal-on-shell as the fallback | 3D-05, 3D-17 |

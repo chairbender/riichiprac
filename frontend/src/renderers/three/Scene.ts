@@ -81,6 +81,7 @@ import { createFelt, feltSizeForFrame } from './felt';
 import type { FeltSurface } from './felt';
 import { heroInstances, heroParallaxAt, probeWorldPoint } from './hero';
 import type { HeroInstance, HeroSlot } from './hero';
+import { hitRects as projectHitRects } from './hitTest';
 import { sceneLightSpecs } from './lighting';
 import { allProbesPass, readProbes } from './probes';
 import type { ProbePixelSource, ProbeProjector } from './probes';
@@ -223,6 +224,11 @@ export class TableScene implements TableRenderer {
   private disposed = false;
   private revision = 0;
   private aspect = CAMERA.framingAspect;
+  /** The CSS size the frame is solved for; the overlay's rects live in it. */
+  private cssWidth = 0;
+  private cssHeight = 0;
+  /** True once the hand is answered: the overlay renders no buttons. */
+  private locked = false;
 
   constructor(canvas: HTMLCanvasElement, options: RendererOptions) {
     this.tier = options.tier;
@@ -303,6 +309,7 @@ export class TableScene implements TableRenderer {
   syncState(snapshot: TableSnapshot): void {
     if (this.disposed) return;
     this.revision = snapshot.revision;
+    this.locked = snapshot.locked;
     const layout = layoutBoard(snapshot);
     this.layout = layout;
     this.syncBoard(layout);
@@ -326,6 +333,8 @@ export class TableScene implements TableRenderer {
     const ratio = effectiveDevicePixelRatio(cssWidth, cssHeight, dpr);
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(cssWidth, cssHeight, false);
+    this.cssWidth = cssWidth;
+    this.cssHeight = cssHeight;
     this.aspect = cssWidth / cssHeight;
     this.reframe();
     // Draw now rather than on the next frame: the host reveals the canvas as
@@ -345,9 +354,30 @@ export class TableScene implements TableRenderer {
     this.requestFrame();
   }
 
-  /** No interactive tiles exist before 3D-08. */
+  /**
+   * The pure projection of the human's hand and draw to CSS rects (3D-08).
+   *
+   * Uses the scene's own solved frame — `boardLayout.frameForAspect` at the
+   * current aspect and layout — so the DOM buttons and the rendered instances
+   * cannot drift apart (plan §2.4, §9 R7). It creates no DOM and draws nothing.
+   */
   hitRects(): readonly HitRect[] {
-    return [];
+    if (this.disposed || !this.layout) return [];
+    return projectHitRects(
+      this.layout,
+      this.frame,
+      { widthPx: this.cssWidth, heightPx: this.cssHeight },
+      { locked: this.locked },
+    );
+  }
+
+  /**
+   * 3D-12 owns the hover lift; the overlay reports the tile once per change and
+   * this is where that seam lands. v1 keeps no state, so the buttons and the
+   * rendered board stay exactly as they are.
+   */
+  setHoverTile(): void {
+    // Intentionally empty until 3D-12 turns the report into motion.
   }
 
   /** Reserved for a future live/replay source; v1 draws no tile motion. */

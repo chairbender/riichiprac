@@ -229,6 +229,22 @@ export interface HitRect {
   readonly height: number;
 }
 
+/** The identity of one interactive tile, independent of its projection. */
+export interface HandTileRef {
+  readonly seat: Seat;
+  readonly zone: 'hand' | 'draw';
+  readonly slot: number;
+}
+
+/**
+ * The stable key that joins a {@link HitRect} to the hand buttons the overlay
+ * renders (3D-08). One function, used by both sides, so a rect can never be
+ * matched to the wrong tile by a string built twice.
+ */
+export function hitRectKey(ref: HandTileRef): string {
+  return `${ref.seat}:${ref.zone}:${ref.slot}`;
+}
+
 /**
  * One probe colour the hero view read back, 8-bit sRGB, with the rule it was
  * checked against (3D-05).
@@ -446,6 +462,13 @@ export interface TableRenderer {
   setQuality(tier: QualityTier): void;
   /** Pure projection of interactive tiles to CSS rects, for the DOM overlay. */
   hitRects(): readonly HitRect[];
+  /**
+   * Report which hand button the pointer/focus rests on, or null when none
+   * (3D-08). The overlay calls it once per change; 3D-12 turns it into the
+   * bounded lift. Optional because a renderer without motion simply ignores it,
+   * and the DOM buttons never move for it.
+   */
+  setHoverTile?(tile: HandTileRef | null): void;
   /** v1: a no-op, unit-tested ahead of a live/replay source. */
   playEvents(events: readonly RendererEvent[]): void;
   measure(): RendererStats;
