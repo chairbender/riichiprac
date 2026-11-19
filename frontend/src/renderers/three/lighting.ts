@@ -39,28 +39,28 @@ export type LinearRgb = readonly [number, number, number];
 /** A direction in 3D world space (+X right, +Y up, +Z toward the human). */
 export type Direction3 = readonly [number, number, number];
 
-/** The tile body's fixed colours and finish, from `shell-spec.json`'s tile block. */
+/** The tile body's fixed colours and finish, from the retired 2.5D shell spec. */
 export const BODY = {
   /** Warm ivory: the committed shell face colour (`#f5f0eb`). */
   ivoryHex: '#f5f0eb',
   /** The committed tile back (`#132986`). */
   blueHex: '#132986',
   /**
-   * Un-mapped body roughness, straight from `shell-spec.json`: the face is
+   * Un-mapped body roughness, straight from the retired shell spec: the face is
    * 0.16 with a 0.4 coat, the backing 0.18 with a 0.35 coat. The carved plate
    * overrides this with the relief atlas's own G channel (0.45 open resin,
    * 0.12 lacquer in the paint); `PLATE_ROUGHNESS` documents that split.
    */
   ivoryRoughness: 0.16,
   blueRoughness: 0.18,
-  /** Clear-coat weight per side (`shell-spec.json` face 0.4, backing 0.35). */
+  /** Clear-coat weight per side (retired shell spec: face 0.4, backing 0.35). */
   coatFace: 0.4,
   coatBack: 0.35,
   /** Clear-coat roughness, both sides. */
   coatRoughness: 0.1,
   /**
    * The white/blue gate, as a fraction of the thickness measured from the back
-   * (`bake_shells.py`'s `backEdgeFraction`): the front 30 % of the side wall is
+   * (the retired shell baker's `backEdgeFraction`): the front 30 % of the side wall is
    * ivory, the back 70 % is the blue backing.
    */
   backEdgeFraction: 0.3,

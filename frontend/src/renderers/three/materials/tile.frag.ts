@@ -29,7 +29,7 @@
  *    geometric plate normal; cavity AO multiplies the diffuse; the sampled
  *    roughness feeds one GGX lobe. Wrapped diffuse fakes the slab's
  *    translucency, and a second tight GGX lobe is the melamine clear coat the
- *    shells were baked with (`shell-spec.json`: coat 0.4 at roughness 0.1).
+ *    shells were baked with (the retired shell spec: coat 0.4 at roughness 0.1).
  *
  *    **Carve response.** The committed relief bake is a 0.655 mm, 40° V-wall
  *    with a broad 1.2 mm AO field, and the approved 2.5D decals are a 0.3 mm
@@ -42,7 +42,7 @@
  *    the bake's key is a 40°-wide tube: `uKeySpreadDeg` integrates five samples
  *    of that source for the specular only, which is what produces the decals'
  *    bright lip rim. Measured against the decals in the unit's report.
- *    The white/blue split is `bake_shells.py`'s shader gate: everything behind
+ *    The white/blue split is the retired shell baker's shader gate: everything behind
  *    0.3 x thickness is blue backing, so the side wall shows the 4.95 mm white
  *    band and the 11.55 mm blue band the shipped shells show.
  * 4. **Per-instance state (3D-07).** `vFlags` carries the board's bits:
@@ -209,7 +209,7 @@ void main() {
   float flagDimmed = mod(floor(vFlags * 0.25), 2.0);
 
   bool onPlate = vFaceZone > 0.5 && flagFaceUp > 0.5;
-  // The shell baker's white/blue gate (bake_shells.py): everything behind
+  // The retired 2.5D shell baker's white/blue gate: everything behind
   // 0.3 x thickness is the blue backing, so the side wall carries a 4.95 mm
   // ivory band in front of an 11.55 mm blue one. Local +Z is the face normal.
   float backCut = (uBackEdgeFraction - 0.5) * uThicknessUnits;

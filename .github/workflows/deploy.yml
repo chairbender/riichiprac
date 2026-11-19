@@ -135,22 +135,15 @@ jobs:
         if: vars.PACK_MIRROR_BODY_URL != ''
         run: node scripts/check-pack-cors.mjs --url "${{ vars.PACK_MIRROR_BODY_URL }}"
 
-      # The rendered view's felt raster, the six tile shells (1x + 2x) and
-      # shells.json are committed. CI never runs Blender: the dependency-free
-      # checker validates the specs, the felt PNG, both texture scales and the
-      # manifest, including the decoded-RGBA hashes of the committed bake.
-      - name: Verify rendered-view assets
-        run: node tools/render/scripts/check-shells.mjs
+      # The 3D face carve (relief3d atlases + manifest) and the glyph masters it
+      # samples are committed. No Blender or browser is involved: --check
+      # validates the atlas byte/hash pins, and the dependency-free glyph
+      # checker validates the masters against faces.json.
+      - name: Verify the 3D carve atlases
+        run: node frontend/tools/relief3d/bake-relief3d.mjs --check
 
-      - name: Verify face glyphs and the atlas budget
+      - name: Verify the glyph masters
         run: node tools/render/scripts/check-faces.mjs
-
-      - name: Install render pipeline dependencies
-        working-directory: tools/render
-        run: npm ci
-
-      - name: Verify carved decals and the committed asset budget
-        run: node tools/render/scripts/check-decals.mjs --committed
 
       - name: Configure Pages
         uses: actions/configure-pages@v6

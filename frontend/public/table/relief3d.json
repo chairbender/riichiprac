@@ -5,9 +5,9 @@
  "source": {
   "glyphs": "frontend/public/table/faces/<id>.png (committed flat masters, 300 x 400, public domain)",
   "albedo": "sampled from the committed glyph masters; the relief3d alpha drops the artwork white (whiteFillThreshold 0.9) so it stays uncarved",
-  "geometry": "tools/render/decal-spec.json carve block (the approved 2.5D engraving)",
+  "geometry": "the approved 2.5D decal carve (retired spec; constants in this file)",
   "generator": "frontend/tools/relief3d/bake-relief3d.mjs",
-  "note": "Nothing under tools/render is written; the 2.5D pipeline is read for its published carve numbers only."
+  "note": "The committed glyph masters under frontend/public/table/faces are the only input; the retired 2.5D pipeline is not read or written."
  },
  "coordinateSpace": "Cell top-left is the plate top-left, y down. Tangent normal x right, y down, z out. Height alpha is 1 on the uncarved face and 0 at the engraving floor.",
  "raster": {
