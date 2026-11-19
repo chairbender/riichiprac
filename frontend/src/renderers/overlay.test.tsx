@@ -311,8 +311,30 @@ describe('3D overlay: placement and motion', () => {
     );
     const quietButton = within(quiet.container).getAllByRole('button')[0];
     fireEvent.focus(quietButton);
-    fireEvent.blur(quietButton);
+    // No lift is asked for...
     expect(suppressed).not.toHaveBeenCalled();
+    // ...but a clear is still delivered, so a stale raised tile can never
+    // survive if motion is turned off between two hovers.
+    fireEvent.blur(quietButton);
+    expect(suppressed.mock.calls).toEqual([[null]]);
+  });
+
+  it('clears the lift when the hovered button disappears (answered hand)', () => {
+    const onHoverTile = vi.fn();
+    const { container, rerender } = render(
+      <TableOverlay {...overlayProps({ onHoverTile })} />,
+    );
+    const button = within(container).getAllByRole('button')[0];
+    fireEvent.pointerEnter(button);
+    expect(onHoverTile.mock.calls.at(-1)?.[0]).toMatchObject({ code: '1m' });
+
+    // A removed element receives no pointerleave; the overlay must clear it.
+    rerender(
+      <TableOverlay
+        {...overlayProps({ onHoverTile, snapshot: snapshot(true, HUMAN, 2) })}
+      />,
+    );
+    expect(onHoverTile.mock.calls.at(-1)).toEqual([null]);
   });
 
   it('renders one group named “Your hand” and no layer of its own outside it', () => {

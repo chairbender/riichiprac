@@ -1525,10 +1525,13 @@ reference aspect clears 44 px on both axes). The overlay's DOM order is
 `overlayHandTiles` — while each button is positioned on its own tile's rect.
 `App` passes its `selectTile`, `callRiichi` and `callKan` straight through, so
 the click path has no renderer in it. `TableRenderer.setHoverTile(tile | null)`
-is the optional seam 3D-12 fills; the overlay calls it once per hover/focus
-change and suppresses it under `prefers-reduced-motion`. The overlay is the
-first floating-layer element: absolutely positioned over the full-window stage,
-`pointer-events: none` except for its buttons.
+is the seam the overlay calls once per hover/focus change (and with `null` when
+the hovered button disappears); `Scene` responds by raising that tile by half a
+tile height (14 mm) along world +Y, on top of the button's CSS tint, without
+moving the button — see §9 decision 8. Reduced motion suppresses the lift but
+never the clear, and the overlay's rects always come from the un-lifted pose.
+The overlay is the first floating-layer element: absolutely positioned over the
+full-window stage, `pointer-events: none` except for its buttons.
 
 **Gate:** frontend gate.
 
@@ -1643,8 +1646,10 @@ observable, and lock the per-tier step counts against the measured budget.
 
 **Deliverables**
 
-- Hover/focus lift (≤ 4 mm, 120 ms), a bounded deal-in (≤ 400 ms) on a revision
-  change, and `playEvents()` with damped-spring tile flight math (unused in v1).
+- Hover/focus lift (half a tile height, 14 mm, landed early in 3D-08 by user
+  decision 8; the earlier ≤ 4 mm figure is superseded), a bounded deal-in
+  (≤ 400 ms) on a revision change, and `playEvents()` with damped-spring tile
+  flight math (unused in v1).
 - Tests for the diff rule "new revision = cut".
 
 **Acceptance criteria**
@@ -2240,6 +2245,12 @@ are binding on the units, not open questions.
    promoting the shell so the layer travels with the scene) and restores the 2D
    layout — including leaving full screen — when the user switches away. The
    stacked and top-down views keep their existing layout throughout.
+8. **Hover lift: half a tile height, on top of the tint** (added 2026-11-19, in
+   3D-08). A hovered or focused hand/draw tile rises by
+   `TILE.heightUnits / 2` = 14 mm along world +Y; the DOM button keeps its
+   projected rect and its CSS hover/focus tint, so the pointer target never
+   moves. This supersedes the ≤ 4 mm figure in §3D-12, which keeps the deal-in
+   and the event seam. Reduced motion suppresses the lift (never the clear).
 
 **Chain independence (recorded).** No 3D unit depends on 2.5D work, and no 2.5D
 unit depends on 3D work. The 3D chain reads the *already committed* relief

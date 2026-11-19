@@ -69,6 +69,8 @@ export function TableOverlay({
   const containerRef = useRef<HTMLDivElement>(null);
   /** The tile key focus/pointer last landed on, so a removal can be noticed. */
   const focusedKeyRef = useRef<string | null>(null);
+  /** The tile key currently reported as hovered, so a removal can clear it. */
+  const hoveredKeyRef = useRef<string | null>(null);
 
   const tiles = useMemo(() => overlayHandTiles(snapshot), [snapshot]);
   const rectByKey = useMemo(() => {
@@ -101,8 +103,26 @@ export function TableOverlay({
     containerRef.current?.focus();
   }, [keys, snapshot.locked]);
 
-  const hover = (tile: OverlayHandTile | null) => {
-    if (reducedMotion) return;
+  /*
+   * Drop a lift whose button has gone. Answering removes every button and a new
+   * snapshot may replace the hovered one; a removed element gets no
+   * `pointerleave`, so the renderer would otherwise keep that tile raised
+   * forever. Null is always reported, even under reduced motion: it only
+   * clears, and clearing must never be suppressed.
+   */
+  useLayoutEffect(() => {
+    const key = hoveredKeyRef.current;
+    if (key === null) return;
+    if (keys.split('|').includes(key)) return;
+    hoveredKeyRef.current = null;
+    onHoverTile?.(null);
+  }, [keys, onHoverTile]);
+
+  const hover = (tile: OverlayHandTile | null, key: string | null = null) => {
+    hoveredKeyRef.current = tile ? key : null;
+    // Suppress the lift under reduced motion; report the clear regardless so a
+    // stale raised tile can never survive.
+    if (tile && reducedMotion) return;
     onHoverTile?.(tile);
   };
 
@@ -141,7 +161,7 @@ export function TableOverlay({
             onClick={() => onSelectTile(tile.code, tile.index, tile.isDraw)}
             onFocus={() => {
               focusedKeyRef.current = key;
-              hover(tile);
+              hover(tile, key);
             }}
             onBlur={(event) => {
               // Focus moved deliberately to something outside the hand: do not
@@ -152,10 +172,9 @@ export function TableOverlay({
                 focusedKeyRef.current = null;
               }
               // Leaving the hand: clear any lift.
-              if (reducedMotion) return;
-              onHoverTile?.(null);
+              hover(null);
             }}
-            onPointerEnter={() => hover(tile)}
+            onPointerEnter={() => hover(tile, key)}
             onPointerLeave={() => hover(null)}
           />
         );

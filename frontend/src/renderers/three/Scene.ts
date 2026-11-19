@@ -55,6 +55,7 @@ import { effectiveDevicePixelRatio } from '../capabilities';
 import type {
   DebugMode,
   GlintReport,
+  HandTileRef,
   HeroCapture,
   HeroReport,
   HitRect,
@@ -81,6 +82,7 @@ import { createFelt, feltSizeForFrame } from './felt';
 import type { FeltSurface } from './felt';
 import { heroInstances, heroParallaxAt, probeWorldPoint } from './hero';
 import type { HeroInstance, HeroSlot } from './hero';
+import { withHoverLift } from './hover';
 import { hitRects as projectHitRects } from './hitTest';
 import { sceneLightSpecs } from './lighting';
 import { allProbesPass, readProbes } from './probes';
@@ -229,6 +231,8 @@ export class TableScene implements TableRenderer {
   private cssHeight = 0;
   /** True once the hand is answered: the overlay renders no buttons. */
   private locked = false;
+  /** The hand button the pointer/focus is on, lifted by half a tile height. */
+  private hover: HandTileRef | null = null;
 
   constructor(canvas: HTMLCanvasElement, options: RendererOptions) {
     this.tier = options.tier;
@@ -372,12 +376,27 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * 3D-12 owns the hover lift; the overlay reports the tile once per change and
-   * this is where that seam lands. v1 keeps no state, so the buttons and the
-   * rendered board stay exactly as they are.
+   * 3D-12's hover lift, landed here because 3D-08 owns the report and the user
+   * asked for it now: the hovered/focused hand tile rises half a tile height
+   * (14 mm) on top of the DOM button's tint. The button does not move; its rect
+   * comes from the un-lifted pose (see `hitTest.ts`), so the pointer stays on
+   * the same target while the tile rises beneath it.
    */
-  setHoverTile(): void {
-    // Intentionally empty until 3D-12 turns the report into motion.
+  setHoverTile(tile: HandTileRef | null): void {
+    const current = this.hover;
+    if (
+      current === tile ||
+      (current !== null &&
+        tile !== null &&
+        current.seat === tile.seat &&
+        current.zone === tile.zone &&
+        current.slot === tile.slot)
+    ) {
+      return;
+    }
+    this.hover = tile;
+    if (this.layout) this.syncTiles(this.layout);
+    this.requestFrame();
   }
 
   /** Reserved for a future live/replay source; v1 draws no tile motion. */
@@ -651,6 +670,7 @@ export class TableScene implements TableRenderer {
     }
     this.hero = null;
     this.board = null;
+    this.hover = null;
     this.registry.disposeAll();
     this.scene.clear();
     this.renderer.dispose();
@@ -697,11 +717,30 @@ export class TableScene implements TableRenderer {
   private syncBoard(layout: BoardLayout): void {
     const board = this.board;
     if (!board) return;
-    board.tiles.sync(
-      buildBoardInstances(layout, (face: TileFaceId) => board.assets.cellForFace(face)),
-    );
+    this.syncTiles(layout);
     board.shadows.sync(shadowInstances(layout));
     board.sticks.sync(layout.sticks);
+  }
+
+  /**
+   * Rewrite the tile instances only, applying the current hover lift.
+   *
+   * The atlas cells are looked up per face; `withHoverLift` copies just the
+   * hovered instance's matrix, so the rest of the buffer is byte-identical and
+   * a hover change cannot disturb any other tile.
+   */
+  private syncTiles(layout: BoardLayout): void {
+    const board = this.board;
+    if (!board) return;
+    board.tiles.sync(
+      withHoverLift(
+        buildBoardInstances(layout, (face: TileFaceId) =>
+          board.assets.cellForFace(face),
+        ),
+        layout,
+        this.hover,
+      ),
+    );
   }
 
   /** Load the committed relief atlases and mount the four hero tiles. */
@@ -820,7 +859,11 @@ export class TableScene implements TableRenderer {
     const layout = this.layout;
     const tiles = createBoardMesh(
       layout
-        ? buildBoardInstances(layout, (face) => assets.cellForFace(face))
+        ? withHoverLift(
+            buildBoardInstances(layout, (face) => assets.cellForFace(face)),
+            layout,
+            this.hover,
+          )
         : [],
       material,
     );
