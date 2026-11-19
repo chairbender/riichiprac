@@ -283,6 +283,14 @@ export const HERO_READY_EVENT = 'tile3d:hero-ready';
 export const HERO_FAILED_EVENT = 'tile3d:hero-failed';
 
 /**
+ * The board's ready/failed notifications (3D-07), on the same canvas and for the
+ * same reason: the relief atlases load asynchronously, so the host learns when
+ * the whole table is on screen (or why it is not) without polling `measure()`.
+ */
+export const BOARD_READY_EVENT = 'tile3d:board-ready';
+export const BOARD_FAILED_EVENT = 'tile3d:board-failed';
+
+/**
  * The renderer interface. It is synchronous by design: the host owns the async
  * module load, and a renderer that can queue animation is a renderer that can
  * drift from the DOM. `hitRects()` is pure (it never creates DOM); the overlay

@@ -280,9 +280,8 @@ describe('the 8-texel parallax budget at every supported aspect', () => {
     // real board. Compute it from the layout so the record is complete.
     let worst = { angle: 0, id: '' };
     for (const aspect of CAMERA.supportedAspects) {
-      // The board's camera from 3D-07 on is `frameForAspect` (§2.4); the hero
-      // view still uses `cameraRig` until that switch, so both numbers are
-      // reported below.
+      // From 3D-07 on, `frameForAspect` (§2.4) is the only projection source,
+      // so the hero view and this board-wide check share one camera.
       const eye = frameForAspect(aspect, layout).eye;
       for (const tile of layout.tiles) {
         if (!tile.faceUp) continue;
@@ -312,7 +311,7 @@ describe('the 8-texel parallax budget at every supported aspect', () => {
     console.log(
       `3D-05 strict board worst (frameForAspect): ${worst.id} at ${worst.angle.toFixed(2)}° → ` +
         `${reading.texels.toFixed(2)} texels at the live scale (physical ${physical.texels.toFixed(2)}); ` +
-        `hero view worst (cameraRig): ${heroRigWorst.toFixed(2)}`,
+        `hero view worst (same frame): ${heroRigWorst.toFixed(2)}`,
     );
     // The live scale keeps even the steepest face well inside the bound; the
     // physical depth would cross it, which is what the shader's clamp covers.

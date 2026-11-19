@@ -1,14 +1,15 @@
 /**
- * The procedural felt surface (3D-02).
+ * The procedural felt surface (3D-02; sized from the solved frame in 3D-07).
  *
  * There is no modelled table and no new committed texture: the play surface is
  * one square felt plane under a deterministic value-noise texture, sized so its
  * far and near edges reach the top and bottom of the frame (user guidance
- * 2026-11-18: no black band above the table). It is never stretched to the
- * viewport, so on a wide window its left and right edges stay inside the frame
- * and the scene background shows beside it — the intended look. The vignette is
- * supplied in screen space by CSS (the 2.5D felt raster has a vignette baked
- * into screen space and must not be wrapped onto a 3D plane).
+ * 2026-11-18: no black band above the table) *at whatever frame 3D-06 solves*.
+ * It is never stretched to the viewport, so on a wide window its left and right
+ * edges stay inside the frame and the scene background shows beside it — the
+ * intended look. The vignette is supplied in screen space by CSS (the 2.5D felt
+ * raster has a vignette baked into screen space and must not be wrapped onto a
+ * 3D plane).
  *
  * The noise is generated in code rather than read from `felt.png` so the plane
  * tiles seamlessly and the 3D view keeps D11's "no new committed runtime
@@ -25,9 +26,10 @@ import {
   RepeatWrapping,
   SRGBColorSpace,
 } from 'three';
-import { TABLE } from '../layoutConstants';
-import { groundHit, rigPoseForAspect } from './cameraRig';
-import type { RigPose } from './cameraRig';
+import { CAMERA, TABLE } from '../layoutConstants';
+import { frameForAspect } from './boardLayout';
+import type { CameraFrame } from './boardLayout';
+import { groundHit } from './cameraRig';
 
 /** Felt texture parameters. The base colour is the committed 2.5D felt's. */
 export const FELT = {
@@ -57,7 +59,7 @@ export const FELT = {
 } as const;
 
 /**
- * The side length of the square felt for a pose, in tile units.
+ * The side length of the square felt for a solved frame, in tile units.
  *
  * The felt is user-visible cloth, not a frame filler: it is a **square** that
  * is never stretched to the viewport, sized so its far and near edges reach the
@@ -66,10 +68,13 @@ export const FELT = {
  * the intended look; on a tall one the same square is necessarily wider than the
  * frame and reaches the sides. Ties, if any, go to the vertical fit: a black
  * band above the table is the failure this rule exists to prevent.
+ *
+ * The frame is 3D-06's solved frame — the same one the camera uses, so a
+ * projection change (the 18 px lift at 16:9, §2.4) moves the felt with it.
  */
-export function feltSizeForPose(pose: RigPose): number {
-  const top = groundHit(pose, 0, 1);
-  const bottom = groundHit(pose, 0, -1);
+export function feltSizeForFrame(frame: CameraFrame): number {
+  const top = groundHit(frame, 0, 1);
+  const bottom = groundHit(frame, 0, -1);
   if (!top || !bottom) return FELT.minSizeUnits;
   const half = Math.max(Math.abs(top[1]), Math.abs(bottom[1]));
   return Math.max(FELT.minSizeUnits, half * 2 * (1 + FELT.verticalMargin));
@@ -153,7 +158,7 @@ export function generateFeltPixels(
 /** A felt plane and the GPU resources it owns. */
 export interface FeltSurface {
   readonly mesh: Mesh;
-  /** Resize the square (see {@link feltSizeForPose}); it stays square. */
+  /** Resize the square (see {@link feltSizeForFrame}); it stays square. */
   setSize(sizeUnits: number): void;
   dispose(): void;
 }
@@ -219,6 +224,6 @@ export function createFelt(): FeltSurface {
   };
 
   // Size it for the reference aspect until the host reports a real one.
-  surface.setSize(feltSizeForPose(rigPoseForAspect(16 / 9)));
+  surface.setSize(feltSizeForFrame(frameForAspect(CAMERA.framingAspect)));
   return surface;
 }

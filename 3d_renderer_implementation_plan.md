@@ -317,7 +317,10 @@ against the real board and owns the gate, so it is the only projection source
 from 3D-07 on.** `cameraRig.ts` becomes a thin `PerspectiveCamera` adapter, the
 felt is sized from that frame (`groundHit` against the frame's eye/axes/fov/
 shift, preserving the top/bottom rule), and 3D-08's hit rects use the same
-frame. No view may project through a second camera.
+frame. No view may project through a second camera. *(Landed in 3D-07: the
+solver is gone; `cameraRig.ts` is `applyFrameToCamera` plus pure projection
+helpers, and `cameraRig.test.ts` proves a real `PerspectiveCamera` fed a frame
+projects every sample point exactly as `boardLayout.projectPoint` does.)*
 
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
@@ -849,7 +852,8 @@ who does not ask for it.
 - `cameraRig.ts` (imports `layoutConstants.ts`) with the committed rig and the
   aspect/portrait fit.
 - `felt.ts`: deterministic 512 × 512 procedural felt texture and **one square
-  plane, sized per frame** (`feltSizeForPose`, from the frame's top/bottom
+  plane, sized per frame** (`feltSizeForFrame` since 3D-07 made 3D-06's frame the
+  only projection source, from the frame's top/bottom
   ground intersection) so it always reaches the top and bottom edges. It is
   never stretched to the aspect: on a wide window its side edges stay inside the
   frame and the background shows beside it. The 25-unit mat stays the layout
@@ -1289,6 +1293,64 @@ the committed table geometry.
   body (a render-order assertion plus a user check).
 
 **Gate:** frontend gate.
+
+**As built (3D-07, 2026-11-18).** Files: `three/{boardMesh,shadows,sticks}.ts`,
+the rewritten `three/cameraRig.ts` (the adapter only), the board wiring in
+`three/Scene.ts`, `felt.ts` (`feltSizeForFrame`), `hero.ts` (the same frame),
+`three/materials/tile.{vert,frag}.ts` (`aFlags` replaces `aFaceUp`), the
+highlight/dim uniforms in `tileMaterial.ts`, two board lifecycle events in
+`contract.ts` and their listeners in `RendererHost.tsx`, plus
+`three/{boardMesh,shadows,sticks,drawCalls,cameraRig.test,felt.test}.test.ts`
+and one fixture change (`boardFixture` flags the newest discard its
+`highlightDiscard` names, so the highlight path is exercised).
+
+*Draw shape.* The whole board is one `InstancedMesh` (capacity 320, count live),
+the contact shadows one instanced quad layer, the sticks one instanced box layer,
+and the felt one plane: **4 draw calls**, invariant to tile count. The fixture
+board is 252 tiles / 203 grounded shadows; the widest board the layout gate
+builds is 280 tiles, so the capacity is a malformed-snapshot guard, not a
+budget. `boardMesh.test.ts` fails on > 320 instances or a non-finite matrix
+instead of dropping tiles. The GPU-free half of the `drawCalls ≤ 4` gate builds
+the three board layers with the production builders and counts meshes
+(`drawCalls.test.ts`, via `countSceneDrawCalls`); `measure().drawCalls` still
+reports the renderer's own count in the browser.
+
+*One camera.* `cameraRig.ts` no longer solves anything: `applyFrameToCamera`
+copies 3D-06's `frameForAspect` eye/target/pitch/fov and patches the lens shift
+into `projectionMatrix[9]`. `cameraRig.test.ts` applies frames at all seven
+supported aspects to a real three `PerspectiveCamera` and asserts the frame's
+eye, pitch, fov and shift, then that `Vector3.project(camera)` equals
+`boardLayout.projectPoint` for five sample points (the two projections are one).
+The felt is re-sized from the same frame (`feltSizeForFrame`), so the 16:9 solve
+moves it up with the image; `groundHit` round-trips each felt hit back to its
+asking NDC point.
+
+*Flags.* `boardMesh.INSTANCE_FLAG` is `faceUp: 1, highlighted: 2, dimmed: 4`,
+packed as one float attribute and decoded in the fragment shader with
+`mod`/`floor` bit tests. Face-up selects the carved plate, face-down the blue
+back; highlighted multiplies by `TILE_HIGHLIGHT.tint` (1.35/1.22/1.05) at
+strength 1, dimmed multiplies by `dimGain` 0.62 after the BRDF. Tests assert the
+bits (hover/tsumogiri tiles, wall = 0), that opponent hands and the wall are
+face-down while the human hand and dora are face-up, and that a riichi discard's
+body — not a glyph — is turned: its glyph-up axis is the seat's right (+X) where
+its neighbour's is the tile's forward (-Z), both horizontal.
+
+*Contact shadows.* One quad per grounded tile (the tile's oriented-box footprint
+plus 0.12 units per side, at `liftUnits` 0.015 above the felt), excluded for the
+wall's top tier (it rests on the tile below). The alpha is a procedural rounded
+rect (`shadowAlphaAt`: 1 at the centre, 0 at every edge, monotone between) in a
+64 × 64 `DataTexture`; the material is transparent black, `depthTest` on,
+`depthWrite` off, drawn in the transparent pass after the opaque tiles, and the
+plane sits below every tile's top surface — so the depth test, not an ordering
+hack, keeps a quad off a tile body. Tests assert all of that numerically.
+
+*Handoff (open).* The look of the board and the contact rim is the user's call
+(AGENTS.md §6): `cd frontend && npm run dev` → `?renderer=3d`. Questions: does
+the board read as the same table as the rendered 2.5D view, do the shadows read
+as contact rather than a drop shadow under a floating tile, and does the
+highlight/tsumogiri pair read as distinct without looking like a bug? The
+waterfall/deal-in motion and the perf HUD are 3D-12/3D-13 and are not in this
+unit.
 
 ---
 

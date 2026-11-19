@@ -156,10 +156,17 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
     });
 
     const riverCount = Math.min(riverCounts[seat], 18 + 4);
+    // The seat the snapshot's call/ron marker names has its newest discard
+    // highlighted, exactly as `snapshotFromGameState` flags it.
+    const highlightSeat = riverCounts[0] > 0 ? 0 : -1;
+    const highlightIndex = highlightSeat === 0 ? riverCount - 1 : -1;
     const river: SnapshotTile[] = Array.from({ length: riverCount }, (_, index) =>
       tile('river', index, seat * 14 + index, {
         sideways: index === 5,
         dimmed: index === 11,
+        ...(seat === highlightSeat && index === highlightIndex
+          ? { highlighted: true }
+          : {}),
       }),
     );
 

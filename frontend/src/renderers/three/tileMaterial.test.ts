@@ -87,7 +87,7 @@ describe('fragment shader invariants', () => {
   });
 
   it('declares the attributes the geometry provides and the uniforms it reads', () => {
-    for (const attribute of ['aAtlasRect', 'aFaceUp', 'tangent', 'faceZone']) {
+    for (const attribute of ['aAtlasRect', 'aFlags', 'tangent', 'faceZone']) {
       expect(TILE_VERTEX_SHADER).toContain(`attribute`);
       expect(TILE_VERTEX_SHADER).toContain(attribute);
     }

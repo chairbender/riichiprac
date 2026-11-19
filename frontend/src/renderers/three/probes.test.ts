@@ -28,7 +28,7 @@ import {
   probeLocalPoint,
   slotWorldPoint,
 } from './hero';
-import { rigPoseForAspect } from './cameraRig';
+import { frameForAspect } from './boardLayout';
 import {
   HERO_PROBES,
   PROBE_BLOCK,
@@ -235,7 +235,7 @@ describe('probe rules', () => {
 });
 
 describe('probe targets are reachable at the hero slots', () => {
-  const frame = rigPoseForAspect(16 / 9);
+  const frame = frameForAspect(16 / 9);
 
   function viewDir(id: 'hand' | 'pond' | 'wall' | 'back'): [number, number, number] {
     const slot = HERO_SLOTS.find((entry) => entry.id === id);
@@ -243,9 +243,9 @@ describe('probe targets are reachable at the hero slots', () => {
     const uv = id === 'back' ? HERO_PROBE_UV.centre : HERO_PROBE_UV.ink;
     const point = slotWorldPoint(slot, probeLocalPoint(slot, uv));
     const toEye = [
-      frame.eyeUnits[0] - point[0],
-      frame.eyeUnits[1] - point[1],
-      frame.eyeUnits[2] - point[2],
+      frame.eye[0] - point[0],
+      frame.eye[1] - point[1],
+      frame.eye[2] - point[2],
     ];
     const length = Math.hypot(toEye[0], toEye[1], toEye[2]);
     return [toEye[0] / length, toEye[1] / length, toEye[2] / length];

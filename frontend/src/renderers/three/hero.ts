@@ -23,9 +23,10 @@
  * plan's fill-rate notes say.
  *
  * Pure module: pose math is `boardLayout`'s (one convention for the whole
- * chain), the camera is `cameraRig`'s committed rig, and nothing here imports
- * three or touches the DOM. `Scene.ts` turns these values into an
- * `InstancedMesh`; `probes.ts` projects the probe points.
+ * chain), the camera is `boardLayout.frameForAspect` (the chain's single
+ * projection source since 3D-07, §2.4), and nothing here imports three or
+ * touches the DOM. `Scene.ts` turns these values into an `InstancedMesh`;
+ * `probes.ts` projects the probe points.
  */
 
 import type { TileFaceId } from '../contract';
@@ -34,9 +35,9 @@ import {
   poseAxes,
   poseMatrix,
   seatPoint,
+  frameForAspect,
 } from './boardLayout';
 import type { TilePose, Vec3 } from './boardLayout';
-import { rigPoseForAspect } from './cameraRig';
 import { POM_HEIGHT_SCALE, parallaxTexels } from './tileMaterial';
 import type { ParallaxReading } from './tileMaterial';
 
@@ -306,17 +307,17 @@ function angleToEyeDeg(slot: HeroSlot, eye: Vec3): number {
  * Measure the four hero slots at one viewport aspect: the exact angle between
  * each plate's face normal and the ray from the plate to the committed camera,
  * and the full-depth displacement that angle implies at the committed carve
- * depth. The eye comes from the same `cameraRig` pose the scene uses (3D-07
- * switches the scene to `boardLayout.frameForAspect`; the two agree within
- * 0.05 units at the reference aspect).
+ * depth. The eye comes from 3D-06's solved frame — from 3D-07 on, the single
+ * projection source for the whole 3D chain (§2.4), so the hero view and the
+ * board see exactly the same camera.
  */
 export function heroParallaxAt(
   aspect: number,
   heightScale: number = POM_HEIGHT_SCALE,
 ): HeroParallaxReport {
-  const pose = rigPoseForAspect(aspect);
+  const frame = frameForAspect(aspect);
   const slots = HERO_SLOTS.map((slot) => {
-    const angle = slot.faceUp ? angleToEyeDeg(slot, pose.eyeUnits) : 0;
+    const angle = slot.faceUp ? angleToEyeDeg(slot, frame.eye) : 0;
     // A face-down tile shows no carving, so only the three face-up slots can
     // contribute a displacement.
     const reading = parallaxTexels(slot.faceUp ? angle : 0, { heightScale });
@@ -324,7 +325,7 @@ export function heroParallaxAt(
   });
   let worst = slots[0];
   for (const entry of slots) if (entry.texels > worst.texels) worst = entry;
-  return { aspect: pose.aspect, heightScale, slots, worst };
+  return { aspect: frame.aspect, heightScale, slots, worst };
 }
 
 /** The report at every aspect the framing solver must support. */

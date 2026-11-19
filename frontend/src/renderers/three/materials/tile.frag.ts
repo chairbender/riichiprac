@@ -45,6 +45,12 @@
  *    The white/blue split is `bake_shells.py`'s shader gate: everything behind
  *    0.3 x thickness is blue backing, so the side wall shows the 4.95 mm white
  *    band and the 11.55 mm blue band the shipped shells show.
+ * 4. **Per-instance state (3D-07).** `vFlags` carries the board's bits:
+ *    face-up selects the carved plate above (a face-down tile shows the blue
+ *    back and samples nothing from the atlases), then a highlighted discard
+ *    takes `uHighlightTint` at `uHighlightStrength` and a dimmed tsumogiri tile
+ *    takes `uDimGain`, both after the BRDF. The values are `TILE_HIGHLIGHT`'s
+ *    calibrated ranges, not debug colours.
  *
  * `POM_MAX_STEPS` is the compile-time loop bound (a constant so the compiler
  * unrolls it); the live count is the `uPomSteps` uniform, and **0 is a
@@ -98,6 +104,9 @@ uniform vec3 uAmbientColor;
 uniform float uAmbientIntensity;
 uniform float uSpecularF0;
 uniform float uWrap;
+uniform vec3 uHighlightTint;
+uniform float uHighlightStrength;
+uniform float uDimGain;
 
 varying vec2 vFaceUv;
 varying vec3 vWorldNormal;
@@ -106,7 +115,7 @@ varying vec3 vWorldBitangent;
 varying vec3 vWorldPosition;
 varying vec3 vLocalPosition;
 varying float vFaceZone;
-varying float vFaceUp;
+varying float vFlags;
 
 const float PI = 3.141592653589793;
 const float EPSILON = 1e-4;
@@ -189,7 +198,14 @@ void main() {
   // The view ray in the plate's tangent space (x = +U, y = +V, z = out).
   vec3 viewTangent = vec3(dot(V, T), dot(V, B), dot(V, N));
 
-  bool onPlate = vFaceZone > 0.5 && vFaceUp > 0.5;
+  // The per-instance flag bits from boardMesh.INSTANCE_FLAG (1 face-up,
+  // 2 highlighted, 4 dimmed). Decoded as float bits: the values are small
+  // integers, so the exact arithmetic is safe on every driver.
+  float flagFaceUp = mod(vFlags, 2.0);
+  float flagHighlighted = mod(floor(vFlags * 0.5), 2.0);
+  float flagDimmed = mod(floor(vFlags * 0.25), 2.0);
+
+  bool onPlate = vFaceZone > 0.5 && flagFaceUp > 0.5;
   // The shell baker's white/blue gate (bake_shells.py): everything behind
   // 0.3 x thickness is the blue backing, so the side wall carries a 4.95 mm
   // ivory band in front of an 11.55 mm blue one. Local +Z is the face normal.
@@ -288,6 +304,14 @@ void main() {
   // The baked lacquer's broad sheen (see PAINT_SHEEN): painted pixels only, and
   // only where the plate was sampled.
   colour += vec3(uPaintSheen) * vPaintMaskOut * clamp(cavity, 0.0, 1.0);
+
+  // Per-instance state (3D-07). A highlighted discard — the newest tile of a
+  // seat a call/ron offer names — warms and brightens by uHighlightTint; a
+  // dimmed tsumogiri discard darkens by uDimGain. Both are calibrated ranges
+  // (TILE_HIGHLIGHT), not debug colours, and neither touches the probes: the
+  // hero tiles carry no flags.
+  colour = mix(colour, colour * uHighlightTint, flagHighlighted * uHighlightStrength);
+  colour *= mix(1.0, uDimGain, flagDimmed);
 
   if (uDebug > 0.5) {
     if (uDebug < 1.5) {
