@@ -54,11 +54,11 @@ On `origin/main` (`a1cbf9d`, after the 3D R9 landing):
 | Tree | Before | After |
 | --- | --- | --- |
 | `frontend/public/table/` | 888 tracked files, 17 MB | 42 tracked files, ~3.6 MB (`relief3d` 2.9 MB + `faces` 0.6 MB + 2 manifests) |
-| `tools/render/` | 172 tracked files, 45 MB | 47 tracked files, ~0.9 MB (the glyph-master baker) |
+| `tools/render/` | 172 tracked files, 45 MB | 47 tracked files, 0.66 MB (the glyph-master baker) |
 | `frontend/src/table/` | 15 files, 264 KB | gone |
 | `frontend/scripts/` | 15 files | 4 files (2 × 3D gate + seam-probe page/script) |
 
-Net: 998 tracked files and ~57 MB of 2.5D assets/tooling removed.
+Net: 1,002 tracked files and ~58 MB of 2.5D assets/tooling removed.
 
 ## Follow-ups recorded, not done here
 
