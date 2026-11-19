@@ -1666,8 +1666,11 @@ stick has rounded long edges, about .4mm … there should only be a center pip,
 not those weird grey lines on the sides … the center pip is actually 'carved
 out' and then painted on … use the same approach we used with the tiles."
 
-- **Dimensions and shape.** `STICK_MM` is 65 × 7 × 3.5 mm, so the layout bar is
-  2.321 × 0.25 × 0.125 units. The user's final shape note — "looking at the
+- **Dimensions and shape.** `STICK_MM` is 65 × 7 × 3.5 mm. The bar is drawn at
+  **72 %** of that (`STICK.modelScale`), a readability compromise the user asked
+  for so it fits inside the scores: 46.8 × 5.04 × 2.52 mm, i.e. 1.671 × 0.18 ×
+  0.09 units. Everything below is that scaled bar; the proportions and shape are
+  the real ones. The user's final shape note — "looking at the
   stick from the long end, the cross-sectional profile of the stick should be
   an ellipse, and "looking down on the stick like we do on the table, the
   profile should be a rectangle (with only very very slightly rounded corners),
@@ -1695,14 +1698,15 @@ out' and then painted on … use the same approach we used with the tiles."
   the reference angle, and the normal map carries the carve; the tiles' 0.55 mm
   glyph wall is a different scale. `sticks.test.ts` pins the bar's extents, the
   rounded-edge inset, the pip's albedo/normal/roughness, and the one draw.
-- **Position.** 65 mm is 2.32 units, so four bars on a 0.95-unit ring would
-  cross their neighbours (each half-length is 1.16). `STICK.radiusUnits` is
-  **1.35**, the first radius that clears them (the neighbouring bar's inner
-  face is 1.225), and the score rows moved to the plate's outer edge
-  (`align-self` on the top/bottom seats; the rotated side rows already sit
-  there, ~1.95 units out). The bars therefore stay **inboard of the number
-  row** with a ~0.2-unit gap, on all four sides. The layout gate now also
-  checks stick-to-stick clearance.
+- **Position.** `STICK.radiusUnits` is **0.98**. The scaled bar is 1.671 units
+  long, so neighbours clear each other by 0.054 units (their inner faces are
+  0.89 from the centre against a 0.836 half-length); it sits in the 0.35-unit
+  band between the centre group (~0.8 out) and the score row's inner edge
+  (~1.21 out). The earlier revision had pushed the top/bottom score rows out to
+  the plate edge to make room for the full-size bar, which put them over the
+  discards; that is reverted, so the rows are centred in their thirds again and
+  the scores have a 0.46-unit margin to the plate's edge. The layout gate checks
+  stick-to-stick clearance as well as tile clearance.
 - **No DOM stick icon.** The user asked for the 3D model alone, so the 3D
   compass's corner row is only the grey wind and the score; the corner's
   accessible name still ends ", riichi" for each declarer, and the drift test

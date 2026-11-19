@@ -99,20 +99,34 @@ export const STICK_MM = {
  * all sides" — in the clear band between the number row and the round/tiles-left
  * group.
  */
+/**
+ * The compass sticks are drawn at **72 %** of the real 65 mm bar.
+ *
+ * The model's proportions, elliptical cross-section, end cut and pip are the
+ * real thing; only its scale is a readability compromise for the compass. A
+ * full-size 65 mm bar (2.32 units) cannot sit between the score row and the
+ * centre group without either crossing its neighbours or pushing the scores
+ * out over the discards (user, 2026-11-19: "scale them down (proportionally)
+ * so they can sit closer to the center and leave space for the scores").
+ * At 72 % the bar is 46.8 mm long and the four fit the inner ring cleanly.
+ */
+const STICK_MODEL_SCALE = 0.72;
+
 export const STICK = {
-  lengthUnits: STICK_MM.length / UNIT_MM,
-  widthUnits: STICK_MM.width / UNIT_MM,
-  heightUnits: STICK_MM.thickness / UNIT_MM,
+  /** Linear scale from the real 65 x 7 x 3.5 mm spec to the drawn bar. */
+  modelScale: STICK_MODEL_SCALE,
+  lengthUnits: (STICK_MM.length / UNIT_MM) * STICK_MODEL_SCALE,
+  widthUnits: (STICK_MM.width / UNIT_MM) * STICK_MODEL_SCALE,
+  heightUnits: (STICK_MM.thickness / UNIT_MM) * STICK_MODEL_SCALE,
   /**
    * Centre-line distance from the table centre, on the declarer's side.
    *
-   * At 65 mm the bar is 2.32 units long, so a ring of four at the old 0.95
-   * would cross its neighbours (each half-length is 1.16). 1.35 is the first
-   * radius that clears them: the perpendicular bar's inner face is 1.225, and
-   * the strip left by the score rows (which sit against the plate's outer
-   * edge, ~1.95 out) leaves a 0.2-unit gap on the other side.
+   * The scaled bar is 1.671 units long and 0.18 wide, so neighbours need
+   * `r - 0.09 > 0.836`; 0.98 clears them by 0.054 and sits in the 0.35-unit
+   * band between the centre group (~0.8 out) and the score row's inner edge
+   * (~1.15 out, once the row is centred in its third of the plate again).
    */
-  radiusUnits: 1.35,
+  radiusUnits: 0.98,
 } as const;
 
 /** Seats around the table, in turn order from the human. */

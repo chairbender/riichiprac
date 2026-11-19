@@ -56,15 +56,17 @@ function facePixel(
 }
 
 describe('the stick’s real dimensions', () => {
-  it('is the user’s 65 x 7 x 3.5 mm polystyrene bar', () => {
+  it('is the 65 x 7 x 3.5 mm bar, drawn at the compass scale', () => {
     expect(STICK_MM).toEqual({ length: 65, width: 7, thickness: 3.5 });
-    expect(STICK_SIZE.lengthUnits).toBeCloseTo(65 / UNIT_MM, 12);
-    expect(STICK_SIZE.widthUnits).toBeCloseTo(7 / UNIT_MM, 12);
-    expect(STICK_SIZE.heightUnits).toBeCloseTo(3.5 / UNIT_MM, 12);
+    expect(STICK_CONSTANTS.modelScale).toBe(0.72);
+    const scale = STICK_CONSTANTS.modelScale;
+    expect(STICK_SIZE.lengthUnits).toBeCloseTo((65 / UNIT_MM) * scale, 12);
+    expect(STICK_SIZE.widthUnits).toBeCloseTo((7 / UNIT_MM) * scale, 12);
+    expect(STICK_SIZE.heightUnits).toBeCloseTo((3.5 / UNIT_MM) * scale, 12);
     expect(STICK_CONSTANTS.lengthUnits).toBe(STICK_SIZE.lengthUnits);
     expect(STICK_CONSTANTS.widthUnits).toBe(STICK_SIZE.widthUnits);
     expect(STICK_CONSTANTS.heightUnits).toBe(STICK_SIZE.heightUnits);
-    // The carve atlas uses the same bar as the layout.
+    // The carve atlas uses the same scaled bar as the layout.
     expect(STICK_CARVE.lengthUnits).toBeCloseTo(STICK_SIZE.lengthUnits, 12);
     expect(STICK_CARVE.widthUnits).toBeCloseTo(STICK_SIZE.widthUnits, 12);
   });

@@ -283,8 +283,6 @@
 
 .renderer-3d-compass-seat--bottom {
   grid-area: 3 / 2 / 4 / 3;
-  /* Against the plate's outer edge, leaving the inner ring for the sticks. */
-  align-self: end;
 }
 
 .renderer-3d-compass-seat--right {
@@ -293,7 +291,6 @@
 
 .renderer-3d-compass-seat--top {
   grid-area: 1 / 2 / 2 / 3;
-  align-self: start;
 }
 
 .renderer-3d-compass-seat--left {

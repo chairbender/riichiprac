@@ -30,23 +30,27 @@
  * carve, which the 2.5D decals already ship.
  */
 
-import { UNIT_MM } from '../layoutConstants';
+import { STICK, UNIT_MM } from '../layoutConstants';
 
 /** The pip's committed numbers. */
 export const STICK_CARVE = {
-  /** A 3 mm pip on a 7 mm bar: the sprite's own proportion (42 % of the width). */
-  pipDiameterMm: 3,
-  pipRadiusUnits: 3 / 2 / UNIT_MM,
   /**
-   * The bevelled wall between the painted floor and the face. 0.5 mm is
-   * generous for a moulded pip but keeps the recess visible at the stick's
-   * on-screen width (~19 px); at 0.25 mm the whole wall is sub-pixel.
+   * A 3 mm pip on a 7 mm bar (42 % of the width) — the real proportion, scaled
+   * with the bar itself (`STICK.modelScale`). The pose is a readability
+   * compromise, so the pip's carve scales with it.
+   */
+  pipDiameterMm: 3,
+  pipRadiusUnits: (3 / 2 / UNIT_MM) * STICK.modelScale,
+  /**
+   * The bevelled wall between the painted floor and the face. 0.5 mm real,
+   * scaled with the bar; generous for a moulded pip but it keeps the recess
+   * visible at the stick's on-screen width.
    */
   wallMm: 0.5,
-  wallUnits: 0.5 / UNIT_MM,
-  /** The engraving's depth: 0.4 mm (the tile carve is 0.55 mm). */
+  wallUnits: (0.5 / UNIT_MM) * STICK.modelScale,
+  /** The engraving's depth: 0.4 mm real, scaled with the bar. */
   depthMm: 0.4,
-  depthUnits: 0.4 / UNIT_MM,
+  depthUnits: (0.4 / UNIT_MM) * STICK.modelScale,
   /** The sprite's palette. */
   bodyRgb: [248, 249, 250] as const,
   paintRgb: [224, 49, 49] as const,
@@ -60,8 +64,8 @@ export const STICK_CARVE = {
   textureWidth: 256,
   textureHeight: 256,
   /** The stick's dims, in units, for the analytic circle in UV space. */
-  lengthUnits: 65 / UNIT_MM,
-  widthUnits: 7 / UNIT_MM,
+  lengthUnits: STICK.lengthUnits,
+  widthUnits: STICK.widthUnits,
 } as const;
 
 /** The profile's slope, `dh/dd`, nonzero only on the wall. */

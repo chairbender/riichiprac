@@ -3,7 +3,9 @@
  * point sticks standing on the compass plate.
  *
  * **The model.** A 1000-point stick is a polystyrene bar: 65 mm long, 7 mm wide
- * and 3.5 mm thick, with a painted red pip in the middle and a soft sheen. The
+ * and 3.5 mm thick, with a painted red pip in the middle and a soft sheen. On
+ * the compass it is drawn at 72 % of that (`STICK.modelScale`) so it fits
+ * between the score row and the centre group. The
  * user's last two shape notes (2026-11-19) decide the form: "looking at the
  * stick from the long end, the cross-sectional profile of the stick should be
  * an ellipse", and "looking down on the stick like we do on the table, the
@@ -58,13 +60,13 @@ export const STICK = {
   /** Rings across the tiny end-rim round. */
   rimSegments: 4,
   /**
-   * The very slight round on the plan corners: the user's 0.4 mm. The top view
-   * is otherwise a hard rectangle with abrupt, flat ends (2026-11-19: "the
-   * profile should be a rectangle (with only very very slightly rounded
-   * corners), so the ends should terminate abruptly rather than being
-   * semi-ovals").
+   * The very slight round on the plan corners: 0.4 mm of the real bar, scaled
+   * with the model. The top view is otherwise a hard rectangle with abrupt,
+   * flat ends (2026-11-19: "the profile should be a rectangle (with only very
+   * very slightly rounded corners), so the ends should terminate abruptly
+   * rather than being semi-ovals").
    */
-  endRoundUnits: 0.4 / UNIT_MM,
+  endRoundUnits: (0.4 / UNIT_MM) * STICK_LAYOUT.modelScale,
   /** Polystyrene under the key light: a satin body with a lacquered clear coat. */
   roughness: 0.24,
   metalness: 0,
