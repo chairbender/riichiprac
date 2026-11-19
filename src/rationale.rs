@@ -33,7 +33,7 @@ use crate::generator::{
 use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, MeldType, RiichiTrigger,
-    ShouminkanTrigger,
+    ShouminkanTrigger, Wind,
 };
 
 /// A book reference. Line numbers are hints for reviewers, not stable anchors;
@@ -1200,6 +1200,11 @@ pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
         }
+        "defense_multi_threat" => Some(ch8(
+            CH8_GENBUTSU,
+            100,
+            "not necessarily safe against the other two players",
+        )),
         "push_or_fold" => Some(ch8(
             CH8_PUSH_FOLD,
             23,
@@ -1227,6 +1232,9 @@ pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
 fn category_rationale(state: &GameState) -> Option<BookRationale> {
     if let Some(defense) = defense_rationale(state) {
         return Some(defense);
+    }
+    if let Some(multi) = multi_threat_rationale(state) {
+        return Some(multi);
     }
     if let Some(fold) = fold_to_riichi_rationale(state) {
         return Some(fold);
@@ -4172,6 +4180,268 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     })
 }
 
+/// The multi-threat lesson: ch. 8's "100% safe against all of the opponents".
+///
+/// The chapter's four statements this lesson cites are all in "Genbutsu and
+/// other absolutely safe tiles":
+///
+/// - a genbutsu of one player is "not necessarily safe against the other two
+///   players" (ch8:100);
+/// - there are three kinds of tiles that are 100% safe against all opponents
+///   (ch8:100–104);
+/// - the tile the left player has just discarded is one of them, through the
+///   furiten rule (ch8:102, 106–107);
+/// - the fourth honor and the absolute no-chance tile are the other two
+///   (ch8:103–104, 109–116).
+///
+/// The trap is what makes the board a *multi*-threat question, so the rationale
+/// always names it and says which opponent cannot ron it while another still
+/// can.
+fn multi_threat_rationale(state: &GameState) -> Option<BookRationale> {
+    if state.category != "defense_multi_threat" {
+        return None;
+    }
+
+    let threats = crate::classifier::defense::ready_threat_seats(state);
+    if threats.len() < 2 {
+        return None;
+    }
+    let facts = crate::safety::MultiThreatFacts::from_state(state, &threats)?;
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+    let answer_text = format_tile_for_display(&answer.to_string(), false);
+
+    let mut hand: Vec<Tile> = human(state)?
+        .hand
+        .iter()
+        .chain(human(state)?.draw.iter())
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    hand.sort();
+    hand.dedup();
+
+    let mut rules = vec![BookRule {
+        id: "safe_against_all".to_string(),
+        rule: "Safety against one opponent does not compose: a discard is only safe when it is \
+               safe against every live opponent."
+            .to_string(),
+        quote: "Genbutsu tiles of player X are 100% safe against X, but not necessarily safe \
+                against the other two players. ... There are three kinds of tiles that are 100% \
+                safe against all of the opponents."
+            .to_string(),
+        citation: ch8(
+            CH8_GENBUTSU,
+            100,
+            "not necessarily safe against the other two players",
+        ),
+        applies: format!(
+            "{} opponents are live at once; {answer_text} is the hand's only tile that is safe \
+             against all of them.",
+            threats.len()
+        ),
+    }];
+
+    // Which of the chapter's three kinds the answer belongs to. More than one
+    // can apply (the left player's discard can also be in a threat's river), and
+    // each is worth saying.
+    let visible = facts.visible_of(answer);
+    if facts.left_discard == Some(answer) {
+        rules.push(BookRule {
+            id: "left_player_discard".to_string(),
+            rule: "The tile the left player has just discarded is 100% safe for this turn: the \
+                   furiten rule stops every other opponent from ronning it too."
+                .to_string(),
+            quote: "The tile that was just discarded by your left player.".to_string(),
+            citation: ch8(CH8_GENBUTSU, 102, "just discarded by your left player"),
+            applies: format!(
+                "{answer_text} is Kamicha's most recent discard, so it is temporarily furiten for \
+                 the other opponents as well."
+            ),
+        });
+    }
+    if visible >= 4 && answer.is_honor() {
+        rules.push(BookRule {
+            id: "fourth_honor".to_string(),
+            rule: "A fourth honor tile is 100% safe against every opponent while Thirteen \
+                   Orphans is impossible."
+                .to_string(),
+            quote: "A fourth honor tile when there is no possibility of Thirteen Orphans."
+                .to_string(),
+            citation: ch8(CH8_GENBUTSU, 103, "A fourth honor tile"),
+            applies: format!(
+                "All four copies of {answer_text} are visible, so nobody can hold \
+                              it or wait on it."
+            ),
+        });
+    }
+    if !answer.is_honor() && visible >= 4 {
+        rules.push(BookRule {
+            id: "dead_tile".to_string(),
+            rule: "A tile whose four copies are all visible cannot be in anyone's hand, so it is \
+                   100% safe against everyone."
+                .to_string(),
+            quote: "If, additionally, all three of 4m are visible to you as well, then the fourth \
+                    4m is 100% safe."
+                .to_string(),
+            citation: ch8(CH8_KABE, 231, "the fourth"),
+            applies: format!("All four copies of {answer_text} are already visible."),
+        });
+    }
+    if facts
+        .threats
+        .iter()
+        .all(|threat| threat.facts.genbutsu.contains(&answer))
+    {
+        rules.push(BookRule {
+            id: "every_river".to_string(),
+            rule: "A tile every opponent has discarded is safe against all of them.".to_string(),
+            quote: "a tile discarded by all three of your opponents is safe against all three \
+                    players."
+                .to_string(),
+            citation: ch8(
+                CH8_GENBUTSU,
+                100,
+                "discarded by all three of your opponents",
+            ),
+            applies: format!("Every live opponent has {answer_text} in their own river."),
+        });
+    }
+
+    // The trap: a hand tile that is safe for one opponent and live for another.
+    if let Some(trap) = hand.iter().copied().find(|tile| {
+        *tile != answer && {
+            let safe = facts.safe_seats(*tile);
+            !safe.is_empty() && safe.len() < threats.len()
+        }
+    }) {
+        let trap_text = format_tile_for_display(&trap.to_string(), false);
+        let safe = facts.safe_seats(trap);
+        let live: Vec<usize> = threats
+            .iter()
+            .copied()
+            .filter(|seat| !safe.contains(seat))
+            .collect();
+        rules.push(BookRule {
+            id: "safety_does_not_compose".to_string(),
+            rule: "A tile that is safe against one opponent is still live against another, so it \
+                   is not a fold tile."
+                .to_string(),
+            quote: "Genbutsu tiles of player X are 100% safe against X, but not necessarily safe \
+                    against the other two players."
+                .to_string(),
+            citation: ch8(
+                CH8_GENBUTSU,
+                100,
+                "not necessarily safe against the other two players",
+            ),
+            applies: format!(
+                "{trap_text} is safe against {}, but {} can still ron it.",
+                seat_list(&safe),
+                seat_list(&live)
+            ),
+        });
+    }
+
+    // The open-hand threat, when the shape has one.
+    let open_seats = facts.open_seats();
+    if !open_seats.is_empty() {
+        rules.push(BookRule {
+            id: "open_hand_ready".to_string(),
+            rule: "Three or more open sets is the chapter's shortcut for assuming an opponent is \
+                   ready."
+                .to_string(),
+            quote: "They have three or more open sets / runs.".to_string(),
+            citation: ch8(CH8_READY_SHORTCUT, 412, "three or more open sets"),
+            applies: format!(
+                "{} has three open melds, so the hand counts as a live threat even without a \
+                 Riichi declaration.",
+                seat_list(&open_seats)
+            ),
+        });
+    }
+
+    // The score line, when the shape uses ch. 8's "Your position in the game".
+    let leader = human(state)?.score
+        >= state
+            .players
+            .iter()
+            .filter(|player| !player.is_human)
+            .map(|player| player.score)
+            .max()
+            .unwrap_or(i32::MIN);
+    if state.round_wind == Wind::South && leader {
+        rules.push(BookRule {
+            id: "ahead_in_the_south_round".to_string(),
+            rule: "Be more defensive when you are ahead, especially in the South round."
+                .to_string(),
+            quote: "You should be more defensive when you are ahead of the game, while you should \
+                    be more aggressive when you are behind. This should especially be the case in \
+                    the South round."
+                .to_string(),
+            citation: ch8("Miscellaneous", 371, "more defensive when you are ahead"),
+            applies: "The human leads the table in the South round, so the score line pushes the \
+                      same way as the fold."
+                .to_string(),
+        });
+    }
+
+    let mut caveats = vec![
+        "The answer is *certain* safety, not a chart row: a suji or kabe read is only an argument \
+         about side waits, and an open hand may not even have one."
+            .to_string(),
+        "The defender's hand is at least 2-away, so ch. 8's 2-away push line (Rank B or safer) \
+         does not help: Rank B against one threat can be Rank D against another."
+            .to_string(),
+        "Opponents without a Riichi declaration and without three open melds are not counted as \
+         live threats; a silent dama hand is outside this drill's read."
+            .to_string(),
+    ];
+    if facts.left_discard == Some(answer) {
+        caveats.push(
+            "The left player's-discard kind lasts one turn only: once the temporary furiten \
+             lifts, the tile is an ordinary discard again."
+                .to_string(),
+        );
+    }
+    if visible >= 4 && answer.is_honor() {
+        caveats.push(
+            "The chart's AAA row is dangerous only against Thirteen Orphans; the trainer treats \
+             the fourth honor as safe, exactly as ch. 8 does."
+                .to_string(),
+        );
+    }
+
+    Some(BookRationale {
+        summary: format!(
+            "Fold: {answer_text} is the only tile safe against all {} live opponents.",
+            threats.len()
+        ),
+        rules,
+        absent: Vec::new(),
+        source: ch8(
+            CH8_GENBUTSU,
+            100,
+            "not necessarily safe against the other two players",
+        ),
+        caveats,
+    })
+}
+
+fn seat_list(seats: &[usize]) -> String {
+    let names: Vec<&str> = seats
+        .iter()
+        .map(|seat| match seat {
+            1 => "Shimocha",
+            2 => "Toimen",
+            _ => "Kamicha",
+        })
+        .collect();
+    match names.as_slice() {
+        [] => "nobody".to_string(),
+        [one] => (*one).to_string(),
+        [first, rest @ ..] => format!("{} and {}", first, rest.join(" and ")),
+    }
+}
+
 /// The ch. 8.1/8.3 fold lesson: an opponent's Riichi, a junk hand, and the one
 /// tile the chapter calls 100% safe.
 fn fold_to_riichi_rationale(state: &GameState) -> Option<BookRationale> {
@@ -6390,6 +6660,7 @@ mod tests {
             "kabe_double_one_chance",
             "kabe_suji_defense",
             "defense_stuck_heuristic",
+            "defense_multi_threat",
             "open_hand_defense",
             "suji_trap_riichi",
             "pinfu_head",
@@ -6434,6 +6705,7 @@ mod tests {
             "kabe_double_one_chance",
             "kabe_suji_defense",
             "defense_stuck_heuristic",
+            "defense_multi_threat",
             "open_hand_defense",
             "suji_trap_riichi",
             "pinfu_head",
@@ -6918,6 +7190,7 @@ mod tests {
             "kabe_double_one_chance",
             "kabe_suji_defense",
             "defense_stuck_heuristic",
+            "defense_multi_threat",
             "open_hand_defense",
             "suji_trap_riichi",
             "pinfu_head",
@@ -7263,6 +7536,60 @@ mod tests {
         );
         assert!(!rationale.absent.is_empty(), "alternatives must be ranked");
         assert!(rationale.summary.contains("Rank"));
+    }
+
+    #[test]
+    fn multi_threat_rationale_states_the_composition_rule_and_names_the_trap() {
+        let state = generate_puzzle("defense_multi_threat").expect("multi threat must generate");
+        let rationale = rationale_for(&state).expect("multi-threat needs a rationale");
+
+        assert_eq!(rationale.source.chapter, 8);
+        assert_eq!(
+            rationale.source.section,
+            "Genbutsu and other absolutely safe tiles"
+        );
+        assert_eq!(
+            rationale.source.source_needle,
+            "not necessarily safe against the other two players"
+        );
+        assert!(!rationale.summary.is_empty());
+        assert!(!rationale.caveats.is_empty());
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert!(ids.contains(&"safe_against_all"));
+        assert!(
+            ids.contains(&"safety_does_not_compose"),
+            "the board must explain its trap: {ids:?}"
+        );
+        assert!(
+            ids.iter().any(|id| {
+                matches!(
+                    *id,
+                    "left_player_discard" | "fourth_honor" | "dead_tile" | "every_river"
+                )
+            }),
+            "the answer must be explained by one of ch8's safe kinds: {ids:?}"
+        );
+
+        // The trap rule names both sides of the trade.
+        let trap = rationale
+            .rules
+            .iter()
+            .find(|rule| rule.id == "safety_does_not_compose")
+            .expect("trap rule");
+        assert!(trap.applies.contains("safe against"));
+        assert!(trap.applies.contains("can still ron"));
+
+        // Every rule carries a real citation.
+        for rule in &rationale.rules {
+            assert_eq!(rule.citation.chapter, 8);
+            assert!(!rule.quote.is_empty());
+            assert!(!rule.applies.is_empty());
+        }
     }
 
     #[test]

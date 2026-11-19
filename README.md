@@ -212,9 +212,10 @@ melds, dora, riichi sticks, furiten) comes from the simulated table.
 
 ## Defense scenarios
 
-Six lessons train defense. Four answer an opponent's Riichi with a tile choice,
-one reads an open hand's post-`chii` discard, and **Push or Fold** decides
-whether to defend at all. The tile-choice Riichi lessons start from a hand that
+Eleven lessons train defense. Eight answer an opponent's Riichi with a tile
+choice, one reads an open hand's post-`chii` discard, one reads a whole table of
+two or more live threats, and **Push or Fold** decides whether to defend at all.
+The tile-choice Riichi lessons start from a hand that
 is never ready, so the question is only which tile is safest to let go; the fold
 lesson additionally requires the hand to be junk, which is what makes folding
 the book's answer. All are graded by the book's rule; Mortal's answer appears
@@ -315,6 +316,27 @@ concealed set, avoid the dora and its neighbours, stay outside the opponent's
 early discards, and prefer a terminal so the discard cannot deal into tanyao.
 The generated hand holds the answer twice, so the copy you keep is your
 follow-up discard.
+
+**Defense: Two or More Threats** is ch. 8's composition rule. Before it, every
+tile-choice defense lesson read one opponent; the chapter says why that is not
+enough:
+
+> Genbutsu tiles of player X are 100% safe against X, but not necessarily safe
+> against the other two players. … There are three kinds of tiles that are 100%
+> safe against all of the opponents. — ch8:100–104
+
+The three safe kinds are the tile the left player has just discarded
+(temporary furiten, ch8:102), a fourth honor tile (ch8:103), and an absolute no
+chance tile (ch8:104). The lesson deals two Riichi declarations, a Riichi plus a
+three-meld open hand (assumed ready by ch8.4's "three or more open sets"
+shortcut), or all three at once on a South-round table where the human is ahead
+(ch8.5's "more defensive when you are ahead"). The open-hand threat is real
+tenpai, and every board keeps a trap: a hand tile that is 100% safe against one
+threat but a live winning tile or non-suji tile against another. The answer is
+the hand's only tile that is *certain* safe against every live threat, and the
+rationale names the trap and which opponent still fears it. See
+[`multi-threat-defense.md`](multi-threat-defense.md) for the generator,
+classifier, and tests.
 
 **Open Hand: Post-Chi Discard** is ch. 8.4, "Discard upon chii". An opponent
 with three open melds calls `chii` and discards: when the discard is in the same

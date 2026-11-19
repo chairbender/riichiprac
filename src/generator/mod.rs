@@ -39,6 +39,10 @@
 //!   `kabe_one_chance` (one incomplete blockade in the early turns),
 //!   `kabe_double_one_chance` (two last copies needed on one wait), and
 //!   `kabe_suji_defense` (one blockade plus one genbutsu, `tbl:kabesuji`).
+//! - `defense_multi_threat`: ch. 8's "safe against all of the opponents" rule
+//!   (ch8:100–104): two Riichi declarations, a Riichi plus a three-meld open
+//!   hand, or all three at once, with a trap tile that is safe against one
+//!   opponent and live against another.
 //! - `push_or_fold`: ch. 8.1's push/fold box, isolated on the 1-away cell:
 //!   push a guaranteed mangan with a perfect wait, fold a cheap bad-wait hand.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
@@ -79,6 +83,7 @@ pub(crate) mod dama_expensive_hand;
 pub(crate) mod dama_genbutsu_wait;
 pub(crate) mod dama_improving_hand;
 mod defense;
+mod defense_multi_threat;
 mod fold_to_riichi;
 pub(crate) mod honitsu_decision;
 pub mod hotseat;
@@ -783,6 +788,26 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         book: Some(BOOK_CH8_AGAINST_RIICHI),
     },
     ScenarioMeta {
+        id: ScenarioId::DefenseMultiThreat,
+        label: "Defense: Two or More Threats",
+        description: "Several opponents are live at once — two Riichi declarations, a Riichi \
+                      plus a three-meld open hand, or all three: discard the one tile the book \
+                      calls safe against everyone, not the one that is merely safe against one.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "betaori",
+            "multi_threat",
+            "two_riichi",
+            "open_hand",
+            "genbutsu",
+            "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_BASICS),
+    },
+    ScenarioMeta {
         id: ScenarioId::OpenHandDefense,
         label: "Open Hand: Post-Chi Discard",
         description: "An opponent with three open melds chi'd, then discarded: read whether \
@@ -914,6 +939,7 @@ pub enum ScenarioId {
     KabeDoubleOneChance,
     KabeSujiDefense,
     DefenseStuckHeuristic,
+    DefenseMultiThreat,
     OpenHandDefense,
     PinfuHead,
     HonitsuDecision,
@@ -956,6 +982,7 @@ impl ScenarioId {
         ScenarioId::KabeDoubleOneChance,
         ScenarioId::KabeSujiDefense,
         ScenarioId::DefenseStuckHeuristic,
+        ScenarioId::DefenseMultiThreat,
         ScenarioId::OpenHandDefense,
         ScenarioId::PinfuHead,
         ScenarioId::HonitsuDecision,
@@ -998,6 +1025,7 @@ impl ScenarioId {
             ScenarioId::KabeDoubleOneChance => "kabe_double_one_chance",
             ScenarioId::KabeSujiDefense => "kabe_suji_defense",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
+            ScenarioId::DefenseMultiThreat => "defense_multi_threat",
             ScenarioId::OpenHandDefense => "open_hand_defense",
             ScenarioId::PinfuHead => "pinfu_head",
             ScenarioId::HonitsuDecision => "honitsu_decision",
@@ -1041,6 +1069,7 @@ impl ScenarioId {
             "kabe_double_one_chance" => Some(ScenarioId::KabeDoubleOneChance),
             "kabe_suji_defense" => Some(ScenarioId::KabeSujiDefense),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
+            "defense_multi_threat" => Some(ScenarioId::DefenseMultiThreat),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
             "pinfu_head" => Some(ScenarioId::PinfuHead),
             "honitsu_decision" => Some(ScenarioId::HonitsuDecision),
@@ -1089,6 +1118,7 @@ impl ScenarioId {
             ScenarioId::KabeDoubleOneChance => defense::generate_kabe_double_one_chance(category),
             ScenarioId::KabeSujiDefense => defense::generate_kabe_suji(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
+            ScenarioId::DefenseMultiThreat => defense_multi_threat::generate(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
             ScenarioId::PinfuHead => pinfu_head::generate(category),
             ScenarioId::HonitsuDecision => honitsu_decision::generate(category),

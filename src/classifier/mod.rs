@@ -385,6 +385,14 @@ pub const CLASSIFIERS: &[LessonClassifier] = &[
         policy: push_fold::POLICY,
         matches: push_fold::push_or_fold,
     },
+    // The multi-threat read comes before the one-threat family. It is the only
+    // recogniser that reads every live opponent; the one-threat lessons refuse
+    // a table with a second ready opponent.
+    LessonClassifier {
+        lesson: ScenarioId::DefenseMultiThreat,
+        policy: defense::POLICY,
+        matches: defense::defense_multi_threat,
+    },
     LessonClassifier {
         lesson: ScenarioId::FoldToRiichi,
         policy: defense::POLICY,
