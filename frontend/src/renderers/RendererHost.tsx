@@ -22,13 +22,23 @@
 import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { antiAliasFor, probeCapabilities } from './capabilities';
-import type { DebugMode, HeroReport, QualityTier, TableRenderer, TableSnapshot } from './contract';
+import type {
+  DebugMode,
+  HandTileRef,
+  HeroReport,
+  HitRect,
+  QualityTier,
+  TableRenderer,
+  TableSnapshot,
+} from './contract';
 import {
   BOARD_FAILED_EVENT,
   BOARD_READY_EVENT,
   HERO_FAILED_EVENT,
   HERO_READY_EVENT,
 } from './contract';
+import { TableOverlay } from './overlay';
+import type { OverlayHandTile } from './handOverlay';
 import './RendererHost.css';
 
 /** The host's observable lifecycle. */
@@ -68,6 +78,20 @@ export interface RendererHostProps {
    * to the view it would otherwise have drawn instead of a blank stage.
    */
   readonly fallback?: ReactNode;
+  /** Call Riichi is armed: the projected hand buttons say so (3D-08). */
+  readonly callRiichi?: boolean;
+  /** Call Kan is armed: the projected hand buttons say so (3D-08). */
+  readonly callKan?: boolean;
+  /**
+   * The hand-click handler the stacked/top-down views use (App's `selectTile`).
+   * The overlay is rendered only when this is supplied; the answer flow itself
+   * lives in the store, so disposing the renderer cannot break it.
+   */
+  readonly onSelectTile?: (
+    tile: string,
+    index?: number,
+    isDraw?: boolean,
+  ) => void;
 }
 
 function describeError(error: unknown): string {
@@ -265,8 +289,12 @@ export function RendererHost({
   perfHud = false,
   reducedMotion = false,
   fallback = null,
+  callRiichi = false,
+  callKan = false,
+  onSelectTile,
 }: RendererHostProps) {
   const headingId = useId();
+  const descriptionId = useId();
   const statusId = useId();
   const viewportRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<TableRenderer | null>(null);
@@ -276,6 +304,23 @@ export function RendererHost({
   const [status, setStatus] = useState<HostStatus>({ state: 'idle', message: null });
   const [heroReport, setHeroReport] = useState<HeroReport | null>(null);
   const [heroExported, setHeroExported] = useState(0);
+  const [hitRects, setHitRects] = useState<readonly HitRect[]>([]);
+
+  /**
+   * Re-read the renderer's pure projection. Called after everything that can
+   * move a tile: a new snapshot, a resize, and the board/context becoming
+   * current. It never draws and never creates DOM.
+   */
+  const refreshHitRects = useCallback(() => {
+    setHitRects(rendererRef.current?.hitRects() ?? []);
+  }, []);
+
+  const reportHoverTile = useCallback((tile: OverlayHandTile | null) => {
+    const ref: HandTileRef | null = tile
+      ? { seat: tile.seat, zone: tile.zone, slot: tile.slot }
+      : null;
+    rendererRef.current?.setHoverTile?.(ref);
+  }, []);
 
   const refreshHero = useCallback(() => {
     setHeroReport(rendererRef.current?.heroReport?.() ?? null);
@@ -326,6 +371,8 @@ export function RendererHost({
       const height = container.clientHeight || container.getBoundingClientRect().height;
       if (width <= 0 || height <= 0) return;
       renderer.setSize(width, height, globalThis.devicePixelRatio || 1);
+      // The overlay's rects live in the same solved frame.
+      refreshHitRects();
       // The probes are screen-space: a resize moves them.
       if (debug === 'hero') refreshHero();
     };
@@ -363,6 +410,7 @@ export function RendererHost({
       // three re-initialises its GL state after a restore, but the scene has to
       // be drawn again; setSize redraws synchronously.
       measure();
+      refreshHitRects();
     };
 
     canvas.addEventListener('webglcontextlost', onContextLost);
@@ -388,6 +436,7 @@ export function RendererHost({
     const onBoardReady = () => {
       if (cancelled) return;
       setStatus({ state: 'ready', message: null });
+      refreshHitRects();
     };
     canvas.addEventListener(HERO_READY_EVENT, onHeroReady);
     canvas.addEventListener(HERO_FAILED_EVENT, onFailed);
@@ -415,6 +464,7 @@ export function RendererHost({
         rendererRef.current = renderer;
         renderer.syncState(snapshotRef.current);
         measure();
+        refreshHitRects();
         setStatus({ state: 'ready', message: null });
       })
       .catch((error: unknown) => {
@@ -441,16 +491,27 @@ export function RendererHost({
       rendererRef.current = null;
       canvas?.remove();
       canvas = null;
+      setHitRects([]);
     };
-  }, [capabilities, debug, perfHud, reducedMotion, refreshHero, resolvedTier]);
+  }, [
+    capabilities,
+    debug,
+    perfHud,
+    reducedMotion,
+    refreshHero,
+    refreshHitRects,
+    resolvedTier,
+  ]);
 
-  // Redraw on a new snapshot without remounting the renderer.
+  // Redraw on a new snapshot without remounting the renderer, and re-project
+  // the hand's buttons: a different hand means different labels and rects.
   useEffect(() => {
     rendererRef.current?.syncState(snapshot);
-  }, [snapshot]);
+    refreshHitRects();
+  }, [snapshot, refreshHitRects]);
 
   const showFallback = status.state !== 'ready';
-  const description = status.message ? statusId : undefined;
+  const describedBy = `${descriptionId}${status.message ? ` ${statusId}` : ''}`;
 
   return (
     <RendererErrorBoundary
@@ -461,14 +522,29 @@ export function RendererHost({
         <h2 id={headingId} className="renderer-3d-heading">
           3D table view
         </h2>
+        <p id={descriptionId} className="renderer-3d-description">
+          3D table view. The table is a picture; the hand's tiles are buttons over
+          it. Use Tab to move through the hand and Enter or Space to discard.
+        </p>
         <div
           ref={viewportRef}
           className="renderer-3d-viewport"
           role="group"
           aria-labelledby={headingId}
-          aria-describedby={description}
+          aria-describedby={describedBy}
         />
         <div className="renderer-3d-vignette" aria-hidden="true" />
+        {status.state === 'ready' && debug !== 'hero' && onSelectTile && (
+          <TableOverlay
+            snapshot={snapshot}
+            rects={hitRects}
+            callRiichi={callRiichi}
+            callKan={callKan}
+            reducedMotion={reducedMotion}
+            onSelectTile={onSelectTile}
+            onHoverTile={reportHoverTile}
+          />
+        )}
         {showFallback && fallback}
         {debug === 'hero' && status.state === 'ready' && (
           <HeroHud

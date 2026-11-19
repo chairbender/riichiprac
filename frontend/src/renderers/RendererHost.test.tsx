@@ -11,11 +11,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { StrictMode } from 'react';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   HeroCapture,
   HeroReport,
+  HitRect,
   RendererOptions,
   RendererStats,
   TableRenderer,
@@ -49,6 +51,9 @@ const hostMock = vi.hoisted(() => {
     fail: Error | null;
     report: unknown;
     captures: unknown[];
+    rects: HitRect[];
+    hitRectCalls: number;
+    hover: unknown[];
   }
 
   const state: MockState = {
@@ -61,6 +66,9 @@ const hostMock = vi.hoisted(() => {
     fail: null,
     report: null,
     captures: [],
+    rects: [],
+    hitRectCalls: 0,
+    hover: [],
   };
 
   const stats: RendererStats = {
@@ -87,7 +95,13 @@ const hostMock = vi.hoisted(() => {
         state.sizes.push([width, height, dpr]);
       },
       setQuality: () => undefined,
-      hitRects: () => [],
+      hitRects: () => {
+        state.hitRectCalls += 1;
+        return state.rects;
+      },
+      setHoverTile: (tile: unknown) => {
+        state.hover.push(tile);
+      },
       playEvents: () => undefined,
       measure: () => stats,
       heroReport: () => state.report as never,
@@ -160,6 +174,9 @@ beforeEach(() => {
     fail: null,
     report: null,
     captures: [],
+    rects: [],
+    hitRectCalls: 0,
+    hover: [],
   });
   hostMock.createRenderer.mockClear();
 
@@ -176,6 +193,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -386,6 +404,127 @@ function heroReportFixture(): HeroReport {
     pomOff: { probes: [probe({ id: 'faceIvory' })], allProbesPass: true },
   };
 }
+
+function handSnapshot(revision = 1): TableSnapshot {
+  const base = snapshot(revision);
+  return {
+    ...base,
+    seats: [
+      {
+        ...base.seats[0],
+        concealed: [
+          { face: '1m', zone: 'hand', slot: 0, faceUp: true, sideways: false },
+        ],
+      },
+      base.seats[1],
+      base.seats[2],
+      base.seats[3],
+    ],
+  };
+}
+
+const HAND_RECT: HitRect = {
+  seat: 0,
+  zone: 'hand',
+  slot: 0,
+  face: '1m',
+  left: 10,
+  top: 20,
+  width: 44,
+  height: 44,
+};
+
+describe('RendererHost interaction overlay (3D-08)', () => {
+  it('renders the projected hand and forwards clicks to the shared handler', async () => {
+    hostMock.state.rects = [HAND_RECT];
+    const onSelectTile = vi.fn();
+    render(
+      <RendererHost
+        snapshot={handSnapshot()}
+        onSelectTile={onSelectTile}
+        callRiichi={false}
+        callKan={false}
+        fallback={fallbackTable()}
+      />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    const button = await screen.findByRole('button', { name: 'Discard 1m' });
+    expect(button.style.left).toBe('10px');
+    expect(button.style.width).toBe('44px');
+    await userEvent.click(button);
+    expect(onSelectTile).toHaveBeenCalledWith('1m', 0, false);
+  });
+
+  it('re-reads the rects after a resize and a new snapshot', async () => {
+    hostMock.state.rects = [HAND_RECT];
+    // jsdom has no ResizeObserver: the host's window-resize fallback is the
+    // path under test, which is also the real path in browsers without it.
+    vi.stubGlobal('ResizeObserver', undefined);
+    const { rerender } = render(
+      <RendererHost snapshot={handSnapshot(1)} onSelectTile={() => undefined} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    expect(screen.getByRole('button', { name: 'Discard 1m' })).toBeTruthy();
+    const callsBefore = hostMock.state.hitRectCalls;
+
+    act(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    expect(hostMock.state.hitRectCalls).toBeGreaterThan(callsBefore);
+
+    hostMock.state.rects = [{ ...HAND_RECT, face: '2m', left: 60 }];
+    const next = handSnapshot(2);
+    rerender(
+      <RendererHost
+        snapshot={{
+          ...next,
+          seats: [
+            {
+              ...next.seats[0],
+              concealed: [
+                { face: '2m', zone: 'hand', slot: 0, faceUp: true, sideways: false },
+              ],
+            },
+            next.seats[1],
+            next.seats[2],
+            next.seats[3],
+          ],
+        }}
+        onSelectTile={() => undefined}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Discard 2m' })).toBeTruthy(),
+    );
+    expect(screen.getByRole('button', { name: 'Discard 2m' }).style.left).toBe('60px');
+    expect(hostMock.state.hitRectCalls).toBeGreaterThan(callsBefore);
+  });
+
+  it('forwards hover to the renderer’s lift seam', async () => {
+    hostMock.state.rects = [HAND_RECT];
+    render(<RendererHost snapshot={handSnapshot()} onSelectTile={() => undefined} />);
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    const button = await screen.findByRole('button', { name: 'Discard 1m' });
+    fireEvent.focus(button);
+    expect(hostMock.state.hover.at(-1)).toEqual({ seat: 0, zone: 'hand', slot: 0 });
+  });
+
+  it('names the view and describes the interactive hand for screen readers', async () => {
+    hostMock.state.rects = [HAND_RECT];
+    render(<RendererHost snapshot={handSnapshot()} onSelectTile={() => undefined} />);
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    const group = screen.getByRole('group', { name: '3D table view' });
+    const describedBy = group.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    const description = document.getElementById(describedBy ?? '');
+    expect(description?.textContent).toMatch(/3D table view/);
+    expect(description?.textContent).toMatch(/buttons/);
+    const canvas = document.querySelector('canvas');
+    expect(canvas?.getAttribute('aria-hidden')).toBe('true');
+  });
+});
 
 describe('RendererHost hero debug view (3D-05)', () => {
   it('prints the measured probes after the scene reports ready', async () => {

@@ -875,6 +875,9 @@ export const App = () => {
               tier={tableMount.query.quality}
               debug={tableMount.query.debug}
               perfHud={tableMount.query.perf}
+              callRiichi={callRiichi}
+              callKan={callKan}
+              onSelectTile={selectTile}
             />
           ) : (
             <p className="status-msg" role="status">

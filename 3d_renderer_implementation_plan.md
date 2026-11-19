@@ -1515,6 +1515,27 @@ keyboard and screen reader.
   transforms both come from `frameForAspect` on the same `BoardLayout` (a drift
   test projects the hand OBBs through the frame and compares).
 
+**As landed (2026-11-19).** `hitTest.ts` projects each tile's body OBB through
+the scene's own frame. Targets aim for 44 × 44 CSS px and clamp to the tile's
+cell when the projection is smaller, and adjacent targets split at the projected
+midpoint of their centres so no two ever overlap (a phone at 390 × 844 therefore
+gets the largest non-overlapping target, not an overlapping 44 px one; the
+reference aspect clears 44 px on both axes). The overlay's DOM order is
+`HandDock`'s display sort — both call `handTileLabel` and `handOverlay.ts`'s
+`overlayHandTiles` — while each button is positioned on its own tile's rect.
+`App` passes its `selectTile`, `callRiichi` and `callKan` straight through, so
+the click path has no renderer in it. `TableRenderer.setHoverTile(tile | null)`
+is the seam the overlay calls once per hover/focus change (and with `null` when
+the hovered button disappears); `Scene` responds by raising that tile by half a
+tile height (14 mm) along world +Y, on top of the button's CSS tint, without
+moving the button — see §9 decision 8. Reduced motion suppresses the lift but
+never the clear, and the overlay's rects always come from the un-lifted pose.
+The overlay is the first floating-layer element: absolutely positioned over the
+full-window stage, `pointer-events: none` except for its buttons.
+
+**User verdict (2026-11-19):** accepted — the projected hand and the half-tile
+hover lift "looks good now" on the running dev server.
+
 **Gate:** frontend gate.
 
 ---
@@ -1628,8 +1649,10 @@ observable, and lock the per-tier step counts against the measured budget.
 
 **Deliverables**
 
-- Hover/focus lift (≤ 4 mm, 120 ms), a bounded deal-in (≤ 400 ms) on a revision
-  change, and `playEvents()` with damped-spring tile flight math (unused in v1).
+- Hover/focus lift (half a tile height, 14 mm, landed early in 3D-08 by user
+  decision 8; the earlier ≤ 4 mm figure is superseded), a bounded deal-in
+  (≤ 400 ms) on a revision change, and `playEvents()` with damped-spring tile
+  flight math (unused in v1).
 - Tests for the diff rule "new revision = cut".
 
 **Acceptance criteria**
@@ -2182,7 +2205,7 @@ which files it touched.
 | R4 | Merge contention with the parallel 2.5D view work in `App.tsx`, `useSettingsStore.ts`, `AppControls.tsx`, `AGENTS.md` (conflicts, not dependencies) | high / low | keep the 3D diff to the mount point; rebase and resolve by hand; neither chain waits for the other | 3D-02, 3D-14 |
 | R5 | Mobile GPU memory (58 MB atlas + existing 43 MB model) or thermal throttling | medium / medium | compat tier half-res, 0 POM, on-demand frames, 30 fps floor, auto-fallback remembered per session | 3D-11 |
 | R6 | The wall is decorative, so a "full wall + 14-tile hands" picture is physically impossible | certain / low | documented; depletion needs a Rust wall census, out of v1 (non-goal) | plan |
-| R7 | The DOM overlay drifts from the 3D camera (buttons not aligned with tiles) | medium / high (usability) | single projection source (`hitRects()`), tests at two aspects, user check on the final board | 3D-08 |
+| R7 | The DOM overlay drifts from the 3D camera (buttons not aligned with tiles) | medium / high (usability) | single projection source (`hitRects()`), tests at two aspects, user check on the final board. **Closed in 3D-08** by the drift test that re-projects the hand OBBs through `frameForAspect`; the remaining user check is 3D-15's | 3D-08 |
 | R8 | Shading/looks cannot be verified in CI | certain / medium | numeric probes for colours and POM displacement, debug modes, explicit user handoffs, no self-approval | all |
 | R9 | A new runtime dependency is more than the repo wants | low / medium | lazy chunk, budget gate, exact pin, MIT notice; the renderer interface keeps the choice reversible | 3D-02, 3D-16 |
 | R11 | The committed Task 4B carve is too soft to match the approved 2.5D decals at a live-lit face (0.655 mm wall, empty flat floor) | seen / medium (looks) | measure against the decals (3D-05's report), bake a 3D-owned set at the decal profile (3D-17), keep decal-on-shell as the fallback | 3D-05, 3D-17 |
@@ -2225,6 +2248,12 @@ are binding on the units, not open questions.
    promoting the shell so the layer travels with the scene) and restores the 2D
    layout — including leaving full screen — when the user switches away. The
    stacked and top-down views keep their existing layout throughout.
+8. **Hover lift: half a tile height, on top of the tint** (added 2026-11-19, in
+   3D-08). A hovered or focused hand/draw tile rises by
+   `TILE.heightUnits / 2` = 14 mm along world +Y; the DOM button keeps its
+   projected rect and its CSS hover/focus tint, so the pointer target never
+   moves. This supersedes the ≤ 4 mm figure in §3D-12, which keeps the deal-in
+   and the event seam. Reduced motion suppresses the lift (never the clear).
 
 **Chain independence (recorded).** No 3D unit depends on 2.5D work, and no 2.5D
 unit depends on 3D work. The 3D chain reads the *already committed* relief

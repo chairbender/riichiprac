@@ -55,6 +55,7 @@ import { effectiveDevicePixelRatio } from '../capabilities';
 import type {
   DebugMode,
   GlintReport,
+  HandTileRef,
   HeroCapture,
   HeroReport,
   HitRect,
@@ -81,6 +82,8 @@ import { createFelt, feltSizeForFrame } from './felt';
 import type { FeltSurface } from './felt';
 import { heroInstances, heroParallaxAt, probeWorldPoint } from './hero';
 import type { HeroInstance, HeroSlot } from './hero';
+import { withHoverLift } from './hover';
+import { hitRects as projectHitRects } from './hitTest';
 import { sceneLightSpecs } from './lighting';
 import { allProbesPass, readProbes } from './probes';
 import type { ProbePixelSource, ProbeProjector } from './probes';
@@ -223,6 +226,13 @@ export class TableScene implements TableRenderer {
   private disposed = false;
   private revision = 0;
   private aspect = CAMERA.framingAspect;
+  /** The CSS size the frame is solved for; the overlay's rects live in it. */
+  private cssWidth = 0;
+  private cssHeight = 0;
+  /** True once the hand is answered: the overlay renders no buttons. */
+  private locked = false;
+  /** The hand button the pointer/focus is on, lifted by half a tile height. */
+  private hover: HandTileRef | null = null;
 
   constructor(canvas: HTMLCanvasElement, options: RendererOptions) {
     this.tier = options.tier;
@@ -303,6 +313,7 @@ export class TableScene implements TableRenderer {
   syncState(snapshot: TableSnapshot): void {
     if (this.disposed) return;
     this.revision = snapshot.revision;
+    this.locked = snapshot.locked;
     const layout = layoutBoard(snapshot);
     this.layout = layout;
     this.syncBoard(layout);
@@ -326,6 +337,8 @@ export class TableScene implements TableRenderer {
     const ratio = effectiveDevicePixelRatio(cssWidth, cssHeight, dpr);
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(cssWidth, cssHeight, false);
+    this.cssWidth = cssWidth;
+    this.cssHeight = cssHeight;
     this.aspect = cssWidth / cssHeight;
     this.reframe();
     // Draw now rather than on the next frame: the host reveals the canvas as
@@ -345,9 +358,45 @@ export class TableScene implements TableRenderer {
     this.requestFrame();
   }
 
-  /** No interactive tiles exist before 3D-08. */
+  /**
+   * The pure projection of the human's hand and draw to CSS rects (3D-08).
+   *
+   * Uses the scene's own solved frame — `boardLayout.frameForAspect` at the
+   * current aspect and layout — so the DOM buttons and the rendered instances
+   * cannot drift apart (plan §2.4, §9 R7). It creates no DOM and draws nothing.
+   */
   hitRects(): readonly HitRect[] {
-    return [];
+    if (this.disposed || !this.layout) return [];
+    return projectHitRects(
+      this.layout,
+      this.frame,
+      { widthPx: this.cssWidth, heightPx: this.cssHeight },
+      { locked: this.locked },
+    );
+  }
+
+  /**
+   * 3D-12's hover lift, landed here because 3D-08 owns the report and the user
+   * asked for it now: the hovered/focused hand tile rises half a tile height
+   * (14 mm) on top of the DOM button's tint. The button does not move; its rect
+   * comes from the un-lifted pose (see `hitTest.ts`), so the pointer stays on
+   * the same target while the tile rises beneath it.
+   */
+  setHoverTile(tile: HandTileRef | null): void {
+    const current = this.hover;
+    if (
+      current === tile ||
+      (current !== null &&
+        tile !== null &&
+        current.seat === tile.seat &&
+        current.zone === tile.zone &&
+        current.slot === tile.slot)
+    ) {
+      return;
+    }
+    this.hover = tile;
+    if (this.layout) this.syncTiles(this.layout);
+    this.requestFrame();
   }
 
   /** Reserved for a future live/replay source; v1 draws no tile motion. */
@@ -621,6 +670,7 @@ export class TableScene implements TableRenderer {
     }
     this.hero = null;
     this.board = null;
+    this.hover = null;
     this.registry.disposeAll();
     this.scene.clear();
     this.renderer.dispose();
@@ -667,11 +717,30 @@ export class TableScene implements TableRenderer {
   private syncBoard(layout: BoardLayout): void {
     const board = this.board;
     if (!board) return;
-    board.tiles.sync(
-      buildBoardInstances(layout, (face: TileFaceId) => board.assets.cellForFace(face)),
-    );
+    this.syncTiles(layout);
     board.shadows.sync(shadowInstances(layout));
     board.sticks.sync(layout.sticks);
+  }
+
+  /**
+   * Rewrite the tile instances only, applying the current hover lift.
+   *
+   * The atlas cells are looked up per face; `withHoverLift` copies just the
+   * hovered instance's matrix, so the rest of the buffer is byte-identical and
+   * a hover change cannot disturb any other tile.
+   */
+  private syncTiles(layout: BoardLayout): void {
+    const board = this.board;
+    if (!board) return;
+    board.tiles.sync(
+      withHoverLift(
+        buildBoardInstances(layout, (face: TileFaceId) =>
+          board.assets.cellForFace(face),
+        ),
+        layout,
+        this.hover,
+      ),
+    );
   }
 
   /** Load the committed relief atlases and mount the four hero tiles. */
@@ -790,7 +859,11 @@ export class TableScene implements TableRenderer {
     const layout = this.layout;
     const tiles = createBoardMesh(
       layout
-        ? buildBoardInstances(layout, (face) => assets.cellForFace(face))
+        ? withHoverLift(
+            buildBoardInstances(layout, (face) => assets.cellForFace(face)),
+            layout,
+            this.hover,
+          )
         : [],
       material,
     );

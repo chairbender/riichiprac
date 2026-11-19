@@ -1,6 +1,7 @@
 import { findKanCandidateTile } from '../actions';
 import { formatTileForDisplay, sortHandForDisplay } from '../display';
 import { handHint } from '../handHint';
+import { handTileLabel } from '../handTileLabel';
 import type { SubmittedAnswer } from '../store/useGameStore';
 import type { AiActionInfo, AiEvaluation } from '../types/ai';
 import {
@@ -228,11 +229,12 @@ export function HandDock({
               className={`hand-tile-button${stateClass}${aiClass}`}
               onClick={() => onSelectTile(code, index, isDraw)}
               disabled={isAnswered || !canDiscard}
-              aria-label={`${
-                callKan
-                  ? `Declare Kan on ${formatTileForDisplay(code, isRed)}`
-                  : `Discard ${formatTileForDisplay(code, isRed)}`
-              }${callRiichi ? ', with Riichi' : ''}`}
+              aria-label={handTileLabel({
+                code,
+                isRed,
+                callKan,
+                callRiichi,
+              })}
             >
               {aiProbabilities.get(code) !== undefined &&
                 (aiProbabilities.get(code) ?? 0) >= 0.01 && (

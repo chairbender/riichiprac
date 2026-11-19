@@ -22,6 +22,8 @@ const FILES = [
   'capabilities.ts',
   'layoutConstants.ts',
   'three/boardLayout.ts',
+  'three/hitTest.ts',
+  'handOverlay.ts',
 ] as const;
 
 function source(file: (typeof FILES)[number]): string {

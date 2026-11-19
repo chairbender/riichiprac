@@ -23,7 +23,8 @@
  * The view is named for screen readers and never announced as a visual
  * heading: the table itself carries the information.
  */
-.renderer-3d-heading {
+.renderer-3d-heading,
+.renderer-3d-description {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -86,6 +87,57 @@
 
 .renderer-3d[data-renderer-state='failed'] .renderer-3d-status {
   border-color: #7a3a3a;
+}
+
+/*
+ * The interactive hand (3D-08): the first part of the floating UI layer.
+ *
+ * It covers the stage so its buttons can sit anywhere, but it is transparent to
+ * pointer events itself: only the projected tile buttons take input, so the
+ * felt and every later chrome control stay reachable (plan §2.7).
+ */
+.renderer-3d-hand {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.renderer-3d-hand:focus {
+  outline: none;
+}
+
+.renderer-3d-hand:focus-visible {
+  outline: 2px solid #cfe0ff;
+  outline-offset: -4px;
+}
+
+/*
+ * One tile button. Its position and size are the renderer's projection; the
+ * face is painted by the canvas underneath, so the button is only a hit target
+ * and a focus ring. A hover/focus tint is a state cue, never a move: 3D-12 owns
+ * the lift, and these rects stay fixed.
+ */
+.renderer-3d-tile {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.renderer-3d-tile:hover {
+  background: rgba(207, 224, 255, 0.08);
+}
+
+.renderer-3d-tile:focus-visible {
+  outline: 2px solid #cfe0ff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(9, 14, 19, 0.55);
 }
 
 /*
