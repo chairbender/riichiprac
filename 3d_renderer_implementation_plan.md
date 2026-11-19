@@ -1533,6 +1533,9 @@ never the clear, and the overlay's rects always come from the un-lifted pose.
 The overlay is the first floating-layer element: absolutely positioned over the
 full-window stage, `pointer-events: none` except for its buttons.
 
+**User verdict (2026-11-19):** accepted — the projected hand and the half-tile
+hover lift "looks good now" on the running dev server.
+
 **Gate:** frontend gate.
 
 ---
