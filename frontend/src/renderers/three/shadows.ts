@@ -1,73 +1,120 @@
 /**
- * The board's contact-shadow layer (3D-07): one instanced quad draw.
+ * The board's contact-shadow layer (3D-07; the hand group re-cut to the 2.5D
+ * recipe in 3D-07's second handoff).
  *
- * Every grounded tile gets a single soft quad on the felt, scaled to that tile's
- * own footprint and padded by a fixed amount so the shadow bleeds out from under
- * the body as a contact rim. 3D-04/3D-05 bake a tile's *shape* shadow into the
- * shell for the 2.5D pipeline; true 3D needs the opposite: a flat, procedural
- * blob whose darkness is a property of the table, not of the tile atlas.
+ * Every grounded tile gets one soft quad on the felt. Two profiles exist, one
+ * material, one instanced draw:
  *
- * Four rules, each of which a test asserts numerically:
+ * 1. **A per-tile blob** for lying tiles (ponds, melds, dora, the wall's bottom
+ *    tier): the tile's oriented-box footprint plus a fixed rim, shaded with the
+ *    procedural rounded-rect alpha in {@link shadowAlphaPixels}.
+ * 2. **One blurred band per seat's hand group** — the concealed row *and* the
+ *    drawn tile unioned into a single footprint — because a hand stands on its
+ *    far bottom edge, so per-tile quads read as a thin scalloped line rather
+ *    than a hand resting on the table.
  *
- * 1. **One draw.** All quads share one `PlaneGeometry`, one material and one
- *    alpha texture, so the layer is a single `InstancedMesh`.
- * 2. **Depth-tested, depth-write off.** The quads are transparent black; three
- *    draws them in the transparent pass, after every opaque tile, and the depth
- *    test rejects a fragment wherever a tile body is nearer to the camera. A
- *    shadow therefore never overdraws a tile body — its own tile or a
- *    neighbour's — while still darkening the felt and the 0.3 mm grooves.
- *    `depthWrite: false` keeps it from occluding anything behind it.
- * 3. **Under the body, on the felt.** The quad plane sits at
- *    {@link SHADOW.liftUnits} above the felt (a fraction of a millimetre), i.e.
- *    below every tile's top surface, and it is only emitted for tiles whose
- *    lowest body point is on the felt. Wall top-tier tiles (whose contact is the
- *    tile beneath them, not the cloth) are excluded.
- * 4. **Procedural, no asset.** The alpha is a rounded rectangle with a smooth
- *    feather, generated in code from a pure function ({@link shadowAlphaPixels})
- *    into a `DataTexture`, so it is deterministic, testable in Node and adds no
- *    committed texture.
+ * The hand group is the **2.5D recipe, copied rather than reinvented**. The
+ * user-approved whole-table rig (`tools/render/table-reference-spec.json`, rig
+ * variant `v13-shadow-darker`, chosen 2026-11-17) has
  *
- * The shadow's footprint is the tile's oriented box projected onto the ground:
- * every layout yaw is a multiple of 90°, so that projection is axis-aligned and
- * equals the rotated footprint exactly.
+ *     handShadow: { mode: 'blurredFootprint', sigmaUnits: 0.26,
+ *                   sigmaXUnits: 0.1, maxAlpha: 1.0, spreadUnits: 0.18,
+ *                   offsetYUnits: 0.18, unionGroups: true }
+ *
+ * which that chain derived from the shipped UI group layer
+ * (`shells.json` `shadowShape`: a hard rounded rect, σ 5 px standing / 12 px
+ * lying, core alpha 0.6, `#0b1418`) and from `2_5d_mahjong_tile_rendering_
+ * architecture.md` §10.12 ("draw every placed shape at alpha 1, blur the union
+ * once, then fill it" — so there is no double-darkening where the row and the
+ * drawn tile meet, and the tsumogiri gap gets shadow like the rest of the
+ * group). The 3D numbers are that variant's, in tile units:
+ *
+ *     spread 0.18 on every end · the whole footprint 0.18 south (toward the
+ *     viewer) · Gaussian σ 0.26 across the band and 0.10 along it
+ *
+ * so the band is dark under the hand and fades out ~0.6 units in front of the
+ * base line, which is what makes a 40°-reclined hand read as touching the felt.
+ *
+ * Rules every quad obeys, each a numeric test:
+ *
+ * - **One draw.** One plane geometry, one material, one instanced mesh.
+ * - **Depth-tested, depth-write off.** Transparent black, drawn in the
+ *   transparent pass after the opaque tiles; the depth test rejects a fragment
+ *   wherever a tile body is nearer to the camera, so a shadow never overdraws a
+ *   tile body — its own or a neighbour's — while still darkening the felt and
+ *   the 0.3 mm grooves.
+ * - **Under the body, on the felt.** Quads sit at {@link SHADOW.liftUnits}
+ *   above the felt, below every tile's top surface, and are only emitted for
+ *   tiles whose lowest body point is on the felt (a wall top tier rests on the
+ *   tile beneath it).
+ * - **Procedural, no asset.** Both the tile blob's texture and the hand band's
+ *   alpha are generated in code, so they are deterministic, testable in Node
+ *   and add no committed texture.
  */
 
 import {
   DataTexture,
   DoubleSide,
+  InstancedBufferAttribute,
   InstancedMesh,
-  MeshBasicMaterial,
   Matrix4,
   PlaneGeometry,
   Quaternion,
   RGBAFormat,
+  ShaderMaterial,
   Vector3,
 } from 'three';
+import type { Seat } from '../contract';
 import { BOARD_TILE_CAPACITY } from './boardMesh';
-import { orientedBox } from './boardLayout';
+import { orientedBox, orientedBoxCorners, seatBasis } from './boardLayout';
 import type { BoardLayout, BoardTile, Vec3 } from './boardLayout';
 
 /** The contact-shadow layer's committed numbers. */
 export const SHADOW = {
   /** Quad plane height above the felt, in tile units (0.42 mm). */
   liftUnits: 0.015,
-  /** Extra footprint per side, in tile units (3.4 mm), so a contact rim shows. */
+  /** Extra footprint per side for a lying tile, in tile units (3.4 mm). */
   paddingUnits: 0.12,
   /** A tile counts as grounded when its lowest point is within this of the felt. */
   groundToleranceUnits: 0.02,
-  /** Corner radius, as a fraction of the quad's half-extent. */
+  /** Corner radius, as a fraction of the tile blob's half-extent. */
   cornerFraction: 0.35,
   /** Layer opacity at the centre of the blob. */
   opacity: 0.55,
-  /** The alpha texture's edge, in texels. */
+  /** The tile blob's alpha texture edge, in texels. */
   textureSize: 64,
-  /** One quad per grounded tile; the tile capacity is the honest ceiling. */
+  /** One quad per grounded non-hand tile plus one per seat's hand group. */
   capacity: BOARD_TILE_CAPACITY,
+  /**
+   * The hand group's recipe, straight from the v13 rig (see the header).
+   *
+   * `depthUnits` is the band's depth across the row, anchored on the hand's
+   * contact edge; `offsetUnits` moves it that far toward the viewer (+Z);
+   * `spreadUnits` is added at both row ends; the sigmas are the Gaussian blur
+   * across and along the band. A reclined hand's body overhangs its contact
+   * edge, so the band is built from the tile's **contact** corners, not its
+   * whole oriented box — that is what keeps it at the rig's 0.5-depth.
+   */
+  hand: {
+    depthUnits: 0.5,
+    offsetUnits: 0.18,
+    spreadUnits: 0.18,
+    sigmaAcrossUnits: 0.26,
+    sigmaAlongUnits: 0.1,
+  },
+} as const;
+
+/** Which alpha profile a quad uses. */
+export const SHADOW_KIND = {
+  /** The procedural rounded-rect texture (lying tiles). */
+  blob: 0,
+  /** The analytic blurred band (a seat's hand + draw union). */
+  band: 1,
 } as const;
 
 /** One contact quad, in world space. */
 export interface ShadowInstance {
-  /** The tile it belongs to. */
+  /** The tile it belongs to, or `hand-group-<seat>` for a hand group. */
   readonly id: string;
   /** Quad centre: on the felt, at {@link SHADOW.liftUnits}. */
   readonly centre: Vec3;
@@ -75,6 +122,10 @@ export interface ShadowInstance {
   readonly sizeUnits: readonly [number, number];
   /** Column-major 4 x 4, ready for `InstancedMesh.setMatrixAt`. */
   readonly matrix: readonly number[];
+  /** Which alpha profile: {@link SHADOW_KIND}. */
+  readonly kind: number;
+  /** Analytic ring width per world axis, in units (the band profile only). */
+  readonly sigmaUnits: readonly [number, number];
 }
 
 /** The lowest point of a tile's oriented box, in world Y units. */
@@ -121,34 +172,137 @@ export function shadowMatrix(
   return matrix.toArray();
 }
 
+/** Is this tile part of a seat's hand group (row or drawn tile)? */
+function isHandGroupTile(tile: BoardTile): tile is BoardTile & { readonly seat: Seat } {
+  return tile.seat !== null && (tile.zone === 'hand' || tile.zone === 'draw');
+}
+
+/** The camera-near and lateral extents of a hand group's contact footprint. */
+interface GroupSpan {
+  /** Along the row (the seat's right axis, in world X or Z). */
+  minRow: number;
+  maxRow: number;
+  /** Across the row (the seat's outward axis, in world X or Z). */
+  minDepth: number;
+  maxDepth: number;
+  /** Whether the row runs along world X (an end seat) or world Z (a side seat). */
+  rowIsX: boolean;
+}
+
+/** Expand a span to include one tile's **contact** footprint (corners at y = 0). */
+function includeContact(span: GroupSpan, tile: BoardTile): void {
+  for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+    if (corner[1] > SHADOW.groundToleranceUnits) continue;
+    const row = span.rowIsX ? corner[0] : corner[2];
+    const depth = span.rowIsX ? corner[2] : corner[0];
+    span.minRow = Math.min(span.minRow, row);
+    span.maxRow = Math.max(span.maxRow, row);
+    span.minDepth = Math.min(span.minDepth, depth);
+    span.maxDepth = Math.max(span.maxDepth, depth);
+  }
+}
+
 /**
- * One quad per grounded tile, anchored under the body and padded by
- * {@link SHADOW.paddingUnits} per side.
+ * The union quad for one seat's hand and drawn tile: v13's recipe.
+ *
+ * The band is a fixed {@link SHADOW.hand.depthUnits} deep, anchored on the
+ * contact edge that faces the camera and pushed {@link SHADOW.hand.offsetUnits}
+ * toward it, with {@link SHADOW.hand.spreadUnits} at both row ends — so it reads
+ * as the hand resting on the felt rather than as the shadow of a tilted plate.
+ * The sigmas are assigned to the world axes so they stay across and along the
+ * band whichever way the seat's row runs.
+ */
+function handGroupQuad(seat: Seat, span: GroupSpan): ShadowInstance {
+  const { depthUnits, offsetUnits, spreadUnits } = SHADOW.hand;
+  const rowMin = span.minRow - spreadUnits;
+  const rowMax = span.maxRow + spreadUnits;
+  let depthMin: number;
+  let depthMax: number;
+  let depthShift = 0;
+  if (span.rowIsX) {
+    // End seats: the depth axis is world Z, so the camera-near edge is maxZ.
+    const near = span.maxDepth;
+    depthMin = near - (depthUnits - offsetUnits);
+    depthMax = near + offsetUnits;
+  } else {
+    // Side seats: their row runs along Z, so the band is centred on the contact
+    // footprint's own depth and only slides south with the rest of the layer.
+    depthMin = span.minDepth - spreadUnits;
+    depthMax = span.maxDepth + spreadUnits + offsetUnits;
+    depthShift = offsetUnits;
+  }
+  const xRange: [number, number] = span.rowIsX ? [rowMin, rowMax] : [depthMin, depthMax];
+  const zRange: [number, number] = span.rowIsX
+    ? [depthMin, depthMax]
+    : [rowMin + depthShift, rowMax + depthShift];
+  const sizeUnits: readonly [number, number] = [xRange[1] - xRange[0], zRange[1] - zRange[0]];
+  const centre: Vec3 = [
+    (xRange[0] + xRange[1]) / 2,
+    SHADOW.liftUnits,
+    (zRange[0] + zRange[1]) / 2,
+  ];
+  const along = SHADOW.hand.sigmaAlongUnits;
+  const across = SHADOW.hand.sigmaAcrossUnits;
+  return {
+    id: `hand-group-${seat}`,
+    centre,
+    sizeUnits,
+    matrix: shadowMatrix(centre, sizeUnits),
+    kind: SHADOW_KIND.band,
+    sigmaUnits: span.rowIsX ? [along, across] : [across, along],
+  };
+}
+
+/** The per-tile blob quad for a lying (or standing non-hand) grounded tile. */
+function tileQuad(tile: BoardTile): ShadowInstance {
+  const footprint = tileFootprint(tile);
+  const sizeUnits: readonly [number, number] = [
+    footprint[0] + SHADOW.paddingUnits * 2,
+    footprint[1] + SHADOW.paddingUnits * 2,
+  ];
+  const centre: Vec3 = [tile.pose.position[0], SHADOW.liftUnits, tile.pose.position[2]];
+  return {
+    id: tile.id,
+    centre,
+    sizeUnits,
+    matrix: shadowMatrix(centre, sizeUnits),
+    kind: SHADOW_KIND.blob,
+    sigmaUnits: [0, 0],
+  };
+}
+
+/**
+ * Every contact quad: one per grounded non-hand tile, plus one per seat that has
+ * a hand or a drawn tile.
  */
 export function shadowInstances(layout: BoardLayout): readonly ShadowInstance[] {
   const instances: ShadowInstance[] = [];
+  const groups = new Map<Seat, GroupSpan>();
   for (const tile of layout.tiles) {
     if (!isGrounded(tile)) continue;
-    const footprint = tileFootprint(tile);
-    const sizeUnits: readonly [number, number] = [
-      footprint[0] + SHADOW.paddingUnits * 2,
-      footprint[1] + SHADOW.paddingUnits * 2,
-    ];
-    const centre: Vec3 = [
-      tile.pose.position[0],
-      SHADOW.liftUnits,
-      tile.pose.position[2],
-    ];
-    instances.push({
-      id: tile.id,
-      centre,
-      sizeUnits,
-      matrix: shadowMatrix(centre, sizeUnits),
-    });
+    if (isHandGroupTile(tile)) {
+      const { right } = seatBasis(tile.seat);
+      const rowIsX = Math.abs(right[0]) > Math.abs(right[2]);
+      const span = groups.get(tile.seat) ?? {
+        minRow: Number.POSITIVE_INFINITY,
+        maxRow: Number.NEGATIVE_INFINITY,
+        minDepth: Number.POSITIVE_INFINITY,
+        maxDepth: Number.NEGATIVE_INFINITY,
+        rowIsX,
+      };
+      includeContact(span, tile);
+      groups.set(tile.seat, span);
+      continue;
+    }
+    instances.push(tileQuad(tile));
+  }
+  for (const [seat, span] of groups) {
+    if (!Number.isFinite(span.minRow)) continue;
+    instances.push(handGroupQuad(seat, span));
   }
   if (instances.length > SHADOW.capacity) {
     throw new Error(
-      `3D shadows: ${instances.length} grounded tiles exceed the ${SHADOW.capacity}-quad capacity`,
+      `3D shadows: ${instances.length} quads exceed the ${SHADOW.capacity}-quad capacity`,
     );
   }
   return instances;
@@ -177,7 +331,7 @@ export function shadowAlphaAt(u: number, v: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** The whole RGBA alpha texture, top row first. */
+/** The whole RGBA alpha texture (the per-tile blob), top row first. */
 export function shadowAlphaPixels(size: number = SHADOW.textureSize): Uint8Array {
   const pixels = new Uint8Array(size * size * 4);
   for (let y = 0; y < size; y += 1) {
@@ -194,6 +348,91 @@ export function shadowAlphaPixels(size: number = SHADOW.textureSize): Uint8Array
   }
   return pixels;
 }
+
+/**
+ * The hand band's alpha at one world point, as the fragment shader computes it.
+ *
+ * A separable blurred rectangle: each axis is a smoothstep across the edge
+ * width `sigma`, so the alpha is 0.5 exactly on the edge, 1 a ring-width
+ * inside, and 0 a ring-width outside. Pure, so the shader's profile is a
+ * number the tests can assert (`band` in the fragment shader mirrors it).
+ */
+export function bandAlphaAt(
+  offsetUnits: readonly [number, number],
+  halfUnits: readonly [number, number],
+  sigmaUnits: readonly [number, number],
+): number {
+  const axis = (offset: number, half: number, sigma: number): number => {
+    if (!(sigma > 0)) return Math.abs(offset) <= half ? 1 : 0;
+    const t = clamp01((half - Math.abs(offset) + sigma) / (2 * sigma));
+    return t * t * (3 - 2 * t);
+  };
+  return (
+    axis(offsetUnits[0], halfUnits[0], sigmaUnits[0]) *
+    axis(offsetUnits[1], halfUnits[1], sigmaUnits[1])
+  );
+}
+
+/**
+ * The shadow layer's shaders. The blob path samples the procedural texture; the
+ * band path evaluates {@link bandAlphaAt} from per-instance extents and sigmas,
+ * which is what keeps the hand's blur in world units however long the row is.
+ */
+const SHADOW_VERTEX_SHADER = /* glsl */ `
+attribute vec2 aHalfExtents;
+attribute vec2 aSigma;
+attribute float aKind;
+
+varying vec2 vUv;
+varying vec2 vLocal;
+varying vec2 vHalf;
+varying vec2 vSigma;
+varying float vKind;
+
+void main() {
+  vUv = uv;
+  vLocal = (uv - 0.5) * 2.0 * aHalfExtents;
+  vHalf = aHalfExtents;
+  vSigma = aSigma;
+  vKind = aKind;
+  mat4 toWorld = modelMatrix;
+#ifdef USE_INSTANCING
+  toWorld = modelMatrix * instanceMatrix;
+#endif
+  gl_Position = projectionMatrix * viewMatrix * toWorld * vec4(position, 1.0);
+}
+`;
+
+const SHADOW_FRAGMENT_SHADER = /* glsl */ `
+uniform sampler2D uBlob;
+uniform float uOpacity;
+
+varying vec2 vUv;
+varying vec2 vLocal;
+varying vec2 vHalf;
+varying vec2 vSigma;
+varying float vKind;
+
+/** One axis of the band profile: 0.5 on the edge, 0 a ring width outside. */
+float bandAxis(float offset, float halfExtent, float sigma) {
+  if (sigma <= 0.0) {
+    return abs(offset) <= halfExtent ? 1.0 : 0.0;
+  }
+  return smoothstep(-sigma, sigma, halfExtent - abs(offset));
+}
+
+void main() {
+  float alpha;
+  if (vKind < 0.5) {
+    alpha = texture2D(uBlob, vUv).a;
+  } else {
+    alpha = bandAxis(vLocal.x, vHalf.x, vSigma.x) *
+      bandAxis(vLocal.y, vHalf.y, vSigma.y);
+  }
+  if (alpha <= 0.002) discard;
+  gl_FragColor = vec4(0.0, 0.0, 0.0, alpha * uOpacity);
+}
+`;
 
 /** The live contact layer. */
 export interface ShadowLayer {
@@ -217,12 +456,15 @@ export function createShadowLayer(
     RGBAFormat,
   );
   texture.needsUpdate = true;
-  const material = new MeshBasicMaterial({
+  const material = new ShaderMaterial({
     name: 'contact-shadow',
-    color: 0x000000,
-    map: texture,
+    uniforms: {
+      uBlob: { value: texture },
+      uOpacity: { value: SHADOW.opacity },
+    },
+    vertexShader: SHADOW_VERTEX_SHADER,
+    fragmentShader: SHADOW_FRAGMENT_SHADER,
     transparent: true,
-    opacity: SHADOW.opacity,
     // Rule 2: depth-tested, never depth-writing, and drawn after the opaque
     // tiles (transparent pass) so a tile body always wins the depth test.
     depthTest: true,
@@ -231,6 +473,13 @@ export function createShadowLayer(
     // future camera ever drops below the felt plane.
     side: DoubleSide,
   });
+  const halfExtents = new InstancedBufferAttribute(new Float32Array(capacity * 2), 2);
+  const sigmas = new InstancedBufferAttribute(new Float32Array(capacity * 2), 2);
+  const kinds = new InstancedBufferAttribute(new Float32Array(capacity), 1);
+  geometry.setAttribute('aHalfExtents', halfExtents);
+  geometry.setAttribute('aSigma', sigmas);
+  geometry.setAttribute('aKind', kinds);
+
   const mesh = new InstancedMesh(geometry, material, capacity);
   mesh.name = 'contact-shadows';
   mesh.frustumCulled = false;
@@ -243,11 +492,22 @@ export function createShadowLayer(
         `3D shadows: ${next.length} quads exceed the ${capacity}-quad capacity`,
       );
     }
+    const half = halfExtents.array as Float32Array;
+    const sigma = sigmas.array as Float32Array;
+    const kind = kinds.array as Float32Array;
     next.forEach((instance, index) => {
       matrix.fromArray(instance.matrix as number[]);
       mesh.setMatrixAt(index, matrix);
+      half[index * 2] = instance.sizeUnits[0] / 2;
+      half[index * 2 + 1] = instance.sizeUnits[1] / 2;
+      sigma[index * 2] = instance.sigmaUnits[0];
+      sigma[index * 2 + 1] = instance.sigmaUnits[1];
+      kind[index] = instance.kind;
     });
     mesh.instanceMatrix.needsUpdate = true;
+    halfExtents.needsUpdate = true;
+    sigmas.needsUpdate = true;
+    kinds.needsUpdate = true;
     mesh.count = next.length;
   };
   write(instances);

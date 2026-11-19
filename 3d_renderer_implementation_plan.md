@@ -1396,14 +1396,31 @@ face-down while the human hand and dora are face-up, and that a riichi discard's
 body — not a glyph — is turned: its glyph-up axis is the seat's right (+X) where
 its neighbour's is the tile's forward (-Z), both horizontal.
 
-*Contact shadows.* One quad per grounded tile (the tile's oriented-box footprint
-plus 0.12 units per side, at `liftUnits` 0.015 above the felt), excluded for the
-wall's top tier (it rests on the tile below). The alpha is a procedural rounded
-rect (`shadowAlphaAt`: 1 at the centre, 0 at every edge, monotone between) in a
-64 × 64 `DataTexture`; the material is transparent black, `depthTest` on,
-`depthWrite` off, drawn in the transparent pass after the opaque tiles, and the
-plane sits below every tile's top surface — so the depth test, not an ordering
-hack, keeps a quad off a tile body. Tests assert all of that numerically.
+*Contact shadows.* One instanced draw with two profiles. **Lying tiles** get one
+quad each: the oriented-box footprint plus 0.12 units per side, at `liftUnits`
+0.015 above the felt, with a procedural rounded-rect alpha (`shadowAlphaAt`: 1 at
+the centre, 0 at every edge, monotone between) in a 64 × 64 `DataTexture`; the
+wall's top tier is excluded (it rests on the tile below). **Each seat's hand
+group** — the concealed row *and* the drawn tile unioned — gets one analytic
+band instead, because a hand stands on its edge and per-tile quads read as a
+scalloped line rather than a hand on the table. The band is the **2.5D recipe,
+copied**: `table-reference-spec.json`'s rig variant `v13-shadow-darker`
+(chosen 2026-11-17) publishes `handShadow { depthUnits 0.5, offsetUnits 0.18,
+spreadUnits 0.18, sigmaUnits 0.26, sigmaXUnits 0.1, unionGroups }`, derived from
+the shipped UI group layer (`shells.json` `shadowShape`, σ 5 px standing,
+`#0b1418`) and `2_5d_mahjong_tile_rendering_architecture.md` §10.12 ("blur the
+union once"). In 3D it is built from the tiles' **contact** corners (a reclined
+hand's body overhangs its contact edge, so its box would make the band twice as
+deep), spread 0.18 at both row ends, 0.5 deep with its south edge 0.18 past the
+contact line, Gaussian σ 0.26 across / 0.10 along — so the alpha on the contact
+edge is 0.94, the felt goes from ~29 luma at the hand to 0 about 0.44 units
+(~31 px at 1920 × 1080) in front of it, and the tsumogiri gap gets shadow like
+the rest of the union. Both profiles are one material/one call (the shader
+branches on a per-instance kind). The material is transparent black,
+`depthTest` on, `depthWrite` off, drawn in the transparent pass after the opaque
+tiles, and every quad sits below a tile's top surface — so the depth test, not an
+ordering hack, keeps a quad off a tile body. Tests assert all of that
+numerically, including the v13 constants, the band's edge alpha and its anchor.
 
 *Handoff (open).* The look of the board and the contact rim is the user's call
 (AGENTS.md §6): `cd frontend && npm run dev` → `?renderer=3d`. Questions: does
