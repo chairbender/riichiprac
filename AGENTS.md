@@ -114,8 +114,7 @@ win; ask the user before inventing a third number.
   Riichi sticks live on the compass in the middle, one corner facing each player.
 * **3D view (opt-in, `?renderer=3d` until 3D-15):** a real-time three.js scene with the committed
   tile proportions and carved faces (see §3b). It **takes the whole browser window and the full
-  height of
-  the screen**, and **no UI panel sits above or below the canvas** in the document flow. While
+  height of the screen**, and **no UI panel sits above or below the canvas** in the document flow. While
   the view is being built (as of 3D-02) it mounts the scene alone. The planned UI — header
   controls, status cards, action bar, hand dock, plus the projected hand buttons and compass —
   is a **floating layer over the scene** (Z order, like a typical game HUD), landed in 3D-08,
@@ -129,8 +128,8 @@ win; ask the user before inventing a third number.
   * Each opponent row displays their Wind, Points, Melds, and Discard River.
   * The Human Player's row is pinned to the bottom of the screen and includes their 14-tile active hand for easy tapping.
 * **Visual Rules:** Riichi discards must be horizontal in the river. In the 2D views, rotate the
-  tile glyph and keep the tile upright; never rotate a pre-shaded sprite. In 3D, lay the tile body
-  sideways. Riichi sticks must be visibly rendered for players who have called Riichi.
+  tile glyph and keep the tile upright; never rotate a pre-shaded tile image. In 3D, lay the tile
+  body sideways. Riichi sticks must be visibly rendered for players who have called Riichi.
 
 ## 5. Agent Workflow Rules
 * Always write WASM-compatible Rust tests (`#[wasm_bindgen_test]`) to verify generator logic before attempting to render the state in React.
