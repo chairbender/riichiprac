@@ -13,8 +13,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  *
  * `generate_puzzle` is mocked with a real hand from the committed pack so the
  * table renderer gets a complete engine state. The pack body served to the
- * loader is the committed `frontend/public/scenarios` fixture, so the test
- * covers the published bytes, not a hand-built copy.
+ * loader is the committed `frontend/public/scenarios` pack, so the test covers
+ * the published bytes, not a hand-built copy.
  */
 
 const wasmMock = vi.hoisted(() => ({ generatedJson: '{}' }));
@@ -74,15 +74,22 @@ const fixturePack = JSON.parse(gunzipSync(fixtureBytes).toString('utf8')) as {
   scenarios: Array<{
     lesson_id: string;
     state: { hand_string: string };
+    provenance?: { variant_of?: string };
   }>;
 };
-const ryanmen = fixturePack.scenarios.find(
-  (scenario) => scenario.lesson_id === 'ryanmen_protorun',
+const firstBase = fixturePack.scenarios.find(
+  (scenario) =>
+    !scenario.provenance?.variant_of && scenario.lesson_id !== 'fold_to_riichi',
 );
 const fold = fixturePack.scenarios.find(
   (scenario) => scenario.lesson_id === 'fold_to_riichi',
 );
-if (!ryanmen || !fold) throw new Error('fixture pack is missing its two lessons');
+if (!firstBase || !fold) throw new Error('pack is missing its base lessons');
+const foldHands = new Set(
+  fixturePack.scenarios
+    .filter((scenario) => scenario.lesson_id === 'fold_to_riichi')
+    .map((scenario) => scenario.state.hand_string),
+);
 
 function stubFetch(): string[] {
   const calls: string[] = [];
@@ -115,15 +122,15 @@ afterEach(() => {
 describe('App replay-pack loading', () => {
   it('starts with the manifest only, then loads one pack body for a replay lesson', async () => {
     const user = userEvent.setup();
-    wasmMock.generatedJson = JSON.stringify(ryanmen.state);
+    wasmMock.generatedJson = JSON.stringify(firstBase.state);
     const calls = stubFetch();
 
     render(<App />);
 
-    // The first hand is the generated one (the mock's ryanmen state).
+    // The first hand is the generated one (the mock's first base state).
     await waitFor(() => {
       expect(useGameStore.getState().gameState?.hand_string).toBe(
-        ryanmen.state.hand_string,
+        firstBase.state.hand_string,
       );
     });
     await waitFor(() => {
@@ -147,9 +154,8 @@ describe('App replay-pack loading', () => {
     await user.click(within(row).getByRole('button', { name: 'Only' }));
 
     await waitFor(() => {
-      expect(useGameStore.getState().gameState?.hand_string).toBe(
-        fold.state.hand_string,
-      );
+      const hand = useGameStore.getState().gameState?.hand_string ?? '';
+      expect(foldHands.has(hand)).toBe(true);
     });
     expect(calls.filter((url) => url.endsWith('.json.gz'))).toEqual([
       `/scenarios/${fixtureEntry.path}`,

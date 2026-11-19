@@ -124,6 +124,9 @@ pub struct SelectionReport {
     pub kinds: Vec<BucketQuotaRow>,
     /// Turn-bucket distribution.
     pub turns: Vec<BucketQuotaRow>,
+    /// Corpus (replay) family distribution.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub replay_families: Vec<BucketQuotaRow>,
     /// Integer quotas actually used.
     pub quotas: BTreeMap<Family, usize>,
     /// Integer caps actually used.
@@ -234,6 +237,7 @@ impl SelectionReport {
         print_buckets(&mut out, "book section", &self.sections);
         print_buckets(&mut out, "decision kind", &self.kinds);
         print_buckets(&mut out, "turn bucket", &self.turns);
+        print_buckets(&mut out, "corpus family", &self.replay_families);
 
         out.push_str(&format!(
             "  review queue: {} ({} item(s))\n",

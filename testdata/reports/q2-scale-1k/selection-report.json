@@ -1,0 +1,320 @@
+{
+  "schema": "riichiprac.selection-report",
+  "version": 1,
+  "generated_at": "20261119-003449",
+  "pack_id": "replay.ch8-defense.2026-11",
+  "pack_size": 1080,
+  "replays_found": 544,
+  "replays_walked": 544,
+  "replays_failed": 0,
+  "decisions_seen": 278517,
+  "decisions_dropped": 0,
+  "decisions_labelled": 41009,
+  "decisions_classified": 41009,
+  "decisions_triggered": 228668,
+  "candidates_valid": 20640,
+  "candidates_held_out": 54,
+  "candidates_selected": 1080,
+  "funnel": {
+    "counts": {
+      "games_requested": 544,
+      "games_parsed": 544,
+      "games_valid": 544,
+      "decision_points": 278517,
+      "trigger_hits": 228668,
+      "reconstructed": 278517,
+      "book_matches": 41009,
+      "mortal_labelled": 41009,
+      "gate_passed": 20640,
+      "held_out": 54,
+      "selected": 1080,
+      "packed": 0
+    },
+    "rejections": {
+      "no_label": 237508,
+      "out_of_scope": 4168,
+      "scope_not_stable_book": 16201
+    }
+  },
+  "gates": [
+    {
+      "gate": "reachable",
+      "rejected": 0
+    },
+    {
+      "gate": "answer_defined",
+      "rejected": 237508
+    },
+    {
+      "gate": "answer_legal",
+      "rejected": 0
+    },
+    {
+      "gate": "visible_information",
+      "rejected": 0
+    },
+    {
+      "gate": "label_confidence",
+      "rejected": 0
+    },
+    {
+      "gate": "provenance",
+      "rejected": 0
+    },
+    {
+      "gate": "duplicate",
+      "rejected": 0
+    },
+    {
+      "gate": "spoiler",
+      "rejected": 0
+    }
+  ],
+  "dedupe": {
+    "exact": 5,
+    "near": 0
+  },
+  "cap_relaxed": 432,
+  "relaxed_fill": 432,
+  "held_out": {
+    "target": 54,
+    "kept": 54
+  },
+  "families": [
+    {
+      "family": "book",
+      "quota": 324,
+      "candidates": 20586,
+      "selected": 454
+    },
+    {
+      "family": "contested",
+      "quota": 54,
+      "candidates": 0,
+      "selected": 0,
+      "shortfall": "no_candidates"
+    },
+    {
+      "family": "mortal_best",
+      "quota": 108,
+      "candidates": 0,
+      "selected": 0,
+      "shortfall": "no_candidates"
+    },
+    {
+      "family": "mistake",
+      "quota": 108,
+      "candidates": 223,
+      "selected": 66,
+      "shortfall": "pack_full"
+    },
+    {
+      "family": "close_call",
+      "quota": 108,
+      "candidates": 1808,
+      "selected": 150
+    },
+    {
+      "family": "speed_value",
+      "quota": 86,
+      "candidates": 0,
+      "selected": 0,
+      "shortfall": "no_candidates"
+    },
+    {
+      "family": "coverage",
+      "quota": 162,
+      "candidates": 20586,
+      "selected": 227
+    },
+    {
+      "family": "table_read",
+      "quota": 76,
+      "candidates": 16268,
+      "selected": 107
+    },
+    {
+      "family": "placement",
+      "quota": 54,
+      "candidates": 20586,
+      "selected": 76
+    },
+    {
+      "family": "multi_step",
+      "quota": 0,
+      "candidates": 0,
+      "selected": 0
+    }
+  ],
+  "sections": [
+    {
+      "bucket": "ch8.1",
+      "cap": 432,
+      "candidates": 1817,
+      "selected": 157,
+      "cap_reached": false
+    },
+    {
+      "bucket": "ch8.2",
+      "cap": 432,
+      "candidates": 7334,
+      "selected": 553,
+      "cap_reached": true,
+      "relaxed": 121
+    },
+    {
+      "bucket": "ch8.3",
+      "cap": 432,
+      "candidates": 11435,
+      "selected": 370,
+      "cap_reached": false
+    }
+  ],
+  "kinds": [
+    {
+      "bucket": "self_turn",
+      "cap": 648,
+      "candidates": 20586,
+      "selected": 1080,
+      "cap_reached": true,
+      "relaxed": 432
+    }
+  ],
+  "turns": [
+    {
+      "bucket": "early",
+      "cap": 648,
+      "candidates": 1582,
+      "selected": 202,
+      "cap_reached": false
+    },
+    {
+      "bucket": "late",
+      "cap": 648,
+      "candidates": 7897,
+      "selected": 387,
+      "cap_reached": false
+    },
+    {
+      "bucket": "mid",
+      "cap": 648,
+      "candidates": 11107,
+      "selected": 491,
+      "cap_reached": false
+    }
+  ],
+  "replay_families": [
+    {
+      "bucket": "akochan_tactics",
+      "cap": 30,
+      "candidates": 945,
+      "selected": 28,
+      "cap_reached": false
+    },
+    {
+      "bucket": "akochan_vs_mortal",
+      "cap": 30,
+      "candidates": 516,
+      "selected": 30,
+      "cap_reached": true
+    },
+    {
+      "bucket": "heterogeneous_table",
+      "cap": 30,
+      "candidates": 936,
+      "selected": 30,
+      "cap_reached": true
+    },
+    {
+      "bucket": "mortal_mirror",
+      "cap": 500,
+      "candidates": 9047,
+      "selected": 498,
+      "cap_reached": false
+    },
+    {
+      "bucket": "mortal_sampling_sweep",
+      "cap": 500,
+      "candidates": 9142,
+      "selected": 494,
+      "cap_reached": false
+    }
+  ],
+  "quotas": {
+    "book": 324,
+    "contested": 54,
+    "mortal_best": 108,
+    "mistake": 108,
+    "close_call": 108,
+    "speed_value": 86,
+    "coverage": 162,
+    "table_read": 76,
+    "placement": 54,
+    "multi_step": 0
+  },
+  "caps": {
+    "section": 432,
+    "decision_kind": 648,
+    "turn_bucket": 648
+  },
+  "weights": {
+    "book_match": 0.25,
+    "label_confidence": 0.15,
+    "counterfactual_tension": 0.15,
+    "stakes": 0.15,
+    "discrimination": 0.15,
+    "novelty": 0.1,
+    "realism": 0.05
+  },
+  "percentiles": [
+    {
+      "family": "call/early",
+      "top2_samples": 3,
+      "safe_samples": 0,
+      "played_samples": 0
+    },
+    {
+      "family": "call/mid",
+      "top2_samples": 1,
+      "safe_samples": 0,
+      "played_samples": 0
+    },
+    {
+      "family": "self_turn/early",
+      "top2_samples": 5807,
+      "safe_samples": 1606,
+      "played_samples": 504,
+      "close_at_or_below": 0.21210241,
+      "confident_at_or_above": 3.8544645
+    },
+    {
+      "family": "self_turn/late",
+      "top2_samples": 13304,
+      "safe_samples": 10986,
+      "played_samples": 1595,
+      "close_at_or_below": 0.21885157,
+      "confident_at_or_above": 4.516344
+    },
+    {
+      "family": "self_turn/mid",
+      "top2_samples": 21894,
+      "safe_samples": 14773,
+      "played_samples": 2447,
+      "close_at_or_below": 0.23537588,
+      "confident_at_or_above": 4.5713983
+    }
+  ],
+  "review_queue": "reviews/replay.ch8-defense.2026-11/review-queue.jsonl",
+  "held_out_queue": "reviews/replay.ch8-defense.2026-11/held-out.jsonl",
+  "report_path": "reviews/replay.ch8-defense.2026-11/selection-report.json",
+  "notes": [
+    "games_generated is 0: selection consumes an existing corpus",
+    "packed is 0: P1a/P1b assemble, audit and ship the pack",
+    "a pack may not ship until every review-queue item has a disposition (P1b enforces it)",
+    "31362 selection attempt(s) were skipped because a section/kind/turn cap was full",
+    "62103 selection attempt(s) were skipped because a source replay hit its per-replay cap",
+    "scope: sections=ch8; corpus=mortal_mirror,mortal_sampling_sweep,akochan_tactics,akochan_vs_mortal,heterogeneous_table; stable book labels only",
+    "432 scenario(s) were selected beyond a section/kind/turn cap: the remaining pool had no candidate inside the cap, so the pack filled the slot instead of reporting a shortfall",
+    "review queue: 1080 item(s); held-out QA: 54 item(s)"
+  ]
+}

@@ -2334,6 +2334,45 @@ recorded; user sign-off on the artifact; docs updated.
 review/sign-off. Q2r in §6 is that review task; it produces no code and is not
 counted as an implementation unit.
 
+> **Status (2026-11-18, Q2 branch).** Shipped `replay.ch8-defense.2026-11`:
+> **100 reviewed ch. 8 defense bases, no variants** (104,357 body bytes,
+> 763-byte manifest), drawn from the C8 smoke corpus's M3/M4/M5 Akochan families
+> and the M1/M2 Mortal families. Variants were built and measured, then disabled
+> by product decision because the relabelled copies read as the same scenario;
+> the pack ships `pack assemble --no-variants` and gets its variety from real
+> positions (47 replays, 0 adjacent same-replay bases, 100 distinct hands). A
+> lesson with fewer than three real bases is dropped
+> (`--min-bases-per-lesson`), which removed the one-scenario
+> `defense_stuck_heuristic` and `kabe_one_chance` entries instead of repeating a
+> single position. The pack covers four ch. 8 lessons across ch8.1/ch8.2/ch8.3,
+> has four agents with complete licences/attribution, is non-commercial because
+> Akochan contributes, and passes the P1a/P1b audit, the P2 hosting check,
+> `scripts/check-ch8-pack.mjs --allow-no-variants` and
+> `scripts/check-pack-serving.mjs`. Review: 110 selected bases mechanically
+> checked (110 valid), 102 accepted (including two ch8.2 backfill candidates)
+> and 8 rejected; 10 held-out QA items. Measurements: 104 KB body, lazy
+> one-body load, cache hit on the loader test, 100/100 stable book answers,
+> clean audit, DB snapshot restored with `PRAGMA integrity_check = ok`.
+> Scale-up decision: ship this pack and add real reviewed bases (500 next) only
+> after Q2r signs off; fix the selector's unnecessary walk of unextracted
+> replays first. Q2 also implemented the missing `extract` command, the
+> selection lesson scope / corpus cap, the pack's bases-first order, the
+> `--no-variants` switch, the global variant ceiling and the minimum-bases-per-
+> lesson rule. Details in [`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md).
+>
+> **Scale-up (2026-11-18).** The user signed off the 100 bases and chose to
+> scale to 500 real bases with mechanical review plus a spot-check, skipping the
+> separate Q2r item. The corpus was expanded to **284 games / 146,374 decisions /
+> 21,745 book labels** (120 M1, 120 M2, 44 Akochan). `select --extracted-only
+> --max-per-replay 2` produced 560 bases (51 held out); `pack assemble
+> --no-variants --unique-hands --min-bases-per-lesson 4` ships **1,038 bases,
+> 0 variants, 1,047,001 bytes**, six ch. 8 lessons. `defense_stuck_heuristic`
+> returns with 11 distinct real positions; the lessons below the four-base
+> floor are left out. Selection uses all cores (`--workers 0`, 14 threads,
+> ~45 minutes) with measured progress. The pack passes audit, 41/41 hosting,
+> 23/23 ch8 content and 8/8 serving checks. Details:
+> [`q2-scale-up-1000.md`](q2-scale-up-1000.md).
+
 ### 5.4 Critical path and parallel tracks
 
 - **Critical path:** F1 → R1 → R2 → C1 → C2 → C8 → B1 → L1 → S1 → S2 → V2 →
@@ -2425,6 +2464,17 @@ the spike says which mode is feasible.
 ## 7. Verification gates
 
 ### 7.1 Shared commands
+
+**Offline compute policy.** Batch miner/corpus stages must use the whole
+machine by default: corpus generation, extraction, labelling, selection and
+review-report building, and transform/variant generation. Derive worker counts
+from available cores, parallelise per game/replay/state, merge deterministic
+results in file order, and print phase/file progress. `--workers 1`, a fixture
+plan or a small `--limit` are the bounded modes for tests, fixtures and initial
+development only; a single-threaded production batch is a defect unless the
+operator explicitly asks for it. Selection already implements this
+(`select --workers 0`, default); the remaining serial stages are tracked as
+pipeline work, not accepted defaults.
 
 Define these once; unit gates reference them.
 

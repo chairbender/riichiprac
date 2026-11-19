@@ -117,6 +117,15 @@ jobs:
       - name: Verify the Pages artifact includes the packs
         run: node scripts/check-pack-hosting.mjs --dir frontend/dist/scenarios
 
+      # The loader verifies the stored gzip bytes before decompressing. A
+      # static server that infers `Content-Encoding: gzip` from the `.json.gz`
+      # extension makes the browser decompress the body and the loader's byte/
+      # SHA check fails. Vite dev/preview use the rawScenarioPackBodies
+      # middleware; this runs the preview server and asserts the headers and
+      # bytes a browser would actually receive.
+      - name: Verify pack bodies are served raw
+        run: node scripts/check-pack-serving.mjs
+
       # Optional R2/HF mirror: the same-origin manifest stays on Pages, and the
       # loader tries same-origin first. A mirror is only usable by a browser
       # when it sends CORS headers, so measure them (and, when configured, the

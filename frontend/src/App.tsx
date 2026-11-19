@@ -30,7 +30,7 @@ import {
   FALLBACK_SCENARIOS,
   mergePackLessons,
   parseScenarioManifest,
-  pickRandomScenarioFrom,
+  selectionPool,
 } from './scenarios';
 import type {
   PackLessonSource,
@@ -40,7 +40,7 @@ import type {
 import {
   fetchPackManifest,
   loadPack,
-  pickPackScenario,
+  pickUnseenPackScenario,
 } from './services/packLoader';
 import type {
   PackManifest,
@@ -53,6 +53,7 @@ import {
 } from './scenarioHistory';
 import type { ScenarioSnapshot } from './scenarioHistory';
 import { stackOrder } from './seatOrder';
+import { pickUnseen } from './session';
 import { useGameStore } from './store/useGameStore';
 import { isTableView, useSettingsStore } from './store/useSettingsStore';
 import { ensureWasmReady } from './wasm';
@@ -73,13 +74,14 @@ const DEFAULT_REQUIRE_AGREEMENT = true;
 async function loadReplayScenario(
   manifest: PackManifest | null,
   source: PackLessonSource,
-): Promise<PackScenario> {
+  seen: Set<string>,
+): Promise<{ scenario: PackScenario; reset: boolean }> {
   const entry = manifest?.packs.find((pack) => pack.id === source.packId);
   if (!entry) {
     throw new Error(`Replay pack "${source.packId}" is no longer published.`);
   }
   const loaded = await loadPack(entry);
-  return pickPackScenario(loaded, source.lessonId);
+  return pickUnseenPackScenario(loaded, source.lessonId, seen);
 }
 
 export const App = () => {
@@ -178,6 +180,14 @@ export const App = () => {
    * resolves outside React's state updates.
    */
   const packManifestRef = useRef<PackManifest | null>(null);
+  /**
+   * Lesson/scenario ids already dealt this page session. Generated lessons and
+   * each pack lesson get their own pool; an exhausted pool starts a new cycle
+   * instead of repeating before its siblings have been shown. Nothing persists
+   * across a reload, so "current session" is exactly this ref's lifetime.
+   */
+  const seenCategoriesRef = useRef<Set<string>>(new Set());
+  const seenPackScenariosRef = useRef<Map<string, Set<string>>>(new Map());
   const loadRequestId = useRef(0);
   /**
    * Mirrors `exportDescription` synchronously. A history snapshot is written in
@@ -303,11 +313,15 @@ export const App = () => {
         );
         const category =
           forced?.category ??
-          pickRandomScenarioFrom(
-            options,
-            scenarioSelection,
-            useGameStore.getState().aiStatus === 'ready',
-          );
+          pickUnseen(
+            selectionPool(
+              options,
+              scenarioSelection,
+              useGameStore.getState().aiStatus === 'ready',
+            ),
+            (entry) => entry.id,
+            seenCategoriesRef.current,
+          ).value.id;
         const option = options.find((entry) => entry.id === category) ?? null;
 
         // A replay lesson ships its own complete state, so it is laid out with
@@ -316,12 +330,19 @@ export const App = () => {
         if (option?.pack) {
           setPackLoading(true);
           try {
-            const scenario = await loadReplayScenario(
+            const seenKey = `${option.pack.packId}:${option.pack.lessonId}`;
+            let seen = seenPackScenariosRef.current.get(seenKey);
+            if (!seen) {
+              seen = new Set<string>();
+              seenPackScenariosRef.current.set(seenKey, seen);
+            }
+            const picked = await loadReplayScenario(
               packManifestRef.current,
               option.pack,
+              seen,
             );
             if (requestId !== loadRequestId.current) return;
-            finish(() => loadFromJson(JSON.stringify(scenario.state)));
+            finish(() => loadFromJson(JSON.stringify(picked.scenario.state)));
           } finally {
             // A newer deal owns the status line; it set its own flag.
             if (requestId === loadRequestId.current) {

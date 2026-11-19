@@ -26,6 +26,7 @@ use std::time::SystemTime;
 
 use clap::{Parser, Subcommand};
 
+use riichiprac::miner::extract::{ExtractOptions, ExtractReport, run_extraction};
 use riichiprac::miner::label::Labeler;
 use riichiprac::miner::label::cache::LabelCache;
 use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
@@ -70,8 +71,28 @@ enum Command {
     },
     /// Ingest and validate raw self-play logs.
     Ingest,
-    /// Reconstruct decision points from validated logs.
-    Extract,
+    /// Reconstruct and persist decision points from validated logs.
+    Extract {
+        /// Replay directory (default: <data-dir>/replays).
+        #[arg(long, value_name = "DIR")]
+        replays: Option<PathBuf>,
+
+        /// Read only this family sub-directory.
+        #[arg(long, value_name = "NAME")]
+        family: Option<String>,
+
+        /// Maximum replay files in this shard.
+        #[arg(long, value_name = "N")]
+        limit: Option<usize>,
+
+        /// Validate and report without writing any row.
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
     /// Label candidates with book classifiers and Mortal.
     Label {
         /// Mortal checkpoint (.safetensors).
@@ -178,6 +199,58 @@ enum Command {
         /// Salt for the deterministic held-out split.
         #[arg(long, value_name = "TEXT")]
         seed: Option<String>,
+
+        /// Lesson scope: only these book sections (`ch8` or `ch8.2`). Comma
+        /// separated; repeat is not needed.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        section: Vec<String>,
+
+        /// Lesson scope: only these exact book lesson ids.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        lesson: Vec<String>,
+
+        /// Lesson scope: only these corpus (replay) families, mixed together.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        corpus_family: Vec<String>,
+
+        /// Maximum selected bases per corpus family, e.g.
+        /// `mortal_mirror=20,akochan_tactics=20`.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        corpus_cap: Vec<String>,
+
+        /// Maximum selected bases from one source replay.
+        #[arg(long, value_name = "N")]
+        max_per_replay: Option<usize>,
+
+        /// Walk only replays that already have extracted decisions rows.
+        #[arg(long)]
+        extracted_only: bool,
+
+        /// Worker threads for the offline selection walk. 0 uses every
+        /// available core; 1 is for debugging and tests.
+        #[arg(long, value_name = "N", default_value_t = 0)]
+        workers: usize,
+
+        /// Print phase and file progress to stderr.
+        #[arg(long)]
+        progress: bool,
+
+        /// Keep only stable book labels (reject book/Mortal disagreement).
+        #[arg(long)]
+        stable_book_only: bool,
+
+        /// Maximum share of the pack one book section may occupy (default 0.20).
+        /// A lesson-scoped pack raises this so three known sections can fill it.
+        #[arg(long, value_name = "F32")]
+        max_section_share: Option<f32>,
+
+        /// Maximum share of the pack one decision kind may occupy.
+        #[arg(long, value_name = "F32")]
+        max_kind_share: Option<f32>,
+
+        /// Maximum share of the pack one turn bucket may occupy.
+        #[arg(long, value_name = "F32")]
+        max_turn_share: Option<f32>,
 
         /// Build and report without writing the queue or the report.
         #[arg(long)]
@@ -374,6 +447,24 @@ enum PackAction {
         #[arg(long, value_name = "F32")]
         share: Option<f32>,
 
+        /// Maximum variants in the whole pack, spread evenly across the base
+        /// order. Omit to keep every variant the per-base cap allows.
+        #[arg(long, value_name = "N")]
+        max_variants: Option<usize>,
+
+        /// Ship the reviewed bases only; drop every variant.
+        #[arg(long)]
+        no_variants: bool,
+
+        /// Drop a lesson that has fewer than N reviewed bases (default 1).
+        #[arg(long, value_name = "N")]
+        min_bases_per_lesson: Option<usize>,
+
+        /// Keep at most one scenario per actor hand (different rivers/scores can
+        /// otherwise repeat the same-looking hand).
+        #[arg(long)]
+        unique_hands: bool,
+
         /// Family ceilings counted in base scenarios, e.g. book=30,coverage=15.
         #[arg(long, value_name = "LIST", value_delimiter = ',')]
         family_quota: Vec<String>,
@@ -510,7 +601,7 @@ impl Command {
         match self {
             Self::Corpus { .. } => "corpus",
             Self::Ingest => "ingest",
-            Self::Extract => "extract",
+            Self::Extract { .. } => "extract",
             Self::Label { .. } => "label",
             Self::Triggers { .. } => "triggers",
             Self::Transform { .. } => "transform",
@@ -538,6 +629,22 @@ fn main() -> ExitCode {
     };
 
     match cli.command {
+        Command::Extract {
+            replays,
+            family,
+            limit,
+            dry_run,
+            json,
+        } => run_extract_command(
+            &root,
+            &ExtractOptions {
+                replays,
+                family,
+                limit,
+                dry_run,
+            },
+            json,
+        ),
         Command::Label {
             weights,
             models,
@@ -682,13 +789,45 @@ fn main() -> ExitCode {
             size,
             held_out_share,
             seed,
+            section,
+            lesson,
+            corpus_family,
+            corpus_cap,
+            max_per_replay,
+            extracted_only,
+            workers,
+            progress,
+            stable_book_only,
+            max_section_share,
+            max_kind_share,
+            max_turn_share,
             dry_run,
             json,
         } => {
+            let mut quotas = riichiprac::miner::QuotaConfig::default();
+            if let Some(share) = max_section_share {
+                quotas.max_section_share = share;
+            }
+            if let Some(share) = max_kind_share {
+                quotas.max_decision_kind_share = share;
+            }
+            if let Some(share) = max_turn_share {
+                quotas.max_turn_bucket_share = share;
+            }
             let mut config = SelectionConfig {
                 pack_size: size,
+                book_prefixes: section,
+                lessons: lesson,
+                replay_families: corpus_family,
+                max_per_replay,
+                stable_book_only,
+                quotas,
                 ..SelectionConfig::default()
             };
+            if let Err(err) = parse_family_caps(&corpus_cap, &mut config.replay_family_caps) {
+                eprintln!("mine_replays select: {err}");
+                return ExitCode::from(2);
+            }
             config.pack_id = pack_id.unwrap_or_else(|| format!("s2-{}", utc_stamp_now()));
             if let Some(share) = held_out_share {
                 config.held_out_share = share;
@@ -702,7 +841,10 @@ fn main() -> ExitCode {
                     replays,
                     family,
                     limit,
+                    extracted_only,
                     config,
+                    workers,
+                    progress,
                     dry_run,
                 },
                 json,
@@ -830,6 +972,10 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
             max_scenarios,
             max_per_base,
             share,
+            max_variants,
+            no_variants,
+            min_bases_per_lesson,
+            unique_hands,
             family_quota,
             generated_at,
             commit,
@@ -846,6 +992,10 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
                 max_scenarios,
                 max_per_base,
                 share,
+                max_variants,
+                no_variants,
+                min_bases_per_lesson,
+                unique_hands,
                 family_quota,
                 generated_at,
                 commit,
@@ -894,6 +1044,10 @@ struct AssemblyCommand {
     max_scenarios: Option<usize>,
     max_per_base: Option<usize>,
     share: Option<f32>,
+    max_variants: Option<usize>,
+    no_variants: bool,
+    min_bases_per_lesson: Option<usize>,
+    unique_hands: bool,
     family_quota: Vec<String>,
     generated_at: Option<String>,
     commit: String,
@@ -923,6 +1077,12 @@ fn run_pack_assemble(root: &DataRoot, command: AssemblyCommand) -> ExitCode {
     if let Some(share) = command.share {
         limits.max_pack_share = share;
     }
+    limits.max_variants = command.max_variants;
+    limits.variants_disabled = command.no_variants;
+    if let Some(minimum) = command.min_bases_per_lesson {
+        limits.min_bases_per_lesson = minimum;
+    }
+    limits.unique_actor_hands = command.unique_hands;
     limits.family_quotas = quotas;
     let options = AssemblyOptions {
         pack_id: command.pack,
@@ -1348,6 +1508,29 @@ fn transform_exit_code(report: &riichiprac::miner::variant::VariantReport) -> Ex
     }
 }
 
+fn parse_family_caps(
+    raw: &[String],
+    target: &mut std::collections::BTreeMap<String, usize>,
+) -> Result<(), String> {
+    for entry in raw {
+        let Some((family, cap)) = entry.split_once('=') else {
+            return Err(format!("`{entry}` is not `family=cap`"));
+        };
+        if family.trim().is_empty() {
+            return Err(format!("`{entry}` has a blank family"));
+        }
+        let cap: usize = cap
+            .trim()
+            .parse()
+            .map_err(|_| format!("`{entry}` has a non-numeric cap"))?;
+        if cap == 0 {
+            return Err(format!("`{entry}` must have a cap of at least one"));
+        }
+        target.insert(family.trim().to_string(), cap);
+    }
+    Ok(())
+}
+
 fn run_select_command(root: &DataRoot, options: &SelectionOptions, json: bool) -> ExitCode {
     match run_selection(root, options) {
         Ok(outcome) if json => {
@@ -1478,6 +1661,37 @@ fn resolve_queue(
     } else {
         paths.queue
     })
+}
+
+fn run_extract_command(root: &DataRoot, options: &ExtractOptions, json: bool) -> ExitCode {
+    match run_extraction(root, options) {
+        Ok(report) if json => {
+            match serde_json::to_string_pretty(&report) {
+                Ok(text) => println!("{text}"),
+                Err(err) => {
+                    eprintln!("mine_replays extract: cannot serialise the report: {err}");
+                    return ExitCode::from(2);
+                }
+            }
+            extract_exit_code(&report)
+        }
+        Ok(report) => {
+            print!("{}", report.human_summary());
+            extract_exit_code(&report)
+        }
+        Err(err) => {
+            eprintln!("mine_replays extract: {err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn extract_exit_code(report: &ExtractReport) -> ExitCode {
+    if report.replays_failed > 0 || !report.errors.is_empty() {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
 }
 
 fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> ExitCode {
@@ -1901,6 +2115,18 @@ mod tests {
             "0.2",
             "--seed",
             "qa-a",
+            "--section",
+            "ch8",
+            "--lesson",
+            "fold_to_riichi",
+            "--corpus-family",
+            "mortal_mirror,akochan_tactics",
+            "--corpus-cap",
+            "akochan_tactics=25",
+            "--max-per-replay",
+            "2",
+            "--extracted-only",
+            "--stable-book-only",
             "--dry-run",
             "--json",
         ])
@@ -1914,8 +2140,16 @@ mod tests {
                 size,
                 held_out_share,
                 seed,
+                section,
+                lesson,
+                corpus_family,
+                corpus_cap,
+                max_per_replay,
+                extracted_only,
+                stable_book_only,
                 dry_run,
                 json,
+                ..
             } => {
                 assert_eq!(replays, Some(PathBuf::from("/data/replays")));
                 assert_eq!(family.as_deref(), Some("mortal_mirror"));
@@ -1924,6 +2158,16 @@ mod tests {
                 assert_eq!(size, 40);
                 assert_eq!(held_out_share, Some(0.2));
                 assert_eq!(seed.as_deref(), Some("qa-a"));
+                assert_eq!(section, vec!["ch8".to_string()]);
+                assert_eq!(lesson, vec!["fold_to_riichi".to_string()]);
+                assert_eq!(
+                    corpus_family,
+                    vec!["mortal_mirror".to_string(), "akochan_tactics".to_string()]
+                );
+                assert_eq!(corpus_cap, vec!["akochan_tactics=25".to_string()]);
+                assert_eq!(max_per_replay, Some(2));
+                assert!(extracted_only);
+                assert!(stable_book_only);
                 assert!(dry_run);
                 assert!(json);
             }

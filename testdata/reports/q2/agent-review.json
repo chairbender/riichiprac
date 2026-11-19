@@ -1,0 +1,584 @@
+{
+  "queue": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense.2026-11/review-queue.jsonl",
+  "items": 110,
+  "selected": 110,
+  "held_out": 0,
+  "accepted": 110,
+  "rejected": 0,
+  "rejection_reasons": {},
+  "sections": {
+    "ch8.1": 18,
+    "ch8.2": 58,
+    "ch8.3": 34
+  },
+  "lessons": {
+    "defense_safety_chart": 40,
+    "defense_stuck_heuristic": 1,
+    "fold_to_riichi": 33,
+    "kabe_one_chance": 1,
+    "push_or_fold": 18,
+    "suji_kabe_safety": 17
+  },
+  "replay_families": {
+    "akochan_tactics": 30,
+    "akochan_vs_mortal": 30,
+    "heterogeneous_table": 30,
+    "mortal_mirror": 10,
+    "mortal_sampling_sweep": 10
+  },
+  "decision_kinds": {
+    "self_turn": 110
+  },
+  "verdicts": [
+    {
+      "queue_id": "replay.ch8-defense.2026-11-001",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-002",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-003",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-004",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-005",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-006",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-007",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-008",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-009",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-010",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-011",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-012",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-013",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-014",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-015",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-016",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-017",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-018",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-019",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-020",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-021",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-022",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-023",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-024",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-025",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-026",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-027",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-028",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-029",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-030",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-031",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-032",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-033",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-034",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-035",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-036",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-037",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-038",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-039",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-040",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-041",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-042",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-043",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-044",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-045",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-046",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-047",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-048",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-049",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-050",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-051",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-052",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-053",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-054",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-055",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-056",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-057",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-058",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-059",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-060",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-061",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-062",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-063",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-064",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-065",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-066",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-067",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-068",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-069",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-070",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-071",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-072",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-073",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-074",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-075",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-076",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-077",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-078",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-079",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-080",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-081",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-082",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-083",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-084",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-085",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-086",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-087",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-088",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-089",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-090",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-091",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-092",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-093",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-094",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-095",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-096",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-097",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-098",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-099",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-100",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-101",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-102",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-103",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-104",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-105",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-106",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-107",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-108",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-109",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-110",
+      "accepted": true,
+      "problems": []
+    }
+  ]
+}

@@ -1,12 +1,71 @@
 import { execSync } from 'node:child_process';
+import { createReadStream, existsSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type Connect, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 
 // Use the freshly built WASM package rather than a stale copy in node_modules.
 const pkgDir = fileURLToPath(new URL('../pkg', import.meta.url));
+
+/**
+ * Serve the content-addressed `.json.gz` pack bodies as raw bytes.
+ *
+ * The pack loader verifies the body's byte count and SHA-256 against the
+ * manifest *before* it gunzips it. Vite's static middleware infers
+ * `Content-Encoding: gzip` from the `.gz` extension, so the browser silently
+ * decompresses the response and the loader sees a 2 MB JSON document where the
+ * manifest promised a 143 KB gzip body. GitHub Pages serves the same file as
+ * `application/gzip` with no content-encoding, which is the contract.
+ *
+ * This middleware runs before Vite's static handler in dev and preview and
+ * sends exactly the bytes on disk. A mirror must do the same; see
+ * `hosting-plan.md` §7.
+ */
+function rawScenarioPackBodies(): Plugin {
+  const middleware = (dir: string): Connect.NextHandleFunction => (request, response, next) => {
+    const path = decodeURIComponent((request.url ?? '').split('?')[0]);
+    const prefix = '/scenarios/';
+    if (!path.startsWith(prefix) || !path.endsWith('.json.gz')) {
+      next();
+      return;
+    }
+    const name = path.slice(prefix.length);
+    if (name === '' || name.includes('/') || name.includes('\\') || name.includes('..')) {
+      next();
+      return;
+    }
+    const file = join(dir, name);
+    if (!existsSync(file)) {
+      next();
+      return;
+    }
+    response.setHeader('Content-Type', 'application/gzip');
+    response.setHeader('Content-Length', String(statSync(file).size));
+    response.setHeader('Cache-Control', 'no-cache');
+    createReadStream(file).pipe(response);
+  };
+  return {
+    name: 'raw-scenario-pack-bodies',
+    enforce: 'pre',
+    configureServer(server) {
+      // Dev serves `public/` directly.
+      server.middlewares.use(
+        middleware(join(server.config.root, 'public', 'scenarios')),
+      );
+    },
+    configurePreviewServer(server) {
+      // Preview serves the built artifact, not `public/`.
+      server.middlewares.use(
+        middleware(
+          resolve(server.config.root, server.config.build.outDir, 'scenarios'),
+        ),
+      );
+    },
+  };
+}
 
 function buildCommit(): string {
   try {
@@ -47,7 +106,7 @@ export default defineConfig({
   // emitted URL to wasm-bindgen's `init`, which falls back to
   // `WebAssembly.instantiate(await response.arrayBuffer())` if streaming
   // instantiation is rejected, so a wrong MIME only costs speed.
-  plugins: [react(), wasm(), topLevelAwait()],
+  plugins: [rawScenarioPackBodies(), react(), wasm(), topLevelAwait()],
   build: {
     /*
      * Spelled out even though it is Vite's default: the top-level-await plugin

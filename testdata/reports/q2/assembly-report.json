@@ -1,0 +1,103 @@
+{
+  "schema": "riichiprac.pack-assembly-report",
+  "version": 1,
+  "pack_id": "replay.ch8-defense.2026-11",
+  "generated_at": "2026-11-18T00:00:00Z",
+  "rows_read": 102,
+  "bases": 100,
+  "variants": 0,
+  "scenarios": 100,
+  "families": [
+    {
+      "family": "book",
+      "bases": 42,
+      "variants": 0,
+      "scenarios": 42
+    },
+    {
+      "family": "coverage",
+      "bases": 20,
+      "variants": 0,
+      "scenarios": 20
+    },
+    {
+      "family": "close_call",
+      "bases": 12,
+      "variants": 0,
+      "scenarios": 12
+    },
+    {
+      "family": "table_read",
+      "bases": 11,
+      "variants": 0,
+      "scenarios": 11
+    },
+    {
+      "family": "mistake",
+      "bases": 10,
+      "variants": 0,
+      "scenarios": 10
+    },
+    {
+      "family": "placement",
+      "bases": 5,
+      "variants": 0,
+      "scenarios": 5
+    }
+  ],
+  "dropped": [
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-026",
+      "reason": "lesson_too_small",
+      "detail": "lesson `kabe_one_chance` has 1 base(s); the pack needs at least 3"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-060",
+      "reason": "lesson_too_small",
+      "detail": "lesson `defense_stuck_heuristic` has 1 base(s); the pack needs at least 3"
+    }
+  ],
+  "drop_counts": {
+    "lesson_too_small": 2
+  },
+  "variant_share": 0.0,
+  "largest_base": {
+    "base": "replay.ch8-defense.2026-11-001",
+    "scenarios": 1,
+    "share": 0.01
+  },
+  "limits": {
+    "max_per_base": 8,
+    "max_pack_share": 0.2,
+    "variants_disabled": true,
+    "min_bases_per_lesson": 3
+  },
+  "bytes": 104357,
+  "max_bytes": 50000000,
+  "max_scenarios": 2000,
+  "sha256": "13ea4647a9d85a86f29770eb1c63b879d635daf16c2afedf25a42cfbb742ad3f",
+  "export_path": "packs/replay.ch8-defense.2026-11-13ea4647a9d8.json.gz",
+  "manifest_path": "packs/manifest.json",
+  "licence": "CC-BY-4.0",
+  "data_commercial_use": false,
+  "agents": [
+    "akochan (akochan master-53188a0-minimum, akochan-custom)",
+    "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+    "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+    "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+  ],
+  "review": {
+    "checked": true,
+    "items": 110,
+    "accepted": 102,
+    "rejected": 8
+  },
+  "audited": true,
+  "audit_clean": true,
+  "notes": [
+    "generated_at is the latest selected row's timestamp, so re-assembling the same rows hashes identically",
+    "a base state comes from the walked decision row; a variant re-applies its recorded chain to that state and the lesson classifier must re-derive the stored answer",
+    "variants are disabled for this pack: it ships the reviewed bases only, and its variety comes from real scenarios",
+    "a lesson needs at least 3 reviewed base(s) to stay in the pack; an undersupplied lesson is reported as `lesson_too_small` instead of repeating one position"
+  ]
+}

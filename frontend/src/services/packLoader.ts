@@ -16,9 +16,13 @@
  * difference is that the cache key includes the content address, so a new body
  * can never be served under an old hash.
  *
- * Hosting contract: `hosting-plan.md` §7. Publishing/audit contract:
+ * Hosting contract: `hosting-plan.md` §7. The body must arrive as the exact
+ * bytes on disk (`application/gzip`, **no** `Content-Encoding`); a server that
+ * decompresses `.gz` responses makes the byte-count/SHA-256 check fail before
+ * the loader can parse anything. Publishing/audit contract:
  * `replay-miner-operations.md`.
  */
+import { pickUnseen } from '../session';
 import { isCorrectAction } from '../actions';
 
 /** Schema names shared with `src/miner/pack/model.rs`. */
@@ -685,6 +689,30 @@ export function pickPackScenario(
     Math.max(0, Math.floor(random() * candidates.length)),
   );
   return candidates[index];
+}
+
+/**
+ * Pick one scenario for a lesson, skipping ids the session has already seen.
+ *
+ * `seen` is the caller's session set for this pack + lesson. When every
+ * scenario in the lesson has been seen, the helper starts a new cycle for that
+ * lesson and returns `reset: true`. The set is updated with the returned id.
+ */
+export function pickUnseenPackScenario(
+  loaded: LoadedPack,
+  lessonId: string,
+  seen: Set<string>,
+  random: () => number = Math.random,
+): { scenario: PackScenario; reset: boolean } {
+  const candidates = loaded.byLesson.get(lessonId) ?? [];
+  if (candidates.length === 0) {
+    throw new PackLoadError(
+      'schema',
+      `Replay pack "${loaded.entry.id}" has no scenario for lesson "${lessonId}".`,
+    );
+  }
+  const picked = pickUnseen(candidates, (scenario) => scenario.id, seen, random);
+  return { scenario: picked.value, reset: picked.reset };
 }
 
 /* -------------------------------------------------------------------------- */

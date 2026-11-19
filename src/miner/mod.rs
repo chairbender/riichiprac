@@ -41,6 +41,7 @@
 compile_error!("the `miner` feature is native-only; do not enable it for the wasm32 browser build");
 
 pub mod classifier;
+pub mod extract;
 pub mod funnel;
 pub mod label;
 pub mod licence;
@@ -55,6 +56,10 @@ pub mod trigger;
 pub mod variant;
 
 pub use classifier::{classify_decision, classify_decision_with_mortal};
+pub use extract::{
+    EXTRACT_SCHEMA, EXTRACT_VERSION, ExtractError, ExtractFamilyStats, ExtractOptions,
+    ExtractReport, run_extraction,
+};
 pub use funnel::{FunnelCounter, FunnelStage};
 pub use label::calibration::{
     CALIBRATION_SCHEMA, CALIBRATION_VERSION, CalibrationBreakpoint, CalibrationError,

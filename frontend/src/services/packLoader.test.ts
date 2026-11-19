@@ -16,6 +16,7 @@ import {
   parsePackBody,
   parsePackManifest,
   pickPackScenario,
+  pickUnseenPackScenario,
   sha256FallbackHex,
   sha256Hex,
 } from './packLoader';
@@ -166,7 +167,7 @@ function memoryCache(): {
 }
 
 /* -------------------------------------------------------------------------- */
-/* The committed smoke pack                                                   */
+/* The committed pack                                                   */
 /* -------------------------------------------------------------------------- */
 
 const fixtureDir = new URL('../../public/scenarios/', import.meta.url);
@@ -180,7 +181,7 @@ const fixtureBody = new Uint8Array(
   readFileSync(new URL(fixtureEntry.path, fixtureDir)),
 );
 
-describe('committed smoke pack', () => {
+describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
     expect(packManifestUrl()).toBe('/scenarios/manifest.json');
     expect(fixtureManifest.packs).toHaveLength(1);
@@ -226,7 +227,9 @@ describe('committed smoke pack', () => {
     expect(offline).not.toHaveBeenCalled();
     expect(again.fromCache).toBe(true);
     expect(again.pack.scenarios).toHaveLength(fixtureEntry.scenario_count);
-    expect(again.byLesson.get(fixtureEntry.lesson_ids[0])).toHaveLength(1);
+    for (const lesson of fixtureEntry.lesson_ids) {
+      expect(again.byLesson.get(lesson)?.length ?? 0).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -673,6 +676,19 @@ describe('pickPackScenario', () => {
 
   it('rejects a lesson the pack does not contain', () => {
     expect(() => pickPackScenario(loaded, 'push_or_fold')).toThrow(/no scenario for lesson/);
+  });
+
+  it('cycles through unseen scenarios before repeating', () => {
+    const seen = new Set<string>();
+    const first = pickUnseenPackScenario(loaded, 'fold_to_riichi', seen, () => 0);
+    const second = pickUnseenPackScenario(loaded, 'fold_to_riichi', seen, () => 0);
+    expect(first).toEqual({ scenario: expect.objectContaining({ id: 'a' }), reset: false });
+    expect(second).toEqual({ scenario: expect.objectContaining({ id: 'b' }), reset: false });
+    const third = pickUnseenPackScenario(loaded, 'fold_to_riichi', seen, () => 0);
+    expect(third.reset).toBe(true);
+    expect(third.scenario.id).toBe('a');
+    expect(seen.has('a')).toBe(true);
+    expect(seen.has('b')).toBe(false);
   });
 });
 

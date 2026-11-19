@@ -129,9 +129,12 @@ graded through the normal table. Replay entries are deliberately outside **All
 scenarios (random)**, so the first page load only fetches the small same-origin
 pack manifest (`/scenarios/manifest.json`); a pack body downloads when you pick
 one of its lessons and is then cached in IndexedDB, verified against the
-manifest's SHA-256 first. If no pack is published (or its manifest is
-unreachable) the note in the picker says so and generated lessons are
-unaffected.
+manifest's SHA-256 first. Within a page session a replay lesson cycles through
+its scenarios without replacement (generated lessons use the same session
+guard): the same hand does not repeat until every unseen sibling for that pool
+has been dealt, then a new cycle starts. If no pack is published (or its
+manifest is unreachable) the note in the picker says so and generated lessons
+are unaffected.
 
 ## Going back to a previous hand
 
@@ -446,14 +449,23 @@ the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
 Scenario packs are separate from the app bundle and from the weights. The
 browser loads a small **same-origin** manifest
 (`/scenarios/manifest.json`) and then only the content-addressed pack body it
-needs; the miner never ships its corpus, databases or model weights. A smoke
-pack ships in `frontend/public/scenarios/` so the Pages build exercises the whole
-path, and the deploy workflow verifies every body's bytes/SHA-256 before upload
-(`scripts/check-pack-hosting.mjs`). Published packs are produced by
+needs; the miner never ships its corpus, databases or model weights. The first
+curated ch. 8 defense pack (`replay.ch8-defense.2026-11`: 1,038 reviewed bases,
+no variants, 1,047 KB) ships in `frontend/public/scenarios/` so the Pages build
+exercises the whole path, and the deploy workflow verifies every body's
+bytes/SHA-256 before upload (`scripts/check-pack-hosting.mjs`); Q2's content
+gate `scripts/check-ch8-pack.mjs --allow-no-variants` proves every scenario is
+a ch. 8 lesson and the source/licence envelope is complete. Variants are
+disabled for this pack by product decision; variety comes from real reviewed
+positions, and a lesson with fewer than five real bases is left out of the
+pack rather than repeating one scenario. See
+[`q2-scale-up-1000.md`](q2-scale-up-1000.md).
+Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and
 hashes are measured with `scripts/check-pack-cors.mjs`. Google Drive is backup
-only. See [`hosting-plan.md`](hosting-plan.md#7-scenario-packs-same-origin-pages--optional-r2hf-mirror-p2)
+only. See [`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md),
+[`hosting-plan.md`](hosting-plan.md#7-scenario-packs-same-origin-pages--optional-r2hf-mirror-p2)
 and [`replay-miner-operations.md`](replay-miner-operations.md).
 
 ## Model weights license

@@ -184,6 +184,29 @@ rule is about *reading* the model work, not editing it.
 * Keep the rendered view's interaction and ARIA behaviour equivalent to the top-down view. The stacked and top-down views remain the accessible fallback.
 * Visual work follows §6: verify visuals with scripted checks or hand the artifact to the user. Never sign off a render, screenshot, or layout from your own inspection.
 
+## 5b. Offline compute policy: use the whole machine
+
+Offline, non-interactive miner/corpus stages are CPU-intensive and must use the
+whole machine by default. This covers corpus generation, ingest, extraction,
+labelling, selection and review-report building, transform/variant generation,
+and any future batch scenario mining. "Use the whole machine" means:
+
+* derive worker counts from available cores (for example `available_parallelism`
+  or the corpus plan's `workers`/`allow_parallel`), not a hard-coded 1;
+* parallelise per game, per replay file, or per independent state, and merge
+  deterministic results in file order so the output stays reproducible;
+* expose an explicit bounded mode for tests, fixtures, debugging and initial
+  development (`--workers 1`, a fixture plan, or a small `--limit`), and make
+  those the exception rather than the default;
+* print phase and file progress for long runs, so "how far along is it?" has a
+  measured answer instead of a guess;
+* record the worker count and wall time in the run report or evidence.
+
+A single-threaded offline run is a defect unless it is intentionally bounded for
+testing/initial development or the operator explicitly asks for it. Do not trade
+throughput for quiet defaults: a 500-game labelling or selection pass should use
+all cores.
+
 ## 6. Visual Work: Do Not Look and Judge; Ask the User
 
 **Rule.** An agent working in this repo must not form a visual, aesthetic, or "does this look right"

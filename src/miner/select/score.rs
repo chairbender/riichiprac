@@ -222,6 +222,29 @@ impl SampleCuts {
         }
     }
 
+    /// Merge a worker's samples into this set. Order inside each family is not
+    /// part of the percentile contract, but callers merge in file order anyway.
+    pub fn merge(&mut self, other: &Self) {
+        for (key, values) in &other.top2 {
+            self.top2
+                .entry(key.clone())
+                .or_default()
+                .extend_from_slice(values);
+        }
+        for (key, values) in &other.safe {
+            self.safe
+                .entry(key.clone())
+                .or_default()
+                .extend_from_slice(values);
+        }
+        for (key, values) in &other.played {
+            self.played
+                .entry(key.clone())
+                .or_default()
+                .extend_from_slice(values);
+        }
+    }
+
     /// The trigger cuts S1 needs, built from this sample.
     ///
     /// `close_call` is the top-two-gap distribution, which is also the

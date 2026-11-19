@@ -68,8 +68,8 @@ const fixtureBytes = readFileSync(join(scenariosDir, manifest.packs[0].path));
 const fixture = JSON.parse(gunzipSync(fixtureBytes).toString('utf8')) as {
   scenarios: Array<{ lesson_id: string; state: unknown }>;
 };
-const hand = fixture.scenarios.find((scenario) => scenario.lesson_id === 'ryanmen_protorun');
-if (!hand) throw new Error('fixture pack is missing ryanmen_protorun');
+const hand = fixture.scenarios[0];
+if (!hand) throw new Error('fixture pack has no scenarios');
 
 afterEach(() => {
   cleanup();
