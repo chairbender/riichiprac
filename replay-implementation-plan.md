@@ -60,7 +60,11 @@ can run in parallel around that path.
 - a scenario permutation generator with label-preservation checks;
 - pack/manifest schema, publisher, audit and hosting;
 - a lazy frontend pack loader;
-- end-to-end validation and the first curated pack.
+- end-to-end validation and the first curated pack;
+- the **replay-first rollout** after Q2: per-lesson coverage in the manifest,
+  section packs for the remaining lesson families, classifiers for the four
+  lessons that still lack one, and the source-tier picker that makes replay the
+  default and generated the opt-in alternative ([`replay-first-rollout.md`](replay-first-rollout.md)).
 
 **Out of scope (some permanently, some deferred):**
 
@@ -2641,6 +2645,11 @@ The first pack (Q2) is done when all of these are true:
 - measured pack size, initial load, cache behavior and answer accuracy are
   recorded, and the scale-up decision is explicit.
 
+Q2 (and its Q2s/Q2m follow-ups) are shipped: two ch8 packs, 2,975 bases total.
+The product target after that is the replay-first rollout, which extends replay
+coverage to the other chapters and makes replay the default source for covered
+lessons; see §11.
+
 ---
 
 ## 10. Related docs
@@ -2674,6 +2683,42 @@ The first pack (Q2) is done when all of these are true:
   inference path and the place to add a mining-only Q value.
 - `frontend/src/services/weightLoader.ts` — the ordered-source + IndexedDB
   pattern to reuse for packs.
+- [`replay-first-rollout.md`](replay-first-rollout.md) — the approved post-Q2
+  rollout: coverage table, section packs, the four classifier gaps, the
+  source-tier picker and the task sequence.
+
+---
+
+## 11. Replay-first rollout (post-Q2)
+
+Q2 proved the pipeline on ch. 8 defense. The next product target is
+**replay-first scenarios**: replay packs become the default and prominent
+source for every lesson with enough reviewed coverage, and generated lessons
+remain available as an explicit alternative. The full plan, coverage table and
+task sequence are in [`replay-first-rollout.md`](replay-first-rollout.md); the
+constraints that matter to this plan are:
+
+- **Coverage is per lesson.** A lesson becomes replay-default only when its
+  shipped pack has at least the coverage floor of reviewed bases (proposed 40).
+  Until then the generated lesson stays the default. The app learns the counts
+  from `lesson_counts` in the pack manifest, not by downloading bodies.
+- **Section packs.** The remaining coverage is published as one pack per book
+  section (ch3, ch4, ch5, ch7, ch8 completion, ch9), not per lesson, so one lazy
+  body serves several lessons.
+- **Four classifiers are in scope.** `chiitoitsu_riichi_vs_dama`,
+  `chiitoi_vs_toitoi`, `sanshoku_pursuit` and `open_hand_defense` have no
+  classifier today and therefore no mining path. A single `B4` task lands all
+  four recognisers, one `CLASSIFIER_VERSION` bump and one label pass; splitting
+  them across tasks would invalidate the label cache once per task.
+- **Generated is never removed.** The picker gets a Replay/Generated/Both source
+  filter and a `preferReplay` setting; generated drills remain selectable.
+- **AI self-play is not human replay.** Today's packs are AI self-play. A
+  human-corpus source is a separate evaluation (task D1), so the product does not
+  claim human realism before it ships.
+
+The rollout does not change this plan's gates: every pack still passes the
+legal/reachable/answer/audit/hosting/serving checks, the review flow, and the
+licence/provenance envelope.
 
 ---
 

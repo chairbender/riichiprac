@@ -1,0 +1,835 @@
+{
+  "held_out": 0,
+  "ids": [
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-001",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-003",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-009",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-013",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-014",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-016",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-017",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-024",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-031",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-034",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-044",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-047",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-058",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-059",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-064",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-065",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-068",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-071",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-072",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-078",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-079",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-083",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-086",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-090",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-097",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-101",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-102",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-104",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-108",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-111",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-122",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-134",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-135",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-146",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-150",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-153",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-155",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-157",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-160",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-173",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-181",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-189",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-190",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-192",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-194",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-198",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-203",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-206",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-212",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-213",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-215",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-216",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-218",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-220",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-228",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-230",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-231",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-232",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-234",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-235",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-245",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-248",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-255",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-260",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-262",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-263",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-267",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-271",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-273",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-275",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-276",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-287",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-289",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-295",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-307",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-311",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-312",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-314",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-327",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-343",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-346",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-352",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-355",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-359",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-363",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-372",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-373",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-374",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-375",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-378",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-382",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-383",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-386",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-390",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-391",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-393",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-394",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-395",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-399",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-403",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-404",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-405",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-411",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-414",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-417",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-421",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-423",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-424",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-428",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-431",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-433",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-434",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-437",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-438",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-439",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-442",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-445",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-448",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-453",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-456",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-461",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-466",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-472",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-475",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-479",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-480",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-481",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-482",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-485",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-490",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-491",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-494",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-497",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-508",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-538",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-540",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-545",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-546",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-553",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-562",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-566",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-573",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-580",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-584",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-588",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-590",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-599",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-601",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-608",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-614",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-621",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-625",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-629",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-633",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-635",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-637",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-639",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-643",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-645",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-646",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-649",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-655",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-659",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-662",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-663",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-671",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-673",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-676",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-684",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-691",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-694",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-695",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-696",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-701",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-706",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-709",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-712",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-715",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-722",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-724",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-725",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-733",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-736",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-737",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-738",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-740",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-742",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-744",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-745",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-754",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-755",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-756",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-757",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-758",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-763",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-764",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-766",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-768",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-773",
+      "why": "lesson_guarantee:defense_multi_threat"
+    },
+    {
+      "queue_id": "replay.ch8-defense-multi-threat.2026-11-780",
+      "why": "lesson_guarantee:defense_multi_threat"
+    }
+  ],
+  "items": 780,
+  "lessons": {
+    "defense_multi_threat": 780
+  },
+  "queue": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense-multi-threat.2026-11/review-queue.jsonl",
+  "replay_families": {
+    "akochan_tactics": 18,
+    "akochan_vs_mortal": 12,
+    "heterogeneous_table": 9,
+    "mortal_mirror": 377,
+    "mortal_sampling_sweep": 364
+  },
+  "sampled": 200,
+  "sampled_lessons": {
+    "defense_multi_threat": 200
+  },
+  "sampled_replay_families": {
+    "akochan_tactics": 18,
+    "akochan_vs_mortal": 12,
+    "heterogeneous_table": 9,
+    "mortal_mirror": 88,
+    "mortal_sampling_sweep": 73
+  },
+  "schema": "riichiprac.q2r2-review-sample",
+  "sections": {
+    "ch8.2": 780
+  },
+  "seed": "q2-multithreat-2026-11",
+  "selected": 780,
+  "version": 1
+}

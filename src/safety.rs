@@ -737,6 +737,207 @@ impl SafetyFacts {
 
         best.map(|(tile, rules, _)| (tile, rules))
     }
+
+    /// True when ch. 8's *certain* safety kinds cover `tile` against this one
+    /// opponent: the tile is genbutsu for them, or every copy of it is visible.
+    ///
+    /// Riichi Book 1, ch. 8, "Genbutsu and other absolutely safe tiles":
+    /// "{\jap Genbutsu} tiles of player X are 100\% safe against X, but not
+    /// necessarily safe against the other two players." The chapter's three
+    /// 100% kinds reduce to two tests here:
+    ///
+    /// - genbutsu (the threat's own river and, after a Riichi, any tile anyone
+    ///   discarded afterwards) — the river read;
+    /// - a fourth honor tile and an absolute "no chance" tile — both are tiles
+    ///   of which every copy is visible, so no opponent can hold one and no
+    ///   wait can need one (`visible_of >= 4`). The book's own example is
+    ///   "all four of 3m, all four of 5m, and all three of 4m are visible ...
+    ///   the fourth 4m is 100\% safe".
+    ///
+    /// This is deliberately stricter than [`Self::is_absolutely_safe`]:
+    ///
+    /// - a *suji* read is relative and only argues about side waits;
+    /// - a `kabe`/`kabesuji` row is relative too ("dual {\jap pon} wait and
+    ///   single wait of a no-chance tile is still possible", ch8:214) unless
+    ///   every copy is visible;
+    /// - an open hand may not even have a side wait, and ch8.4 warns that
+    ///   "{\jap suji} theories and blockade theories are completely useless"
+    ///   against a `toitoi` hand.
+    ///
+    /// So a multi-threat board can only be answered by tiles this predicate
+    /// covers against every threat at once.
+    pub fn is_certain_safe(&self, tile: Tile) -> bool {
+        self.visible_of(tile) >= 4 || self.read(tile).rank == SafetyRank::Genbutsu
+    }
+}
+
+/// One opponent in a read against several threats at once.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ThreatFacts {
+    pub seat: usize,
+    pub facts: SafetyFacts,
+    /// True when the opponent has declared Riichi.
+    pub riichi: bool,
+    /// True when the opponent's hand is open enough for ch. 8.4's "three or
+    /// more open sets / runs" shortcut.
+    pub open: bool,
+}
+
+impl ThreatFacts {
+    /// True when this opponent certainly cannot ron `tile`.
+    pub fn is_certain_safe(&self, tile: Tile) -> bool {
+        self.facts.is_certain_safe(tile)
+    }
+
+    /// The tile's chart row against this opponent.
+    pub fn rank(&self, tile: Tile) -> SafetyRank {
+        self.facts.rank(tile)
+    }
+}
+
+/// Ch. 8's safety read when several opponents are live at once.
+///
+/// The chapter is explicit that safety does not compose:
+///
+/// > {\jap Genbutsu} tiles of player X are 100\% safe against X, but not
+/// > necessarily safe against the other two players. ... There are three kinds
+/// > of tiles that are 100\% safe against all of the opponents.
+/// > — ch8:100–104
+///
+/// Those three kinds are:
+///
+/// 1. "The tile that was just discarded by your left player." It is temporarily
+///    furiten for everyone else, not just genbutsu for the left player
+///    (ch8:106–107). [`MultiThreatFacts::left_discard`] carries it.
+/// 2. "A fourth honor tile when there is no possibility of Thirteen Orphans."
+/// 3. "An absolute ``no chance'' tile."
+///
+/// Kinds 2 and 3 are table-wide facts (all four copies visible), so they are
+/// covered by every threat's [`SafetyFacts::is_certain_safe`]. Kind 1 is not a
+/// per-threat read at all: it is safe against everyone for this turn because of
+/// the furiten rule, which is why it lives on this struct instead of on one
+/// threat.
+///
+/// Every other tile is only safe against the opponents that actually denied
+/// it, so a discard is only certifiably safe when
+/// [`Self::is_certain_safe`] agrees for **all** threats.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MultiThreatFacts {
+    /// The live opponents, one entry each.
+    pub threats: Vec<ThreatFacts>,
+    /// The tile the player on the human's left (seat 3, Kamicha) discarded
+    /// most recently, when the human is on their own turn to answer it.
+    pub left_discard: Option<Tile>,
+}
+
+impl MultiThreatFacts {
+    /// Read the table against the given threat seats.
+    ///
+    /// Returns `None` when a seat names no player or a discard does not parse.
+    pub fn from_state(state: &GameState, seats: &[usize]) -> Option<Self> {
+        let mut threats = Vec::with_capacity(seats.len());
+        for &seat in seats {
+            let player = state.players.iter().find(|player| player.seat == seat)?;
+            threats.push(ThreatFacts {
+                seat,
+                facts: SafetyFacts::from_state(state, seat)?,
+                riichi: player.is_riichi,
+                // Ch. 8.4's shortcut is about *open* sets and runs; a closed
+                // kan does not reveal the hand and does not count here.
+                open: player
+                    .melds
+                    .iter()
+                    .filter(|meld| meld.meld_type != crate::state::MeldType::Ankan)
+                    .count()
+                    >= 3,
+            });
+        }
+
+        // The left player is the one who plays just before the human. In this
+        // app's seat order that is Kamicha (seat 3), and on a self turn their
+        // discard is the last tile on the table.
+        let left_discard = if state.decision == crate::state::DecisionContext::SelfTurn {
+            state
+                .players
+                .iter()
+                .find(|player| player.seat == 3)
+                .and_then(|player| player.discards.last())
+                .and_then(|discard| Tile::try_from(discard.tile.as_str()).ok())
+        } else {
+            None
+        };
+
+        Some(Self {
+            threats,
+            left_discard,
+        })
+    }
+
+    /// True when the tile is 100% safe against every live opponent.
+    pub fn is_certain_safe(&self, tile: Tile) -> bool {
+        if self.left_discard == Some(tile) {
+            return true;
+        }
+        !self.threats.is_empty()
+            && self
+                .threats
+                .iter()
+                .all(|threat| threat.is_certain_safe(tile))
+    }
+
+    /// The threat seats that certainly cannot ron `tile`.
+    pub fn safe_seats(&self, tile: Tile) -> Vec<usize> {
+        self.threats
+            .iter()
+            .filter(|threat| threat.is_certain_safe(tile))
+            .map(|threat| threat.seat)
+            .collect()
+    }
+
+    /// The tile's worst chart row over every threat: how dangerous it is to the
+    /// opponent who fears it most.
+    ///
+    /// Folding drills only; the value orders candidate fillers and trap tiles,
+    /// it never decides the answer.
+    pub fn worst_rank(&self, tile: Tile) -> SafetyRank {
+        self.threats
+            .iter()
+            .map(|threat| threat.rank(tile))
+            .max()
+            .unwrap_or(SafetyRank::D)
+    }
+
+    /// The threat seats that are in Riichi.
+    pub fn riichi_seats(&self) -> Vec<usize> {
+        self.threats
+            .iter()
+            .filter(|threat| threat.riichi)
+            .map(|threat| threat.seat)
+            .collect()
+    }
+
+    /// How many copies of `tile` every threat can see. The visibility map is
+    /// shared, so the first threat's count is the table's count.
+    pub fn visible_of(&self, tile: Tile) -> u8 {
+        self.threats
+            .first()
+            .map(|threat| threat.facts.visible_of(tile))
+            .unwrap_or(0)
+    }
+
+    /// The threat seat that experienced this read, for the rationale.
+    pub fn threat(&self, seat: usize) -> Option<&ThreatFacts> {
+        self.threats.iter().find(|threat| threat.seat == seat)
+    }
+
+    /// The threat seats whose hand is open.
+    pub fn open_seats(&self) -> Vec<usize> {
+        self.threats
+            .iter()
+            .filter(|threat| threat.open)
+            .map(|threat| threat.seat)
+            .collect()
+    }
 }
 
 /// The book's fallback rules as they apply to one candidate tile.
@@ -1508,5 +1709,158 @@ mod tests {
         assert!(in_open_hand_neighbourhood(tile("8s"), tile("9s")));
         assert!(in_open_hand_neighbourhood(tile("7s"), tile("9s")));
         assert!(!in_open_hand_neighbourhood(tile("6s"), tile("9s")));
+    }
+
+    /// Two Riichi threats and a quiet left player, for the multi-threat reads.
+    fn two_threat_state(
+        first_river: &[&str],
+        second_river: &[&str],
+        left_river: &[&str],
+    ) -> GameState {
+        let mut players = vec![player(
+            0,
+            Wind::East,
+            &[
+                "1m", "2m", "3m", "4m", "5p", "6p", "7p", "2s", "3s", "4s", "6z", "7z", "1z",
+            ],
+            Some("9p"),
+            &[],
+        )];
+        for (seat, river) in [(1usize, first_river), (2, second_river), (3, left_river)] {
+            let mut threat = player(seat, Wind::ALL[seat], &[], None, river);
+            if seat != 3 {
+                threat.is_riichi = true;
+                threat.riichi_discard_index = Some(river.len().saturating_sub(1));
+                if let Some(last) = threat.discards.last_mut() {
+                    last.is_riichi = true;
+                }
+            }
+            players.push(threat);
+        }
+        empty_state(players)
+    }
+
+    #[test]
+    fn certain_safety_needs_every_threat_to_deny_the_tile() {
+        // Seat 1 discarded 1p; seat 2 did not.
+        let state = two_threat_state(&["1p", "8m"], &["4m", "9m"], &["9s", "2z"]);
+        let facts = MultiThreatFacts::from_state(&state, &[1, 2]).expect("facts must build");
+
+        // Genbutsu for one threat only: the other can still ron it.
+        assert!(!facts.is_certain_safe(tile("1p")));
+        assert_eq!(facts.safe_seats(tile("1p")), vec![1]);
+
+        // The suji tile of seat 2's 4m is only relatively safe.
+        assert_eq!(
+            facts.threat(2).expect("seat 2").rank(tile("7m")),
+            SafetyRank::BbMinus
+        );
+        assert!(!facts.is_certain_safe(tile("7m")));
+
+        // A fourth honor is table-wide safety.
+        let mut visible_state = state.clone();
+        visible_state.players[0].hand = vec!["6z".to_string(), "7z".to_string()];
+        visible_state.players[1]
+            .discards
+            .push(crate::state::DiscardTile::new("6z"));
+        visible_state.players[2]
+            .discards
+            .push(crate::state::DiscardTile::new("6z"));
+        visible_state.dora_indicators = vec!["6z".to_string()];
+        let facts =
+            MultiThreatFacts::from_state(&visible_state, &[1, 2]).expect("facts must build");
+        assert!(facts.is_certain_safe(tile("6z")));
+        assert_eq!(facts.safe_seats(tile("6z")), vec![1, 2]);
+
+        // The tile the left player just discarded is temporarily safe against
+        // everyone through the furiten rule, whether or not any threat's own
+        // river contains it.
+        assert_eq!(facts.left_discard, Some(tile("2z")));
+        assert!(facts.is_certain_safe(tile("2z")));
+
+        // A tile nobody denied is not certain safe.
+        assert!(!facts.is_certain_safe(tile("3z")));
+    }
+
+    #[test]
+    fn a_shared_genbutsu_is_certain_when_every_threat_has_discarded_it() {
+        let state = two_threat_state(&["1p", "8m"], &["1p", "9m"], &["9s"]);
+        let facts = MultiThreatFacts::from_state(&state, &[1, 2]).expect("facts must build");
+
+        assert!(facts.is_certain_safe(tile("1p")));
+        assert_eq!(facts.safe_seats(tile("1p")), vec![1, 2]);
+    }
+
+    #[test]
+    fn open_hands_get_no_credit_for_suji_or_blockades() {
+        // Seat 2 is open with three melds and has discarded 4m, so 1m is a suji
+        // terminal by the chart. ch. 8.4 warns suji is useless against an open
+        // hand that may be toitoi, so the certain read must not accept it.
+        let mut state = two_threat_state(&["8p", "9p"], &["4m", "9m"], &["9s"]);
+        state.players[2].is_riichi = false;
+        state.players[2].riichi_discard_index = None;
+        if let Some(last) = state.players[2].discards.last_mut() {
+            last.is_riichi = false;
+        }
+        state.players[2].melds = vec![
+            crate::state::CalledMeld {
+                meld_type: crate::state::MeldType::Pon,
+                tiles: vec!["5z".to_string(); 3],
+                called_from: Some(1),
+            },
+            crate::state::CalledMeld {
+                meld_type: crate::state::MeldType::Chi,
+                tiles: vec!["2s".to_string(), "3s".to_string(), "4s".to_string()],
+                called_from: Some(1),
+            },
+            crate::state::CalledMeld {
+                meld_type: crate::state::MeldType::Chi,
+                tiles: vec!["6s".to_string(), "7s".to_string(), "8s".to_string()],
+                called_from: Some(1),
+            },
+        ];
+
+        let facts = MultiThreatFacts::from_state(&state, &[1, 2]).expect("facts must build");
+        assert_eq!(facts.open_seats(), vec![2]);
+        assert_eq!(facts.riichi_seats(), vec![1]);
+
+        let read = facts
+            .threats
+            .iter()
+            .find(|threat| threat.seat == 2)
+            .expect("the open threat")
+            .rank(tile("1m"));
+        assert!(
+            read.order() < SafetyRank::Cc.order(),
+            "the chart calls it safe"
+        );
+        assert!(
+            !facts.is_certain_safe(tile("1m")),
+            "but a toitoi-capable open hand can still wait on it"
+        );
+
+        // Its own river is still a certain denial.
+        assert!(
+            facts
+                .threats
+                .iter()
+                .find(|threat| threat.seat == 2)
+                .expect("the open threat")
+                .is_certain_safe(tile("4m"))
+        );
+    }
+
+    #[test]
+    fn worst_rank_takes_the_most_dangerous_read() {
+        // 5m is seat 1's genbutsu but a non-suji middle tile against seat 2.
+        let state = two_threat_state(&["5m", "8m"], &["1p", "9p"], &["9s"]);
+        let facts = MultiThreatFacts::from_state(&state, &[1, 2]).expect("facts must build");
+
+        assert_eq!(
+            facts.threat(1).expect("seat 1").rank(tile("5m")),
+            SafetyRank::Genbutsu
+        );
+        assert_eq!(facts.worst_rank(tile("5m")), SafetyRank::D);
+        assert!(!facts.is_certain_safe(tile("5m")));
     }
 }

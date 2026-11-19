@@ -265,6 +265,18 @@ fn test_list_scenarios_payload() {
     );
     assert!(
         scenarios.iter().any(|scenario| {
+            scenario["id"] == "defense_multi_threat"
+                && scenario["category"] == "defense_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+                && scenario["tags"]
+                    .as_array()
+                    .is_some_and(|tags| tags.iter().any(|tag| tag == "multi_threat"))
+        }),
+        "the multi-threat lesson must be listed as a book defense lesson"
+    );
+    assert!(
+        scenarios.iter().any(|scenario| {
             scenario["id"] == "suji_trap_riichi"
                 && scenario["category"] == "riichi_decision"
                 && scenario["grading"] == "book_and_mortal"
@@ -330,6 +342,41 @@ fn test_ai_scenario_requires_the_evaluator() {
             .unwrap_or_default()
             .contains("Mortal model"),
         "expected a model-required error, got {json}"
+    );
+}
+
+#[wasm_bindgen_test]
+fn test_multi_threat_puzzle_generates_through_wasm() {
+    let json = generate_puzzle("defense_multi_threat".to_string());
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json).expect("the puzzle must be valid JSON");
+    assert!(parsed.get("error").is_none(), "{json}");
+
+    assert_eq!(parsed["category"], "defense_multi_threat");
+    assert_eq!(parsed["target_action"], "Defend");
+    assert_eq!(parsed["correct_action"]["type"], "fold");
+    assert!(parsed["correct_action"]["discard"].is_string());
+    assert_eq!(parsed["decision"]["kind"], "self_turn");
+    assert_eq!(parsed["equivalent_tiles"].as_array().map(Vec::len), Some(0));
+
+    let players = parsed["players"].as_array().expect("players");
+    assert_eq!(players.len(), 4);
+    let live = players
+        .iter()
+        .filter(|player| {
+            player["is_riichi"] == true || player["melds"].as_array().map_or(0, Vec::len) >= 3
+        })
+        .count();
+    assert!(
+        live >= 2,
+        "the multi-threat drill must deal two or more live opponents"
+    );
+
+    let rationale = &parsed["book_rationale"];
+    assert_eq!(rationale["source"]["chapter"], 8);
+    assert_eq!(
+        rationale["source"]["section"],
+        "Genbutsu and other absolutely safe tiles"
     );
 }
 

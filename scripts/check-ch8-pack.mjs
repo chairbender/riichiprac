@@ -37,6 +37,7 @@ const CH8_LESSONS = new Set([
   'kabe_double_one_chance',
   'kabe_suji_defense',
   'defense_stuck_heuristic',
+  'defense_multi_threat',
   'push_or_fold',
   'open_hand_defense',
 ]);

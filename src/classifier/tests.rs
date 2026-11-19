@@ -33,6 +33,7 @@ const BOOK_LESSONS: &[ScenarioId] = &[
     ScenarioId::KabeDoubleOneChance,
     ScenarioId::KabeSujiDefense,
     ScenarioId::DefenseStuckHeuristic,
+    ScenarioId::DefenseMultiThreat,
     // B2.
     ScenarioId::SujiTrapRiichi,
     ScenarioId::PinfuHead,

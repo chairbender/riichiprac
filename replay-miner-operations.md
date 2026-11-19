@@ -787,6 +787,20 @@ L1 also updates the `decisions` row when `extract` has created one
 `label_source` from the agreement classification; `selection_reason` is left to
 S2.
 
+A **filtered** run only labels the decisions whose triggers fire, so a classifier
+bump would leave the retired rule set's label on every skipped decision. The
+shard clears all `decisions` labels whose `classifier_version` differs from
+`--classifier-version` before the workers start and reports the count as
+`stale_labels_cleared`. The version-keyed `model_labels` cache is left alone;
+old generations stay available when a reproducer explicitly asks for one.
+
+Adding or changing a recogniser is a **classifier-generation change**: bump
+`CLASSIFIER_VERSION`, then re-label. A full `label --trigger book` pass on the
+current corpus re-evaluates ~110k candidates (about 30-60 minutes on 14
+workers), so batch related recognisers into one task and one version bump
+rather than bumping per recogniser. The replay-first rollout's `B4` (four
+missing classifiers) is the first example.
+
 ### Parity
 
 `cargo test --features miner` includes a parity test that evaluates every
@@ -949,6 +963,11 @@ decisions -> gates 1-6, 8 -> valid candidates -> held-out QA split
                                                -> gate 7 (dedupe) during fill
                                                -> review-queue.jsonl
 ```
+
+Labels are read only at the current `CLASSIFIER_VERSION`: a `decisions` row or
+`model_labels` cache row from another generation is treated as unlabelled. This
+is the read-side half of the labeler's stale-label clear, so a selection can
+never publish an answer produced by a retired rule set.
 
 ### Hard gates (§7.1)
 
@@ -1363,6 +1382,15 @@ carries the complete `GameState` plus its own `correct_action`/`accepted`; the
 audit recomputes the state's copy and rejects a mismatch. A single candidate is
 reviewed through the existing `scenario-report` path (it takes the same
 `GameState` the pack embeds); P1a adds no pack-specific review format.
+
+**Lesson coverage (replay-first rollout).** The manifest entry gains a
+`lesson_counts` map (lesson id → shipped bases) written by `pack publish` and
+validated against the body, so the frontend can decide which lessons are
+replay-default without downloading a body. Packs are published one per book
+section (ch3, ch4, ch5, ch7, ch8 completion, ch9) rather than per lesson, and a
+lesson becomes replay-default only when its shipped count reaches the coverage
+floor (40 reviewed bases, proposed). The full contract, coverage table and task
+sequence are in [`replay-first-rollout.md`](replay-first-rollout.md).
 
 Versioning is additive within v1: new fields are optional/defaulted and unknown
 fields are ignored. A breaking change bumps `version`. `source.kind`
@@ -1937,6 +1965,18 @@ source replays, 2,211 unique hands and 0 adjacent same-replay bases. Two M2
 replays were `partial` and excluded from the data root (998/1,000 new games
 valid). Details: [`q2-scale-up-2000.md`](q2-scale-up-2000.md), evidence:
 [`testdata/reports/q2-scale-2k/`](testdata/reports/q2-scale-2k/).
+
+**Multi-threat follow-up (Q2m).** Classifier v2 added `defense_multi_threat`
+and re-labelled the corpus: 1,153 stable multi-threat labels produced the
+dedicated `replay.ch8-defense-multi-threat.2026-11` pack (780 reviewed, 764
+shipped after duplicate hands, 591,096 bytes). The run also fixed the stale-label
+and selection-version contract above. Details:
+[`q2-multi-threat.md`](q2-multi-threat.md).
+
+**Replay-first rollout.** The next product phase extends packs to the remaining
+book sections and makes replay the default source for covered lessons. Per-lesson
+coverage, the four missing classifiers, the source-tier picker and the per-section
+pack plan are in [`replay-first-rollout.md`](replay-first-rollout.md).
 
 ## F1 acceptance evidence
 

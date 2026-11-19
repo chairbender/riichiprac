@@ -212,9 +212,10 @@ melds, dora, riichi sticks, furiten) comes from the simulated table.
 
 ## Defense scenarios
 
-Six lessons train defense. Four answer an opponent's Riichi with a tile choice,
-one reads an open hand's post-`chii` discard, and **Push or Fold** decides
-whether to defend at all. The tile-choice Riichi lessons start from a hand that
+Eleven lessons train defense. Eight answer an opponent's Riichi with a tile
+choice, one reads an open hand's post-`chii` discard, one reads a whole table of
+two or more live threats, and **Push or Fold** decides whether to defend at all.
+The tile-choice Riichi lessons start from a hand that
 is never ready, so the question is only which tile is safest to let go; the fold
 lesson additionally requires the hand to be junk, which is what makes folding
 the book's answer. All are graded by the book's rule; Mortal's answer appears
@@ -315,6 +316,26 @@ concealed set, avoid the dora and its neighbours, stay outside the opponent's
 early discards, and prefer a terminal so the discard cannot deal into tanyao.
 The generated hand holds the answer twice, so the copy you keep is your
 follow-up discard.
+
+**Defense: Two or More Threats** is ch. 8's composition rule. Before it, every
+tile-choice defense lesson read one opponent; the chapter says why that is not
+enough:
+
+> Genbutsu tiles of player X are 100% safe against X, but not necessarily safe
+> against the other two players. … There are three kinds of tiles that are 100%
+> safe against all of the opponents. — ch8:100–104
+
+The three safe kinds are the tile the left player has just discarded
+(temporary furiten, ch8:102), a fourth honor tile (ch8:103), and an absolute no
+chance tile (ch8:104). The lesson deals two Riichi declarations, a Riichi plus a
+three-meld open hand (assumed ready by ch8.4's "three or more open sets"
+shortcut), or all three at once. The open-hand threat is real
+tenpai, and every board keeps a trap: a hand tile that is 100% safe against one
+threat but a live winning tile or non-suji tile against another. The answer is
+the hand's only tile that is *certain* safe against every live threat, and the
+rationale names the trap and which opponent still fears it. See
+[`multi-threat-defense.md`](multi-threat-defense.md) for the generator,
+classifier, and tests.
 
 **Open Hand: Post-Chi Discard** is ch. 8.4, "Discard upon chii". An opponent
 with three open melds calls `chii` and discards: when the discard is in the same
@@ -449,17 +470,28 @@ the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
 Scenario packs are separate from the app bundle and from the weights. The
 browser loads a small **same-origin** manifest
 (`/scenarios/manifest.json`) and then only the content-addressed pack body it
-needs; the miner never ships its corpus, databases or model weights. The first
-curated ch. 8 defense pack (`replay.ch8-defense.2026-11`: 1,038 reviewed bases,
-no variants, 1,047 KB) ships in `frontend/public/scenarios/` so the Pages build
-exercises the whole path, and the deploy workflow verifies every body's
-bytes/SHA-256 before upload (`scripts/check-pack-hosting.mjs`); Q2's content
-gate `scripts/check-ch8-pack.mjs --allow-no-variants` proves every scenario is
-a ch. 8 lesson and the source/licence envelope is complete. Variants are
-disabled for this pack by product decision; variety comes from real reviewed
-positions, and a lesson with fewer than five real bases is left out of the
-pack rather than repeating one scenario. See
-[`q2-scale-up-1000.md`](q2-scale-up-1000.md).
+needs; the miner never ships its corpus, databases or model weights. Two
+curated ch. 8 packs ship in `frontend/public/scenarios/`:
+`replay.ch8-defense.2026-11` (2,211 reviewed single-threat bases, 2.26 MB) and
+`replay.ch8-defense-multi-threat.2026-11` (764 reviewed 2+ opponent bases,
+591 KB), both with no variants. The Pages build therefore exercises the whole
+path, and the deploy workflow verifies every body's bytes/SHA-256 before upload
+(`scripts/check-pack-hosting.mjs`); the content gate
+`scripts/check-ch8-pack.mjs --allow-no-variants` proves every scenario is a
+ch. 8 lesson and the source/licence envelope is complete. Variants are disabled
+for both packs by product decision; variety comes from real reviewed positions,
+and a lesson with fewer than four real bases is left out of the pack rather than
+repeating one scenario. See [`q2-scale-up-2000.md`](q2-scale-up-2000.md) and
+[`q2-multi-threat.md`](q2-multi-threat.md).
+
+**Replay-first rollout (in progress).** Packs are not only extra drills. The
+product target is that replay scenarios become the **default and prominent**
+source for every lesson with enough reviewed coverage, while generated lessons
+remain available as the opt-in alternative. A lesson without enough replay bases
+keeps the generated default, so the app never degrades; the picker will gain a
+Replay / Generated / Both source filter. The coverage table, the four lessons
+that still need classifiers, the per-section pack plan and the task sequence are
+in [`replay-first-rollout.md`](replay-first-rollout.md).
 Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and

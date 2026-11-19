@@ -47,7 +47,7 @@ use crate::decision::{ActionEvaluation, ActionInfo};
 use crate::generator::SCENARIO_MANIFEST;
 use crate::miner::funnel::{FunnelCounter, FunnelStage};
 use crate::miner::label::thresholds::DecisionFamily;
-use crate::miner::label::{LabelKind, ModelLabel};
+use crate::miner::label::{CLASSIFIER_VERSION, LabelKind, ModelLabel};
 use crate::miner::licence::allowed_data_licence;
 use crate::miner::provenance::{GameProvenance, sha256_hex};
 use crate::miner::source::SourceGate;
@@ -174,10 +174,14 @@ struct LabelIndex {
 impl LabelIndex {
     fn load(connection: &Connection) -> Result<Self, SelectionError> {
         let mut by_decision = BTreeMap::new();
+        // A classifier bump leaves older labels behind on decisions a filtered
+        // label run skipped. They describe a retired rule set, so they are not
+        // selection candidates.
         let mut statement = connection.prepare(
-            "SELECT decision_id, label_json FROM decisions WHERE label_json IS NOT NULL",
+            "SELECT decision_id, label_json FROM decisions
+             WHERE label_json IS NOT NULL AND classifier_version = ?1",
         )?;
-        let rows = statement.query_map([], |row| {
+        let rows = statement.query_map([CLASSIFIER_VERSION], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })?;
         for row in rows {
@@ -187,12 +191,15 @@ impl LabelIndex {
             by_decision.insert(decision_id, label);
         }
         let mut by_hash = BTreeMap::new();
+        // The cache keeps every generation's rows; only the current classifier's
+        // labels may fill a candidate. A hash with no current label is treated
+        // as unlabelled rather than borrowing an older rule set's answer.
         let mut statement = connection.prepare(
             "SELECT state_hash, label_json FROM model_labels
-             WHERE status = 'ok' AND label_json IS NOT NULL
+             WHERE status = 'ok' AND label_json IS NOT NULL AND classifier_version = ?1
              ORDER BY state_hash, model_sha256, classifier_version, options_hash",
         )?;
-        let rows = statement.query_map([], |row| {
+        let rows = statement.query_map([CLASSIFIER_VERSION], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })?;
         for row in rows {
@@ -1224,4 +1231,63 @@ fn jsonl<T: Serialize>(items: &[T]) -> Result<String, SelectionError> {
         text.push('\n');
     }
     Ok(text)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The two label sources `LabelIndex` reads, without the rest of the schema.
+    fn label_index_schema(connection: &Connection) {
+        connection
+            .execute_batch(
+                "CREATE TABLE decisions (
+                    decision_id TEXT PRIMARY KEY,
+                    label_json TEXT,
+                    classifier_version TEXT
+                 );
+                 CREATE TABLE model_labels (
+                    state_hash TEXT,
+                    model_sha256 TEXT,
+                    classifier_version TEXT,
+                    options_hash TEXT,
+                    status TEXT,
+                    label_json TEXT
+                 );",
+            )
+            .expect("schema");
+    }
+
+    #[test]
+    fn labels_from_an_older_classifier_are_not_selection_candidates() {
+        let connection = Connection::open_in_memory().expect("db");
+        label_index_schema(&connection);
+        connection
+            .execute(
+                "INSERT INTO decisions VALUES ('stale', 'not-json', '1')",
+                [],
+            )
+            .expect("stale decision");
+        connection
+            .execute(
+                "INSERT INTO model_labels VALUES ('h', 'm', '1', 'o', 'ok', 'not-json')",
+                [],
+            )
+            .expect("stale cache row");
+
+        // Both stale rows would fail JSON parsing if they were read; filtering
+        // by the current generation happens first.
+        let index = LabelIndex::load(&connection).expect("stale labels are skipped");
+        assert!(index.get("stale", "h").is_none());
+
+        // A row at the current version is a candidate, so its invalid payload
+        // surfaces: the filter is not simply dropping every row.
+        connection
+            .execute(
+                "INSERT INTO decisions VALUES ('current', 'not-json', ?1)",
+                [CLASSIFIER_VERSION],
+            )
+            .expect("current decision");
+        assert!(LabelIndex::load(&connection).is_err());
+    }
 }

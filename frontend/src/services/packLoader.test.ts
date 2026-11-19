@@ -176,7 +176,9 @@ const fixtureManifestText = readFileSync(
   'utf8',
 );
 const fixtureManifest = parsePackManifest(fixtureManifestText);
-const fixtureEntry = fixtureManifest.packs[0];
+const fixtureEntry = fixtureManifest.packs.find(
+  (pack) => pack.id === 'replay.ch8-defense.2026-11',
+)!;
 const fixtureBody = new Uint8Array(
   readFileSync(new URL(fixtureEntry.path, fixtureDir)),
 );
@@ -184,7 +186,11 @@ const fixtureBody = new Uint8Array(
 describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
     expect(packManifestUrl()).toBe('/scenarios/manifest.json');
-    expect(fixtureManifest.packs).toHaveLength(1);
+    expect(fixtureManifest.packs).toHaveLength(2);
+    expect(fixtureManifest.packs.map((pack) => pack.id).sort()).toEqual([
+      'replay.ch8-defense-multi-threat.2026-11',
+      'replay.ch8-defense.2026-11',
+    ]);
     expect(fixtureEntry.path).toBe(
       `${fixtureEntry.id}-${fixtureEntry.sha256.slice(0, 12)}.json.gz`,
     );

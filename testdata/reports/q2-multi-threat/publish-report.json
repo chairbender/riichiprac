@@ -1,0 +1,34 @@
+{
+  "bodies": [
+    "frontend/public/scenarios/replay.ch8-defense-multi-threat.2026-11-15fe519c65df.json.gz",
+    "frontend/public/scenarios/replay.ch8-defense.2026-11-6ae2c924e80c.json.gz"
+  ],
+  "manifest": "frontend/public/scenarios/manifest.json",
+  "report": {
+    "budget_bytes": 50000000,
+    "dest": "frontend/public/scenarios",
+    "dry_run": false,
+    "entries": [
+      {
+        "bytes": 591096,
+        "id": "replay.ch8-defense-multi-threat.2026-11",
+        "licence": "CC-BY-4.0",
+        "path": "replay.ch8-defense-multi-threat.2026-11-15fe519c65df.json.gz",
+        "scenario_count": 764,
+        "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94"
+      },
+      {
+        "bytes": 2260809,
+        "id": "replay.ch8-defense.2026-11",
+        "licence": "CC-BY-4.0",
+        "path": "replay.ch8-defense.2026-11-6ae2c924e80c.json.gz",
+        "scenario_count": 2211,
+        "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43"
+      }
+    ],
+    "manifest_bytes": 1289,
+    "removed": [],
+    "source": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/packs",
+    "total_bytes": 2851905
+  }
+}

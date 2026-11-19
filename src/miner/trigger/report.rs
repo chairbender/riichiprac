@@ -50,7 +50,7 @@ use super::{
 use crate::generator::SCENARIO_MANIFEST;
 use crate::miner::classifier::classify_decision;
 use crate::miner::label::thresholds::{Band, DecisionFamily, PercentileConfig, PercentileCuts};
-use crate::miner::label::{ModelLabel, state_hash};
+use crate::miner::label::{CLASSIFIER_VERSION, ModelLabel, state_hash};
 use crate::miner::storage::{DataRoot, open_miner_db, utc_stamp};
 use crate::replay::walk::{DecisionSnapshot, walk_path};
 
@@ -590,8 +590,9 @@ pub(crate) fn load_label(
     let decision_json: Option<String> = connection
         .query_row(
             "SELECT label_json FROM decisions
-             WHERE decision_id = ?1 AND label_json IS NOT NULL",
-            params![decision_id],
+             WHERE decision_id = ?1 AND label_json IS NOT NULL
+               AND classifier_version = ?2",
+            params![decision_id, CLASSIFIER_VERSION],
             |row| row.get(0),
         )
         .optional()?;
@@ -602,9 +603,10 @@ pub(crate) fn load_label(
         .query_row(
             "SELECT label_json FROM model_labels
              WHERE state_hash = ?1 AND status = 'ok' AND label_json IS NOT NULL
+               AND classifier_version = ?2
              ORDER BY model_sha256, classifier_version, options_hash
              LIMIT 1",
-            params![state_hash],
+            params![state_hash, CLASSIFIER_VERSION],
             |row| row.get(0),
         )
         .optional()?;

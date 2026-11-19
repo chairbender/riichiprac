@@ -53,7 +53,7 @@ use agari::tile::Tile;
 
 use crate::generator::ScenarioId;
 use crate::generator::push_or_fold;
-use crate::safety::{SafetyFacts, SafetyMechanism, SafetyRank, TileRead};
+use crate::safety::{MultiThreatFacts, SafetyFacts, SafetyMechanism, SafetyRank, TileRead};
 use crate::state::{CorrectAction, GameState, TargetAction};
 
 use super::support::{self, Turn};
@@ -93,8 +93,44 @@ fn view(state: &GameState) -> Option<DefenseView> {
     if !threat_player.melds.is_empty() {
         return None;
     }
+    // A second ready opponent is the multi-threat lesson's table. Ch. 8.4 says
+    // to assume a ready hand when an opponent has "three or more open sets /
+    // runs", and the single-threat chart must not grade a discard while
+    // ignoring them.
+    if ready_threat_seats(state).iter().any(|seat| *seat != threat) {
+        return None;
+    }
     let facts = SafetyFacts::from_state(state, threat)?;
     Some(DefenseView { turn, facts })
+}
+
+/// Every opponent the table treats as live: a Riichi declaration, or ch. 8.4's
+/// "three or more open sets / runs" shortcut for a ready open hand.
+///
+/// A closed kan is not an open set: it hides shape rather than revealing it, so
+/// it does not count toward the shortcut.
+///
+/// The single-threat ch. 8 lessons read one river and refuse these tables; the
+/// multi-threat lesson reads all of them at once.
+pub(crate) fn ready_threat_seats(state: &GameState) -> Vec<usize> {
+    let mut seats: Vec<usize> = state
+        .players
+        .iter()
+        .filter(|player| !player.is_human)
+        .filter(|player| {
+            player.is_riichi
+                || player
+                    .melds
+                    .iter()
+                    .filter(|meld| meld.meld_type != crate::state::MeldType::Ankan)
+                    .count()
+                    >= 3
+        })
+        .filter(|player| !player.is_riichi || player.riichi_discard_index.is_some())
+        .map(|player| player.seat)
+        .collect();
+    seats.sort_unstable();
+    seats
 }
 
 impl DefenseView {
@@ -185,6 +221,75 @@ fn answer_set(view: &DefenseView, read: &TileRead) -> Option<(Tile, Vec<String>)
         }
         _ => None,
     }
+}
+
+/// ch. 8's "safe against all of the opponents" read: two or more live threats.
+///
+/// The answer is the hand's only tile that is certifiably safe against
+/// **every** live opponent:
+///
+/// - the tile the left player just discarded (temporarily furiten for the
+///   others, ch8:102),
+/// - a tile of which all four copies are visible (the fourth honor, ch8:103,
+///   and the absolute no-chance tile, ch8:104), or
+/// - a tile every threat has itself discarded.
+///
+/// The lesson is only recognised when a **trap** exists: another hand tile that
+/// is certifiably safe against some live opponent but not all of them, so
+/// "discard the tile that is safe against the riichi" is a real mistake here.
+/// Without one the table is not teaching ch8:100's composition rule.
+pub fn defense_multi_threat(state: &GameState) -> Option<Match> {
+    let turn = support::turn(state)?;
+    // The drill is a complete fold: two-away or worse. A 1-away hand belongs to
+    // the push/fold box, which weighs its own value and wait.
+    if turn.shanten < 2 {
+        return None;
+    }
+    let threats = ready_threat_seats(state);
+    if threats.len() < 2 {
+        return None;
+    }
+    let facts = MultiThreatFacts::from_state(state, &threats)?;
+
+    let distinct = support::distinct(&turn.hand);
+    let safe: Vec<Tile> = distinct
+        .iter()
+        .copied()
+        .filter(|tile| facts.is_certain_safe(*tile))
+        .collect();
+    // One tile only: a tie would make the drill a coin flip between two safe
+    // discards.
+    if safe.len() != 1 {
+        return None;
+    }
+    let answer = safe[0];
+
+    let trap = distinct.iter().copied().any(|tile| {
+        if tile == answer {
+            return false;
+        }
+        let safe_seats = facts.safe_seats(tile);
+        !safe_seats.is_empty() && safe_seats.len() < threats.len()
+    });
+    if !trap {
+        return None;
+    }
+
+    let situation = format!(
+        "{} live threats; only a tile safe against every one",
+        threats.len()
+    );
+    Some(Match {
+        lesson: ScenarioId::DefenseMultiThreat,
+        situation: Some(situation),
+        target_action: TargetAction::Defend,
+        correct_action: CorrectAction::fold(answer.to_string()),
+        equivalent_tiles: Vec::new(),
+        riichi_triggers: Vec::new(),
+        dama_reasons: Vec::new(),
+        shouminkan_triggers: Vec::new(),
+        scenario_note: None,
+    })
 }
 
 /// ch. 8.3 betaori: a slow hand facing Riichi throws the one 100% safe tile.
@@ -555,6 +660,67 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn the_multi_threat_lesson_recognises_its_own_boards() {
+        for _ in 0..40 {
+            assert_own_lesson("defense_multi_threat", defense_multi_threat);
+        }
+    }
+
+    #[test]
+    fn a_single_threat_board_is_not_the_multi_threat_lesson() {
+        for _ in 0..10 {
+            let state = generated("defense_safety_chart");
+            assert!(defense_multi_threat(&state).is_none());
+        }
+    }
+
+    #[test]
+    fn a_second_ready_open_hand_is_not_the_single_threat_chart() {
+        // Ch. 8.4: "They have three or more open sets / runs" means assume a
+        // ready hand. A chart answer that ignores that hand is wrong.
+        let mut state = generated("defense_safety_chart");
+        let threat = support::sole_riichi_threat(&state).expect("one threat");
+        let other = (1..4)
+            .find(|seat| *seat != threat)
+            .expect("another opponent");
+        state.players[other].melds = vec![
+            crate::state::CalledMeld {
+                meld_type: crate::state::MeldType::Pon,
+                tiles: vec!["5z".to_string(); 3],
+                called_from: Some((other + 3) % 4),
+            },
+            crate::state::CalledMeld {
+                meld_type: crate::state::MeldType::Chi,
+                tiles: vec!["2s".to_string(), "3s".to_string(), "4s".to_string()],
+                called_from: ((other + 3) % 4).into(),
+            },
+            crate::state::CalledMeld {
+                meld_type: crate::state::MeldType::Chi,
+                tiles: vec!["6s".to_string(), "7s".to_string(), "8s".to_string()],
+                called_from: ((other + 3) % 4).into(),
+            },
+        ];
+        assert!(defense_safety_chart(&state).is_none());
+        assert!(suji_kabe_safety(&state).is_none());
+        assert!(fold_to_riichi(&state).is_none());
+    }
+
+    #[test]
+    fn a_one_away_hand_is_not_the_multi_threat_fold() {
+        // The multi-threat drill is a complete fold; a 1-away hand is the
+        // push/fold box's question and must not be claimed here.
+        let mut state = generated("defense_multi_threat");
+        let tiles = agari::parse::parse_hand("123m456p789s11z2z9m5p").expect("a one-away hand");
+        state.players[0].hand = tiles[..13].iter().map(ToString::to_string).collect();
+        state.players[0].draw = Some(tiles[13].to_string());
+        state.tiles = tiles.iter().map(ToString::to_string).collect();
+
+        let turn = support::turn(&state).expect("a self turn");
+        assert_eq!(turn.shanten, 1);
+        assert!(defense_multi_threat(&state).is_none());
     }
 
     #[test]

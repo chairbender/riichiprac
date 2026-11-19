@@ -1882,6 +1882,39 @@ no third-party or human-log branch in that path.
 
 ---
 
+## 10. Product policy: replay-first scenarios (approved 2026-11-19)
+
+The miner is not only a source of extra drills. The product target is that
+**replay-based scenarios are the default and prominent source**, and generated
+scenarios are the alternative a user opts into.
+
+- **Coverage-aware default.** A lesson is replay-default when its shipped pack
+  has at least 40 reviewed bases (the coverage floor). Below the floor, the
+  generated drill remains the default; replay rows stay opt-in as today. The app
+  reads per-lesson counts from the pack manifest (`lesson_counts`), never by
+  downloading a body.
+- **Generated is never removed.** The picker gains a Replay/Generated/Both
+  source filter and a `preferReplay` setting. Every generated lesson remains
+  selectable; it is demoted, not deleted.
+- **Every lesson is in scope.** Four lessons have no classifier today
+  (`chiitoitsu_riichi_vs_dama`, `chiitoi_vs_toitoi`, `sanshoku_pursuit`,
+  `open_hand_defense`) and therefore no mining path. Adding those recognisers is
+  required work, not a reason to leave them generated-only. Because
+  `CLASSIFIER_VERSION` keys the label cache, the four land in one task with one
+  version bump and one label pass.
+- **Coverage is published as section packs.** One pack per book section keeps
+  the lazy-load budget small and lets a single body serve several lessons. The
+  existing ch8 packs remain the first two.
+- **AI self-play is not human replay.** This strategy's source decision
+  (Section 2) stays: the shipped replay source is AI self-play. A human corpus
+  is a separate licensing/evaluation decision (the rollout's D1 task), so the
+  product must not describe the current packs as human games.
+
+The rollout, coverage table, task sequence and acceptance gates are in
+[`replay-first-rollout.md`](replay-first-rollout.md).
+
+---
+
 ## Appendix A — Source notes
 
 Checked 2026-11-14:

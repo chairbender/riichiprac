@@ -584,7 +584,10 @@ fn the_cache_key_covers_state_model_classifier_and_options() {
         LabelKey::new(state, &other_model, CLASSIFIER_VERSION, &options),
         base
     );
-    assert_ne!(LabelKey::new(state, &identity(), "2", &options), base);
+    assert_ne!(
+        LabelKey::new(state, &identity(), "some-other-classifier", &options),
+        base
+    );
     assert_ne!(
         LabelKey::new(
             state,

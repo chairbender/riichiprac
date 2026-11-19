@@ -644,3 +644,99 @@ fn report_field(report: &LabelRunReport, field: &str) -> usize {
         .try_into()
         .expect("fits in usize")
 }
+
+/// A classifier bump must not leave the retired rule set's label behind on a
+/// decision the trigger filter now skips. The shard clears every older-version
+/// label once, before the workers start.
+#[test]
+fn a_classifier_bump_clears_labels_the_filter_now_skips() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let root = DataRoot::new(temp.path().join("data")).expect("data root");
+    let bytes = write_replay(&root, "mortal_mirror", &fixtures::all_events_game());
+    let replay_id = ReplayId::from_bytes(&bytes);
+
+    let file = ReplayReader::read_gzip(&bytes).expect("fixture parses");
+    let walked = walk_replay(&file, replay_id.clone()).expect("fixture validates");
+
+    let mut options = LabelRunOptions::new("unused.safetensors");
+    options.trigger_filter = Some(
+        crate::miner::trigger::TriggerFilter::only([crate::miner::trigger::TriggerKind::Book])
+            .expect("a cheap filter"),
+    );
+    let skipped = walked
+        .decisions
+        .iter()
+        .find(|decision| !cheap_triggers(decision, &options).has_any())
+        .expect("the fixture has a decision the book filter skips");
+
+    let connection = open_miner_db(&root).expect("miner db");
+    connection
+        .execute(
+            "INSERT INTO replays (
+                replay_id, source, licence, attribution, format, rule,
+                rule_config_hash, generated_at, model, model_sha256, seed,
+                log_path, log_bytes, log_sha256, validation_status,
+                ingested_at, corpus_id, family, match_plan_id,
+                match_plan_sha256, agents, provenance_json
+             ) VALUES (?1, 'ai_selfplay', 'CC-BY-4.0', 'fixture', 'mjai',
+                'tenhou-4p-hanchan', ?2, '2026-11-16T00:00:00Z',
+                'akochan-1.0', ?3, '0x01', ?4, ?5, ?6, 'ok',
+                '2026-11-16T00:01:00Z', 'mixed-2026-11', 'mortal_mirror',
+                'm1', ?7, '[]', '{}')",
+            params![
+                replay_id.as_str(),
+                "b".repeat(64),
+                "e".repeat(64),
+                format!("replays/mortal_mirror/{}.jsonl.gz", replay_id.as_str()),
+                i64::try_from(bytes.len()).expect("fixture size"),
+                sha256_hex(&bytes),
+                "f".repeat(64),
+            ],
+        )
+        .expect("replay row");
+    connection
+        .execute(
+            "INSERT INTO decisions (
+                decision_id, replay_id, family, kyoku, honba, event_index, turn,
+                seat, decision_kind, state_hash, state_json, legal_actions,
+                played_action, label_json, label_kind, label_source, mortal_top,
+                mortal_top_prob, mortal_margin, mortal_ranking, q_values_json,
+                q_units, labeler_model, labeler_model_sha256, classifier_version
+             ) VALUES (?1, ?2, 'mortal_mirror', 0, 0, ?3, 0, ?4, ?5, ?6, ?7, ?8,
+                ?9, '{\"old\":true}', 'book', 'book+mortal', 'Discard_1m', 0.5,
+                0.1, '[]', '{}', 'model_utility', 'mortal_298k.safetensors', ?10, '1')",
+            params![
+                skipped.decision_id,
+                replay_id.as_str(),
+                i64::try_from(skipped.event_index).expect("index"),
+                i64::try_from(skipped.seat).expect("seat"),
+                skipped.kind.as_str(),
+                crate::miner::label::state_hash(&skipped.state),
+                serde_json::to_string(&skipped.state).expect("state json"),
+                serde_json::to_string(&skipped.legal_actions).expect("legal actions"),
+                serde_json::to_string(&skipped.played).expect("played"),
+                "a".repeat(64),
+            ],
+        )
+        .expect("decision row");
+
+    let evaluator = CannedEvaluator::new(|info| -(info.tile_index.unwrap_or(0) as f32) * 0.1);
+    let report = run_shard(&root, &options, &evaluator).expect("shard run");
+
+    assert_eq!(
+        report.stale_labels_cleared, 1,
+        "the one old-version label is cleared"
+    );
+    let (label, kind, version): (Option<String>, Option<String>, Option<String>) = connection
+        .query_row(
+            "SELECT label_json, label_kind, classifier_version
+             FROM decisions WHERE decision_id = ?1",
+            [&skipped.decision_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .expect("decision row");
+    assert!(
+        label.is_none() && kind.is_none() && version.is_none(),
+        "the retired label survived: {label:?} {kind:?} {version:?}"
+    );
+}
