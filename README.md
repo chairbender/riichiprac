@@ -483,6 +483,15 @@ for both packs by product decision; variety comes from real reviewed positions,
 and a lesson with fewer than four real bases is left out of the pack rather than
 repeating one scenario. See [`q2-scale-up-2000.md`](q2-scale-up-2000.md) and
 [`q2-multi-threat.md`](q2-multi-threat.md).
+
+**Replay-first rollout (in progress).** Packs are not only extra drills. The
+product target is that replay scenarios become the **default and prominent**
+source for every lesson with enough reviewed coverage, while generated lessons
+remain available as the opt-in alternative. A lesson without enough replay bases
+keeps the generated default, so the app never degrades; the picker will gain a
+Replay / Generated / Both source filter. The coverage table, the four lessons
+that still need classifiers, the per-section pack plan and the task sequence are
+in [`replay-first-rollout.md`](replay-first-rollout.md).
 Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and

@@ -130,6 +130,11 @@ win; ask the user before inventing a third number.
 * **Visual Rules:** Riichi discards must be horizontal in the river. In the 2D views, rotate the
   tile glyph and keep the tile upright; never rotate a pre-shaded tile image. In 3D, lay the tile
   body sideways. Riichi sticks must be visibly rendered for players who have called Riichi.
+* **Scenario sources (replay-first rollout, in progress):** replay packs are the
+  default and prominent source for every lesson with shipped coverage; generated
+  lessons remain available as the opt-in/fallback alternative. A lesson without
+  enough reviewed replay bases keeps its generated default. See
+  `replay-first-rollout.md` for the coverage floor, pack plan and tasks.
 
 ## 5. Agent Workflow Rules
 * Always write WASM-compatible Rust tests (`#[wasm_bindgen_test]`) to verify generator logic before attempting to render the state in React.

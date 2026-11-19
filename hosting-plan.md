@@ -435,12 +435,16 @@ No mirror URL is a normal skipped run (exit 0). **Google Drive is a
 corpus/DB backup only** (rclone `copy` + SQLite snapshots + `rclone check`) and
 is never in the browser's pack chain.
 
-**Committed pack.** Q2 replaced the P1a fixture with the first curated ch. 8
-defense pack (`replay.ch8-defense.2026-11`, 1 038 scenarios, 1 047 001 body bytes,
-736-byte manifest); `scripts/check-ch8-pack.mjs --allow-no-variants` checks its
-content and `scripts/check-pack-hosting.mjs` checks the hosting envelope. The
-fixture is still reproducible from the data root for the Q1 harness. P3
-consumes this manifest.
+**Committed packs.** The Pages artifact now ships two curated ch. 8 packs:
+`replay.ch8-defense.2026-11` (2,211 bases, 2,260,809 body bytes) and
+`replay.ch8-defense-multi-threat.2026-11` (764 bases, 591,096 bytes), with a
+1,289-byte manifest. `scripts/check-ch8-pack.mjs --allow-no-variants` checks each
+pack's content and `scripts/check-pack-hosting.mjs` checks the hosting envelope
+for the whole set. The replay-first rollout
+([`replay-first-rollout.md`](replay-first-rollout.md)) adds one pack per remaining
+book section; the 50 MB same-origin budget and the mirror threshold are unchanged,
+so the same manifest-plus-lazy-bodies model scales to the section packs. The Q1
+fixture is still reproducible from the data root for the harness.
 
 **Runtime loader (P3, 2026-11-17).** `frontend/src/services/packLoader.ts` fetches
 only `scenarios/manifest.json` at launch, validates it against the schema, and
