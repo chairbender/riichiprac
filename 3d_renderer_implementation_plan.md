@@ -321,6 +321,15 @@ frame. No view may project through a second camera.
 
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
+**Read AGENTS.md §3b first.** The 2.5D workspace already models the tile body and
+the whole table in 3D (`shell-spec.json` + `bake_shells.py`,
+`table-reference-spec.json` + `bake_table_reference.py`) and has the approved
+carve look baked as decals (`decal-spec.json`). Those are the reference for this
+chain's geometry, materials, poses and carve: take the numbers from them instead
+of inventing a second set. The first 3D-05 handoff did not, and shipped a tile
+with a made-up corner radius and a blue back plate instead of the shell's taped
+blue side; the correction is recorded in §6 under 3D-05.
+
 Task 4B (landed, `frontend/public/table/relief/`, 3.39 MiB, 37 faces at
 256 × 340 px) already bakes exactly the channels a POM pipeline needs. The
 mapping is direct:
@@ -379,11 +388,19 @@ match, so no flip is applied to the row and the tangent basis (`x` right,
 
 ### 2.6 Materials and lighting
 
-- Body: warm ivory `#f5f0eb` (the committed shell face colour), roughness 0.35,
-  no map — the sides and bevels are geometry. Back: `#132986` (committed blue).
+- Body: warm ivory `#f5f0eb` roughness 0.16 + coat 0.4, no map — the sides and
+  bevels are geometry. Back: `#132986` roughness 0.18 + coat 0.35, coat
+  roughness 0.1. **These are `shell-spec.json`'s materials**, not new ones, and
+  the white/blue split is the shell baker's gate at 0.3 of the thickness (front
+  30 % ivory side band, back 70 % blue plus the back plate) — see AGENTS.md §3b.
 - Face: the three relief atlases (albedo + paint mask, normal + height, AO +
   roughness), carved faces with tiered POM, wrapped diffuse to fake resin
-  translucency, GGX specular with the sampled roughness, AO multiply.
+  translucency, GGX specular with the sampled roughness, AO multiply, plus the
+  shell's coat lobe.
+- Carve displacement is scaled, not physical: the approved 2.5D decals bake the
+  same engraving as shading only, so the live `POM_HEIGHT_SCALE` keeps the
+  silhouette from sliding; 0 is the decal-equivalent end and the hero view's
+  depth sweep is how the scale is chosen (3D-05).
 - One key light matching the 2.5D rig's authored key (azimuth 315°,
   elevation 55° → three-space direction `normalize(-0.406, 0.819, 0.406)`), so
   highlights land top-left in both views, plus a low hemisphere fill and a very
@@ -669,7 +686,7 @@ export interface RendererCapabilities {
 
 export interface RendererOptions {
   readonly tier: QualityTier;
-  readonly debug: DebugMode | null; // 'albedo' | 'height' | 'normal' | 'steps' | 'pom-off' | 'wireframe'
+  readonly debug: DebugMode | null; // 'albedo' | 'height' | 'normal' | 'steps' | 'pom-off' | 'wireframe' | 'hero'
   readonly perfHud: boolean;
   readonly reducedMotion: boolean;
 }
@@ -1025,9 +1042,142 @@ decision 4 of 2026-11-18), and the 0-step kill switch is built alongside it.
   off — ask: does the carving read as physically recessed, does the material
   family match the 2.5D shells, and does Haku stay clean? Record the verdict.
 
-**Gate:** frontend gate + user verdict.
+**As built (3D-05, 2026-11-18; corrected the same day after the first
+handoff).** Files: `three/{tileMaterial,lighting,hero,probes,reliefTextures}.ts`,
+`three/materials/tile.{vert,frag}.ts`, the hero wiring in `three/Scene.ts`, the
+debug HUD in `RendererHost.tsx`/`.css`, `contract.ts` (`DebugMode` gains `hero`,
+the hero report/capture types, two optional debug methods on `TableRenderer`,
+`pomSteps`/`heightScale` on the report), `capabilities.ts` (`hero` in
+`DEBUG_MODES`), and tests for each. The hero view's four tiles are the real
+committed deliveries at their real places: the human hand's centre slot
+(reclined 40°), the human pond's nearest row (lying), the far wall's first dora
+indicator (lying, oriented to the human) and a face-down wall top-tier tile
+beyond the five dora stacks (blue back). One `InstancedMesh`, one material, one
+draw — the shape 3D-07 scales.
 
----
+**The body is the shell baker's, not an invented one** (AGENTS.md §3b). The
+first handoff's tile was wrong in three ways and all three are now taken from
+`bake_shells.py` / `shell-spec.json`: the silhouette corner radius is one bevel
+(0.055 units = 1.54 mm) instead of an invented 0.1, so the inset glyph plate has
+a (near-)sharp corner; the white/blue split is the baker's shader gate on local
+Z at `backEdgeFraction` 0.3 of the thickness — the front 4.95 mm of the side wall
+is ivory and the back 11.55 mm plus the whole back plate is blue, instead of a
+blue back plate alone; and the finish is the shell's melamine (ivory 0.16 +
+coat 0.4, backing 0.18 + coat 0.35, coat roughness 0.1) as a second GGX lobe,
+instead of a flat 0.35/0.28. A numeric check on the exported back macro: the
+face-down slot's near edge reads a 100 px ivory band under the blue side/back
+band at 15 px/mm, i.e. the 4.95 mm / 11.55 mm gate.
+
+**The carve is calibrated to the approved decals, not to the physical depth.**
+The committed relief map describes a real 0.55 mm groove and its normal and AO
+channels shade that in full, but the approved 2.5D carved decals
+(`decal-spec.json`) bake the carve head-on as shading only, so their glyph never
+slides. At the pond's 37° the full 0.55 mm depth moves a stroke edge by 0.41 mm
+— a whole stroke width — which is what made the first handoff "way too
+recessed". `POM_HEIGHT_SCALE` (0.25) now scales the *displacement* only: 1.5
+texels at the pond, 0.6 at the hand, 1.9 at the dora, versus 5.98 / 2.26 / 7.64
+before. The hero export is a labelled four-panel **depth sweep** per slot
+(scales 0 / 0.25 / 0.5 / 1) so the decal look can be picked: scale 0 is the
+decal-equivalent shading-only end, 1 is the physical groove.
+
+Measured against the decals (both shading-only carves, 0.495 mm vs 0.55 mm): the
+decal `1m` lip's ivory luminance spans p05 128 / p50 188 / p95 254 (min 113); the
+3D hand face's spans 182 / 237 / 241 (min 116) at every scale, so the *shading*
+family matches and the displacement was the outlier. Depth-sweep difference
+against the POM-off panel, over the exported pixels: hand mean 3.5/255 at scale
+0.25 (4.4 % of pixels), 6.3 at 0.5, 8.0 at 1.0; the dora likewise 5.2 / 6.0 /
+7.0; Haku and the blue back stay at 0.0 (flat face, no carve).
+
+The rig (`lighting.ts`): key `#fff7ea` at 2.507, hemisphere fill
+`#cfe0ff`/`#0b1512` at 1.10, ambient `#ffffff` at 0.251 (three.js intensity
+units; the shader divides by π), which sums to neutral 1.0 irradiance on an
+up-facing normal (0.998 / 0.992 / 1.006 linear) and 0.97 / 0.96 / 0.95 on the
+reclined hand. `POM_STEPS` = 12 / 8 / 0 for high / balanced / compat;
+`?debug=pom-off` forces 0; the loop bound is 32; the shader clamps the
+displacement to **8 texels**.
+
+Numbers from a real WebGL2 run (Chrome + ANGLE/SwiftShader, 1920 × 992 CSS,
+DPR 2), printed by the HUD (`frontend/scripts/out/hero-report.txt`):
+
+| probe | reading | target | ΔE |
+| --- | --- | --- | --- |
+| face ivory (pond, Haku, open) | `#f5f0ec` | `#f5f0eb` | 0.51 |
+| blue back (wall, face-down) | `#132986` | `#132986` | 0.00 |
+| paint (hand, `1p` artwork) | `#434356` (navy), ΔE 74 from ivory | — | pass |
+| Haku at the same point | `#f5f0ec`, redness 5 | — | clean |
+| ivory bevel (hand) | `#dbd6d3` | — | pass |
+
+POM off (steps 0) reproduces every reading, so the carve path is one uniform.
+
+| slot | incidence | live parallax | physical (scale 1) |
+| --- | --- | --- | --- |
+| hand (reclined 40°) | 16.0° | 0.56 texels | 2.26 |
+| pond (lying) | 37.3° | 1.50 texels | 5.98 |
+| dora indicator (top tier) | 44.2° | 1.91 texels | 7.64 |
+| face-down wall tile | 0° (no carve) | 0 | 0 |
+
+The hero worst is 1.93 at every supported aspect. The strict board-wide worst
+under the board's own camera (`frameForAspect`, §2.4) — a far opponent meld at
+4:3 — is 2.10 at the live scale and 8.41 at the physical depth, where the
+shader's clamp takes over; the test prints both.
+
+Shader-compile failure path: `installShaderErrorTrap` throws three's
+`onShaderError` log as a `TileShaderError`, so the host reports `failed` with the
+driver text. It caught two real bugs in this unit (a `vec3` tangent declared for a
+4-component attribute, and a backtick in a GLSL comment) — the exact failure mode
+the criterion exists for. Covered by tests on both the trap and the host.
+
+Handoff artifacts: `frontend/scripts/out/hero-<slot>-depth-sweep.png` (4 labelled
+2560 × 672 strips: one macro shot per depth scale, same incidence ray, same
+lights, same shader, camera moved in), `hero-overview.png` (the live view at
+3840 × 2160), `hero-report.txt`, and `decal-1m-{upright,lying}.png` — the
+committed carved decals converted to PNG and composited on the ivory face, as the
+approved recess to compare against. **Verdict: pending the user's review.**
+
+**Hero face moved to `1p`, and the carve mask fixed (same day, at the user's
+request: "a more complex carve").** The first `1p` bake carved every opaque
+pixel, so its whole disc sank — "just a recessed circle". `1p`'s artwork is
+woven with **opaque white** (17 066 of 87 040 cell px, 19.6 %) that is the bare
+tile showing through, while `1m` has none: the carve mask is now `opaque AND
+ΔE(colour, ivory) > 10` (the runtime paint probe's rule) and the relief3d albedo
+drops the white to transparent, so the white reads as raised uncarved islands.
+Measured after: plate ivory p25/p50/p95 **230 / 237 / 243**, its edges 162, paint
+34–98; `1p` whiteFraction 0.196, `1m` 0.000. The bake now also publishes its own
+albedo (pigment from the committed atlas, mask corrected) instead of reusing the
+committed one, so the runtime shader sees the same paint the carve does.
+
+**The same request's earlier detail.** `1p` is multi-colour (navy 16004 px, white 12539, black 4860, crimson
+3530 in the committed albedo), so the paint probe is now a **contrast** test —
+the block median must sit at least ΔE 25 from the committed ivory — instead of a
+redness test, and its point is the widest navy band (11.2 texels of clearance).
+A white part of the artwork deliberately does not count: it is within ΔE 6 of
+the ivory. This also exposed a bake bug: the AO horizon treated *deeper*
+neighbours as occluders, so it darkened the open face around the pit instead of
+the pit itself; fixed, and the AO atlas is 766 kB now instead of 1009 kB.
+
+**Live-shading pass (same day, after the user's second review: "the inside
+white parts just look like white paint").** Measured against the approved
+decals, face `1m`, as luma by distance from the paint boundary:
+
+| 0 / 0.5 / 1.0 mm | decal | render before | render now |
+| --- | --- | --- | --- |
+| ivory luma | 217 / 240 / 240 | 110 / 195 / 238 (`ao^4`, normal 1.6) | 179 / 227 / 238 |
+
+| paint luma | p05 | p25 | p50 | p75 | p95 |
+| --- | --- | --- | --- | --- | --- |
+| decal | 31 | 43 | **80** | 87 | 177 |
+| render | 74 | 80 | **84** | 87 | 102 |
+
+What that bought: the key's area character (five samples over a 24° radius, the
+bake's tube is ~40°), a lower wrap (0.3) and a calibrated lacquer sheen on the
+paint (`PAINT_SHEEN` 0.05 linear) that desaturates it exactly as the decal's
+bake does (render median rgb 172,65,65 against the decal's 196,46,37). What it
+cannot buy: the decal's *width* (a 0.3 mm wall against the relief bake's
+0.655 mm) and the paint's *internal variation* (the decal's groove floor is
+slightly concave; the committed one is flat). Curving the normal/AO to fake
+sharpness only spreads a dark halo — the numbers above are the record of that
+attempt. `CARVE_NORMAL_STRENGTH` and `CARVE_AO_POWER` stay at 1.0 (use the maps
+as baked) and become the controls for the rebake below.
 
 ### 3D-S1 — POM cost measurement (optional, no app change)
 
@@ -1219,7 +1369,12 @@ accessible marker on that seat.
 
 ---
 
-### 3D-10 — Carve calibration: light-space self-shadow, debug modes, step tiers
+### 3D-10 — Carve self-shadow, debug modes, step tiers
+
+**Reshaped 2026-11-18.** Carve *geometry* is no longer this unit's job: 3D-17
+bakes it from `decal-spec.json` (decided with the user after the live-shading
+comparison). 3D-10 keeps the light-space self-shadow, the `?debug=` modes and
+the step-tier calibration.
 
 **Goal.** Finish the carving: micro-shadow the groove walls, make the parameters
 observable, and lock the per-tier step counts against the measured budget.
@@ -1471,6 +1626,95 @@ and any conflict is hand-resolved.
 
 ---
 
+### 3D-17 — 3D-owned carve rebake at the decal profile
+
+**Goal.** Give the live shading the crispness the approved 2.5D decals have, by
+rebaking the carve channels at the decal's *profile* instead of the current
+0.655 mm / 40° one. This is the user-chosen "B" path (2026-11-18, second
+review): a fully live-lit face, not baked art pasted on the shells. The
+decal-on-shell hybrid stays the fallback (see 3D-05).
+
+**Depends on:** 3D-05. **Does not touch the 2.5D pipeline**: a new 3D-owned
+directory, its own spec and its own script, reading only the committed
+public-domain glyph PNGs.
+
+**Deliverables**
+
+- `tools/render3d/relief3d-spec.json` + `bake-relief3d.py`: port
+  `bake_decals.py`'s carve field (`carve_field` / `bezier_profile` /
+  `blurUnits` / `alphaRamp`) into a channel bake (albedo+paint, tangent
+  normal+height, AO+roughness) at **256 × 340** per face (the committed cell
+  size: 14.3 px/mm, still higher resolution than the decal's 8.4 px/mm), with
+  the decal's numbers: `depthFractionOfThickness` 0.03 (0.495 mm),
+  `transitionUnits` 0.0107 (0.3 mm), `blurUnits` 0.00429, and a tight AO
+  distance so the groove's shadow is a line, not a field.
+- `frontend/public/table/relief3d/` + `relief3d.json` with the same shape as
+  `relief.json` (cells, plate, measured stats, byte+sha256 pins), 37 faces.
+- `reliefAssets.ts` gains a source selector (`relief3d` when present and
+  pinned, else the committed `relief`), so 3D-03's validation and the fallback
+  path are unchanged.
+- No 2.5D file, no 2.5D request; the old relief atlases stay committed and
+  readable (the 2.5D owns them).
+
+**Acceptance criteria**
+
+- The new bake's lip profile and paint distribution are measured against the
+  decal exactly as in 3D-05's report, and the test prints both: the ivory luma
+  at 0 / 0.5 / 1.0 mm must be within 25 / 8 / 8 of the decal's 217 / 240 / 240,
+  and the paint's p05/p50/p95 within 15 / 12 / 40 of 31 / 80 / 177.
+- The carve depth, wall run and AO distance are printed beside the committed
+  bake's, so the difference is a number, not an impression.
+- Every committed atlas matches its pin; a missing or off-pin `relief3d`
+  degrades to the committed `relief` with one warning (no hard failure).
+- The hero view (`?renderer=3d&debug=hero`) and its depth sweep are re-run and
+  handed to the user; the verdict is recorded here.
+- No change to the tile body, the materials, the light rig or the layout.
+
+**Gate:** frontend gate + the bake's own `--check` + user verdict.
+
+**As built (3D-17, 2026-11-18).** `frontend/tools/relief3d/bake-relief3d.mjs` (Node,
+no Blender, `@napi-rs/canvas` for PNG decode only) bakes
+`frontend/public/table/relief3d/` plus `relief3d.json`: the decal's carve (glyph
+area displaced inward, wall **inside** the painted silhouette, 0.495 mm through a
+0.3 mm Bézier transition) as albedo, normal+height and AO+roughness at 256 × 340.
+Inputs are the committed **flat glyph masters** (`faces/<id>.png`), premultiplied
+and un-premultiplied into the cell, with the 2.5D chain's published bare-tile
+rule (`whiteFillUncarved`, `whiteFillThreshold` 0.9). 22 s for 37 faces; 0.45 MB
+albedo + 1.53 MB normal + 0.95 MB AO/roughness committed. This replaced the
+retired Task 4B albedo as the input when main removed those assets (2026-11-18);
+`reliefAssets.ts` now has a single source (relief3d) plus the procedural cell. Normals are
+the exact height-field gradient; AO is a stated horizon approximation (8
+directions × 10 steps over 1.4 mm). `reliefAssets.ts` gained `source:
+'relief3d' | 'committed'` with its own pin table and a degrade-to-committed path;
+`Scene.ts` asks for `relief3d`, `measure()`/the HUD report it.
+
+Two bugs found while landing it, both caught by numbers rather than eyes:
+
+- **A canvas surface premultiplies alpha**, and this bake's height channel is 0
+  across every groove floor, so decoding the atlas through `drawImage` multiplied
+  the floors' normal RGB away (the PNG was correct; the reader was not). The
+  runtime factory now uploads a straight-alpha `ImageBitmap`
+  (`premultiplyAlpha: 'none'`, decoder-side resize for the compat tier) and never
+  touches a canvas; the baker writes PNG bytes directly with `node:zlib`.
+- the first bake's `erfinv` treated an erf value as a probability, producing NaNs
+  for negative distances (flat black cells); fixed with `Phi^-1((v+1)/2)/sqrt(2)`.
+
+Measured against the decal after the switch (hand macro, `1m`): ivory at
+0 / 0.5 / 1.0 mm **160 / 223 / 235** against the decal's 217 / 240 / 240; paint
+interior **88** against 72; and the scanline now shows 241 bright ivory, 121–143
+shaded ivory between strokes and 59–88 ink with 66–80 dark stroke edges, where the
+committed bake read a flat 84 everywhere. The paint's *interior variation* (decal
+p05 31 … p95 177) still exceeds ours (63 … 90): the decal's bright end is a
+specular streak from its area light, and our directional key plus a 24° spread
+does not reproduce it. `hero-vs-decal-1p.png` in the artifact directory puts the two
+side by side.
+
+**Verdict (2026-11-18, after the `1p` white-island fix): approved** — "That's
+better, that looks great." The carve reads as physically recessed at the hand's
+16°, the depth sweep remains the review process (it is where the bumps read),
+and the shell body, blue band and Haku's clean face were accepted earlier in the
+same thread. `POM_HEIGHT_SCALE` stays at 0.25; `1p` is the hero face.
+
 ## 7. Proposed command-center slicing
 
 One task per unit, all `worktree` on `riichiprac`, created wave by wave (not all
@@ -1561,6 +1805,7 @@ which files it touched.
 | R7 | The DOM overlay drifts from the 3D camera (buttons not aligned with tiles) | medium / high (usability) | single projection source (`hitRects()`), tests at two aspects, user check on the final board | 3D-08 |
 | R8 | Shading/looks cannot be verified in CI | certain / medium | numeric probes for colours and POM displacement, debug modes, explicit user handoffs, no self-approval | all |
 | R9 | A new runtime dependency is more than the repo wants | low / medium | lazy chunk, budget gate, exact pin, MIT notice; the renderer interface keeps the choice reversible | 3D-02, 3D-16 |
+| R11 | The committed Task 4B carve is too soft to match the approved 2.5D decals at a live-lit face (0.655 mm wall, empty flat floor) | seen / medium (looks) | measure against the decals (3D-05's report), bake a 3D-owned set at the decal profile (3D-17), keep decal-on-shell as the fallback | 3D-05, 3D-17 |
 | R10 | Both renderers load the relief atlases at once (double GPU memory) if a view ever mounts both | low / medium | only one table is mounted at a time (structural test in 3D-14); dispose drops textures | 3D-14 |
 
 **Decisions recorded with the user (2026-11-18)** — all seven are settled; they

@@ -1,0 +1,904 @@
+{
+ "version": 1,
+ "name": "riichiprac 3D-owned carved face channels (3D-17)",
+ "purpose": "Normal/height and AO/roughness for the live-lit 3D face, baked at the approved decal carve geometry: the glyph area is displaced inward through a 0.3 mm Bezier transition so the wall is inside the painted silhouette (the decals' bright rim and dark inner shadow). The committed relief albedo is reused because the paint colour and mask do not depend on the carve geometry.",
+ "source": {
+  "glyphs": "frontend/public/table/faces/<id>.png (committed flat masters, 300 x 400, public domain)",
+  "albedo": "sampled from the committed glyph masters; the relief3d alpha drops the artwork white (whiteFillThreshold 0.9) so it stays uncarved",
+  "geometry": "tools/render/decal-spec.json carve block (the approved 2.5D engraving)",
+  "generator": "frontend/tools/relief3d/bake-relief3d.mjs",
+  "note": "Nothing under tools/render is written; the 2.5D pipeline is read for its published carve numbers only."
+ },
+ "coordinateSpace": "Cell top-left is the plate top-left, y down. Tangent normal x right, y down, z out. Height alpha is 1 on the uncarved face and 0 at the engraving floor.",
+ "raster": {
+  "cellWidth": 256,
+  "cellHeight": 340,
+  "columns": 6,
+  "rows": 7,
+  "atlasWidth": 1536,
+  "atlasHeight": 2380,
+  "faces": 37,
+  "format": "8-bit RGBA PNG",
+  "mmPerUnit": 28,
+  "plateUnits": [
+   0.64,
+   0.89
+  ],
+  "plateMm": [
+   17.92,
+   24.92
+  ],
+  "pxPerMm": {
+   "x": 14.285714,
+   "y": 13.64366
+  }
+ },
+ "carve": {
+  "depthMm": 0.495,
+  "transitionMm": 0.3,
+  "blurMm": 0.12000000000000001,
+  "profile": {
+   "topSpread": 0.6,
+   "bottomSpread": 0.8
+  },
+  "aoDistanceMm": 1.4,
+  "aoDirections": 8,
+  "aoSteps": 10,
+  "roughness": {
+   "open": 0.45,
+   "paint": 0.12
+  },
+  "notes": "Wall inside the glyph silhouette so the paint covers it; a flat painted floor cannot show the decals' carved shading."
+ },
+ "atlases": {
+  "face_albedo": {
+   "role": "albedo",
+   "file": "relief3d/face_albedo.png",
+   "width": 1536,
+   "height": 2380,
+   "bytes": 457226,
+   "sha256": {
+    "png": "f7c6e2c6a5c19e9a3bb84bb89db6c69d0b9ddab9acf6af579f68b462206592cd"
+   },
+   "source": "relief3d"
+  },
+  "face_normal_depth": {
+   "role": "normalDepth",
+   "file": "relief3d/face_normal_depth.png",
+   "width": 1536,
+   "height": 2380,
+   "bytes": 1568434,
+   "sha256": {
+    "png": "b7a31853af12c7871d18b16b9be97ad0a5e36505e475d07bc0d5e6dc4e10ce4e"
+   },
+   "source": "relief3d"
+  },
+  "face_ao_roughness": {
+   "role": "aoRoughness",
+   "file": "relief3d/face_ao_roughness.png",
+   "width": 1536,
+   "height": 2380,
+   "bytes": 973832,
+   "sha256": {
+    "png": "1a1c9f1c3416130e0759e13f09bb518bcb451b210adc259670d2653296628c17"
+   },
+   "source": "relief3d"
+  }
+ },
+ "faces": {
+  "1m": {
+   "face": "1m",
+   "cell": {
+    "index": 0,
+    "column": 0,
+    "row": 0,
+    "x": 0,
+    "y": 0,
+    "rect": [
+     0,
+     0,
+     0.16666666666666666,
+     0.14285714285714285
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.22535615808823528,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "2m": {
+   "face": "2m",
+   "cell": {
+    "index": 1,
+    "column": 1,
+    "row": 0,
+    "x": 256,
+    "y": 0,
+    "rect": [
+     0.16666666666666666,
+     0,
+     0.3333333333333333,
+     0.14285714285714285
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.24496783088235294,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "3m": {
+   "face": "3m",
+   "cell": {
+    "index": 2,
+    "column": 2,
+    "row": 0,
+    "x": 512,
+    "y": 0,
+    "rect": [
+     0.3333333333333333,
+     0,
+     0.5,
+     0.14285714285714285
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.2654871323529412,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "4m": {
+   "face": "4m",
+   "cell": {
+    "index": 3,
+    "column": 3,
+    "row": 0,
+    "x": 768,
+    "y": 0,
+    "rect": [
+     0.5,
+     0,
+     0.6666666666666666,
+     0.14285714285714285
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.2859719669117647,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "5m": {
+   "face": "5m",
+   "cell": {
+    "index": 4,
+    "column": 4,
+    "row": 0,
+    "x": 1024,
+    "y": 0,
+    "rect": [
+     0.6666666666666666,
+     0,
+     0.8333333333333334,
+     0.14285714285714285
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.2864315257352941,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "6m": {
+   "face": "6m",
+   "cell": {
+    "index": 5,
+    "column": 5,
+    "row": 0,
+    "x": 1280,
+    "y": 0,
+    "rect": [
+     0.8333333333333334,
+     0,
+     1,
+     0.14285714285714285
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.26232766544117647,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "7m": {
+   "face": "7m",
+   "cell": {
+    "index": 6,
+    "column": 0,
+    "row": 1,
+    "x": 0,
+    "y": 340,
+    "rect": [
+     0,
+     0.14285714285714285,
+     0.16666666666666666,
+     0.2857142857142857
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.2513327205882353,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "8m": {
+   "face": "8m",
+   "cell": {
+    "index": 7,
+    "column": 1,
+    "row": 1,
+    "x": 256,
+    "y": 340,
+    "rect": [
+     0.16666666666666666,
+     0.14285714285714285,
+     0.3333333333333333,
+     0.2857142857142857
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.23539751838235295,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2549
+   }
+  },
+  "9m": {
+   "face": "9m",
+   "cell": {
+    "index": 8,
+    "column": 2,
+    "row": 1,
+    "x": 512,
+    "y": 340,
+    "rect": [
+     0.3333333333333333,
+     0.14285714285714285,
+     0.5,
+     0.2857142857142857
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.25633042279411766,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.1608
+   }
+  },
+  "1p": {
+   "face": "1p",
+   "cell": {
+    "index": 9,
+    "column": 3,
+    "row": 1,
+    "x": 768,
+    "y": 340,
+    "rect": [
+     0.5,
+     0.14285714285714285,
+     0.6666666666666666,
+     0.2857142857142857
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.39595588235294116,
+    "whiteFraction": 0.1722311580882353,
+    "deepestMm": 0.495,
+    "aoMin": 0.149
+   }
+  },
+  "2p": {
+   "face": "2p",
+   "cell": {
+    "index": 10,
+    "column": 4,
+    "row": 1,
+    "x": 1024,
+    "y": 340,
+    "rect": [
+     0.6666666666666666,
+     0.14285714285714285,
+     0.8333333333333334,
+     0.2857142857142857
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.3006893382352941,
+    "whiteFraction": 0.11337316176470588,
+    "deepestMm": 0.495,
+    "aoMin": 0.2353
+   }
+  },
+  "3p": {
+   "face": "3p",
+   "cell": {
+    "index": 11,
+    "column": 5,
+    "row": 1,
+    "x": 1280,
+    "y": 340,
+    "rect": [
+     0.8333333333333334,
+     0.14285714285714285,
+     1,
+     0.2857142857142857
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.24438189338235294,
+    "whiteFraction": 0.04874770220588235,
+    "deepestMm": 0.495,
+    "aoMin": 0.1059
+   }
+  },
+  "4p": {
+   "face": "4p",
+   "cell": {
+    "index": 12,
+    "column": 0,
+    "row": 2,
+    "x": 0,
+    "y": 680,
+    "rect": [
+     0,
+     0.2857142857142857,
+     0.16666666666666666,
+     0.42857142857142855
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.32521829044117645,
+    "whiteFraction": 0.06506204044117647,
+    "deepestMm": 0.495,
+    "aoMin": 0.102
+   }
+  },
+  "5p": {
+   "face": "5p",
+   "cell": {
+    "index": 13,
+    "column": 1,
+    "row": 2,
+    "x": 256,
+    "y": 680,
+    "rect": [
+     0.16666666666666666,
+     0.2857142857142857,
+     0.3333333333333333,
+     0.42857142857142855
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.40639935661764703,
+    "whiteFraction": 0.08147977941176471,
+    "deepestMm": 0.495,
+    "aoMin": 0.102
+   }
+  },
+  "6p": {
+   "face": "6p",
+   "cell": {
+    "index": 14,
+    "column": 2,
+    "row": 2,
+    "x": 512,
+    "y": 680,
+    "rect": [
+     0.3333333333333333,
+     0.2857142857142857,
+     0.5,
+     0.42857142857142855
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.4270335477941177,
+    "whiteFraction": 0.09641544117647059,
+    "deepestMm": 0.495,
+    "aoMin": 0.1059
+   }
+  },
+  "7p": {
+   "face": "7p",
+   "cell": {
+    "index": 15,
+    "column": 3,
+    "row": 2,
+    "x": 768,
+    "y": 680,
+    "rect": [
+     0.5,
+     0.2857142857142857,
+     0.6666666666666666,
+     0.42857142857142855
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.4806640625,
+    "whiteFraction": 0.11252297794117647,
+    "deepestMm": 0.495,
+    "aoMin": 0.102
+   }
+  },
+  "8p": {
+   "face": "8p",
+   "cell": {
+    "index": 16,
+    "column": 4,
+    "row": 2,
+    "x": 1024,
+    "y": 680,
+    "rect": [
+     0.6666666666666666,
+     0.2857142857142857,
+     0.8333333333333334,
+     0.42857142857142855
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.5346277573529412,
+    "whiteFraction": 0.12829733455882353,
+    "deepestMm": 0.495,
+    "aoMin": 0.102
+   }
+  },
+  "9p": {
+   "face": "9p",
+   "cell": {
+    "index": 17,
+    "column": 5,
+    "row": 2,
+    "x": 1280,
+    "y": 680,
+    "rect": [
+     0.8333333333333334,
+     0.2857142857142857,
+     1,
+     0.42857142857142855
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.6319048713235295,
+    "whiteFraction": 0.1440372242647059,
+    "deepestMm": 0.495,
+    "aoMin": 0.098
+   }
+  },
+  "1s": {
+   "face": "1s",
+   "cell": {
+    "index": 18,
+    "column": 0,
+    "row": 3,
+    "x": 0,
+    "y": 1020,
+    "rect": [
+     0,
+     0.42857142857142855,
+     0.16666666666666666,
+     0.5714285714285714
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.33054917279411766,
+    "whiteFraction": 0.15068933823529412,
+    "deepestMm": 0.495,
+    "aoMin": 0.1373
+   }
+  },
+  "2s": {
+   "face": "2s",
+   "cell": {
+    "index": 19,
+    "column": 1,
+    "row": 3,
+    "x": 256,
+    "y": 1020,
+    "rect": [
+     0.16666666666666666,
+     0.42857142857142855,
+     0.3333333333333333,
+     0.5714285714285714
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.16528033088235294,
+    "whiteFraction": 0.026573988970588235,
+    "deepestMm": 0.495,
+    "aoMin": 0.1843
+   }
+  },
+  "3s": {
+   "face": "3s",
+   "cell": {
+    "index": 20,
+    "column": 2,
+    "row": 3,
+    "x": 512,
+    "y": 1020,
+    "rect": [
+     0.3333333333333333,
+     0.42857142857142855,
+     0.5,
+     0.5714285714285714
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.247265625,
+    "whiteFraction": 0.03999310661764706,
+    "deepestMm": 0.495,
+    "aoMin": 0.1765
+   }
+  },
+  "4s": {
+   "face": "4s",
+   "cell": {
+    "index": 21,
+    "column": 3,
+    "row": 3,
+    "x": 768,
+    "y": 1020,
+    "rect": [
+     0.5,
+     0.42857142857142855,
+     0.6666666666666666,
+     0.5714285714285714
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.3303998161764706,
+    "whiteFraction": 0.05361902573529412,
+    "deepestMm": 0.495,
+    "aoMin": 0.1725
+   }
+  },
+  "5s": {
+   "face": "5s",
+   "cell": {
+    "index": 22,
+    "column": 4,
+    "row": 3,
+    "x": 1024,
+    "y": 1020,
+    "rect": [
+     0.6666666666666666,
+     0.42857142857142855,
+     0.8333333333333334,
+     0.5714285714285714
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.41196001838235297,
+    "whiteFraction": 0.06680836397058823,
+    "deepestMm": 0.495,
+    "aoMin": 0.1725
+   }
+  },
+  "6s": {
+   "face": "6s",
+   "cell": {
+    "index": 23,
+    "column": 5,
+    "row": 3,
+    "x": 1280,
+    "y": 1020,
+    "rect": [
+     0.8333333333333334,
+     0.42857142857142855,
+     1,
+     0.5714285714285714
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.49466911764705884,
+    "whiteFraction": 0.0799172794117647,
+    "deepestMm": 0.495,
+    "aoMin": 0.1765
+   }
+  },
+  "7s": {
+   "face": "7s",
+   "cell": {
+    "index": 24,
+    "column": 0,
+    "row": 4,
+    "x": 0,
+    "y": 1360,
+    "rect": [
+     0,
+     0.5714285714285714,
+     0.16666666666666666,
+     0.7142857142857143
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.33536305147058826,
+    "whiteFraction": 0.045645680147058824,
+    "deepestMm": 0.495,
+    "aoMin": 0.3647
+   }
+  },
+  "8s": {
+   "face": "8s",
+   "cell": {
+    "index": 25,
+    "column": 1,
+    "row": 4,
+    "x": 256,
+    "y": 1360,
+    "rect": [
+     0.16666666666666666,
+     0.5714285714285714,
+     0.3333333333333333,
+     0.7142857142857143
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.49828814338235294,
+    "whiteFraction": 0.09738051470588235,
+    "deepestMm": 0.495,
+    "aoMin": 0.1804
+   }
+  },
+  "9s": {
+   "face": "9s",
+   "cell": {
+    "index": 26,
+    "column": 2,
+    "row": 4,
+    "x": 512,
+    "y": 1360,
+    "rect": [
+     0.3333333333333333,
+     0.5714285714285714,
+     0.5,
+     0.7142857142857143
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.43146829044117646,
+    "whiteFraction": 0.05827205882352941,
+    "deepestMm": 0.495,
+    "aoMin": 0.3608
+   }
+  },
+  "5mr": {
+   "face": "5mr",
+   "cell": {
+    "index": 27,
+    "column": 3,
+    "row": 4,
+    "x": 768,
+    "y": 1360,
+    "rect": [
+     0.5,
+     0.5714285714285714,
+     0.6666666666666666,
+     0.7142857142857143
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.29663373161764706,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "5pr": {
+   "face": "5pr",
+   "cell": {
+    "index": 28,
+    "column": 4,
+    "row": 4,
+    "x": 1024,
+    "y": 1360,
+    "rect": [
+     0.6666666666666666,
+     0.5714285714285714,
+     0.8333333333333334,
+     0.7142857142857143
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.4164292279411765,
+    "whiteFraction": 0.08169806985294117,
+    "deepestMm": 0.495,
+    "aoMin": 0.102
+   }
+  },
+  "5sr": {
+   "face": "5sr",
+   "cell": {
+    "index": 29,
+    "column": 5,
+    "row": 4,
+    "x": 1280,
+    "y": 1360,
+    "rect": [
+     0.8333333333333334,
+     0.5714285714285714,
+     1,
+     0.7142857142857143
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.42205882352941176,
+    "whiteFraction": 0.06686580882352941,
+    "deepestMm": 0.495,
+    "aoMin": 0.1725
+   }
+  },
+  "1z": {
+   "face": "1z",
+   "cell": {
+    "index": 30,
+    "column": 0,
+    "row": 5,
+    "x": 0,
+    "y": 1700,
+    "rect": [
+     0,
+     0.7142857142857143,
+     0.16666666666666666,
+     0.8571428571428571
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.2502872242647059,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2471
+   }
+  },
+  "2z": {
+   "face": "2z",
+   "cell": {
+    "index": 31,
+    "column": 1,
+    "row": 5,
+    "x": 256,
+    "y": 1700,
+    "rect": [
+     0.16666666666666666,
+     0.7142857142857143,
+     0.3333333333333333,
+     0.8571428571428571
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.2779641544117647,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2627
+   }
+  },
+  "3z": {
+   "face": "3z",
+   "cell": {
+    "index": 32,
+    "column": 2,
+    "row": 5,
+    "x": 512,
+    "y": 1700,
+    "rect": [
+     0.3333333333333333,
+     0.7142857142857143,
+     0.5,
+     0.8571428571428571
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.24595588235294116,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  },
+  "4z": {
+   "face": "4z",
+   "cell": {
+    "index": 33,
+    "column": 3,
+    "row": 5,
+    "x": 768,
+    "y": 1700,
+    "rect": [
+     0.5,
+     0.7142857142857143,
+     0.6666666666666666,
+     0.8571428571428571
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.1967486213235294,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2667
+   }
+  },
+  "5z": {
+   "face": "5z",
+   "cell": {
+    "index": 34,
+    "column": 4,
+    "row": 5,
+    "x": 1024,
+    "y": 1700,
+    "rect": [
+     0.6666666666666666,
+     0.7142857142857143,
+     0.8333333333333334,
+     0.8571428571428571
+    ]
+   },
+   "measured": {
+    "paintFraction": 0,
+    "whiteFraction": 0,
+    "deepestMm": 0,
+    "aoMin": 1
+   }
+  },
+  "6z": {
+   "face": "6z",
+   "cell": {
+    "index": 35,
+    "column": 5,
+    "row": 5,
+    "x": 1280,
+    "y": 1700,
+    "rect": [
+     0.8333333333333334,
+     0.7142857142857143,
+     1,
+     0.8571428571428571
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.2541245404411765,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2157
+   }
+  },
+  "7z": {
+   "face": "7z",
+   "cell": {
+    "index": 36,
+    "column": 0,
+    "row": 6,
+    "x": 0,
+    "y": 2040,
+    "rect": [
+     0,
+     0.8571428571428571,
+     0.16666666666666666,
+     1
+    ]
+   },
+   "measured": {
+    "paintFraction": 0.19327895220588234,
+    "whiteFraction": 0,
+    "deepestMm": 0.495,
+    "aoMin": 0.2588
+   }
+  }
+ }
+}

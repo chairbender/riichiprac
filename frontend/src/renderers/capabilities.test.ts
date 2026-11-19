@@ -76,6 +76,7 @@ describe('3D feature gate', () => {
       'steps',
       'pom-off',
       'wireframe',
+      'hero',
     ] as const) {
       expect(parseRendererQuery(`?debug=${mode}`).debug).toBe(mode);
       expect(isDebugMode(mode)).toBe(true);

@@ -41,6 +41,7 @@ export const DEBUG_MODES: readonly DebugMode[] = [
   'steps',
   'pom-off',
   'wireframe',
+  'hero',
 ];
 
 /** The quality tiers a user may pin with `?quality=`. */

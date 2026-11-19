@@ -66,8 +66,61 @@ The app is a **Constraint Satisfaction Generator**:
   * The active architecture is `2_5d_mahjong_tile_rendering_architecture.md`; read it before touching shells, layouts, or the compositor. Where that document's per-zone "impossible geometry" projections conflict with `2_5d_implementation_plan.md` (checked in 2026-11-17), the plan wins. `tools/render/README.md` is the active shell-baker/felt pipeline doc. `rendered-table-plan.md` and `rendered-table-strip-lights-plan.md` are **retired** design records with banners: do not regenerate or extend them.
   * **Whole-table calibration reference (not shipped).** `bash tools/render/bake-table-reference.sh --bake` builds one Blender scene of the complete table (walls, ponds, hands, drawn tile, melds, felt) from `tools/render/table-reference-spec.json`, publishes `tools/render/reference/` (a @1x board, one @2x crop per element family, a manifest with decoded-pixel hashes) and `tools/render/TABLE-REFERENCE.md` records the camera and how to compare a hybrid. It is **calibration-only**: it writes nothing under `frontend/public`, the runtime never reads it, and it is not a second source of layout truth. See §16 of the architecture doc.
   * **2.5D camera + lighting rig (not shipped).** `bash tools/render/bake-table-reference.sh --rig [--variant NAME]` renders the same scene and placements through the new pipeline's variant-based rig (`table-reference-spec.json`'s `rig` + `rig.variants`): 75 mm perspective, 50° pitch, X = 0, negative Shift Y, a soft overhead AREA key plus fills, film transparent, 1920 × 1080 RGBA. `v1-baseline` is the saved first rig; `v2-compact` is the first experiment (hands/melds at 8.8, a 40° readability-cheat hand whose shading normals are corrected to the 12° pose, key 6000 W); `v3-hand-shadow` extends it with the player's hand alone moved back to 9.3 and a shadow-only caster at the 12° pose (fills light-linked away from it); `v4-shadow-decal` keeps v3's spacing and replaces the caster with a fake soft gradient decal under the hand (hidden start under the tile, visible gradient from the front edge, no shadow rays); `v5`/`v6`/`v7` are three longer, stronger shadow takes (0.55 / 0.65 / 0.42 units, 50 / 40 / 65 % max alpha) for choosing a preference; `v10-shadow-split-blobs` rebuilds the chosen take A as the retired UI shadow recipe (one blurred contact rectangle per hand group, all four edges blurred); `v11-shadow-inner-offset` widens the hand row right end too, pushes the drawn tile blob 0.28 units past the hand, and offsets the whole footprint 0.06 units forward; `v12-shadow-symmetric` applies the UI group recipe (union the hand row and drawn tile into one footprint, blur once), so the gap is not double-darkened and the shadow is exactly symmetric; `v13-shadow-darker` keeps that shape and deepens it to match the wall key shadow (core 27 luma vs the wall 27) by offsetting the footprint 0.18 units south. **v13 is the chosen rig (user sign-off 2026-11-17) and the spec's `defaultVariant`.** Each variant publishes `tools/render/reference/rig/<variant>-1x.png` + `<variant>.json`; `reference/rig/index.html` is the A/B page. `scripts/check-table-rig.mjs` gates every committed variant (vanishing point above the frame, side-wall inner slivers, straight-on hand centre, no inward lean, framing, lit-face/blue/hand/side probes, the hand-cheat luma ratio). Calibration-only.
-  * There is **no table model**. The background is a full-screen felt raster with a vignette (`frontend/public/table/felt.png`); walls, ponds, hands, melds and (later) the compass are overlaid in screen space. Each zone uses the projection that reads best, so there is no shared perspective camera.
+  * There is **no table model in the shipped 2.5D runtime**. The background is a full-screen felt raster with a vignette (`frontend/public/table/felt.png`); walls, ponds, hands, melds and (later) the compass are overlaid in screen space. Each zone uses the projection that reads best, so there is no shared perspective camera. (The 2.5D *workspace* does model the whole table in 3D as the calibration source — see §3b.)
   * The runtime is 2D composition only: images plus DOM. **Do NOT add a 3D/WebGL library to the frontend, and do not rasterise tile art in the browser.**
+
+### 3b. The 2.5D workspace already models the tile and the table in 3D — use it, do not re-derive it
+
+The parallel 2.5D effort has already built (and the user has signed off) most of
+the 3D work the opt-in three.js view needs. Before adding geometry, a material
+or a carve number under `frontend/src/renderers/three/`, read the existing source
+and take the number from there. This is a standing rule for every 3D session, not
+a one-off: a runtime tile that invents its own corner radius, blue band or
+engraving depth is a bug even when it renders.
+
+* **Tile body and material** — `tools/render/shell-spec.json`'s `tile` block and
+  `bake_shells.py`'s `build_tile` / `build_tile_material`:
+  * 21 × 28 × 16.5 mm; `bevel.width` 0.055 units with `segments` 6 and an angle
+    limit of 30° on **every** edge. The silhouette corner radius is therefore one
+    bevel (1.54 mm), and the face plateau, inset by `faceInset` 0.055, has a
+    sharp corner (17.92 × 24.92 mm = the 0.64 × 0.89-unit glyph plate).
+  * the white/blue split is a **shader gate on local Z** at
+    `backEdgeFraction` 0.3 of the thickness, not a per-face material: the front
+    30 % (4.95 mm) of the side wall is ivory, the back 70 % (11.55 mm) is blue,
+    and the whole back plate is blue;
+  * face `#f5f0eb` roughness 0.16 + coat 0.4, backing `#132986` roughness 0.18 +
+    coat 0.35, both coat roughness 0.1 (`coat` is a real clear coat, not a
+    roughness tweak);
+  * `bake_table_reference.py` imports that same `build_tile`, so the whole-table
+    model and the shipped shells cannot drift from each other.
+* **Table layout and poses** — `tools/render/table-reference-spec.json` and
+  `bake_table_reference.py`: 269 modelled tiles, the wall runs/stacks/tiers, the
+  dead wall, the pond rows and riichi slots, the hand rows and draw gap, the meld
+  rows, the mat/rim/compass well and the slot anchors. The user approved the
+  table model and anchor bank on 2026-11-17. `frontend/src/renderers/layoutConstants.ts`
+  mirrors those numbers; if one is missing, take it from the spec and cite it.
+* **The carve** — `tools/render/decal-spec.json` and the committed carved decals
+  (`frontend/public/table/decals/`) are the approved engraving look. The 3D
+  chain bakes that *geometry* into its own channel atlas
+  (`frontend/tools/relief3d/bake-relief3d.mjs` →
+  `frontend/public/table/relief3d/` + `relief3d.json`): the glyph area pushed in
+  by `depthFractionOfThickness` 0.03 (0.495 mm) through a 0.3 mm Bézier
+  transition, with the wall **inside** the painted silhouette, and
+  `whiteFillUncarved` / `whiteFillThreshold` 0.9 leaving the artwork's white as
+  raised bare tile (`1p` alone is 17 % white). Displacement is scaled
+  (`POM_HEIGHT_SCALE`) so a stroke does not slide at a grazing angle; hand the
+  scale back as the depth-sweep comparison. **The Task 4B relief atlases are
+  retired and were removed from the tree on 2026-11-18** — do not read
+  `frontend/public/table/relief*`; the glyph masters (`faces/<id>.png`) are the
+  carve's input and `relief3d/` is its output.
+* **Materials and lighting** — the shells' materials above, and
+  `shell-spec.json`'s `lighting` block (key azimuth 315°, elevation 55°,
+  `#fff7ea`) which the 3D chain's `LIGHT` already mirrors.
+
+Corollary: when the 3D chain and these sources disagree, the committed shell spec
+and the reference table win; ask the user before inventing a third number. The
+2.5D sprite pipeline is still not to be touched (§3, top of this section): this
+rule is about *reading* the model work, not editing it.
 
 ## 4. UI / UX Design Constraints (React)
 * **Mobile-First, Stacked Layout:** The UI must be optimized for portrait mode on mobile devices.
@@ -89,7 +142,10 @@ The app is a **Constraint Satisfaction Generator**:
   with no perspective or camera tilt. Its table edges hold only tiles: winds, scores, and
   Riichi sticks live on the compass in the middle, one corner facing each player.
 * **3D view (opt-in, `?renderer=3d` until 3D-15):** a real-time three.js scene with the committed
-  tile proportions and carved faces. It **takes the whole browser window and the full height of
+  tile proportions and carved faces. Its tile body, materials, table poses and carve look come
+  from the 2.5D workspace's existing 3D model work (`tools/render/shell-spec.json`,
+  `bake_shells.py`, `table-reference-spec.json`, `decal-spec.json`) — see §3b; do not re-derive
+  them. It **takes the whole browser window and the full height of
   the screen**, and **no UI panel sits above or below the canvas** in the document flow. While
   the view is being built (as of 3D-02) it mounts the scene alone. The planned UI — header
   controls, status cards, action bar, hand dock, plus the projected hand buttons and compass —

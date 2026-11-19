@@ -148,7 +148,7 @@ export type QualityTier = 'high' | 'balanced' | 'compat';
  * Which relief art the scene draws (3D-03): the committed Task 4B atlases, or
  * the procedural neutral cell when they are missing or off-pin.
  */
-export type ReliefStatus = 'committed' | 'fallback';
+export type ReliefStatus = 'relief3d' | 'fallback';
 
 /** Query-selectable debug views of the carved face shader. */
 export type DebugMode =
@@ -157,7 +157,9 @@ export type DebugMode =
   | 'normal'
   | 'steps'
   | 'pom-off'
-  | 'wireframe';
+  | 'wireframe'
+  /** The 3D-05 hero view: the carved tile in four real board attitudes. */
+  | 'hero';
 
 /** What a WebGL2 probe can learn without keeping a context alive. */
 export interface RendererCapabilities {
@@ -192,6 +194,8 @@ export interface RendererStats {
   readonly atlasBytes: number;
   /** Which relief source the scene draws; absent before assets load (3D-03). */
   readonly relief?: ReliefStatus;
+  /** The carved face's live depth-march step count (0 = un-carved path, 3D-05). */
+  readonly pomSteps?: number;
   readonly frameMsP50: number;
   readonly frameMsP95: number;
 }
@@ -209,6 +213,76 @@ export interface HitRect {
 }
 
 /**
+ * One probe colour the hero view read back, 8-bit sRGB, with the rule it was
+ * checked against (3D-05).
+ */
+export interface HeroProbeNumber {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: string;
+  readonly rgb: readonly [number, number, number];
+  readonly hex: string;
+  /** `R - max(G, B)` of the block's reddest pixel (paint presence). */
+  readonly redness: number;
+  readonly targetHex: string | null;
+  /** CIE76 ΔE to the committed colour, or null for a presence probe. */
+  readonly deltaE: number | null;
+  readonly tolerance: number | null;
+  readonly pass: boolean;
+  readonly detail: string | null;
+}
+
+/** One hero slot's incidence angle and parallax displacement at this frame. */
+export interface HeroParallaxNumber {
+  readonly slot: string;
+  readonly label: string;
+  readonly angleDeg: number;
+  readonly texels: number;
+  readonly clamped: boolean;
+}
+
+/**
+ * The hero view's report (3D-05), as the debug HUD renders it. Every field is a
+ * measured number: the probe read-backs, the incidence angles, the step count
+ * and the carve depth. `debug=hero` only.
+ */
+export interface HeroReport {
+  readonly relief: ReliefStatus;
+  readonly tier: QualityTier;
+  readonly pomSteps: number;
+  readonly carveDepthMm: number;
+  /** The live depth-march displacement scale (1 = the full 0.55 mm groove). */
+  readonly heightScale: number;
+  readonly maxParallaxTexels: number;
+  readonly aspect: number;
+  readonly parallax: readonly HeroParallaxNumber[];
+  readonly probes: readonly HeroProbeNumber[];
+  readonly allProbesPass: boolean;
+  /** The same probes with the depth march switched off (POM_STEPS = 0). */
+  readonly pomOff: {
+    readonly probes: readonly HeroProbeNumber[];
+    readonly allProbesPass: boolean;
+  } | null;
+}
+
+/** One exported hero PNG: a PNG data URL plus the pixels it covers. */
+export interface HeroCapture {
+  /** `hero-<slot>-pom-<on|off>.png`. */
+  readonly name: string;
+  readonly pngDataUrl: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * The hero view's ready/failed notifications, dispatched by the scene on the
+ * canvas (3D-05). Strings live here so the host can listen without importing
+ * the lazy three.js chunk.
+ */
+export const HERO_READY_EVENT = 'tile3d:hero-ready';
+export const HERO_FAILED_EVENT = 'tile3d:hero-failed';
+
+/**
  * The renderer interface. It is synchronous by design: the host owns the async
  * module load, and a renderer that can queue animation is a renderer that can
  * drift from the DOM. `hitRects()` is pure (it never creates DOM); the overlay
@@ -224,6 +298,17 @@ export interface TableRenderer {
   /** v1: a no-op, unit-tested ahead of a live/replay source. */
   playEvents(events: readonly RendererEvent[]): void;
   measure(): RendererStats;
+  /**
+   * 3D-05's hero view only: the measured numbers for the debug HUD, or null
+   * when the hero tiles are not mounted (or are still loading). Debug-only, so
+   * it is optional on the interface.
+   */
+  heroReport?(): HeroReport | null;
+  /**
+   * 3D-05's hero view only: one PNG per slot with the carve on and off, for the
+   * unit's user handoff. Debug-only, so it is optional on the interface.
+   */
+  heroCaptures?(): readonly HeroCapture[];
   dispose(): void;
 }
 

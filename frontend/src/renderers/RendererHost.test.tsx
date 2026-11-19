@@ -13,7 +13,15 @@ import { join } from 'node:path';
 import { StrictMode } from 'react';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RendererOptions, RendererStats, TableRenderer, TableSnapshot } from './contract';
+import type {
+  HeroCapture,
+  HeroReport,
+  RendererOptions,
+  RendererStats,
+  TableRenderer,
+  TableSnapshot,
+} from './contract';
+import { HERO_FAILED_EVENT, HERO_READY_EVENT } from './contract';
 import { RendererHost } from './RendererHost';
 
 const probe = vi.hoisted(() => ({
@@ -39,6 +47,8 @@ const hostMock = vi.hoisted(() => {
     snapshots: TableSnapshot[];
     options: RendererOptions[];
     fail: Error | null;
+    report: unknown;
+    captures: unknown[];
   }
 
   const state: MockState = {
@@ -49,6 +59,8 @@ const hostMock = vi.hoisted(() => {
     snapshots: [],
     options: [],
     fail: null,
+    report: null,
+    captures: [],
   };
 
   const stats: RendererStats = {
@@ -78,6 +90,8 @@ const hostMock = vi.hoisted(() => {
       hitRects: () => [],
       playEvents: () => undefined,
       measure: () => stats,
+      heroReport: () => state.report as never,
+      heroCaptures: () => state.captures as never,
       dispose: () => {
         if (disposed) return;
         disposed = true;
@@ -144,6 +158,8 @@ beforeEach(() => {
     snapshots: [],
     options: [],
     fail: null,
+    report: null,
+    captures: [],
   });
   hostMock.createRenderer.mockClear();
 
@@ -321,6 +337,140 @@ describe('RendererHost fallbacks', () => {
       expect(screen.getByText(/lost its WebGL context twice/)).toBeTruthy(),
     );
     expect(hostMock.state.live).toBe(0);
+    expect(screen.getByText('fallback table')).toBeTruthy();
+  });
+});
+
+function heroReportFixture(): HeroReport {
+  const probe = (overrides: Partial<HeroReport['probes'][number]>) => ({
+    id: 'faceIvory',
+    label: 'face ivory',
+    kind: 'ivory',
+    rgb: [245, 240, 235] as const,
+    hex: '#f5f0eb',
+    redness: 5,
+    targetHex: '#f5f0eb',
+    deltaE: 1.8,
+    tolerance: 6,
+    pass: true,
+    detail: null,
+    ...overrides,
+  });
+  return {
+    relief: 'relief3d',
+    tier: 'high',
+    pomSteps: 12,
+    carveDepthMm: 0.55,
+    heightScale: 0.25,
+    maxParallaxTexels: 8,
+    aspect: 16 / 9,
+    parallax: [
+      { slot: 'pond', label: 'pond', angleDeg: 37.1, texels: 5.94, clamped: false },
+    ],
+    probes: [
+      probe({ id: 'faceIvory' }),
+      probe({
+        id: 'facePaint',
+        label: 'paint',
+        kind: 'paint',
+        rgb: [166, 12, 12],
+        hex: '#a60c0c',
+        redness: 154,
+        targetHex: null,
+        deltaE: null,
+        tolerance: null,
+      }),
+    ],
+    allProbesPass: true,
+    pomOff: { probes: [probe({ id: 'faceIvory' })], allProbesPass: true },
+  };
+}
+
+describe('RendererHost hero debug view (3D-05)', () => {
+  it('prints the measured probes after the scene reports ready', async () => {
+    hostMock.state.report = heroReportFixture();
+    const { container } = render(
+      <RendererHost snapshot={snapshot()} debug="hero" fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    const canvas = container.querySelector('canvas');
+    if (!canvas) throw new Error('expected a canvas');
+
+    act(() => {
+      canvas.dispatchEvent(new CustomEvent(HERO_READY_EVENT));
+    });
+
+    expect(screen.getByText('Hero tile · numeric report')).toBeTruthy();
+    expect(screen.getAllByText('#f5f0eb').length).toBeGreaterThan(0);
+    expect(screen.getByText('1.80')).toBeTruthy();
+    expect(screen.getByText('37.10°')).toBeTruthy();
+    expect(screen.getByText('5.94')).toBeTruthy();
+    expect(screen.getByText(/POM off \(steps 0\)/)).toBeTruthy();
+    expect(screen.getByText(/within tolerance/)).toBeTruthy();
+  });
+
+  it('exports one PNG per capture on demand', async () => {
+    hostMock.state.report = heroReportFixture();
+    hostMock.state.captures = [
+      { name: 'hero-hand-depth-sweep.png', pngDataUrl: 'data:image/png;base64,AA==', width: 2, height: 2 },
+      { name: 'hero-pond-depth-sweep.png', pngDataUrl: 'data:image/png;base64,AA==', width: 2, height: 2 },
+    ] as HeroCapture[];
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    const { container } = render(
+      <RendererHost snapshot={snapshot()} debug="hero" fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    const canvas = container.querySelector('canvas');
+    if (!canvas) throw new Error('expected a canvas');
+    act(() => {
+      canvas.dispatchEvent(new CustomEvent(HERO_READY_EVENT));
+    });
+
+    const button = screen.getByRole('button', { name: /Export depth sweep/ });
+    act(() => {
+      button.click();
+    });
+
+    expect(click).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/2 depth-sweep PNGs downloaded/)).toBeTruthy();
+    const downloads = Array.from(container.querySelectorAll('a')).map((anchor) => anchor.download);
+    expect(downloads).toEqual([]);
+  });
+
+  it('surfaces a hero build failure over the stage', async () => {
+    const { container } = render(
+      <RendererHost snapshot={snapshot()} debug="hero" fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    const canvas = container.querySelector('canvas');
+    if (!canvas) throw new Error('expected a canvas');
+
+    act(() => {
+      canvas.dispatchEvent(
+        new CustomEvent(HERO_FAILED_EVENT, {
+          detail: '3D tile shader failed to compile or link: ERROR: 0:12',
+        }),
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/tile shader failed to compile/)).toBeTruthy(),
+    );
+    expect(screen.getByText('fallback table')).toBeTruthy();
+    expect(screen.queryByText('Hero tile · numeric report')).toBeNull();
+  });
+
+  it('reports a shader compile failure from createRenderer as failed', async () => {
+    hostMock.state.fail = new Error(
+      '3D tile shader failed to compile or link:\nERROR: 0:12: undeclared identifier',
+    );
+    render(<RendererHost snapshot={snapshot()} debug="hero" fallback={fallbackTable()} />);
+    await waitFor(() =>
+      expect(screen.getByText(/tile shader failed to compile or link/)).toBeTruthy(),
+    );
     expect(screen.getByText('fallback table')).toBeTruthy();
   });
 });
