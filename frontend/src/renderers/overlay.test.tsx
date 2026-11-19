@@ -14,16 +14,30 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import { HandDock } from '../components/HandDock';
+import { PhysicalTable } from '../components/PhysicalTable';
 import { snapshotFromGameState } from './snapshot';
-import { TableOverlay } from './overlay';
+import { TableCompass, TableOverlay } from './overlay';
 import type { TableOverlayProps } from './overlay';
+import { compassBox } from './compassOverlay';
 import { frameForAspect, layoutBoard } from './three/boardLayout';
-import { hitRects } from './three/hitTest';
+import { compassWellRect, hitRects } from './three/hitTest';
 import type { TableSnapshot } from './contract';
 import type { GameState, PlayerState } from '../types/game';
 
 // The SVG tile package bundles its own React; the labels are the subject here.
 vi.mock('../components/Tile', () => ({ Tile: () => null }));
+// Same reason: the wind glyphs are the 2.5D package's own elements, so both
+// compasses get a plain SVG with the same attributes.
+vi.mock('riichi-mahjong-tiles', async () => {
+  const { createElement } = await import('react');
+  const Glyph = (props: Record<string, unknown>) => createElement('svg', props);
+  return {
+    RegularTon: Glyph,
+    RegularNan: Glyph,
+    RegularShaa: Glyph,
+    RegularPei: Glyph,
+  };
+});
 
 const VIEWPORT = { widthPx: 1920, heightPx: 1080 };
 
@@ -342,5 +356,128 @@ describe('3D overlay: placement and motion', () => {
     const group = screen.getByRole('group', { name: 'Your hand' });
     expect(group).toBe(container.firstElementChild);
     expect(group.className).toBe('renderer-3d-hand');
+  });
+});
+
+/**
+ * A table whose compass has known values: seats 1 and 2 declared riichi, each
+ * player a different wind and score, a non-default round and a non-zero pot
+ * (which the 3D compass must not duplicate).
+ */
+function compassState(): GameState {
+  const winds = ['East', 'South', 'West', 'North'] as const;
+  const players = [HUMAN, otherPlayer(1), otherPlayer(2), otherPlayer(3)].map(
+    (player, index) => ({
+      ...player,
+      wind: winds[index],
+      score: 25000 + index * 1000,
+      is_riichi: index === 1 || index === 2,
+      riichi_discard_index: null,
+    }),
+  );
+  return {
+    ...gameState(HUMAN),
+    round_wind: 'South',
+    hand_number: 3,
+    tiles_remaining: 42,
+    riichi_sticks: 5,
+    players,
+  };
+}
+
+/** Every aria-label under a subtree, in DOM order. */
+function accessibleNames(view: ParentNode): string[] {
+  return Array.from(view.querySelectorAll('[aria-label]')).map(
+    (element) => element.getAttribute('aria-label') ?? '',
+  );
+}
+
+function compassRectFor(table: TableSnapshot) {
+  const frame = frameForAspect(VIEWPORT.widthPx / VIEWPORT.heightPx, layoutBoard(table));
+  return compassWellRect(frame, VIEWPORT);
+}
+
+describe('3D overlay: compass (3D-09)', () => {
+  it('matches PhysicalTable’s compass names, order and text for the same state', () => {
+    const state = compassState();
+    const table = snapshotFromGameState(state, 1, false);
+
+    const planView = render(<PhysicalTable state={state} />);
+    const planCompass = planView.container.querySelector('.physical-center');
+    if (!planCompass) throw new Error('PhysicalTable has no compass');
+    const planNames = accessibleNames(planCompass);
+    const planScores = Array.from(planCompass.querySelectorAll('.compass-score')).map(
+      (element) => element.textContent,
+    );
+    const planWallText = planCompass
+      .querySelector('.compass-wall')
+      ?.textContent?.replace(/\s+/g, '');
+    const planSticks = planCompass.querySelectorAll('.compass-stick').length;
+    cleanup();
+
+    const rect = compassRectFor(table);
+    if (!rect) throw new Error('no compass rect at the test viewport');
+    const sceneView = render(<TableCompass snapshot={table} rect={rect} />);
+    const sceneCompass = sceneView.container.firstElementChild;
+    if (!sceneCompass) throw new Error('the 3D compass did not render');
+
+    // A drift test, not a copy: the two views agree for the same state.
+    expect(accessibleNames(sceneCompass)).toEqual(planNames);
+    expect(
+      Array.from(sceneCompass.querySelectorAll('.renderer-3d-compass-score')).map(
+        (element) => element.textContent,
+      ),
+    ).toEqual(planScores);
+    expect(
+      sceneCompass.querySelector('.renderer-3d-compass-wall')?.textContent?.replace(
+        /\s+/g,
+        '',
+      ),
+    ).toBe(planWallText);
+    // One marker per declarer, on both tables; the pot (5) is not drawn.
+    expect(
+      sceneCompass.querySelectorAll('.renderer-3d-compass-stick'),
+    ).toHaveLength(planSticks);
+    expect(planSticks).toBe(2);
+    expect(accessibleNames(sceneCompass).join(' ')).not.toContain('5 sticks');
+  });
+
+  it('sits on the projected well and keeps the well’s own centre', () => {
+    const table = snapshotFromGameState(compassState(), 1, false);
+    const rect = compassRectFor(table);
+    if (!rect) throw new Error('no compass rect at the test viewport');
+    const box = compassBox(rect);
+
+    render(<TableCompass snapshot={table} rect={rect} />);
+    const group = screen.getByRole('group', { name: 'Compass' });
+    expect(group.style.left).toBe(`${box.left}px`);
+    expect(group.style.top).toBe(`${box.top}px`);
+    expect(group.style.width).toBe(`${box.width}px`);
+    expect(group.style.height).toBe(`${box.height}px`);
+    expect(group.getAttribute('data-centre-x')).toBe(`${rect.centreX}`);
+    expect(group.getAttribute('data-centre-y')).toBe(`${rect.centreY}`);
+    // Within 2 % of the window of the well's projected centre.
+    expect(Math.abs(box.left + box.width / 2 - rect.centreX)).toBeLessThanOrEqual(
+      VIEWPORT.widthPx * 0.02,
+    );
+    expect(Math.abs(box.top + box.height / 2 - rect.centreY)).toBeLessThanOrEqual(
+      VIEWPORT.heightPx * 0.02,
+    );
+  });
+
+  it('renders nothing without a projection, and no controls of its own', () => {
+    const table = snapshotFromGameState(compassState(), 1, false);
+    const empty = render(<TableCompass snapshot={table} rect={null} />);
+    expect(empty.container.firstElementChild).toBeNull();
+    cleanup();
+
+    const rect = compassRectFor(table);
+    if (!rect) throw new Error('no compass rect at the test viewport');
+    const { container } = render(<TableCompass snapshot={table} rect={rect} />);
+    const group = container.firstElementChild as HTMLElement;
+    // Informational only: no buttons, no focus stops (pointer-events are the
+    // stylesheet's job: the layer passes them through except on its labels).
+    expect(group.querySelectorAll('button, [tabindex]')).toHaveLength(0);
+    expect(group.getAttribute('role')).toBe('group');
   });
 });

@@ -69,19 +69,22 @@ export const TABLE = {
  * A point stick (1000 points), lying flat next to the compass well.
  *
  * The sticks are table furniture, not tiles: the layout never merges them into
- * the tile list and the collision gate skips them. They sit in the free band
- * between the compass well (half-width 2) and the human's nearest pond row
- * (inner edge 2.2886), a 0.29-unit annulus wide enough for the 0.22-unit width,
- * and they lie along +X so the row reads from the camera.
+ * the tile list and the collision gate skips them. 3D-09 draws **one stick per
+ * declarer**, on that seat's side of the compass, lengthways along its edge
+ * (the same place `PhysicalTable` puts a seat's stick). The 1000-point pot
+ * (`compass.riichiSticks`) is not drawn on the 3D table: it stays in the table
+ * information drawer, so the two never read as the same thing.
+ *
+ * Each stick sits in the free band between the compass well (half-width 2) and
+ * the nearest pond row (inner edge 2.2886), a 0.29-unit annulus wide enough for
+ * the 0.22-unit width, on its own seat's side of the table.
  */
 export const STICK = {
   lengthUnits: 1.2,
   widthUnits: 0.22,
   heightUnits: 0.1,
-  /** Centre-line distance from the table centre, on the human's (+Z) side. */
+  /** Centre-line distance from the table centre, on the declarer's side. */
   radiusUnits: 2.144,
-  /** Centre-to-centre step along the row. */
-  pitchUnits: 0.3,
 } as const;
 
 /** Seats around the table, in turn order from the human. */

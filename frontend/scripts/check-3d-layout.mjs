@@ -164,7 +164,8 @@ function widestFixture(fixture) {
     meldCounts: [4, 4, 4, 4],
     kan: true,
     doraCount: 5,
-    riichiSticks: 6,
+    // Every seat declares: the most per-seat riichi sticks this board can draw.
+    riichiSeats: [0, 1, 2, 3],
   });
 }
 
@@ -185,7 +186,7 @@ async function main() {
   console.log('3D layout gate (3D-06)\n');
   console.log(`fixture: human seat ${humanSeat}, ` +
     `${fixture.dora.length} dora, ` +
-    `${fixture.compass.riichiSticks} sticks, ` +
+    `${fixture.seats.filter((seat) => seat.riichi).length} declarers, ` +
     `${fixture.seats.reduce((sum, seat) => sum + seat.river.length, 0)} discards\n`);
 
   /* ---------------------------- constants ---------------------------- */
@@ -462,29 +463,37 @@ async function main() {
   });
   check('the four seats are exact rotations of each other', seatOk, 'yaw 0/90/180/270°');
 
-  const sticksOk = board.sticks.every((stick) => {
-    const box = {
-      centre: stick.position,
-      axes: [
-        [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 1],
-      ],
-      halfExtents: stick.sizeUnits.map((extent) => extent / 2),
-    };
-    return board.tiles.every(
-      (tile) => !L.orientedBoxesIntersect(box, L.orientedBox(tile.pose)),
-    );
-  });
+  const declarers = fixture.seats.filter((seat) => seat.riichi);
+  const sticksOk =
+    board.sticks.length === declarers.length &&
+    board.sticks.every((stick) => {
+      // Each stick lies on its own declarer's side, lengthways along the edge.
+      const yaw = (stick.yawDeg * Math.PI) / 180;
+      const right = [Math.cos(yaw), 0, -Math.sin(yaw)];
+      const outward = [Math.sin(yaw), 0, Math.cos(yaw)];
+      const radial =
+        stick.position[0] * outward[0] + stick.position[2] * outward[2];
+      const tangential =
+        stick.position[0] * right[0] + stick.position[2] * right[2];
+      const box = {
+        centre: stick.position,
+        axes: [right, [0, 1, 0], outward],
+        halfExtents: stick.sizeUnits.map((extent) => extent / 2),
+      };
+      return (
+        declarers.some((seat) => seat.seat === stick.seat) &&
+        close(radial, C.STICK.radiusUnits) &&
+        close(tangential, 0) &&
+        radial - C.STICK.widthUnits / 2 > C.TABLE.compassWellUnits / 2 &&
+        board.tiles.every(
+          (tile) => !L.orientedBoxesIntersect(box, L.orientedBox(tile.pose)),
+        )
+      );
+    });
   check(
-    'riichi sticks sit clear of every tile and the compass well',
-    sticksOk &&
-      board.sticks.every(
-        (stick) =>
-          stick.position[2] - C.STICK.widthUnits / 2 >
-          C.TABLE.compassWellUnits / 2,
-      ),
-    `${board.sticks.length} sticks`,
+    'one riichi stick per declarer sits on that seat’s side, clear of every tile',
+    sticksOk,
+    `${board.sticks.length} sticks for ${declarers.length} declarers`,
   );
 
   check(

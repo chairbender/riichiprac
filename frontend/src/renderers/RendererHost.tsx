@@ -12,8 +12,8 @@
  *   second loss or a failed load.
  *
  * The canvas is decoration: it is `aria-hidden`, is not focusable, and the
- * view is named by a hidden heading (the DOM overlay that carries the real
- * buttons and compass arrives in 3D-08/3D-09).
+ * view is named by a hidden heading (the DOM overlays that carry the real
+ * buttons and the compass are 3D-08's and 3D-09's work).
  *
  * This module has **no static import of three.js**. The only reference is the
  * dynamic `import('./three')` below, which the module-boundary test pins.
@@ -23,6 +23,7 @@ import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } f
 import type { ReactNode } from 'react';
 import { antiAliasFor, probeCapabilities } from './capabilities';
 import type {
+  CompassRect,
   DebugMode,
   HandTileRef,
   HeroReport,
@@ -37,7 +38,7 @@ import {
   HERO_FAILED_EVENT,
   HERO_READY_EVENT,
 } from './contract';
-import { TableOverlay } from './overlay';
+import { TableCompass, TableOverlay } from './overlay';
 import type { OverlayHandTile } from './handOverlay';
 import './RendererHost.css';
 
@@ -305,6 +306,7 @@ export function RendererHost({
   const [heroReport, setHeroReport] = useState<HeroReport | null>(null);
   const [heroExported, setHeroExported] = useState(0);
   const [hitRects, setHitRects] = useState<readonly HitRect[]>([]);
+  const [compassRect, setCompassRect] = useState<CompassRect | null>(null);
 
   /**
    * Re-read the renderer's pure projection. Called after everything that can
@@ -313,6 +315,7 @@ export function RendererHost({
    */
   const refreshHitRects = useCallback(() => {
     setHitRects(rendererRef.current?.hitRects() ?? []);
+    setCompassRect(rendererRef.current?.compassRect?.() ?? null);
   }, []);
 
   const reportHoverTile = useCallback((tile: OverlayHandTile | null) => {
@@ -492,6 +495,7 @@ export function RendererHost({
       canvas?.remove();
       canvas = null;
       setHitRects([]);
+      setCompassRect(null);
     };
   }, [
     capabilities,
@@ -544,6 +548,9 @@ export function RendererHost({
             onSelectTile={onSelectTile}
             onHoverTile={reportHoverTile}
           />
+        )}
+        {status.state === 'ready' && debug !== 'hero' && (
+          <TableCompass snapshot={snapshot} rect={compassRect} />
         )}
         {showFallback && fallback}
         {debug === 'hero' && status.state === 'ready' && (

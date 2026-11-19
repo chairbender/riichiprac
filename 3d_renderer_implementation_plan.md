@@ -1568,6 +1568,63 @@ accessible marker on that seat.
 
 **Gate:** frontend gate.
 
+**As landed (3D-09, 2026-11-19).** Files: new `renderers/compassOverlay.ts`
+(pure compass model and box math), `renderers/overlay.tsx` (`TableCompass`
+beside the unchanged hand overlay), `renderers/RendererHost.tsx` (reads and
+clears the projected well, mounts the compass whenever the scene is ready and
+not in the hero debug view), `renderers/RendererHost.css` (the compass layer),
+`renderers/contract.ts` (`CompassRect`, optional `TableRenderer.compassRect()`),
+`renderers/three/hitTest.ts` (`compassWellRect` + `compassWellCorners`),
+`renderers/three/Scene.ts` (`compassRect()` on the same solved frame),
+`renderers/three/{boardLayout,boardFixture,sticks}.ts` and
+`layoutConstants.ts` (per-seat sticks), `scripts/check-3d-layout.mjs`, and the
+tests `compassOverlay.test.ts`, `overlay.test.tsx`, `RendererHost.test.tsx`,
+`boardLayout.test.ts`, `sticks.test.ts` and `layoutConstants.test.ts`.
+
+*Anchor.* The compass adds no second camera: `compassWellRect` projects the
+committed 4-unit well's four corners through the same `frameForAspect` frame
+`hitRects()` uses, publishes their bounding rectangle plus its centre, and the
+DOM square takes the rectangle's shorter side centred on that centre (floor
+`MIN_COMPASS_PX` = 132 px, so a stage whose well projects smaller still reads).
+Measured: 309 × 232 px well at 16:9 (1920 × 1080) → a 232 px square at font
+14.4 px; seven supported aspects plus 390 × 844 and 320 × 568 phones are all
+asserted. At each, the compass centre is within 0.4 % of the window of the
+independently projected world origin (gate: 2 %), the projected origin lies
+inside the square, and **no hand or draw button intersects it** — the human's
+topmost button is ≥ 289 px below the compass at 16:9, 56 px at 390 × 844 (a
+68 px well, grown to the 132 px floor) and 34 px at 320 × 568. Above the floor
+the square also stays inside the well's rectangle.
+
+*Labels and structure.* `compassOverlay.ts` derives each corner from the
+snapshot using the human-anchored turn order the plan view uses, and
+`overlay.test.tsx` renders `PhysicalTable` and `TableCompass` for one state and
+compares the accessible names **in DOM order** — including the side group names,
+the visible score text and the round/tiles-left string — rather than restating
+them. The corner's accessible name keeps `PhysicalTable`'s raw integer score
+("South wind, 26000 points, riichi") while the visible score is grouped
+("26,000"), which the drift test caught. The corner stack turns with its seat
+(`SIDE_ROTATION`'s 0/270/180/90), and the wind glyph, score and `RiichiStick`
+are the same components the 2D compass uses.
+
+*Riichi sticks.* `layoutBoard` now draws **one 3D stick per seat whose `riichi`
+flag is true**, on that seat's own side of the well at `STICK.radiusUnits`,
+lengthways along its edge (`BoardStick.seat` + `yawDeg`; `sticks.ts` composes the
+yaw). The 1000-point pot is not drawn on the 3D table at all — the unit
+explicitly keeps `compass.riichiSticks` in the table information drawer — so the
+prior row of `riichiSticks` sticks on the human's side is gone. The layout gate
+now checks one stick per declarer, its side/radius/tangent, and clearance from
+every tile at its own yaw.
+
+*Interaction.* The compass is informational: no buttons, no tab stops, and the
+layer is `pointer-events: none` with only its labels re-enabling them, so the
+felt and the hand buttons stay reachable. It renders whether or not a hand
+handler is supplied, and is removed while the scene is loading, unsupported,
+failed or in the hero debug view.
+
+**Visual sign-off:** not claimed here (AGENTS.md §6). The compass, its type size
+and its panel over the felt are handed to the user with 3D-15's whole-board
+check.
+
 ---
 
 ### 3D-10 — Carve self-shadow, debug modes, step tiers

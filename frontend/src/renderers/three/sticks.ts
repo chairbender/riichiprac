@@ -7,6 +7,9 @@
  * procedural texture — a 1000-point stick is an ivory bar with one red dot, and
  * that dot is the only detail worth drawing at this size.
  *
+ * 3D-09 places one stick per declarer on that seat's side of the compass, so
+ * each instance also carries its seat's yaw; the box's own long axis is +X.
+ *
  * The texture is generated in code (`stickTexturePixels`) for the same reasons
  * as the felt and the contact shadow: no new committed asset, deterministic
  * bytes, and a Node test can assert the dot's colour and position without a GPU.
@@ -81,7 +84,8 @@ export interface StickMesh {
   dispose(): void;
 }
 
-const IDENTITY_QUATERNION = new Quaternion();
+const UP_AXIS = new Vector3(0, 1, 0);
+const DEG = Math.PI / 180;
 
 /** Build the one instanced stick draw for a list of placed sticks. */
 export function createStickMesh(
@@ -109,6 +113,7 @@ export function createStickMesh(
   mesh.renderOrder = 2;
 
   const matrix = new Matrix4();
+  const quaternion = new Quaternion();
   const write = (next: readonly BoardStick[]): void => {
     if (next.length > capacity) {
       throw new Error(
@@ -116,9 +121,12 @@ export function createStickMesh(
       );
     }
     next.forEach((stick, index) => {
+      // A stick is authored along +X; its seat's yaw turns it lengthways along
+      // that player's own edge of the compass (3D-09).
+      quaternion.setFromAxisAngle(UP_AXIS, stick.yawDeg * DEG);
       matrix.compose(
         new Vector3(stick.position[0], stick.position[1], stick.position[2]),
-        IDENTITY_QUATERNION,
+        quaternion,
         new Vector3(stick.sizeUnits[0], stick.sizeUnits[1], stick.sizeUnits[2]),
       );
       mesh.setMatrixAt(index, matrix);

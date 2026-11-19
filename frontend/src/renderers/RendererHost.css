@@ -245,3 +245,119 @@
 .renderer-3d-hero-actions button:hover {
   background: #e3edff;
 }
+
+/*
+ * The compass (3D-09): the table's numbers as DOM over the felt, never 3D text.
+ *
+ * It is a square anchored to the projected compass well (the renderer hands the
+ * overlay that rectangle). Inside, it is `PhysicalTable`'s 3×3 compass: one
+ * turned corner per seat around the round / tiles-left centre. Only its own
+ * labels take pointer events, so the felt and the hand buttons stay reachable.
+ */
+.renderer-3d-compass {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: 1fr auto 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: 0.4em 0.5em;
+  padding: 0.45em;
+  box-sizing: border-box;
+  color: #8b94a7;
+  white-space: nowrap;
+  background: rgba(11, 17, 22, 0.55);
+  border: 1px solid rgba(35, 42, 54, 0.85);
+  border-radius: 0.8em;
+  pointer-events: none;
+}
+
+.renderer-3d-compass-seat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.renderer-3d-compass-seat--bottom {
+  grid-area: 3 / 2 / 4 / 3;
+}
+
+.renderer-3d-compass-seat--right {
+  grid-area: 2 / 3 / 3 / 4;
+}
+
+.renderer-3d-compass-seat--top {
+  grid-area: 1 / 2 / 2 / 3;
+}
+
+.renderer-3d-compass-seat--left {
+  grid-area: 2 / 1 / 3 / 2;
+}
+
+/* One player's corner, read from the middle outwards: wind, score, stick. */
+.renderer-3d-compass-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  pointer-events: auto;
+}
+
+/* The symbol alone; the filter clears the glyph's own blue and turns it white. */
+.renderer-3d-compass-wind {
+  display: block;
+  width: 2.6em;
+  height: 2.6em;
+  filter: brightness(0) invert(1);
+}
+
+.renderer-3d-compass-player--human .renderer-3d-compass-wind {
+  filter: brightness(0) invert(1)
+    drop-shadow(0 0 1px rgba(165, 216, 255, 0.55));
+}
+
+.renderer-3d-compass-score {
+  color: #e7ecf3;
+  font-size: 1em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+/* Horizontal in its own frame; the seat's turn makes it lengthways. */
+.renderer-3d-compass-stick {
+  display: block;
+  width: 4.4em;
+  height: auto;
+}
+
+.renderer-3d-compass-wall {
+  grid-area: 2 / 2 / 3 / 3;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  pointer-events: auto;
+}
+
+.renderer-3d-compass-round {
+  color: #a5d8ff;
+  font-size: 1em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.renderer-3d-compass-count {
+  color: #e7ecf3;
+  font-size: 1.35em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}

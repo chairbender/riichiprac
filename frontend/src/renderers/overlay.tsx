@@ -1,5 +1,6 @@
 /**
- * The 3D view's DOM overlay (3D-08): the first part of the floating UI layer.
+ * The 3D view's DOM overlay (3D-08, compass in 3D-09): the first part of the
+ * floating UI layer.
  *
  * The canvas is an `aria-hidden` picture (3D-02). Everything a user can act on
  * is a real `<button>` here, positioned over the scene with the rectangles the
@@ -23,12 +24,31 @@
  * - hover/focus reported through `onHoverTile` for 3D-12's bounded lift, with
  *   the motion suppressed under `prefers-reduced-motion`. The buttons never move
  *   for it: their rects come from the camera, not from interaction state.
+ *
+ * 3D-09 adds {@link TableCompass}: the table's numbers are DOM, never 3D text.
+ * It is a separate sibling of the hand group, not a child of it, so the hand's
+ * accessible group stays exactly "Your hand" and the compass keeps
+ * `PhysicalTable`'s group/role/label structure.
  */
 
 import { useLayoutEffect, useMemo, useRef } from 'react';
+import type { ComponentType, SVGProps } from 'react';
+import {
+  RegularNan,
+  RegularPei,
+  RegularShaa,
+  RegularTon,
+} from 'riichi-mahjong-tiles';
+import { RiichiStick } from '../components/RiichiStick';
 import { handTileLabel } from '../handTileLabel';
 import { hitRectKey } from './contract';
-import type { HitRect, TableSnapshot } from './contract';
+import type { CompassRect, HitRect, TableSnapshot } from './contract';
+import {
+  COMPASS_SIDE_LABELS,
+  compassBox,
+  compassFontPx,
+  compassView,
+} from './compassOverlay';
 import { overlayHandTiles } from './handOverlay';
 import type { OverlayHandTile } from './handOverlay';
 
@@ -179,6 +199,109 @@ export function TableOverlay({
           />
         );
       })}
+    </div>
+  );
+}
+
+type WindGlyph = ComponentType<SVGProps<SVGSVGElement>>;
+
+/**
+ * The wind symbol for each seat, drawn without a tile body, exactly as
+ * `PhysicalTable`'s compass draws it: the glyph alone, recoloured to read on
+ * the dark panel.
+ */
+const WIND_GLYPHS: Record<'East' | 'South' | 'West' | 'North', WindGlyph> = {
+  East: RegularTon,
+  South: RegularNan,
+  West: RegularShaa,
+  North: RegularPei,
+};
+
+/** Props for {@link TableCompass}. */
+export interface TableCompassProps {
+  /** The table whose numbers the compass shows. */
+  readonly snapshot: TableSnapshot;
+  /** The renderer's projected compass well, or null before the board exists. */
+  readonly rect: CompassRect | null;
+}
+
+/**
+ * The compass over the 3D table (3D-09): four seat groups (wind, score, riichi
+ * marker) round the projected compass well, plus the round and tiles-left in
+ * the middle.
+ *
+ * It mirrors `PhysicalTable`'s compass structure so the two views read
+ * identically to a screen reader: a "Compass" group, one side-labelled group per
+ * edge, a `role="img"` corner named "{wind} wind, {score} points[, riichi]", and
+ * a centre group named "Round {round} {hand}, {tiles} tiles remaining".
+ *
+ * The 1000-point pot is not shown here: `compass.riichiSticks` stays in the
+ * table information drawer, so the per-seat markers on the felt are the only
+ * riichi count on the 3D table.
+ */
+export function TableCompass({ snapshot, rect }: TableCompassProps) {
+  const view = useMemo(() => compassView(snapshot), [snapshot]);
+  if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
+
+  const box = compassBox(rect);
+  const fontPx = compassFontPx(box);
+
+  return (
+    <div
+      className="renderer-3d-compass"
+      role="group"
+      aria-label="Compass"
+      data-centre-x={rect.centreX}
+      data-centre-y={rect.centreY}
+      style={{
+        left: `${box.left}px`,
+        top: `${box.top}px`,
+        width: `${box.width}px`,
+        height: `${box.height}px`,
+        fontSize: `${fontPx}px`,
+      }}
+    >
+      {view.seats.map((seat) => {
+        const WindGlyph = WIND_GLYPHS[seat.wind];
+        return (
+          <div
+            key={seat.seat}
+            role="group"
+            className={`renderer-3d-compass-seat renderer-3d-compass-seat--${seat.side}`}
+            aria-label={COMPASS_SIDE_LABELS[seat.side]}
+          >
+            <div
+              role="img"
+              className={`renderer-3d-compass-player${
+                seat.isHuman ? ' renderer-3d-compass-player--human' : ''
+              }`}
+              aria-label={seat.label}
+              // The stack turns with its seat, like the tiles on that edge: the
+              // wind nearest the middle, the score next, the stick closest to
+              // the player.
+              style={{ transform: `rotate(${seat.rotationDeg}deg)` }}
+            >
+              <WindGlyph
+                className="renderer-3d-compass-wind"
+                aria-hidden="true"
+                focusable="false"
+              />
+              <span className="renderer-3d-compass-score">
+                {seat.score.toLocaleString('en-US')}
+              </span>
+              {seat.riichi && <RiichiStick className="renderer-3d-compass-stick" />}
+            </div>
+          </div>
+        );
+      })}
+      <div
+        className="renderer-3d-compass-wall"
+        role="group"
+        aria-label={view.label}
+      >
+        <span className="renderer-3d-compass-round">{view.round}</span>
+        <span className="renderer-3d-compass-count">{view.tilesRemaining}</span>
+      </div>
     </div>
   );
 }

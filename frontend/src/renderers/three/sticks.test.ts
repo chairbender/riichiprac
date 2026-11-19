@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { STICK as STICK_CONSTANTS } from '../layoutConstants';
 import { boardFixture } from './boardFixture';
-import { layoutBoard } from './boardLayout';
+import { layoutBoard, seatBasis } from './boardLayout';
 import { STICK, createStickMesh, stickTexturePixels } from './sticks';
 
 describe('the stick texture', () => {
@@ -68,11 +68,16 @@ describe('the stick layer', () => {
       expect(matrix[offset + 12]).toBeCloseTo(stick.position[0], 6);
       expect(matrix[offset + 13]).toBeCloseTo(stick.position[1], 6);
       expect(matrix[offset + 14]).toBeCloseTo(stick.position[2], 6);
-      // Column 0 is the box's +X scaled to the stick's length.
+      // Column 0 is the box's +X scaled to the stick's length, turned by the
+      // declarer's own yaw so it lies lengthways along that seat's edge.
       expect(Math.hypot(matrix[offset], matrix[offset + 1], matrix[offset + 2])).toBeCloseTo(
         stick.sizeUnits[0],
         6,
       );
+      const { right } = seatBasis(stick.seat);
+      expect(matrix[offset]).toBeCloseTo(right[0] * stick.sizeUnits[0], 6);
+      expect(matrix[offset + 1]).toBeCloseTo(0, 6);
+      expect(matrix[offset + 2]).toBeCloseTo(right[2] * stick.sizeUnits[0], 6);
       expect(stick.sizeUnits[0]).toBe(STICK_CONSTANTS.lengthUnits);
       expect(stick.sizeUnits[1]).toBe(STICK_CONSTANTS.heightUnits);
       expect(stick.sizeUnits[2]).toBe(STICK_CONSTANTS.widthUnits);
@@ -82,8 +87,8 @@ describe('the stick layer', () => {
     layer.dispose();
   });
 
-  it('draws nothing when the table has no sticks', () => {
-    const empty = layoutBoard(boardFixture({ riichiSticks: 0 }));
+  it('draws nothing when no seat has declared riichi', () => {
+    const empty = layoutBoard(boardFixture({ riichiSeats: [] }));
     const layer = createStickMesh(empty.sticks);
     expect(layer.count).toBe(0);
     expect(layer.mesh.instanceMatrix.count).toBe(STICK.capacity);
@@ -98,7 +103,7 @@ describe('the stick layer', () => {
     expect((layer.mesh.instanceMatrix.array as Float32Array).buffer).toBe(buffer);
 
     const small = createStickMesh([], 1);
-    const many = layoutBoard(boardFixture({ riichiSticks: 4 })).sticks;
+    const many = layoutBoard(boardFixture({ riichiSeats: [0, 1, 2, 3] })).sticks;
     expect(() => small.sync(many)).toThrow(/exceed the 1-stick capacity/);
     small.dispose();
     layer.dispose();

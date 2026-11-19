@@ -25,7 +25,9 @@ import {
   projectPoint,
   projectToPixels,
   referenceFrame,
+  seatBasis,
   seatPoint,
+  seatYawDeg,
   wallRunRadius,
   wallTierHeightUnits,
   type BoardTile,
@@ -437,28 +439,36 @@ describe('3D board layout: wall, dora and sticks', () => {
     }
   });
 
-  it('lays one point stick per reported riichi stick, clear of the tiles', () => {
-    expect(board.sticks).toHaveLength(fixture.compass.riichiSticks);
+  it('lays one point stick on the side of every declarer', () => {
+    const declarers = fixture.seats.filter((seat) => seat.riichi);
+    expect(declarers.length).toBeGreaterThan(0);
+    expect(board.sticks.map((stick) => stick.seat)).toEqual(
+      declarers.map((seat) => seat.seat),
+    );
+
     for (const stick of board.sticks) {
-      const radius = stick.position[2];
-      expect(radius).toBeCloseTo(STICK.radiusUnits, 9);
+      // The declarer's own side of the compass, lengthways along its edge.
+      expect(stick.yawDeg).toBe(seatYawDeg(stick.seat));
+      expect(stick.position[1]).toBeCloseTo(STICK.heightUnits / 2, 9);
+      const { outward, right } = seatBasis(stick.seat);
+      const radial =
+        stick.position[0] * outward[0] + stick.position[2] * outward[2];
+      const tangential =
+        stick.position[0] * right[0] + stick.position[2] * right[2];
+      expect(radial).toBeCloseTo(STICK.radiusUnits, 9);
+      expect(tangential).toBeCloseTo(0, 9);
       // Between the compass well and the nearest pond row.
-      expect(radius - STICK.widthUnits / 2).toBeGreaterThan(
+      expect(radial - STICK.widthUnits / 2).toBeGreaterThan(
         TABLE.compassWellUnits / 2,
       );
-      expect(radius + STICK.widthUnits / 2).toBeLessThan(
+      expect(radial + STICK.widthUnits / 2).toBeLessThan(
         POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2,
       );
-    }
-    // Sticks never intersect a tile.
-    for (const stick of board.sticks) {
+
+      // Sticks never intersect a tile, at their own seat's yaw.
       const box = {
         centre: stick.position,
-        axes: [
-          [1, 0, 0],
-          [0, 1, 0],
-          [0, 0, 1],
-        ] as const,
+        axes: [right, [0, 1, 0] as const, outward] as const,
         halfExtents: [
           stick.sizeUnits[0] / 2,
           stick.sizeUnits[1] / 2,
@@ -469,6 +479,20 @@ describe('3D board layout: wall, dora and sticks', () => {
         expect(orientedBoxesIntersect(box, orientedBox(tile.pose))).toBe(false);
       }
     }
+  });
+
+  it('draws no stick for a seat that has not declared', () => {
+    const only = layoutBoard(
+      boardFixture({ riichiSeats: [2], riichiSticks: 3 }),
+    );
+    expect(only.sticks.map((stick) => stick.seat)).toEqual([2]);
+  });
+
+  it('never draws the 1000-point pot as felt sticks (3D-09)', () => {
+    const potOnly = layoutBoard(
+      boardFixture({ riichiSeats: [], riichiSticks: 5 }),
+    );
+    expect(potOnly.sticks).toEqual([]);
   });
 
   it('rejects more dora indicators than a game can reveal', () => {

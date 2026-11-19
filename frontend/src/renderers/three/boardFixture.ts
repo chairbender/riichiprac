@@ -34,8 +34,14 @@ export interface FixtureOptions {
   readonly kan?: boolean;
   /** Dora indicators, 0–5. Defaults to 3. */
   readonly doraCount?: number;
-  /** Point sticks next to the compass. Defaults to 2. */
+  /** The 1000-point pot. Defaults to 2; the 3D board does not draw it (3D-09). */
   readonly riichiSticks?: number;
+  /**
+   * Absolute seats that have declared riichi. Omitted, every seat whose river
+   * is long enough (all four by default) has, so the per-seat sticks are all
+   * drawn; `[]` gives a table with none.
+   */
+  readonly riichiSeats?: readonly Seat[];
   /** Whether every seat has an active draw. Defaults to true. */
   readonly draw?: boolean;
 }
@@ -132,6 +138,9 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
   const doraCount = options.doraCount ?? 3;
   const riichiSticks = options.riichiSticks ?? 2;
   const draw = options.draw ?? true;
+  const declared = options.riichiSeats
+    ? new Set<number>(options.riichiSeats)
+    : null;
 
   const seats = ([0, 1, 2, 3] as const).map((seat): SnapshotSeat => {
     const meldCount = meldCounts[seat];
@@ -170,6 +179,10 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
       }),
     );
 
+    const declaredRiichi = declared
+      ? declared.has(seat)
+      : riverCount > 5;
+
     return {
       seat,
       wind: (['East', 'South', 'West', 'North'] as const)[seat],
@@ -178,8 +191,8 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
       draw: draw ? tile('draw', concealed.length, seat * 14 + 13) : null,
       melds,
       river,
-      riichi: riverCount > 5,
-      riichiDiscardIndex: riverCount > 5 ? 5 : null,
+      riichi: declaredRiichi,
+      riichiDiscardIndex: declaredRiichi ? 5 : null,
     };
   });
 

@@ -265,7 +265,7 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     ).toBeLessThanOrEqual(TABLE.matSizeUnits / 2);
   });
 
-  it('keeps a point stick between the compass well and the near pond row', () => {
+  it('keeps a declarer’s point stick between the compass well and the pond', () => {
     expect(STICK.widthUnits).toBeLessThan(
       POND.rowRadiiUnits[POND.rows - 1] -
         TILE.heightUnits / 2 -
@@ -277,7 +277,12 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     expect(STICK.radiusUnits + STICK.widthUnits / 2).toBeLessThan(
       POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2,
     );
-    expect(STICK.pitchUnits).toBeGreaterThan(STICK.widthUnits);
+    // The stick lies lengthways along its own seat's edge; neighbouring seats'
+    // sticks are a quarter-turn apart, so their footprints never meet at the
+    // compass corners.
+    expect(STICK.radiusUnits - STICK.widthUnits / 2).toBeGreaterThan(
+      STICK.lengthUnits / 2,
+    );
   });
 
   it('carries the framing solver\u2019s inputs', () => {
