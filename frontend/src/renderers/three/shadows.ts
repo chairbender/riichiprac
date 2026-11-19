@@ -92,11 +92,11 @@ export const SHADOW = {
    *
    * v13's `handShadow` is depth 0.5 / offset 0.18 / σ 0.26 across / 0.10 along
    * at the 2.5D rig's 76-unit camera. On the 3D board's closer solve (53 units)
-   * that band showed only ~31 px of gradient under the hand and read as a thin
-   * line, so the handoff (2026-11-18, second shadow round) asked for it further
-   * down and blurrier: the numbers below double the offset, deepen the band and
-   * widen the blur, which puts ~49 px of gradient in front of the contact line
-   * — the reference view's own ~46 px at its scale.
+   * that read as a thin crisp line, so the handoffs (2026-11-18) lowered and
+   * widened it: the numbers below put the shadow's solid edge 0.65 units past
+   * the contact line (it was 0.35), with a σ 0.5 / 0.3 blur. The band is 1.1
+   * deep so 0.45 of it stays under the hand — that keeps the foot of the hand
+   * at full darkness while the mass sits lower.
    *
    * `depthUnits` is the band's depth across the row, anchored on the hand's
    * contact edge; `offsetUnits` moves it that far toward the viewer (+Z);
@@ -104,13 +104,22 @@ export const SHADOW = {
    * along the band. A reclined hand's body overhangs its contact edge, so the
    * band is built from the tile's **contact** corners, not its whole oriented
    * box — using the box would make it twice as deep again.
+   *
+   * `marginSigmas` is the quad's margin outside the blurred rectangle. The
+   * analytic profile is 0.5 alpha on the rect's edge and reaches 0 a sigma
+   * outside it, so a quad that stopped at the rect would be cut off at half
+   * opacity — a hard-edged "solid rectangle". The quad is therefore drawn
+   * `marginSigmas` wider than the rect on every axis (1.5 x σ = ~0.75 units
+   * across), where the profile has already fallen to 0.
    */
   hand: {
-    depthUnits: 0.7,
-    offsetUnits: 0.35,
+    depthUnits: 1.1,
+    offsetUnits: 0.65,
     spreadUnits: 0.24,
-    sigmaAcrossUnits: 0.45,
-    sigmaAlongUnits: 0.22,
+    sigmaAcrossUnits: 0.5,
+    sigmaAlongUnits: 0.3,
+    /** Quad margin around the shadow rect, in multiples of that axis's sigma. */
+    marginSigmas: 1.5,
   },
 } as const;
 
@@ -136,6 +145,11 @@ export interface ShadowInstance {
   readonly kind: number;
   /** Analytic ring width per world axis, in units (the band profile only). */
   readonly sigmaUnits: readonly [number, number];
+  /**
+   * The band's hard rectangle half-extents (the quad is this plus its fade
+   * margin). Zero for blob quads, which use their texture.
+   */
+  readonly innerHalfUnits: readonly [number, number];
 }
 
 /** The lowest point of a tile's oriented box, in world Y units. */
@@ -223,7 +237,7 @@ function includeContact(span: GroupSpan, tile: BoardTile): void {
  * band whichever way the seat's row runs.
  */
 function handGroupQuad(seat: Seat, span: GroupSpan): ShadowInstance {
-  const { depthUnits, offsetUnits, spreadUnits } = SHADOW.hand;
+  const { depthUnits, offsetUnits, spreadUnits, marginSigmas } = SHADOW.hand;
   const rowMin = span.minRow - spreadUnits;
   const rowMax = span.maxRow + spreadUnits;
   let depthMin: number;
@@ -241,25 +255,37 @@ function handGroupQuad(seat: Seat, span: GroupSpan): ShadowInstance {
     depthMax = span.maxDepth + spreadUnits + offsetUnits;
     depthShift = offsetUnits;
   }
-  const xRange: [number, number] = span.rowIsX ? [rowMin, rowMax] : [depthMin, depthMax];
-  const zRange: [number, number] = span.rowIsX
-    ? [depthMin, depthMax]
-    : [rowMin + depthShift, rowMax + depthShift];
-  const sizeUnits: readonly [number, number] = [xRange[1] - xRange[0], zRange[1] - zRange[0]];
-  const centre: Vec3 = [
-    (xRange[0] + xRange[1]) / 2,
-    SHADOW.liftUnits,
-    (zRange[0] + zRange[1]) / 2,
-  ];
   const along = SHADOW.hand.sigmaAlongUnits;
   const across = SHADOW.hand.sigmaAcrossUnits;
+  const sigmaUnits: readonly [number, number] = span.rowIsX
+    ? [along, across]
+    : [across, along];
+  const innerHalfUnits: readonly [number, number] = span.rowIsX
+    ? [(rowMax - rowMin) / 2, (depthMax - depthMin) / 2]
+    : [(depthMax - depthMin) / 2, (rowMax - rowMin) / 2];
+  // The quad carries the rect plus a fade margin, so its own edge is where the
+  // profile has already reached 0 (see SHADOW.hand.marginSigmas).
+  const halfUnits: readonly [number, number] = [
+    innerHalfUnits[0] + sigmaUnits[0] * marginSigmas,
+    innerHalfUnits[1] + sigmaUnits[1] * marginSigmas,
+  ];
+  const innerCentre: Vec3 = [
+    span.rowIsX ? (rowMin + rowMax) / 2 : (depthMin + depthMax) / 2,
+    SHADOW.liftUnits,
+    span.rowIsX
+      ? (depthMin + depthMax) / 2
+      : (rowMin + rowMax) / 2 + depthShift,
+  ];
+  const sizeUnits: readonly [number, number] = [halfUnits[0] * 2, halfUnits[1] * 2];
+  const centre: Vec3 = [innerCentre[0], innerCentre[1], innerCentre[2]];
   return {
     id: `hand-group-${seat}`,
     centre,
     sizeUnits,
     matrix: shadowMatrix(centre, sizeUnits),
     kind: SHADOW_KIND.band,
-    sigmaUnits: span.rowIsX ? [along, across] : [across, along],
+    sigmaUnits,
+    innerHalfUnits,
   };
 }
 
@@ -278,6 +304,7 @@ function tileQuad(tile: BoardTile): ShadowInstance {
     matrix: shadowMatrix(centre, sizeUnits),
     kind: SHADOW_KIND.blob,
     sigmaUnits: [0, 0],
+    innerHalfUnits: [0, 0],
   };
 }
 
@@ -393,6 +420,7 @@ export function bandAlphaAt(
  */
 const SHADOW_VERTEX_SHADER = /* glsl */ `
 attribute vec2 aHalfExtents;
+attribute vec2 aInnerHalf;
 attribute vec2 aSigma;
 attribute float aKind;
 
@@ -405,7 +433,9 @@ varying float vKind;
 void main() {
   vUv = uv;
   vLocal = (uv - 0.5) * 2.0 * aHalfExtents;
-  vHalf = aHalfExtents;
+  // The band's *hard* rectangle, which is smaller than the quad by its fade
+  // margin; the profile reaches 0 before the quad's own edge.
+  vHalf = aInnerHalf;
   vSigma = aSigma;
   vKind = aKind;
   mat4 toWorld = modelMatrix;
@@ -487,9 +517,11 @@ export function createShadowLayer(
     side: DoubleSide,
   });
   const halfExtents = new InstancedBufferAttribute(new Float32Array(capacity * 2), 2);
+  const innerHalf = new InstancedBufferAttribute(new Float32Array(capacity * 2), 2);
   const sigmas = new InstancedBufferAttribute(new Float32Array(capacity * 2), 2);
   const kinds = new InstancedBufferAttribute(new Float32Array(capacity), 1);
   geometry.setAttribute('aHalfExtents', halfExtents);
+  geometry.setAttribute('aInnerHalf', innerHalf);
   geometry.setAttribute('aSigma', sigmas);
   geometry.setAttribute('aKind', kinds);
 
@@ -506,6 +538,7 @@ export function createShadowLayer(
       );
     }
     const half = halfExtents.array as Float32Array;
+    const inner = innerHalf.array as Float32Array;
     const sigma = sigmas.array as Float32Array;
     const kind = kinds.array as Float32Array;
     next.forEach((instance, index) => {
@@ -513,12 +546,15 @@ export function createShadowLayer(
       mesh.setMatrixAt(index, matrix);
       half[index * 2] = instance.sizeUnits[0] / 2;
       half[index * 2 + 1] = instance.sizeUnits[1] / 2;
+      inner[index * 2] = instance.innerHalfUnits[0];
+      inner[index * 2 + 1] = instance.innerHalfUnits[1];
       sigma[index * 2] = instance.sigmaUnits[0];
       sigma[index * 2 + 1] = instance.sigmaUnits[1];
       kind[index] = instance.kind;
     });
     mesh.instanceMatrix.needsUpdate = true;
     halfExtents.needsUpdate = true;
+    innerHalf.needsUpdate = true;
     sigmas.needsUpdate = true;
     kinds.needsUpdate = true;
     mesh.count = next.length;

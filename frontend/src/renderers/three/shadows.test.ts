@@ -106,31 +106,50 @@ describe('contact quad placement', () => {
         contactZ = Math.max(contactZ, corner[2]);
       }
     }
-    // Row: the contact span plus the rig's 0.18 at both ends.
-    expect(group.sizeUnits[0]).toBeCloseTo(
-      maxX - minX + SHADOW.hand.spreadUnits * 2,
+    // Row: the contact span plus the rig's spread at both ends...
+    expect(group.innerHalfUnits[0]).toBeCloseTo(
+      (maxX - minX) / 2 + SHADOW.hand.spreadUnits,
       9,
     );
     expect(group.centre[0]).toBeCloseTo((minX + maxX) / 2, 9);
-    // Depth: a fixed band with its south edge 0.35 past the contact edge and
-    // its north edge under the hand.
-    expect(group.sizeUnits[1]).toBeCloseTo(SHADOW.hand.depthUnits, 9);
-    const south = group.centre[2] + group.sizeUnits[1] / 2;
-    const north = group.centre[2] - group.sizeUnits[1] / 2;
+    // ...and the depth rect: exactly `depthUnits` deep with its south edge
+    // `offsetUnits` past the contact edge and its north edge under the hand.
+    expect(group.innerHalfUnits[1]).toBeCloseTo(SHADOW.hand.depthUnits / 2, 9);
+    const south = group.centre[2] + group.innerHalfUnits[1];
+    const north = group.centre[2] - group.innerHalfUnits[1];
     expect(south).toBeCloseTo(contactZ + SHADOW.hand.offsetUnits, 9);
     expect(north).toBeCloseTo(
       contactZ - (SHADOW.hand.depthUnits - SHADOW.hand.offsetUnits),
       9,
     );
-    // The band reaches the felt well past the contact line: the handoff asked
-    // for it lower and blurrier than the reference rig's own numbers.
-    expect(SHADOW.hand.offsetUnits).toBeGreaterThan(0.18);
-    expect(SHADOW.hand.sigmaAcrossUnits).toBeGreaterThan(0.26);
+    // The quad carries a fade margin outside the rect on both axes, so the
+    // profile reaches 0 before the geometry ends. Without it the band is cut off
+    // at 0.5 alpha and reads as a solid rectangle (the handoff's complaint).
+    expect(group.sizeUnits[0]).toBeCloseTo(
+      group.innerHalfUnits[0] * 2 + 2 * SHADOW.hand.sigmaAlongUnits * SHADOW.hand.marginSigmas,
+      9,
+    );
+    expect(group.sizeUnits[1]).toBeCloseTo(
+      group.innerHalfUnits[1] * 2 + 2 * SHADOW.hand.sigmaAcrossUnits * SHADOW.hand.marginSigmas,
+      9,
+    );
+    // Alpha at the quad's own edge is 0, and 0 at the fade-out distance beyond
+    // the rect too, so nothing is clipped.
+    const halfAtEdge: [number, number] = [group.sizeUnits[0] / 2, group.sizeUnits[1] / 2];
+    expect(bandAlphaAt(halfAtEdge, group.innerHalfUnits, group.sigmaUnits)).toBeCloseTo(0, 6);
+    const fadeOut = [
+      group.innerHalfUnits[0] + SHADOW.hand.sigmaAlongUnits,
+      group.innerHalfUnits[1] + SHADOW.hand.sigmaAcrossUnits,
+    ] as const;
+    expect(bandAlphaAt(fadeOut, group.innerHalfUnits, group.sigmaUnits)).toBeCloseTo(0, 6);
+    // The handoff moved it down half a tile thickness beyond the first pass.
+    expect(SHADOW.hand.offsetUnits).toBeGreaterThan(0.35);
+    expect(SHADOW.hand.offsetUnits).toBeLessThan(0.35 + TILE.thicknessUnits);
     // Dark where the hand meets the felt: v13's core alpha over the felt.
     expect(
       bandAlphaAt(
         [0, contactZ - group.centre[2]],
-        [group.sizeUnits[0] / 2, group.sizeUnits[1] / 2],
+        group.innerHalfUnits,
         group.sigmaUnits,
       ),
     ).toBeGreaterThan(0.9);
@@ -173,11 +192,12 @@ describe('contact quad placement', () => {
     }
     // The numbers the handoff settled on, checked as a table.
     expect(SHADOW.hand).toEqual({
-      depthUnits: 0.7,
-      offsetUnits: 0.35,
+      depthUnits: 1.1,
+      offsetUnits: 0.65,
       spreadUnits: 0.24,
-      sigmaAcrossUnits: 0.45,
-      sigmaAlongUnits: 0.22,
+      sigmaAcrossUnits: 0.5,
+      sigmaAlongUnits: 0.3,
+      marginSigmas: 1.5,
     });
   });
 
@@ -312,7 +332,7 @@ describe('the shadow layer', () => {
     // the depth test is what keeps a quad off a tile body.
     expect(layer.mesh.renderOrder).toBeGreaterThan(0);
     // The per-instance attributes the shader reads.
-    for (const attribute of ['aHalfExtents', 'aSigma', 'aKind']) {
+    for (const attribute of ['aHalfExtents', 'aInnerHalf', 'aSigma', 'aKind']) {
       expect(layer.mesh.geometry.getAttribute(attribute), attribute).toBeDefined();
     }
     layer.dispose();

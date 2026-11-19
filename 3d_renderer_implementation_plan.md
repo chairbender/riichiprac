@@ -1413,13 +1413,19 @@ the shipped UI group layer (`shells.json` `shadowShape`, σ 5 px standing,
 `#0b1418`) and `2_5d_mahjong_tile_rendering_architecture.md` §10.12 ("blur the
 union once"). In 3D it is built from the tiles' **contact** corners (a reclined
 hand's body overhangs its contact edge by ~0.45 units, so its box would make the
-band twice as deep). The rig's own numbers read thin at this camera's closer
-solve (31 px of gradient at 1920 × 1080), so the second handoff widened them:
-**0.7 deep, its south edge 0.35 past the contact line, spread 0.24 at both row
-ends, Gaussian σ 0.45 across / 0.22 along**. On the felt that is 0.97 alpha at
-the contact edge (~27 luma), falling to 0 about 0.80 units (~56 px at
-1920 × 1080) in front of the hand — the reference view shows ~46 px at its own
-scale. The tsumogiri gap gets shadow like the rest of the union. Both profiles are one material/one call (the shader
+band twice as deep). The rig's own numbers read thin and crisp at this camera's
+closer solve, so the handoffs widened them: **1.1 deep, its south (solid) edge
+0.65 past the contact line, spread 0.24 at both row ends, Gaussian σ 0.5 across /
+0.3 along**, and the quad carries a **1.5σ fade margin** outside that rectangle.
+
+That margin was a bug fix, not a tweak: the analytic profile is 0.5 alpha on the
+rectangle's edge and 0 a sigma outside it, so a quad that ended at the rectangle
+was cut off at half opacity — a hard-edged "solid rectangle". With the margin the
+profile completes inside the geometry: 0.99 alpha on the contact line, 0.84 at
+28 px, 0.5 at 46 px, 0 at 81 px below the hand at 1920 × 1080 (~27 luma at its
+darkest). The reference view's band is ~46 px at its own scale, so this is
+deliberately larger/lower per the handoff. The tsumogiri gap gets shadow like the
+rest of the union. Both profiles are one material/one call (the shader
 branches on a per-instance kind). The material is transparent black,
 `depthTest` on, `depthWrite` off, drawn in the transparent pass after the opaque
 tiles, and every quad sits below a tile's top surface — so the depth test, not an
