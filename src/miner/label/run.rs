@@ -171,6 +171,11 @@ pub struct LabelRunReport {
     pub decisions_triggered: usize,
     /// Decisions a trigger prefilter kept out of the forward pass.
     pub decisions_filtered_out: usize,
+    /// Decision labels cleared because they came from another classifier
+    /// generation. A filtered rerun skips those decisions, so without this they
+    /// would keep a label from a retired rule set.
+    #[serde(default)]
+    pub stale_labels_cleared: usize,
     /// Cheap-trigger fires per trigger family, in report order.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub trigger_hits: BTreeMap<String, usize>,
@@ -418,6 +423,11 @@ pub fn run_shard_models(
     progress.announce(workers);
 
     let connection = open_miner_db(root)?;
+    // A trigger-filtered run only touches the decisions whose triggers fire, so
+    // a classifier bump would leave the older rule set's label on every skipped
+    // decision. Clear those once, before the workers start; labels from the
+    // current generation are left alone.
+    let stale_labels_cleared = clear_stale_labels(&connection, &options.classifier_version)?;
     // One read of `replays` beats one query per file, and keeps the workers off
     // the database for anything but their own label writes.
     let generators = generator_identities(&connection)?;
@@ -458,6 +468,7 @@ pub fn run_shard_models(
             .as_ref()
             .map(|calibration| calibration.calibration_id.clone()),
         replays_found: files.len(),
+        stale_labels_cleared,
         workers,
         wall_time_ms: 0,
         ..LabelRunReport::default()
@@ -470,6 +481,36 @@ pub fn run_shard_models(
     report.wall_time_ms = elapsed_ms(started);
 
     Ok(report)
+}
+
+/// Clear decision labels produced by another classifier generation.
+///
+/// `label` only writes labels for the decisions a trigger filter keeps, so a
+/// decision that fired under an older classifier version but not this one would
+/// keep a label `select` can read even though the rule set that produced it is
+/// gone. Clearing once at the start of the shard keeps the `decisions` table
+/// consistent with `--classifier-version`. The label cache is version-keyed, so
+/// its old rows are harmless and stay for a reproducer that explicitly asks for
+/// the old version.
+fn clear_stale_labels(connection: &Connection, version: &str) -> Result<usize, LabelError> {
+    let cleared = connection.execute(
+        "UPDATE decisions SET
+            label_json = NULL,
+            label_kind = NULL,
+            label_source = NULL,
+            mortal_top = NULL,
+            mortal_top_prob = NULL,
+            mortal_margin = NULL,
+            mortal_ranking = NULL,
+            q_values_json = NULL,
+            q_units = NULL,
+            labeler_model = NULL,
+            labeler_model_sha256 = NULL,
+            classifier_version = NULL
+         WHERE classifier_version IS NOT NULL AND classifier_version <> ?1",
+        params![version],
+    )?;
+    Ok(cleared)
 }
 
 /// Walk and label one replay file.

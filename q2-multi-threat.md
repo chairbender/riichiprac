@@ -130,10 +130,13 @@ the riichi count and the source family; the full report stays in the queue.
    DELETE FROM model_labels WHERE classifier_version <> '2';
    ```
 
-   `select` reads any `label_json` (decision row, then cache) without a version
-   filter, so those rows would otherwise be candidates in a later full-ch8
-   selection. Follow-up: make the labeler clear a skipped decision's old label,
-   or make `select` ignore labels whose `classifier_version` is not current.
+   `select` used to read any `label_json` (decision row, then cache) without a
+   version filter, so those rows were candidates in a later full-ch8 selection.
+   **Fixed in code:** a label run now clears every decision label whose
+   `classifier_version` differs from the run's version before the workers start
+   (`stale_labels_cleared` in the report), and `select` plus the trigger report
+   only read labels at the current `CLASSIFIER_VERSION`. The one-off SQL above
+   was the data-root cleanup for this already-labelled corpus.
 3. **Yield is replay-clustered.** 1,153 stable labels produced 780 bases only
    because of the per-replay cap. Raise it if a larger pack is wanted.
 

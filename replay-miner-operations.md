@@ -787,6 +787,13 @@ L1 also updates the `decisions` row when `extract` has created one
 `label_source` from the agreement classification; `selection_reason` is left to
 S2.
 
+A **filtered** run only labels the decisions whose triggers fire, so a classifier
+bump would leave the retired rule set's label on every skipped decision. The
+shard clears all `decisions` labels whose `classifier_version` differs from
+`--classifier-version` before the workers start and reports the count as
+`stale_labels_cleared`. The version-keyed `model_labels` cache is left alone;
+old generations stay available when a reproducer explicitly asks for one.
+
 ### Parity
 
 `cargo test --features miner` includes a parity test that evaluates every
@@ -949,6 +956,11 @@ decisions -> gates 1-6, 8 -> valid candidates -> held-out QA split
                                                -> gate 7 (dedupe) during fill
                                                -> review-queue.jsonl
 ```
+
+Labels are read only at the current `CLASSIFIER_VERSION`: a `decisions` row or
+`model_labels` cache row from another generation is treated as unlabelled. This
+is the read-side half of the labeler's stale-label clear, so a selection can
+never publish an answer produced by a retired rule set.
 
 ### Hard gates (§7.1)
 
