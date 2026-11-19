@@ -41,8 +41,15 @@ import { TILE_VERTEX_SHADER } from './materials/tile.vert';
 import { TILE_FRAGMENT_SHADER } from './materials/tile.frag';
 
 /**
- * The committed carve depth: `relief.json`'s `carve.depthMm` (0.55 mm), in tile
- * units (1 unit = 28 mm). The shader scales the height channel by this.
+ * The carve depth the shader integrates against, in millimetres (1 unit = 28 mm).
+ *
+ * 0.55 mm is the value 3D-05 calibrated the POM march, the probe gates and the
+ * 8-texel parallax bound with, and every reading in this unit's report names it.
+ * The 3D-owned carve that ships today (`relief3d.json`) is 0.495 mm deep, so
+ * this is the ~11% conservative end for both the displacement and the
+ * self-shadow reach. Aligning the constant to 0.495 is a calibration decision
+ * (it shortens both marches), not a drive-by edit; 3D-10's handoff keeps 0.55
+ * so the numbers the user judges are the numbers that were measured.
  */
 export const CARVE_DEPTH_MM = 0.55;
 export const CARVE_DEPTH_UNITS = CARVE_DEPTH_MM / UNIT_MM;
