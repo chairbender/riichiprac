@@ -1850,6 +1850,12 @@ with the self-shadow off / its count. The board view exports three —
 last two are macro shots down the board's own incidence ray) — and the hero view
 exports `carve-hero-states.png`. Export always shades normally (a false-colour
 debug mode is temporarily cleared) and restores the live state afterwards.
+Verified end-to-end in a real browser through a direct scene probe (no app
+overlay): the three board sheets come out 3840 × 2224 (the extra 64 px is the
+panel captions) at 4.3 / 6.7 / 4.6 MB, and the pond sheet's four quadrant mean
+lumas are 116.80 / 117.41 / 116.68 / 117.32 — i.e. the self-shadow is darker by
+0.12 and 0.09 at the two depth counts, and depth 12 is brighter by 0.61 / 0.64
+than depth 0. The matrix changes exactly the two uniforms it says it does.
 
 *Real-browser checks (Chrome + ANGLE/SwiftShader).* The hero view's probes all
 pass with the shadow on: face ivory `#f6f0ec` vs `#f5f0eb` (ΔE 0.63), blue back
