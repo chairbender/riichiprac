@@ -1,0 +1,156 @@
+{
+  "classifier_version": "2",
+  "label": {
+    "families": {
+      "akochan_tactics": {
+        "book_labels": 1692,
+        "contested": 531,
+        "decisions_cached": 0,
+        "decisions_failed": 0,
+        "decisions_labelled": 1692,
+        "decisions_seen": 8063,
+        "decisions_triggered": 1692,
+        "stable": 1161,
+        "wall_time_ms": 29761,
+        "workers": 14
+      },
+      "akochan_vs_mortal": {
+        "book_labels": 1080,
+        "contested": 457,
+        "decisions_cached": 0,
+        "decisions_failed": 0,
+        "decisions_labelled": 1080,
+        "decisions_seen": 7637,
+        "decisions_triggered": 1080,
+        "stable": 623,
+        "wall_time_ms": 20031,
+        "workers": 14
+      },
+      "heterogeneous_table": {
+        "book_labels": 1679,
+        "contested": 575,
+        "decisions_cached": 0,
+        "decisions_failed": 0,
+        "decisions_labelled": 1679,
+        "decisions_seen": 8184,
+        "decisions_triggered": 1679,
+        "stable": 1104,
+        "wall_time_ms": 28994,
+        "workers": 14
+      },
+      "mortal_mirror": {
+        "book_labels": 53208,
+        "contested": 21899,
+        "decisions_cached": 0,
+        "decisions_failed": 0,
+        "decisions_labelled": 53208,
+        "decisions_seen": 383240,
+        "decisions_triggered": 53208,
+        "stable": 31309,
+        "wall_time_ms": 919933,
+        "workers": 14
+      },
+      "mortal_sampling_sweep": {
+        "book_labels": 52723,
+        "contested": 21140,
+        "decisions_cached": 576,
+        "decisions_failed": 0,
+        "decisions_labelled": 52147,
+        "decisions_seen": 379928,
+        "decisions_triggered": 52723,
+        "stable": 31583,
+        "wall_time_ms": 1012424,
+        "workers": 14
+      }
+    },
+    "total": {
+      "book_labels": 110382,
+      "contested": 44602,
+      "decisions_cached": 576,
+      "decisions_failed": 0,
+      "decisions_labelled": 109806,
+      "decisions_seen": 787052,
+      "decisions_triggered": 110382,
+      "mortal_only": 0,
+      "stable": 65780,
+      "wall_time_ms": 2011143,
+      "workers": 14
+    }
+  },
+  "mechanical_review": {
+    "accepted": 780,
+    "items": 780,
+    "rejected": 0,
+    "rejection_reasons": {}
+  },
+  "multi_threat_labels": {
+    "contested": 451,
+    "stable": 1153
+  },
+  "review_sample": {
+    "rows": 200,
+    "seed": "q2-multithreat-2026-11",
+    "target": 200
+  },
+  "selection": {
+    "candidates_valid": 1153,
+    "cap_relaxed": 0,
+    "families": [
+      {
+        "bucket": "akochan_tactics",
+        "candidates": 40,
+        "cap": 60,
+        "cap_reached": false,
+        "selected": 18
+      },
+      {
+        "bucket": "akochan_vs_mortal",
+        "candidates": 14,
+        "cap": 60,
+        "cap_reached": false,
+        "selected": 12
+      },
+      {
+        "bucket": "heterogeneous_table",
+        "candidates": 9,
+        "cap": 60,
+        "cap_reached": false,
+        "selected": 9
+      },
+      {
+        "bucket": "mortal_mirror",
+        "candidates": 533,
+        "cap": 600,
+        "cap_reached": false,
+        "selected": 377
+      },
+      {
+        "bucket": "mortal_sampling_sweep",
+        "candidates": 499,
+        "cap": 600,
+        "cap_reached": false,
+        "selected": 364
+      }
+    ],
+    "funnel": {
+      "book_matches": 111844,
+      "decision_points": 787052,
+      "games_parsed": 1542,
+      "games_requested": 1542,
+      "games_valid": 1542,
+      "gate_passed": 1153,
+      "held_out": 58,
+      "mortal_labelled": 111844,
+      "packed": 0,
+      "reconstructed": 787052,
+      "selected": 780,
+      "trigger_hits": 646282
+    },
+    "held_out": 58,
+    "pack_id": "replay.ch8-defense-multi-threat.2026-11",
+    "selected": 780,
+    "wall_time_ms": 3284720,
+    "workers": 14
+  },
+  "status": "awaiting human sample review and sign-off; no dispositions applied, no pack assembled, nothing published"
+}

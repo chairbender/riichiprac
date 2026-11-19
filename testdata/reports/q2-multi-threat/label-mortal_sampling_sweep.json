@@ -1,0 +1,30 @@
+{
+  "model": "mortal_298k.safetensors",
+  "model_sha256": "afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128",
+  "labelers": [
+    "mortal_298k.safetensors"
+  ],
+  "classifier_version": "2",
+  "replays_found": 748,
+  "replays_walked": 748,
+  "replays_failed": 0,
+  "decisions_seen": 379928,
+  "decisions_dropped": 0,
+  "decisions_cached": 576,
+  "decisions_labelled": 52147,
+  "decisions_retried": 0,
+  "decisions_failed": 0,
+  "decisions_triggered": 52723,
+  "decisions_filtered_out": 327205,
+  "trigger_hits": {
+    "book": 52723
+  },
+  "book_labels": 52723,
+  "stable": 31583,
+  "contested": 21140,
+  "mortal_only": 0,
+  "book_conflicts": 0,
+  "workers": 14,
+  "wall_time_ms": 1012424,
+  "errors": []
+}
