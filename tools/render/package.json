@@ -27,7 +27,11 @@
     "relief": "bash bake-relief.sh --bake",
     "relief:preview": "bash bake-relief.sh --preview --only",
     "relief:masks": "node scripts/bake-relief-masks.mjs",
-    "check:relief": "node scripts/check-relief.mjs"
+    "check:relief": "node scripts/check-relief.mjs",
+    "board": "bash bake-board-assets.sh --bake",
+    "board:dry": "bash bake-board-assets.sh",
+    "board:atlas": "node scripts/bake-tile-faces-atlas.mjs",
+    "check:board": "node scripts/check-board-assets.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"
