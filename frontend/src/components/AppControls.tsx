@@ -16,6 +16,10 @@ interface AppControlsProps {
   packStatus: PackManifestStatus;
   packCount: number;
   packError: string | null;
+  /** Replay-first default source for covered lessons (RF2/RF3). */
+  preferReplay: boolean;
+  /** The picker's Generated source filter turns the default source off. */
+  onPreferReplayChange: (preferReplay: boolean) => void;
   requireAgreement: boolean;
   aiStatus: AiStatus;
   /** Tooltip explaining whether the Mortal-agreement filter can run. */
@@ -43,6 +47,8 @@ export function AppControls({
   packStatus,
   packCount,
   packError,
+  preferReplay,
+  onPreferReplayChange,
   requireAgreement,
   aiStatus,
   agreementHint,
@@ -63,6 +69,8 @@ export function AppControls({
         packStatus={packStatus}
         packCount={packCount}
         packError={packError}
+        preferReplay={preferReplay}
+        onPreferReplayChange={onPreferReplayChange}
       />
 
       <label className="app-toggle" title={agreementHint}>

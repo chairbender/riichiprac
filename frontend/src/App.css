@@ -177,6 +177,53 @@
   line-height: 1.35;
 }
 
+/* Replay / Generated / Both source filter -------------------------------- */
+
+.scenario-picker-source {
+  margin: 8px 12px 0;
+  padding: 6px 8px;
+  border: 1px solid #2c3a4c;
+  border-radius: 8px;
+  background-color: #1a2431;
+}
+
+.scenario-picker-source-legend {
+  padding: 0;
+  color: #8b94a7;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scenario-picker-source-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+}
+
+.scenario-picker-source-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #c6d4e4;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scenario-picker-source-option input {
+  margin: 0;
+  accent-color: #4f8bc9;
+  cursor: pointer;
+}
+
+.scenario-picker-source-option input:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
 .scenario-picker-all {
   display: flex;
   align-items: center;
@@ -284,6 +331,17 @@
   font-size: 0.55rem;
   font-weight: 800;
   letter-spacing: 0.04em;
+}
+
+/* The generated row of a covered lesson is the opt-in alternative: keep it
+   readable but visibly secondary to the replay position above it. */
+.scenario-item-badge-generated {
+  background-color: #33402b;
+  color: #c9dbb4;
+}
+
+.scenario-item-generated-alt .scenario-item-name {
+  color: #a4b3c4;
 }
 
 .scenario-item-only {
