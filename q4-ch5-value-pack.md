@@ -224,7 +224,8 @@ forty keep their existing defaults. The thin ch. 8 lessons
 ## User sign-off
 
 The 248-row sample and the published pack were presented on 2026-11-20.
-**User sign-off: pending.**
+**User sign-off: approved** ("Approve") for the 1,670-base, 0-variant pack and
+the sampled content review.
 
 ## Related links
 

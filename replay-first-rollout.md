@@ -342,8 +342,9 @@ includes its recogniser tests and a label-yield pass.
   Mechanical review 1,745/1,745 accepted; 248-row sampled sheet with all 97
   `chiitoi_vs_toitoi` bases; audit clean on the hosted manifest; hosting
   147/147 source and dist, ch5 content 27/27, ch7/ch8 content 27/27 each,
-  serving 26/26, frontend 811 tests/build/lint, Q1 e2e PASS. User sign-off
-  pending. Evidence: `testdata/reports/q4-ch5/` and
+  serving 26/26, frontend 811 tests/build/lint, Q1 e2e PASS. User sign-off:
+  approved 2026-11-20 for the 248-row sample and the pack. Evidence:
+  `testdata/reports/q4-ch5/` and
   [`q4-ch5-value-pack.md`](q4-ch5-value-pack.md).
 
 **Q5 — ch9 seating/kan pack** (`riichiprac`, worktree)
