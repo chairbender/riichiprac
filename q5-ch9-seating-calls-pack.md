@@ -244,7 +244,10 @@ replay-default.
 ## User sign-off
 
 The 220-row sample and the published pack were presented on 2026-11-20.
-**User sign-off: pending.**
+**User sign-off: approved** ("Those seem fine") for the 629-base, 0-variant
+pack and the sampled content review. The user separately raised the missing
+coverage for the three thin kan/call lessons; that is tracked as its own
+follow-up (selector/mining fix), not a rejection of this pack.
 
 ## Related links
 

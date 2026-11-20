@@ -360,7 +360,7 @@ includes its recogniser tests and a label-yield pass.
   `dama_improving_hand` 57). Mechanical review 2,901/2,901 accepted; 304-row
   sampled sheet; audit clean on the hosted manifest; hosting 113/113,
   ch7 content 27/27, serving 20/20, frontend 783 tests/build/lint, Q1 e2e PASS.
-  User sign-off pending. Evidence:
+  User sign-off: approved 2026-11-19. Evidence:
   `testdata/reports/q3-ch7/` and
   [`q3-ch7-riichi-dama-pack.md`](q3-ch7-riichi-dama-pack.md).
 
@@ -411,7 +411,9 @@ includes its recogniser tests and a label-yield pass.
   `wind_discard_order`); 220-row sample with all 91 kan/call bases; audit clean
   on the hosted manifest; hosting 181/181 source and dist, ch9 content 27/27,
   ch5/ch7/ch8 content 27/27 each, serving 32/32, frontend tests/build/lint, Q1
-  e2e PASS. User sign-off pending. Evidence: `testdata/reports/q5-ch9/` and
+  e2e PASS. User sign-off: approved 2026-11-20 ("Those seem fine"); the missing
+  coverage for the three thin kan/call lessons is a separate follow-up. Evidence:
+  `testdata/reports/q5-ch9/` and
   [`q5-ch9-seating-calls-pack.md`](q5-ch9-seating-calls-pack.md).
 
 **C9 — corpus growth for thin lessons** (`riichiprac-corpus`, worktree)
