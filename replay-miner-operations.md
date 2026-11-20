@@ -1384,13 +1384,22 @@ reviewed through the existing `scenario-report` path (it takes the same
 `GameState` the pack embeds); P1a adds no pack-specific review format.
 
 **Lesson coverage (replay-first rollout).** The manifest entry gains a
-`lesson_counts` map (lesson id → shipped bases) written by `pack publish` and
-validated against the body, so the frontend can decide which lessons are
-replay-default without downloading a body. Packs are published one per book
-section (ch3, ch4, ch5, ch7, ch8 completion, ch9) rather than per lesson, and a
-lesson becomes replay-default only when its shipped count reaches the coverage
-floor (40 reviewed bases, proposed). The full contract, coverage table and task
-sequence are in [`replay-first-rollout.md`](replay-first-rollout.md).
+`lesson_counts` map (lesson id → shipped reviewed bases) written by `pack
+publish` and validated against the body, so the frontend can decide which
+lessons are replay-default without downloading a body. A **base** is a scenario
+selected from the corpus; a variant derives from one base and adds no review
+coverage, so it is not counted. `pack publish` derives the map from the decoded
+body, which is also how a source manifest published before the field existed
+gets counts on the next hosted publish. A recorded count that disagrees with the
+body is an audit error (`lesson_count_mismatch`); a map that is absent is a
+strict-mode warning (`lesson_counts_missing`) so an old manifest still audits,
+while the hosting verifier and `scripts/check-pack-hosting.mjs` require it on a
+published artifact. The field is additive within manifest v1: a reader accepts a
+manifest with or without it. Packs are published one per book section (ch3, ch4,
+ch5, ch7, ch8 completion, ch9) rather than per lesson, and a lesson becomes
+replay-default only when its shipped count reaches the coverage floor (40
+reviewed bases, proposed). The full contract, coverage table and task sequence
+are in [`replay-first-rollout.md`](replay-first-rollout.md).
 
 Versioning is additive within v1: new fields are optional/defaulted and unknown
 fields are ignored. A breaking change bumps `version`. `source.kind`
@@ -1413,7 +1422,7 @@ parse error rather than a gate warning.
 | no spoiler | title, prompt, pre-answer note, book label, provenance labels and selection tags print no answer or tenpai-wait tile code; a visibly offered call tile is not a wait |
 | variant honesty | a transform chain validates, `provenance.transforms` matches it, and a variant carries `label_check.preserved = true` (V2 emits exactly this record; the audit re-checks it) |
 | budget | encoded gzip body within `max_bytes` (default 50 MB), scenario count within `max_scenarios` (default 5,000; a sanity split bound, not a pack target), manifest within 512 KiB |
-| manifest integrity | entry path is safe and content-addressed, hash/bytes/scenario count match the body, and convenience metadata drift is a strict-mode warning |
+| manifest integrity | entry path is safe and content-addressed, hash/bytes/scenario count match the body, convenience metadata drift is a strict-mode warning, and a recorded `lesson_counts` map matches the body's reviewed bases (an error, not drift) |
 
 A missing corpus row is a hard failure, not a warning, including when the whole
 `games.jsonl` source is absent: a pack whose provenance cannot be checked is not
@@ -1640,9 +1649,12 @@ frontend/public/scenarios/               # same-origin hosting (committed/CI)
 
 `pack assemble` / `pack fixture` write the left-hand tree. `pack publish` copies
 only the manifest and the manifest-listed bodies into the right-hand tree; it
-never copies `games.jsonl`, raw replays, databases or weights. The P1a/P1b
-directory audit (which does use `games.jsonl`) runs on the **source** before any
-copy, so a pack that cannot prove its provenance never reaches Pages. The hosted
+never copies `games.jsonl`, raw replays, databases or weights. It derives each
+entry's `lesson_counts` from the decoded body while copying, so the hosted
+manifest always records per-lesson coverage even when the source manifest
+predates the field. The P1a/P1b directory audit (which does use `games.jsonl`)
+runs on the **source** before any copy, so a pack that cannot prove its
+provenance never reaches Pages. The hosted
 directory therefore carries no provenance rows: re-audit the export, not the
 artifact. `scripts/check-pack-hosting.mjs` is the artifact-side verification.
 
@@ -1687,7 +1699,8 @@ cargo run --features miner --bin mine_replays -- pack publish \
 - **Audit first.** `audit_pack_dir` on the source must be clean under the chosen
   profile; a dirty source or a missing `games.jsonl` is refused.
 - **Allowlist copy.** Only `manifest.json` and the selected content-addressed
-  bodies are written. Every body is re-hashed and re-sized while copying.
+  bodies are written. Every body is re-hashed and re-sized while copying, and
+  its `lesson_counts` are re-derived from the decoded pack.
 - **Selection.** With no `--packs`, every source entry is hosted. With ids, the
   hosted set becomes exactly those packs, and bodies the new manifest no longer
   lists are pruned (content-addressed names change with every edit, so pruning
@@ -1698,8 +1711,8 @@ cargo run --features miner --bin mine_replays -- pack publish \
 - **Atomic and verified.** Bodies and the manifest go through
   `write_atomic`; the staged directory is read back through
   `verify_hosted_dir`, which re-hashes, decodes and compares the manifest's id,
-  count, lesson ids, book sections, licence, `requires_model` and
-  `data_commercial_use` with the body.
+  count, lesson ids, per-lesson `lesson_counts`, book sections, licence,
+  `requires_model` and `data_commercial_use` with the body.
 - `--dry-run` reports the planned bodies and stale files and writes nothing.
 - Exit codes: 0 published/verified, 1 refused (dirty source, unknown pack,
   over budget, invalid staged directory), 2 unreadable input.

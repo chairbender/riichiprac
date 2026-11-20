@@ -3,10 +3,12 @@
 //! `mine_replays pack report` prints one of these per manifest entry. It is the
 //! P1a half of the P1b pack report (which adds selection-side family quotas).
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use super::PackBudget;
-use super::model::Pack;
+use super::model::{Pack, render_lesson_counts};
 
 /// A serialisable summary of one pack body.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -29,6 +31,8 @@ pub struct PackReport {
     pub requires_model: bool,
     /// Lesson ids, sorted and unique.
     pub lesson_ids: Vec<String>,
+    /// Shipped reviewed bases per lesson id, sorted by id.
+    pub lesson_counts: BTreeMap<String, u32>,
     /// Book sections, sorted and unique.
     pub book_sections: Vec<String>,
     /// Contributing agents, `"<id> (<engine> <version>, <licence>)"`, sorted.
@@ -89,6 +93,7 @@ pub fn pack_report(pack: &Pack, bytes: u64, budget: &PackBudget) -> PackReport {
         data_commercial_use: pack.source.data_commercial_use,
         requires_model: pack.requires_model(),
         lesson_ids: pack.lesson_ids(),
+        lesson_counts: pack.lesson_counts(),
         book_sections: pack.book_sections(),
         agents,
         variant_count,
@@ -116,6 +121,10 @@ pub fn render_pack_report(report: &PackReport) -> Vec<String> {
             report.largest_base_share * 100.0
         ),
         format!("  lessons: {}", report.lesson_ids.join(", ")),
+        format!(
+            "  coverage (reviewed bases): {}",
+            render_lesson_counts(&report.lesson_counts)
+        ),
     ];
     if !report.book_sections.is_empty() {
         lines.push(format!(

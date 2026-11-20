@@ -52,7 +52,7 @@ use crate::miner::storage;
 
 use super::audit::{AuditOptions, audit_pack_dir};
 use super::gate::PublishProfile;
-use super::model::{ManifestEntry, PackId, PackManifest};
+use super::model::{ManifestEntry, PackId, PackManifest, render_lesson_counts};
 use super::write::{
     MANIFEST_FILE_NAME, decode_pack, encode_manifest, load_manifest, validate_entry,
 };
@@ -146,6 +146,8 @@ pub struct HostedEntry {
     pub bytes: u64,
     /// Scenario count.
     pub scenario_count: u32,
+    /// Shipped reviewed bases per lesson id.
+    pub lesson_counts: BTreeMap<String, u32>,
     /// Pack data licence id.
     pub licence: String,
 }
@@ -158,6 +160,7 @@ impl HostedEntry {
             sha256: entry.sha256.clone(),
             bytes: entry.bytes,
             scenario_count: entry.scenario_count,
+            lesson_counts: entry.lesson_counts.clone(),
             licence: entry.licence.clone(),
         }
     }
@@ -205,6 +208,12 @@ impl HostReport {
                 "  {} · {} B · {} scenario(s) · {}",
                 entry.id, entry.bytes, entry.scenario_count, entry.path
             ));
+            if !entry.lesson_counts.is_empty() {
+                lines.push(format!(
+                    "    coverage: {}",
+                    render_lesson_counts(&entry.lesson_counts)
+                ));
+            }
         }
         if !self.removed.is_empty() {
             let verb = if self.dry_run {
@@ -271,8 +280,8 @@ pub fn publish_hosted(options: &HostOptions) -> Result<HostedPublish, PackError>
     }
 
     let source_manifest = load_manifest(&options.source.join(MANIFEST_FILE_NAME))?;
-    let selected = resolve_entries(&source_manifest, &options.packs)?;
-    if selected.is_empty() {
+    let requested = resolve_entries(&source_manifest, &options.packs)?;
+    if requested.is_empty() {
         return Err(PackError::HostRefused {
             detail: format!(
                 "`{}` lists no packs; run `pack assemble` or `pack fixture` first",
@@ -280,11 +289,61 @@ pub fn publish_hosted(options: &HostOptions) -> Result<HostedPublish, PackError>
             ),
         });
     }
-    for entry in &selected {
+    for entry in &requested {
         validate_entry(entry).map_err(|detail| PackError::HostRefused {
             detail: format!("pack `{}`: {detail}", entry.id),
         })?;
     }
+
+    // Read and verify every selected body once, and take the per-lesson coverage
+    // from the decoded body. `pack publish` is what writes the hosting manifest,
+    // so it always records `lesson_counts`, including for a source manifest that
+    // predates the field. Never copy a stale count declaration into the artifact.
+    let mut staged: Vec<(ManifestEntry, Vec<u8>)> = Vec::with_capacity(requested.len());
+    for entry in &requested {
+        let source_path = options.source.join(&entry.path);
+        let bytes = fs::read(&source_path).map_err(|source| PackError::Io {
+            path: source_path.display().to_string(),
+            source,
+        })?;
+        let actual_bytes = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
+        if actual_bytes != entry.bytes {
+            return Err(PackError::HostInvalid {
+                path: source_path.display().to_string(),
+                detail: format!(
+                    "pack `{}` is {actual_bytes} bytes, but the manifest says {}",
+                    entry.id, entry.bytes
+                ),
+            });
+        }
+        let actual_sha256 = sha256_hex(&bytes);
+        if !hash_matches(&entry.sha256, &actual_sha256) {
+            return Err(PackError::HostInvalid {
+                path: source_path.display().to_string(),
+                detail: format!(
+                    "pack `{}` hashes to {actual_sha256}, but the manifest says {}",
+                    entry.id, entry.sha256
+                ),
+            });
+        }
+        let pack = decode_pack(&bytes)?;
+        if pack.pack_id != entry.id {
+            return Err(PackError::HostInvalid {
+                path: source_path.display().to_string(),
+                detail: format!(
+                    "body declares pack `{}`, but the manifest entry is `{}`",
+                    pack.pack_id, entry.id
+                ),
+            });
+        }
+        let entry = entry.with_lesson_counts(&pack);
+        validate_entry(&entry).map_err(|detail| PackError::HostInvalid {
+            path: source_path.display().to_string(),
+            detail: format!("pack `{}`: {detail}", entry.id),
+        })?;
+        staged.push((entry, bytes));
+    }
+    let selected: Vec<ManifestEntry> = staged.iter().map(|(entry, _bytes)| entry.clone()).collect();
 
     let declared_bytes = selected.iter().map(|entry| entry.bytes).sum::<u64>();
     if declared_bytes > options.budget.max_total_bytes {
@@ -340,35 +399,10 @@ pub fn publish_hosted(options: &HostOptions) -> Result<HostedPublish, PackError>
     // Copy only the content-addressed bodies. This is deliberately an allowlist:
     // games.jsonl, raw .jsonl.gz replays, weights and any stray source file are
     // never part of the Pages artifact.
-    let mut paths = Vec::with_capacity(selected.len());
-    for entry in &selected {
-        let source_path = options.source.join(&entry.path);
-        let bytes = fs::read(&source_path).map_err(|source| PackError::Io {
-            path: source_path.display().to_string(),
-            source,
-        })?;
-        let actual_bytes = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
-        if actual_bytes != entry.bytes {
-            return Err(PackError::HostInvalid {
-                path: source_path.display().to_string(),
-                detail: format!(
-                    "pack `{}` is {actual_bytes} bytes, but the manifest says {}",
-                    entry.id, entry.bytes
-                ),
-            });
-        }
-        let actual_sha256 = sha256_hex(&bytes);
-        if !hash_matches(&entry.sha256, &actual_sha256) {
-            return Err(PackError::HostInvalid {
-                path: source_path.display().to_string(),
-                detail: format!(
-                    "pack `{}` hashes to {actual_sha256}, but the manifest says {}",
-                    entry.id, entry.sha256
-                ),
-            });
-        }
+    let mut paths = Vec::with_capacity(staged.len());
+    for (entry, bytes) in &staged {
         let dest_path = options.dest.join(&entry.path);
-        storage::write_atomic(&dest_path, &bytes)?;
+        storage::write_atomic(&dest_path, bytes)?;
         paths.push(dest_path);
     }
 
@@ -507,6 +541,30 @@ pub fn verify_hosted_dir(dir: &Path, budget: &HostBudget) -> Result<HostReport, 
                     "body has {} scenario(s), but the manifest says {}",
                     pack.scenarios.len(),
                     entry.scenario_count
+                ),
+            });
+        }
+        // Coverage is what the app reads without a body download, so a hosted
+        // artifact must record it and it must agree with the body. A count that
+        // is absent would silently make a covered lesson look uncovered.
+        let body_counts = pack.lesson_counts();
+        if entry.lesson_counts.is_empty() {
+            return Err(PackError::HostInvalid {
+                path: body_path.display().to_string(),
+                detail: format!(
+                    "pack `{}` records no lesson_counts; republish with `pack publish`",
+                    entry.id
+                ),
+            });
+        }
+        if entry.lesson_counts != body_counts {
+            return Err(PackError::HostInvalid {
+                path: body_path.display().to_string(),
+                detail: format!(
+                    "pack `{}` lesson_counts are `{}` in the manifest but `{}` in the body",
+                    entry.id,
+                    render_lesson_counts(&entry.lesson_counts),
+                    render_lesson_counts(&body_counts)
                 ),
             });
         }

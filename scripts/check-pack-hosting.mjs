@@ -15,6 +15,10 @@
  *   - every entry is a safe relative path whose filename is
  *     `<pack-id>-<sha256-prefix>.json.gz`, with a well-formed hash and a
  *     positive byte/scenario count;
+ *   - every entry records `lesson_counts` (lesson id → reviewed bases): the app
+ *     reads coverage from the manifest without downloading a body, so a hosted
+ *     entry must carry it, name exactly its lessons, and agree with the body's
+ *     non-variant scenarios per lesson;
  *   - every body exists, is exactly the declared byte length, hashes to the
  *     declared SHA-256, gunzips, parses as `riichiprac.scenario-pack` v1 and
  *     agrees with the manifest's id, count, lesson ids, book sections, licence,
@@ -157,6 +161,47 @@ function isSortedUnique(values) {
   return true;
 }
 
+/**
+ * Reviewed bases per lesson. A variant derives from one base and adds no review
+ * coverage, so only non-variant scenarios count; this is the same definition as
+ * the Rust `Pack::lesson_counts`.
+ */
+function reviewedBasesByLesson(scenarios) {
+  const counts = {};
+  for (const scenario of scenarios) {
+    const provenance = scenario?.provenance ?? {};
+    const isVariant =
+      Boolean(provenance.variant_of) ||
+      (Array.isArray(provenance.transforms) && provenance.transforms.length > 0);
+    if (isVariant) continue;
+    counts[scenario.lesson_id] = (counts[scenario.lesson_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function isLessonCounts(value) {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.entries(value).every(
+      ([lesson, count]) => isSlug(lesson) && Number.isInteger(count) && count > 0,
+    )
+  );
+}
+
+function renderLessonCounts(counts) {
+  const keys = Object.keys(counts ?? {}).sort();
+  if (keys.length === 0) return 'none';
+  return keys.map((key) => `${key}=${counts[key]}`).join(',');
+}
+
+function sameLessonCounts(left, right) {
+  const leftKeys = Object.keys(left ?? {}).sort();
+  if (!sameStringArray(leftKeys, Object.keys(right ?? {}).sort())) return false;
+  return leftKeys.every((key) => left[key] === right[key]);
+}
+
 function isForbiddenArtifact(name) {
   const lower = name.toLowerCase();
   return FORBIDDEN_SUFFIXES.some((suffix) => lower.endsWith(suffix));
@@ -236,6 +281,17 @@ if (manifest) {
       check(Number.isInteger(entry.scenario_count) && entry.scenario_count > 0, `${label}: scenario_count is a positive integer`);
       check(isSortedUnique(entry.lesson_ids), `${label}: lesson_ids are sorted and unique`);
       check(isSortedUnique(entry.book_sections), `${label}: book_sections are sorted and unique`);
+      const countsOk = check(isLessonCounts(entry.lesson_counts), `${label}: lesson_counts records positive bases per lesson`);
+      if (countsOk) {
+        check(
+          sameStringArray(Object.keys(entry.lesson_counts).sort(), [...new Set(entry.lesson_ids)].sort()),
+          `${label}: lesson_counts name exactly the entry's lesson_ids`,
+        );
+        check(
+          Object.values(entry.lesson_counts).reduce((sum, count) => sum + count, 0) <= entry.scenario_count,
+          `${label}: lesson_counts do not claim more bases than the ${entry.scenario_count} scenario(s)`,
+        );
+      }
       check(typeof entry.licence === 'string' && entry.licence.trim() !== '', `${label}: licence is present`);
       check(typeof entry.requires_model === 'boolean', `${label}: requires_model is a boolean`);
       check(typeof entry.data_commercial_use === 'boolean', `${label}: data_commercial_use is a boolean`);
@@ -273,6 +329,14 @@ if (manifest) {
         ...new Set(scenarioList.map((scenario) => scenario.book?.key).filter((key) => typeof key === 'string')),
       ].sort();
       check(sameStringArray(lessonIds, entry.lesson_ids), `${label}: lesson_ids agree with the body`);
+      const bodyCounts = reviewedBasesByLesson(scenarioList);
+      if (countsOk) {
+        check(
+          sameLessonCounts(entry.lesson_counts, bodyCounts),
+          `${label}: lesson_counts agree with the body's reviewed bases ` +
+            `(manifest ${renderLessonCounts(entry.lesson_counts)}, body ${renderLessonCounts(bodyCounts)})`,
+        );
+      }
       check(sameStringArray(bookSections, entry.book_sections), `${label}: book_sections agree with the body`);
       check(pack.source?.licence === entry.licence, `${label}: licence agrees with the body`);
       check(
@@ -304,7 +368,8 @@ if (manifest) {
         bytes: bodyBytes.length,
         scenarios: entry.scenario_count,
         sha256: rawSha(entry.sha256),
-        lessonIds: lessonIds,
+        lessonIds,
+        lessonCounts: bodyCounts,
       });
     }
   }

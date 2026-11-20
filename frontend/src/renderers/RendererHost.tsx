@@ -56,6 +56,8 @@ import {
 import { usePrefersReducedMotion } from './motionPreference';
 import { TableCompass, TableOverlay } from './overlay';
 import type { OverlayHandTile } from './handOverlay';
+import { PERF_HUD_SAMPLE_INTERVAL_MS, perfHudReading } from './perfHud';
+import type { PerfHudReading } from './perfHud';
 import './RendererHost.css';
 
 /** The host's observable lifecycle. */
@@ -80,7 +82,7 @@ export interface RendererHostProps {
   readonly tier?: QualityTier | null;
   /** `?debug=`, used from 3D-05 onwards. */
   readonly debug?: DebugMode | null;
-  /** `?perf`, used from 3D-13 onwards. */
+  /** `?perf=1`: the live measurement HUD (3D-13). */
   readonly perfHud?: boolean;
   /** `prefers-reduced-motion`; consumed from 3D-12 onwards. */
   readonly reducedMotion?: boolean;
@@ -414,6 +416,54 @@ function CarveHud({ report, legend, exported, onRefresh, onExport }: CarveHudPro
 }
 
 /**
+ * 3D-13's perf HUD (`?perf=1`): the live numbers `measure()` reports.
+ *
+ * Off by default and reachable only by the flag. Every value is a measurement,
+ * never a claim: the tier the scene is actually running, the ratio and area the
+ * backing store resolved to, the live depth/self-shadow step counts, what the
+ * renderer issued, and the p50/p95 of the recent real frames. It floats in the
+ * bottom-right, opposite the hero panel, and takes pointer events only inside
+ * its own box.
+ */
+function PerfHud({ reading }: { readonly reading: PerfHudReading | null }) {
+  return (
+    <aside
+      className="renderer-3d-hero renderer-3d-perf"
+      aria-label="3D performance measurements"
+    >
+      <h3 className="renderer-3d-hero-title">Performance · ?perf=1</h3>
+      {!reading && (
+        <p className="renderer-3d-hero-note">Measuring the first frames…</p>
+      )}
+      {reading && (
+        <dl className="renderer-3d-hero-facts">
+          <dt>tier</dt>
+          <dd data-stat="tier">{reading.tier}</dd>
+          <dt>DPR</dt>
+          <dd data-stat="dpr">{reading.devicePixelRatio.toFixed(2)}</dd>
+          <dt>backing store</dt>
+          <dd data-stat="backing-store">{reading.backingStoreMp.toFixed(2)} MP</dd>
+          <dt>depth / shadow steps</dt>
+          <dd data-stat="steps">{`${reading.pomSteps} / ${reading.shadowSteps}`}</dd>
+          <dt>draw calls</dt>
+          <dd data-stat="draw-calls">{reading.drawCalls}</dd>
+          <dt>instances</dt>
+          <dd data-stat="instances">{reading.instances}</dd>
+          <dt>triangles</dt>
+          <dd data-stat="triangles">{reading.triangles}</dd>
+          <dt>frame p50 / p95</dt>
+          <dd data-stat="frame-ms">{`${reading.frameMsP50.toFixed(2)} / ${reading.frameMsP95.toFixed(2)} ms`}</dd>
+          <dt>frames</dt>
+          <dd data-stat="frame-samples">{reading.frameSamples}</dd>
+          <dt>atlas</dt>
+          <dd data-stat="atlas">{`${(reading.atlasBytes / 1_000_000).toFixed(2)} MB`}</dd>
+        </dl>
+      )}
+    </aside>
+  );
+}
+
+/**
  * Mount the 3D renderer.
  *
  * The effect is deliberately StrictMode-safe: the dynamic import's result is
@@ -447,6 +497,7 @@ export function RendererHost({
   const [carveExported, setCarveExported] = useState(0);
   const [hitRects, setHitRects] = useState<readonly HitRect[]>([]);
   const [compassRect, setCompassRect] = useState<CompassRect | null>(null);
+  const [perfReading, setPerfReading] = useState<PerfHudReading | null>(null);
   const [degradeNotice, setDegradeNotice] = useState<string | null>(null);
 
   /**
@@ -735,6 +786,24 @@ export function RendererHost({
     refreshHitRects();
   }, [snapshot, refreshHitRects]);
 
+  // 3D-13: the perf HUD reads `measure()` while it is open. With the flag off
+  // this effect schedules nothing and calls `measure()` zero times, so the HUD
+  // costs nothing when off; the scene's continuous sampling loop follows the
+  // same flag (see `Scene.startPerfSampling`).
+  useEffect(() => {
+    if (!perfHud || status.state !== 'ready') {
+      setPerfReading(null);
+      return;
+    }
+    const read = () => {
+      const stats = rendererRef.current?.measure();
+      setPerfReading(stats ? perfHudReading(stats) : null);
+    };
+    read();
+    const timer = globalThis.setInterval(read, PERF_HUD_SAMPLE_INTERVAL_MS);
+    return () => globalThis.clearInterval(timer);
+  }, [perfHud, status.state]);
+
   const showFallback = status.state !== 'ready';
   const describedBy = `${descriptionId}${status.message ? ` ${statusId}` : ''}`;
 
@@ -781,6 +850,9 @@ export function RendererHost({
             onRefresh={refreshHero}
             onExport={exportHero}
           />
+        )}
+        {perfHud && status.state === 'ready' && (
+          <PerfHud reading={perfReading} />
         )}
         {debug !== null && status.state === 'ready' && (
           <CarveHud

@@ -31,6 +31,57 @@
   "pxPerMm": {
    "x": 14.285714,
    "y": 13.64366
+  },
+  "unusedCells": {
+   "count": 5,
+   "cells": [
+    {
+     "index": 37,
+     "column": 1,
+     "row": 6
+    },
+    {
+     "index": 38,
+     "column": 2,
+     "row": 6
+    },
+    {
+     "index": 39,
+     "column": 3,
+     "row": 6
+    },
+    {
+     "index": 40,
+     "column": 4,
+     "row": 6
+    },
+    {
+     "index": 41,
+     "column": 5,
+     "row": 6
+    }
+   ],
+   "value": {
+    "normalDepth": [
+     128,
+     128,
+     255,
+     255
+    ],
+    "aoRoughness": [
+     255,
+     115,
+     0,
+     255
+    ],
+    "albedo": [
+     255,
+     255,
+     255,
+     0
+    ]
+   },
+   "rule": "Unused cells carry the open face, never zeros: the plate UV maps [0, 1] onto the cell border, so a bilinear or mip tap at a plate edge blends the neighbouring cell in. Zeros there decode to a degenerate normal, the deepest groove height and AO 0 (black); the open face keeps every boundary blend equal to the uncarved surface."
   }
  },
  "carve": {
@@ -56,9 +107,9 @@
    "file": "relief3d/face_albedo.png",
    "width": 1536,
    "height": 2380,
-   "bytes": 457226,
+   "bytes": 458909,
    "sha256": {
-    "png": "f7c6e2c6a5c19e9a3bb84bb89db6c69d0b9ddab9acf6af579f68b462206592cd"
+    "png": "9bd5e4f08018c362da39d969a1928b838430ffbe286708e3822a0c72675502d7"
    },
    "source": "relief3d"
   },
@@ -67,9 +118,9 @@
    "file": "relief3d/face_normal_depth.png",
    "width": 1536,
    "height": 2380,
-   "bytes": 1568434,
+   "bytes": 1567000,
    "sha256": {
-    "png": "b7a31853af12c7871d18b16b9be97ad0a5e36505e475d07bc0d5e6dc4e10ce4e"
+    "png": "46ce116edd74da3cbc64a93d49e99520f2b632cc414344ff612a7a370e49a154"
    },
    "source": "relief3d"
   },
@@ -78,9 +129,9 @@
    "file": "relief3d/face_ao_roughness.png",
    "width": 1536,
    "height": 2380,
-   "bytes": 973832,
+   "bytes": 972171,
    "sha256": {
-    "png": "1a1c9f1c3416130e0759e13f09bb518bcb451b210adc259670d2653296628c17"
+    "png": "43715ae72fb454ae9e0ba48ac29be7c23445bcf549e75511564a37bbae1a60d3"
    },
    "source": "relief3d"
   }

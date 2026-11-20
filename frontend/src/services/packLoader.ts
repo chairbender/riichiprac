@@ -71,6 +71,15 @@ export interface PackManifestEntry {
   bytes: number;
   scenario_count: number;
   lesson_ids: string[];
+  /**
+   * Shipped reviewed bases per lesson id.
+   *
+   * The replay-first coverage floor is measured in reviewed bases, so variants
+   * do not add to a lesson's count. The field is additive within manifest v1:
+   * `undefined` means the manifest was published before it existed, and then
+   * only a body can supply coverage. `pack publish` writes it for every pack.
+   */
+  lesson_counts?: Record<string, number>;
   book_sections: string[];
   licence: string;
   requires_model: boolean;
@@ -331,18 +340,58 @@ function parseManifestEntry(raw: unknown, index: number): PackManifestEntry {
     throw new PackLoadError('manifest', `${label} (${raw.id}): data_commercial_use must be a boolean.`);
   }
 
-  return {
+  const lessonIds = [...new Set(raw.lesson_ids)];
+  let lessonCounts: Record<string, number> | undefined;
+  if (raw.lesson_counts !== undefined && raw.lesson_counts !== null) {
+    if (!isRecord(raw.lesson_counts)) {
+      throw new PackLoadError('manifest', `${label} (${raw.id}): lesson_counts must be an object.`);
+    }
+    const counts: Record<string, number> = {};
+    for (const [lesson, count] of Object.entries(raw.lesson_counts)) {
+      if (!isSlug(lesson)) {
+        throw new PackLoadError(
+          'manifest',
+          `${label} (${raw.id}): lesson_counts names an invalid lesson id.`,
+        );
+      }
+      if (!isPositiveInteger(count)) {
+        throw new PackLoadError(
+          'manifest',
+          `${label} (${raw.id}): lesson_counts "${lesson}" must be a positive integer.`,
+        );
+      }
+      counts[lesson] = count;
+    }
+    if (!sameStringArray(Object.keys(counts).sort(), [...lessonIds].sort())) {
+      throw new PackLoadError(
+        'manifest',
+        `${label} (${raw.id}): lesson_counts must cover exactly its lesson_ids.`,
+      );
+    }
+    const counted = Object.values(counts).reduce((sum, count) => sum + count, 0);
+    if (counted > raw.scenario_count) {
+      throw new PackLoadError(
+        'manifest',
+        `${label} (${raw.id}): lesson_counts total ${counted}, above its ${raw.scenario_count} scenario(s).`,
+      );
+    }
+    lessonCounts = counts;
+  }
+
+  const entry: PackManifestEntry = {
     id: raw.id,
     path: raw.path,
     sha256: raw.sha256.toLowerCase(),
     bytes: raw.bytes,
     scenario_count: raw.scenario_count,
-    lesson_ids: [...new Set(raw.lesson_ids)],
+    lesson_ids: lessonIds,
     book_sections: [...new Set(raw.book_sections)],
     licence: raw.licence,
     requires_model: raw.requires_model,
     data_commercial_use: raw.data_commercial_use,
   };
+  if (lessonCounts) entry.lesson_counts = lessonCounts;
+  return entry;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -527,6 +576,18 @@ export async function parsePackBody(
       'schema',
       `Replay pack "${entry.id}" lesson_ids disagree with the manifest.`,
     );
+  }
+  // The manifest is the authority for coverage, and the same check the Rust
+  // audit runs: a recorded per-lesson count must match the body's reviewed
+  // bases. A manifest without counts stays acceptable (older deployments).
+  if (entry.lesson_counts) {
+    const bodyCounts = reviewedBasesByLesson(scenarios);
+    if (!sameLessonCounts(bodyCounts, entry.lesson_counts)) {
+      throw new PackLoadError(
+        'schema',
+        `Replay pack "${entry.id}" lesson_counts disagree with the body.`,
+      );
+    }
   }
   const bookSections = [
     ...new Set(
@@ -1126,4 +1187,36 @@ function isSafePackPath(value: unknown): value is string {
 
 function sameStringArray(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+/**
+ * Reviewed bases per lesson, the same definition the Rust `Pack::lesson_counts`
+ * and the hosting check use: a variant is derived from one base and adds no
+ * review coverage, so only non-variant scenarios count.
+ */
+export function reviewedBasesByLesson(
+  scenarios: PackScenario[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const scenario of scenarios) {
+    if (isVariantScenario(scenario)) continue;
+    counts[scenario.lesson_id] = (counts[scenario.lesson_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function isVariantScenario(scenario: PackScenario): boolean {
+  const provenance = scenario.provenance;
+  if (!isRecord(provenance)) return false;
+  if (provenance.variant_of !== undefined && provenance.variant_of !== null) return true;
+  return Array.isArray(provenance.transforms) && provenance.transforms.length > 0;
+}
+
+function sameLessonCounts(
+  left: Record<string, number>,
+  right: Record<string, number>,
+): boolean {
+  const keys = Object.keys(left).sort();
+  if (!sameStringArray(keys, Object.keys(right).sort())) return false;
+  return keys.every((key) => left[key] === right[key]);
 }
