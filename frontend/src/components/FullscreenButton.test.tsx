@@ -12,6 +12,7 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FullscreenButton } from './FullscreenButton';
+import { exitFullscreenIfActive } from '../fullscreen';
 
 function Harness() {
   const shellRef = useRef<HTMLDivElement>(null);
@@ -123,5 +124,30 @@ describe('FullscreenButton', () => {
     render(<Harness />);
     expect(screen.getByRole('button', { name: 'Full screen' })).toBeTruthy();
     expect(document.fullscreenElement).not.toBe(screen.getByTestId('shell'));
+  });
+});
+
+describe('exitFullscreenIfActive (3D-14)', () => {
+  it('leaves full screen only when the document is in it', () => {
+    const api = stubFullscreen();
+
+    // Not full screen: no call that a browser could reject.
+    exitFullscreenIfActive();
+    expect(api.exit).not.toHaveBeenCalled();
+
+    api.element = document.body;
+    exitFullscreenIfActive();
+    expect(api.exit).toHaveBeenCalledTimes(1);
+  });
+
+  it('is a no-op without the API or without a document', () => {
+    expect(() => exitFullscreenIfActive(null)).not.toThrow();
+    // jsdom has no exitFullscreen; a fullscreenElement without the method must
+    // not throw on the way out of the 3D view.
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => document.body,
+    });
+    expect(() => exitFullscreenIfActive()).not.toThrow();
   });
 });

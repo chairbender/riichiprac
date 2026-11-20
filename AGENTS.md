@@ -104,8 +104,10 @@ win; ask the user before inventing a third number.
 ## 4. UI / UX Design Constraints (React)
 * **Mobile-First, Stacked Layout:** The UI must be optimized for portrait mode on mobile devices.
   The stacked layout is the default view.
-* **View modes:** The header's View control switches the same hand between the stacked layout and
-  the flat top-down **plan** view; the opt-in 3D table is reached with `?renderer=3d`. Switching
+* **View modes:** The header's View control switches the same hand between the stacked layout, the
+  flat top-down **plan** view and the full-window rendered **3D** table. The 3D value is a real,
+  persisted `TableView` value, but it stays out of the picker until 3D-15 sets `RENDERED3D_EXPOSED`;
+  until then the table is reached with `?renderer=3d` (or a value a later build stored). Switching
   never re-deals.
 * **No skeuomorphism by default:** Do NOT make a physically rich, square Mahjong table the
   default view.

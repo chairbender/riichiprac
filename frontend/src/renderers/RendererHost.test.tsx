@@ -960,8 +960,9 @@ describe('RendererHost quality tiers and fallback (3D-11)', () => {
   it('never persists the 3D view as a table view', async () => {
     render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
     await waitFor(() => expect(hostMock.state.created).toBe(1));
-    // The settings store only knows the 2D views; the query flag is the only
-    // way in while RENDERED3D_EXPOSED is false, so nothing writes a 3D value.
+    // The settings store knows the 3D value (3D-14), but only the View control
+    // writes a table view; the host itself never does, and the query flag is
+    // the only way in while RENDERED3D_EXPOSED is false.
     expect(window.localStorage.getItem('riichiprac.settings')).toBeNull();
   });
 });

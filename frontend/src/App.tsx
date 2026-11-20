@@ -14,8 +14,14 @@ import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
 import { RendererHost } from './renderers/RendererHost';
+import {
+  RENDERED3D_EXPOSED,
+  probeCapabilities,
+  threeViewUnavailableReason,
+} from './renderers/capabilities';
 import { resolveTableMount } from './renderers/resolveTableMount';
 import { snapshotFromGameState, withPreviewRiichi } from './renderers/snapshot';
+import { exitFullscreenIfActive } from './fullscreen';
 import {
   DEFAULT_HOTSEAT_OPTIONS,
   HOTSEAT_SCENARIO_ID,
@@ -622,9 +628,13 @@ export const App = () => {
   const handleViewChange = (event: ChangeEvent<HTMLSelectElement>) => {
     // Redraw only: the persisted setting changes how the same hand is drawn,
     // nothing about the hand or its grade.
-    if (isTableView(event.target.value)) {
-      setTableView(event.target.value);
-    }
+    const next = event.target.value;
+    if (!isTableView(next)) return;
+    setTableView(next);
+    // 3D-14: an explicit 3D choice is a fresh request, so it clears the
+    // session close a degrade left behind instead of being silently ignored.
+    // The host still refuses to *auto*-retry a degraded tier (3D-11).
+    if (next === 'rendered3d') setThreeClosed(false);
   };
 
   const showVerdict = useCallback(() => {
@@ -700,15 +710,49 @@ export const App = () => {
     decision?.kind === 'react_to_discard' ? decision.from : null;
 
   /*
-   * The 3D table is opt-in through `?renderer=3d`; nothing else selects it
-   * (decision D13, exposure decision 1). The resolver owns the precedence —
-   * explicit query, then stored view, then the store's default — so App only
-   * mounts what it says.
+   * 3D-14: whether this browser can run the 3D table. The probe runs only when
+   * its answer can change what is drawn or offered — a stored 3D choice, or the
+   * View control once 3D-15 exposes the option — so the standard 2D views never
+   * create a WebGL2 context. The probe releases that context immediately
+   * (3D-01). `null` means "can run"; otherwise this is the reason the View
+   * control shows.
+   */
+  const threeUnavailableReason = useMemo(() => {
+    if (!RENDERED3D_EXPOSED && tableView !== 'rendered3d') return null;
+    return threeViewUnavailableReason(probeCapabilities());
+  }, [tableView]);
+
+  /*
+   * The 3D table is opt-in: an explicit `?renderer=3d` link or a stored 3D
+   * choice selects it, never the default (decision D13, exposure decision 1).
+   * The resolver owns the precedence — explicit query, then stored view, then
+   * the store's default — so App only mounts what it says.
+   *
+   * A stored 3D choice mounts only while it can run: after a degrade
+   * (`threeClosed`, 3D-11) or without WebGL2 the resolver returns the default
+   * 2D view, and the store keeps the user's choice untouched (3D-14).
    */
   const tableMount = resolveTableMount(
     threeClosed ? '' : window.location.search,
     tableView,
+    {
+      allowStoredThreeView: !threeClosed && threeUnavailableReason === null,
+    },
   );
+
+  /*
+   * 3D-14: the full-window stage is reversible. The FullscreenButton stays
+   * unmounted until the HUD shell lands (3D-H2), but the stage may already be
+   * in full screen — from that toggle, a future HUD control, or the browser
+   * restoring a session. Leaving the 3D view therefore always leaves full
+   * screen, so the user is never stranded in a full-screen 2D layout.
+   */
+  const showingThree = tableMount.kind === 'three';
+  const wasShowingThree = useRef(false);
+  useEffect(() => {
+    if (wasShowingThree.current && !showingThree) exitFullscreenIfActive();
+    wasShowingThree.current = showingThree;
+  }, [showingThree]);
 
   /*
    * 3D-11: the scene closed itself because even `compat` could not hold 30 fps.
@@ -779,7 +823,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Stays 2D: no 3D or perspective.';
+    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and 3D is the opt-in full-window table. Switching redraws the same hand.';
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)
@@ -811,6 +855,8 @@ export const App = () => {
       tableView={tableView}
       viewHint={viewHint}
       onViewChange={handleViewChange}
+      rendered3dExposed={RENDERED3D_EXPOSED}
+      threeUnavailableReason={threeUnavailableReason}
       onNextScenario={handleNextScenario}
       nextDisabled={isLoading}
     />
@@ -877,10 +923,15 @@ export const App = () => {
 
   /*
    * The 2D table: the persisted view picks between the stacked rows and the
-   * top-down plan.
+   * top-down plan. In this branch the resolver has already reduced a stored 3D
+   * choice that cannot run to the default view, so `tableMount.view` is what is
+   * actually drawn (3D-14).
    */
+  const twoDimensionalView =
+    tableMount.kind === '2d' ? tableMount.view : tableView;
+
   const standardTable =
-    tableView === 'topdown' && gameState ? (
+    twoDimensionalView === 'topdown' && gameState ? (
       <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
     ) : (
       orderedPlayers.map((player) => (
@@ -893,11 +944,23 @@ export const App = () => {
     );
 
   /*
+   * 3D-14: a stored 3D choice this browser cannot run draws the standard table
+   * instead. Say so, and say the choice is kept: the fallback must never look
+   * like the user's setting was thrown away (it is not rewritten).
+   */
+  const rendered3dFallbackNotice =
+    tableView === 'rendered3d' &&
+    tableMount.kind === '2d' &&
+    threeUnavailableReason !== null
+      ? `${threeUnavailableReason} The standard table is shown and your 3D view choice is kept.`
+      : null;
+
+  /*
    * The opt-in 3D view is the scene alone (user guidance 2026-11-18): no
    * header, cards, action bar or hand dock are mounted, so the canvas owns the
-   * full window with no UI above or below it. The floating UI layer — chrome
-   * positioned over the scene, like a game HUD — is planned work (3D-08,
-   * 3D-09, 3D-14), not this mount.
+   * full window with no UI above or below it. The floating HUD that replaces
+   * the scene-only mount is the 3D HUD chain (3D-H1…H5), not this unit; 3D-14
+   * only makes the view a reversible member of the View control.
    */
   if (tableMount.kind === 'three') {
     return (
@@ -955,6 +1018,12 @@ export const App = () => {
         </div>
       )}
 
+      {rendered3dFallbackNotice && (
+        <p className="three-fallback-notice" role="status">
+          {rendered3dFallbackNotice}
+        </p>
+      )}
+
       {hotseatOpen && (
         <HotseatCard
           initialOptions={hotseatOptions}
@@ -977,7 +1046,9 @@ export const App = () => {
       {verdictPanel}
 
       <main
-        className={tableView === 'stacked' ? 'table-stack' : 'table-physical'}
+        className={
+          twoDimensionalView === 'stacked' ? 'table-stack' : 'table-physical'
+        }
       >
         {statusMessage && (
           <div className="status-msg" role="status">

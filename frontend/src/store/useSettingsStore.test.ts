@@ -61,7 +61,7 @@ describe('useSettingsStore', () => {
     const { useSettingsStore, SETTINGS_STORAGE_KEY } =
       await loadSettingsStore();
 
-    for (const view of ['topdown', 'stacked'] as const) {
+    for (const view of ['topdown', 'rendered3d', 'stacked'] as const) {
       useSettingsStore.getState().setView(view);
       expect(
         JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
@@ -70,6 +70,22 @@ describe('useSettingsStore', () => {
       const reloaded = await loadSettingsStore();
       expect(reloaded.useSettingsStore.getState().view).toBe(view);
     }
+  });
+
+  it('accepts the 3D view as a real stored value (3D-14)', async () => {
+    const storage = memoryStorage();
+    setLocalStorage(storage);
+    storage.setItem(
+      'riichiprac.settings',
+      JSON.stringify({ version: 1, view: 'rendered3d' }),
+    );
+
+    const { isTableView, useSettingsStore } = await loadSettingsStore();
+
+    expect(isTableView('rendered3d')).toBe(true);
+    // The value survives a reload even though the picker hides it until
+    // 3D-15; only the mount point decides whether it can be drawn.
+    expect(useSettingsStore.getState().view).toBe('rendered3d');
   });
 
   it('migrates a stored experimental isometric view to the default', async () => {
