@@ -185,16 +185,21 @@ const fixtureEntry = fixtureManifest.packs.find(
 const fixtureBody = new Uint8Array(
   readFileSync(new URL(fixtureEntry.path, fixtureDir)),
 );
+const ch9Entry = fixtureManifest.packs.find(
+  (pack) => pack.id === 'replay.ch9-seating-calls.2026-11',
+)!;
+const ch9Body = new Uint8Array(readFileSync(new URL(ch9Entry.path, fixtureDir)));
 
 describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
     expect(packManifestUrl()).toBe('/scenarios/manifest.json');
-    expect(fixtureManifest.packs).toHaveLength(4);
+    expect(fixtureManifest.packs).toHaveLength(5);
     expect(fixtureManifest.packs.map((pack) => pack.id).sort()).toEqual([
       'replay.ch5-values.2026-11',
       'replay.ch7-riichi-dama.2026-11',
       'replay.ch8-defense-multi-threat.2026-11',
       'replay.ch8-defense.2026-11',
+      'replay.ch9-seating-calls.2026-11',
     ]);
     expect(fixtureEntry.path).toBe(
       `${fixtureEntry.id}-${fixtureEntry.sha256.slice(0, 12)}.json.gz`,
@@ -252,6 +257,42 @@ describe('committed pack', () => {
     expect(coverage.get('pinfu_head')?.bases).toBe(257);
     // The ch5 tenpai lesson stays below the 40-base floor, so it has no row.
     expect(coverage.get('sanshoku_pursuit')).toBeUndefined();
+  });
+
+  it('makes the shipped ch9 seating lessons replay-default from the manifest alone', () => {
+    const coverage = lessonReplayCoverage(fixtureManifest);
+    const ch9Lessons = ['wind_discard_order', 'ankan_decision'];
+    for (const lesson of ch9Lessons) {
+      const record = coverage.get(lesson);
+      expect(record, lesson).toBeDefined();
+      expect(record?.covered, lesson).toBe(true);
+      expect(record?.packId, lesson).toBe('replay.ch9-seating-calls.2026-11');
+    }
+    expect(coverage.get('wind_discard_order')?.bases).toBe(567);
+    expect(coverage.get('ankan_decision')?.bases).toBe(62);
+    // The thin kan/call lessons stay below the 40-base floor, so they have no
+    // replay row and keep the generated default until corpus growth C9.
+    expect(coverage.get('shouminkan_decision')).toBeUndefined();
+    expect(coverage.get('daiminkan_decision')).toBeUndefined();
+    expect(coverage.get('meld_or_not')).toBeUndefined();
+  });
+
+  it('loads the ch9 pack body through the same verification path', async () => {
+    const memory = memoryCache();
+    const loaded = await loadPack(ch9Entry, {
+      cache: memory.cache,
+      fetchImpl: vi.fn(async () => bodyResponse(ch9Body)),
+    });
+
+    expect(loaded.fromCache).toBe(false);
+    expect(loaded.pack.schema).toBe(PACK_SCHEMA);
+    expect(loaded.pack.pack_id).toBe(ch9Entry.id);
+    expect(loaded.pack.scenarios).toHaveLength(629);
+    expect([...loaded.byLesson.keys()].sort()).toEqual([
+      'ankan_decision',
+      'wind_discard_order',
+    ]);
+    expect(memory.calls.write).toBe(1);
   });
 
   it('loads, verifies and decodes the real body, then serves it from cache', async () => {

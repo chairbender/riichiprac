@@ -435,15 +435,16 @@ No mirror URL is a normal skipped run (exit 0). **Google Drive is a
 corpus/DB backup only** (rclone `copy` + SQLite snapshots + `rclone check`) and
 is never in the browser's pack chain.
 
-**Committed packs.** The Pages artifact now ships four curated packs:
+**Committed packs.** The Pages artifact now ships five curated packs:
 `replay.ch8-defense.2026-11` (2,211 bases, 2,260,809 body bytes),
 `replay.ch8-defense-multi-threat.2026-11` (764 bases, 591,096 bytes),
-`replay.ch7-riichi-dama.2026-11` (2,846 bases, 2,176,750 bytes) and
-`replay.ch5-values.2026-11` (1,670 bases, 1,176,300 bytes), with a
-3,205-byte manifest (6,204,955 body bytes in total). `scripts/check-ch8-pack.mjs
---allow-no-variants` checks each pack's content (`--chapter ch7` and
-`--chapter ch5` select the ch. 7 and ch. 5 lesson sets) and
-`scripts/check-pack-hosting.mjs` checks the hosting envelope
+`replay.ch7-riichi-dama.2026-11` (2,846 bases, 2,176,750 bytes),
+`replay.ch5-values.2026-11` (1,670 bases, 1,176,300 bytes) and
+`replay.ch9-seating-calls.2026-11` (629 bases, 363,061 bytes), with a
+3,820-byte manifest (6,568,016 body bytes in total). `scripts/check-ch8-pack.mjs
+--allow-no-variants` checks each pack's content (`--chapter ch7`,
+`--chapter ch5` and `--chapter ch9` select the ch. 7, ch. 5 and ch. 9 lesson
+sets) and `scripts/check-pack-hosting.mjs` checks the hosting envelope
 for the whole set. The replay-first rollout
 ([`replay-first-rollout.md`](replay-first-rollout.md)) adds one pack per remaining
 book section; the 50 MB same-origin budget and the mirror threshold are unchanged,

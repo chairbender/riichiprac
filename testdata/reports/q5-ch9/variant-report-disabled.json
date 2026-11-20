@@ -1,0 +1,321 @@
+{
+  "schema": "riichiprac.variant-report",
+  "version": 1,
+  "generated_at": "2026-11-20T00:00:00Z",
+  "pack_id": "replay.ch9-seating-calls.2026-11",
+  "bases": 691,
+  "variants_per_base": 1,
+  "attempts": 2255,
+  "preserved": 1977,
+  "shipped": 1609,
+  "withdrawn_disabled": 36,
+  "dropped_by_cap": 0,
+  "duplicate_states": 332,
+  "rejections": {
+    "disabled_pair": 36,
+    "duplicate_state": 332,
+    "lesson_missing": 1,
+    "state_unreachable": 125,
+    "tile_ledger": 7,
+    "transform_noop": 125,
+    "transform_rejected": 20
+  },
+  "pair_yield": [
+    {
+      "lesson": "ankan_decision",
+      "transform": "seat_perm",
+      "attempted": 64,
+      "preserved": 26,
+      "ratio": 0.40625,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 30,
+        "transform_rejected": 8
+      }
+    },
+    {
+      "lesson": "ankan_decision",
+      "transform": "suit_perm",
+      "attempted": 64,
+      "preserved": 63,
+      "ratio": 0.984375,
+      "disabled": false,
+      "rejections": {
+        "tile_ledger": 1
+      }
+    },
+    {
+      "lesson": "ankan_decision",
+      "transform": "rank_mirror",
+      "attempted": 64,
+      "preserved": 63,
+      "ratio": 0.984375,
+      "disabled": false,
+      "rejections": {
+        "tile_ledger": 1
+      }
+    },
+    {
+      "lesson": "ankan_decision",
+      "transform": "wind_relabel",
+      "attempted": 64,
+      "preserved": 7,
+      "ratio": 0.109375,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 56,
+        "tile_ledger": 1
+      }
+    },
+    {
+      "lesson": "ankan_decision",
+      "transform": "red5_normalize",
+      "attempted": 64,
+      "preserved": 60,
+      "ratio": 0.9375,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 24,
+        "tile_ledger": 1,
+        "transform_noop": 3
+      }
+    },
+    {
+      "lesson": "daiminkan_decision",
+      "transform": "seat_perm",
+      "attempted": 8,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 2,
+        "transform_rejected": 6
+      }
+    },
+    {
+      "lesson": "daiminkan_decision",
+      "transform": "suit_perm",
+      "attempted": 8,
+      "preserved": 7,
+      "ratio": 0.875,
+      "disabled": false,
+      "rejections": {
+        "tile_ledger": 1
+      }
+    },
+    {
+      "lesson": "daiminkan_decision",
+      "transform": "rank_mirror",
+      "attempted": 8,
+      "preserved": 6,
+      "ratio": 0.75,
+      "disabled": false,
+      "rejections": {
+        "lesson_missing": 1,
+        "tile_ledger": 1
+      }
+    },
+    {
+      "lesson": "daiminkan_decision",
+      "transform": "wind_relabel",
+      "attempted": 8,
+      "preserved": 1,
+      "ratio": 0.125,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 7
+      }
+    },
+    {
+      "lesson": "daiminkan_decision",
+      "transform": "red5_normalize",
+      "attempted": 8,
+      "preserved": 6,
+      "ratio": 0.75,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 6,
+        "tile_ledger": 1,
+        "transform_noop": 1
+      }
+    },
+    {
+      "lesson": "shouminkan_decision",
+      "transform": "seat_perm",
+      "attempted": 19,
+      "preserved": 2,
+      "ratio": 0.10526316,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 11,
+        "transform_rejected": 6
+      }
+    },
+    {
+      "lesson": "shouminkan_decision",
+      "transform": "suit_perm",
+      "attempted": 19,
+      "preserved": 19,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "shouminkan_decision",
+      "transform": "rank_mirror",
+      "attempted": 19,
+      "preserved": 19,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "shouminkan_decision",
+      "transform": "wind_relabel",
+      "attempted": 19,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 19
+      }
+    },
+    {
+      "lesson": "shouminkan_decision",
+      "transform": "red5_normalize",
+      "attempted": 19,
+      "preserved": 19,
+      "ratio": 1.0,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 8
+      }
+    },
+    {
+      "lesson": "wind_discard_order",
+      "transform": "suit_perm",
+      "attempted": 600,
+      "preserved": 600,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "wind_discard_order",
+      "transform": "rank_mirror",
+      "attempted": 600,
+      "preserved": 600,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "wind_discard_order",
+      "transform": "red5_normalize",
+      "attempted": 600,
+      "preserved": 479,
+      "ratio": 0.79833335,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 294,
+        "transform_noop": 121
+      }
+    }
+  ],
+  "disabled_pairs": [
+    {
+      "lesson": "ankan_decision",
+      "transform": "seat_perm",
+      "ratio": 0.40625,
+      "min_yield": 0.5,
+      "attempted": 64,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "ankan_decision",
+      "transform": "wind_relabel",
+      "ratio": 0.109375,
+      "min_yield": 0.5,
+      "attempted": 64,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "daiminkan_decision",
+      "transform": "seat_perm",
+      "ratio": 0.0,
+      "min_yield": 0.5,
+      "attempted": 8,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "daiminkan_decision",
+      "transform": "wind_relabel",
+      "ratio": 0.125,
+      "min_yield": 0.5,
+      "attempted": 8,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "shouminkan_decision",
+      "transform": "seat_perm",
+      "ratio": 0.10526316,
+      "min_yield": 0.5,
+      "attempted": 19,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "shouminkan_decision",
+      "transform": "wind_relabel",
+      "ratio": 0.0,
+      "min_yield": 0.5,
+      "attempted": 19,
+      "reviewed": false,
+      "reason": "below_threshold"
+    }
+  ],
+  "cap_limited": [],
+  "effective_cap": 8,
+  "cap_cause": "per_base",
+  "min_yield": 0.5,
+  "label_kinds": {
+    "book": 1609
+  },
+  "labels": {
+    "cached": 0,
+    "evaluated": 0,
+    "retried": 0
+  },
+  "share": {
+    "bases": 691,
+    "variants": 1609,
+    "pack_scenarios": 2300,
+    "variant_share": 0.69956523,
+    "largest_base": {
+      "base": "replay.ch9-seating-calls.2026-11-005",
+      "scenarios": 4
+    },
+    "largest_base_share": 0.0017391305,
+    "transform_families": [
+      "rank_mirror",
+      "red5_normalize",
+      "suit_perm"
+    ],
+    "by_family": {
+      "rank_mirror": 688,
+      "red5_normalize": 232,
+      "suit_perm": 689
+    },
+    "by_chain": {
+      "rank_mirror": 688,
+      "red5_normalize": 232,
+      "suit_perm": 689
+    }
+  },
+  "workers": 14,
+  "wall_time_ms": 35204,
+  "notes": [
+    "queue: 691 base(s) from `/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch9-seating-calls.2026-11/review-queue.jsonl`; 0 held-out item(s) skipped; 0 reviewer-rejected item(s) skipped; 0 unusable item(s)"
+  ],
+  "errors": []
+}

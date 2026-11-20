@@ -113,17 +113,21 @@ classifier-ready but thin/zero lessons are corpus-growth targets (`C9`).
 
 **Shipped coverage (2026-11-20).** The ch8 packs cover eight lessons (five at or
 above the floor), the ch7 pack covers all six ch7 lessons at or above the floor,
-and the ch5 pack covers three of its four lessons at or above the floor. Fourteen
-of the seventeen hosted lessons are therefore replay-default:
+the ch5 pack covers three of its four lessons at or above the floor, and the ch9
+pack covers two of its five lessons at or above the floor. Sixteen of the
+nineteen hosted lessons are therefore replay-default:
 `fold_to_riichi` 731, `push_or_fold` 295, `defense_safety_chart` 766,
 `suji_kabe_safety` 357, `defense_multi_threat` 764, `riichi_judgement` 1,426,
 `chiitoitsu_riichi_vs_dama` 151, `dama_bad_wait` 982, `dama_expensive_hand` 111,
 `dama_genbutsu_wait` 119, `dama_improving_hand` 57, `honitsu_decision` 1,319,
-`pinfu_head` 257, `chiitoi_vs_toitoi` 94. The thin rows
+`pinfu_head` 257, `chiitoi_vs_toitoi` 94, `wind_discard_order` 567 and
+`ankan_decision` 62. The thin rows
 (`defense_stuck_heuristic` 32, `kabe_one_chance` 17,
-`kabe_double_one_chance` 13) stay opt-in under their pack, and
-`sanshoku_pursuit` has no replay row at all (2 stable labels, far below the
-floor; corpus growth `C9`). Regenerate the table with
+`kabe_double_one_chance` 13) stay opt-in under their pack;
+`shouminkan_decision` 19, `daiminkan_decision` 8 and `meld_or_not` 0 have no
+replay row at all (below the floor, corpus growth `C9`), and
+`sanshoku_pursuit` has no row either (2 stable labels, far below the
+floor). Regenerate the table with
 `node scripts/replay-coverage-report.mjs --json`.
 
 ## Design decisions
@@ -356,7 +360,7 @@ includes its recogniser tests and a label-yield pass.
   `dama_improving_hand` 57). Mechanical review 2,901/2,901 accepted; 304-row
   sampled sheet; audit clean on the hosted manifest; hosting 113/113,
   ch7 content 27/27, serving 20/20, frontend 783 tests/build/lint, Q1 e2e PASS.
-  User sign-off pending. Evidence:
+  User sign-off: approved 2026-11-19. Evidence:
   `testdata/reports/q3-ch7/` and
   [`q3-ch7-riichi-dama-pack.md`](q3-ch7-riichi-dama-pack.md).
 
@@ -396,6 +400,21 @@ includes its recogniser tests and a label-yield pass.
 - `wind_discard_order` (701) first; decide whether the thin kan/call lessons
   (`ankan` 69, `shouminkan` 20, `daiminkan` 8, `meld_or_not` 0) ship now, later,
   or stay generated until C9.
+- **Landed 2026-11-20.** Pack `replay.ch9-seating-calls.2026-11`: **629 reviewed
+  bases, 0 variants, 363,061 bytes**, two lessons at or above the floor
+  (`wind_discard_order` 567, `ankan_decision` 62). The measured supply decides
+  the thin lessons: `shouminkan_decision` 19 and `daiminkan_decision` 8 were
+  selected, reviewed and then dropped by the 40-base floor (27
+  `lesson_too_small` rows), and `meld_or_not` supplied no stable candidate, so
+  all three stay generated-default for `C9`. Mechanical review 691/691
+  accepted under the new `--chapter ch9` scope (ready-hand rule lesson-scoped to
+  `wind_discard_order`); 220-row sample with all 91 kan/call bases; audit clean
+  on the hosted manifest; hosting 181/181 source and dist, ch9 content 27/27,
+  ch5/ch7/ch8 content 27/27 each, serving 32/32, frontend tests/build/lint, Q1
+  e2e PASS. User sign-off: approved 2026-11-20 ("Those seem fine"); the missing
+  coverage for the three thin kan/call lessons is a separate follow-up. Evidence:
+  `testdata/reports/q5-ch9/` and
+  [`q5-ch9-seating-calls-pack.md`](q5-ch9-seating-calls-pack.md).
 
 **C9 — corpus growth for thin lessons** (`riichiprac-corpus`, worktree)
 - Grow the AI self-play corpus for the below-floor lessons (perfect_one_away,

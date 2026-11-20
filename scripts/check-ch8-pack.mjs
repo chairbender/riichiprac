@@ -7,6 +7,7 @@
  *     --pack replay.ch8-defense.2026-11 --json
  *   node scripts/check-ch8-pack.mjs --chapter ch7 --allow-no-variants
  *   node scripts/check-ch8-pack.mjs --chapter ch5 --allow-no-variants
+ *   node scripts/check-ch8-pack.mjs --chapter ch9 --allow-no-variants
  *
  * The generic hosting check (`check-pack-hosting.mjs`) proves the manifest,
  * hashes, budgets and provenance envelope. This check proves the pack's
@@ -74,6 +75,22 @@ const CHAPTERS = {
     sectionPattern: /^ch5\.\d+$/,
     defaultPack: 'replay.ch5-values.2026-11',
   },
+  ch9: {
+    // The ch. 9 seating/kan pack is lesson-scoped: `wind_discard_order` (and,
+    // when its measured supply clears the floor, `ankan_decision`) ships;
+    // `shouminkan_decision`, `daiminkan_decision` and `meld_or_not` stay
+    // generated until corpus growth C9. Every scenario must still be one of
+    // these five lessons so a stray ch. 8/7/5 decision cannot leak in.
+    lessons: new Set([
+      'wind_discard_order',
+      'ankan_decision',
+      'shouminkan_decision',
+      'daiminkan_decision',
+      'meld_or_not',
+    ]),
+    sectionPattern: /^ch9\.\d+$/,
+    defaultPack: 'replay.ch9-seating-calls.2026-11',
+  },
 };
 const DEFAULT_CHAPTER = 'ch8';
 const DEFAULT_MAX_BYTES = 50_000_000;
@@ -115,7 +132,7 @@ function parseArgs(argv) {
     else if (flag === '--json') parsed.json = true;
     else if (flag === '--help' || flag === '-h') {
       console.log(
-        'node scripts/check-ch8-pack.mjs [--chapter ch5|ch7|ch8] [--dir DIR] [--pack ID] ' +
+        'node scripts/check-ch8-pack.mjs [--chapter ch5|ch7|ch8|ch9] [--dir DIR] [--pack ID] ' +
           '[--max-bytes N] [--min-scenarios N] [--min-variant-share F] ' +
           '[--allow-no-variants] [--json]',
       );

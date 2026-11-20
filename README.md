@@ -504,23 +504,26 @@ the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
 Scenario packs are separate from the app bundle and from the weights. The
 browser loads a small **same-origin** manifest
 (`/scenarios/manifest.json`) and then only the content-addressed pack body it
-needs; the miner never ships its corpus, databases or model weights. Four
+needs; the miner never ships its corpus, databases or model weights. Five
 curated packs ship in `frontend/public/scenarios/`:
 `replay.ch8-defense.2026-11` (2,211 reviewed single-threat bases, 2.26 MB),
 `replay.ch8-defense-multi-threat.2026-11` (764 reviewed 2+ opponent bases,
 591 KB), `replay.ch7-riichi-dama.2026-11` (2,846 reviewed ch. 7 riichi/dama
-bases, 2.18 MB) and `replay.ch5-values.2026-11` (1,670 reviewed ch. 5 value
-bases, 1.18 MB), all with no variants. The Pages build therefore exercises the
-whole path, and the deploy workflow verifies every body's bytes/SHA-256 before
-upload (`scripts/check-pack-hosting.mjs`); the content gate
-`scripts/check-ch8-pack.mjs --allow-no-variants` (add `--chapter ch7` or
-`--chapter ch5` for those packs) proves every scenario belongs to the chapter's
-lessons and the source/licence envelope is complete.
+bases, 2.18 MB), `replay.ch5-values.2026-11` (1,670 reviewed ch. 5 value
+bases, 1.18 MB) and `replay.ch9-seating-calls.2026-11` (629 reviewed ch. 9
+seating/quad bases, 363 KB), all with no variants. The Pages build therefore
+exercises the whole path, and the deploy workflow verifies every body's
+bytes/SHA-256 before upload (`scripts/check-pack-hosting.mjs`); the content gate
+`scripts/check-ch8-pack.mjs --allow-no-variants` (add `--chapter ch7`,
+`--chapter ch5` or `--chapter ch9` for those packs) proves every scenario belongs
+to the chapter's lessons and the source/licence envelope is complete.
 `scripts/replay-coverage-report.mjs` prints
 which lessons the manifest makes replay-default. Variants are disabled for all
-four packs by product decision; variety comes from real reviewed positions,
+five packs by product decision; variety comes from real reviewed positions,
 and a lesson with fewer than forty real bases is left out of the pack rather
-than repeating one scenario. See [`q4-ch5-value-pack.md`](q4-ch5-value-pack.md),
+than repeating one scenario. See
+[`q5-ch9-seating-calls-pack.md`](q5-ch9-seating-calls-pack.md),
+[`q4-ch5-value-pack.md`](q4-ch5-value-pack.md),
 [`q3-ch7-riichi-dama-pack.md`](q3-ch7-riichi-dama-pack.md),
 [`q2-scale-up-2000.md`](q2-scale-up-2000.md) and
 [`q2-multi-threat.md`](q2-multi-threat.md).

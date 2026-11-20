@@ -1,0 +1,44 @@
+{
+  "manifest": "frontend/public/scenarios/manifest.json",
+  "manifest_bytes": 3820,
+  "strict": false,
+  "profile": "non_commercial",
+  "findings": [],
+  "packs": [
+    {
+      "pack_id": "replay.ch5-values.2026-11",
+      "scenario_count": 1670,
+      "bytes": 1176300,
+      "sha256": "5d0b01e6badb331b6771c239e50c4fac2659bbfcf338641199dc6bdb447f5864",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch7-riichi-dama.2026-11",
+      "scenario_count": 2846,
+      "bytes": 2176750,
+      "sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch8-defense-multi-threat.2026-11",
+      "scenario_count": 764,
+      "bytes": 591096,
+      "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch8-defense.2026-11",
+      "scenario_count": 2211,
+      "bytes": 2260809,
+      "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch9-seating-calls.2026-11",
+      "scenario_count": 629,
+      "bytes": 363061,
+      "sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2",
+      "findings": []
+    }
+  ]
+}

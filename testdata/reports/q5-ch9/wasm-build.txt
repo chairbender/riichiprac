@@ -1,0 +1,90 @@
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+   Compiling cfg-if v1.0.5
+   Compiling unicode-ident v1.0.27
+   Compiling getrandom v0.3.4
+   Compiling wasm-bindgen-shared v0.2.130
+   Compiling zerocopy v0.8.63
+   Compiling libm v0.2.16
+   Compiling crossbeam-utils v0.8.23
+   Compiling crossbeam-epoch v0.9.21
+   Compiling crossbeam-deque v0.8.8
+   Compiling num-traits v0.2.19
+   Compiling rayon-core v1.13.0
+   Compiling reborrow v0.5.5
+   Compiling syn v2.0.119
+   Compiling wasm-bindgen v0.2.130
+   Compiling bytemuck v1.25.2
+   Compiling bitflags v1.3.2
+   Compiling either v1.19.0
+   Compiling once_cell v1.21.4
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling serde v1.0.229
+   Compiling raw-cpuid v10.7.0
+   Compiling serde_json v1.0.154
+   Compiling memchr v2.8.3
+   Compiling utf8parse v0.2.2
+   Compiling itoa v1.0.19
+   Compiling thiserror v1.0.69
+   Compiling dyn-stack v0.10.0
+   Compiling anstyle-parse v1.0.0
+   Compiling libc v0.2.191
+   Compiling crc32fast v1.5.5
+   Compiling stable_deref_trait v1.2.1
+   Compiling anstyle v1.0.14
+   Compiling colorchoice v1.0.5
+   Compiling equivalent v1.0.3
+   Compiling anstyle-query v1.1.5
+   Compiling hashbrown v0.17.1
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling zip v1.3.1
+   Compiling zerofrom v0.1.8
+   Compiling anstream v1.0.0
+   Compiling strsim v0.11.1
+   Compiling clap_lex v1.1.1
+   Compiling num_cpus v1.17.0
+   Compiling memmap2 v0.9.12
+   Compiling byteorder v1.5.0
+   Compiling futures-task v0.3.34
+   Compiling clap_builder v4.6.7
+   Compiling pin-project-lite v0.2.17
+   Compiling slab v0.4.12
+   Compiling futures-core v0.3.34
+   Compiling colored v3.1.1
+   Compiling futures-util v0.3.34
+   Compiling indexmap v2.14.2
+   Compiling rayon v1.12.0
+   Compiling num-complex v0.4.6
+   Compiling rand_core v0.9.5
+   Compiling pulp v0.18.22
+   Compiling js-sys v0.3.107
+   Compiling safetensors v0.4.5
+   Compiling synstructure v0.13.2
+   Compiling clap v4.6.7
+   Compiling agari v0.27.0 (https://github.com/agari-industries/agari#77c0cdc3)
+   Compiling zerocopy-derive v0.8.63
+   Compiling thiserror-impl v1.0.69
+   Compiling yoke-derive v0.7.5
+   Compiling yoke v0.7.5
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.5
+   Compiling rand_distr v0.5.1
+   Compiling half v2.7.1
+   Compiling gemm-common v0.17.1
+   Compiling gemm-f32 v0.17.1
+   Compiling gemm-c64 v0.17.1
+   Compiling gemm-c32 v0.17.1
+   Compiling gemm-f64 v0.17.1
+   Compiling gemm-f16 v0.17.1
+   Compiling gemm v0.17.1
+   Compiling candle-core v0.8.4
+   Compiling candle-nn v0.8.4
+   Compiling riichiprac v0.1.0 (/home/kylehipke/workspaces/riichiprac-261119-2336)
+    Finished `release` profile [optimized] target(s) in 41.74s
+[INFO]: ⬇️  Installing wasm-bindgen...
+[INFO]: Optimizing wasm binaries with `wasm-opt`...
+[INFO]: Optional fields missing from Cargo.toml: 'description', 'repository', and 'license'. These are not necessary, but recommended
+[INFO]: ✨   Done in 59.72s
+[INFO]: 📦   Your wasm pkg is ready to publish at /home/kylehipke/workspaces/riichiprac-261119-2336/pkg.

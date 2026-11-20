@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /home/kylehipke/workspaces/riichiprac-261119-2336/frontend
+
+ ✓ src/services/packLoader.test.ts (90 tests) 422ms
+   ✓ committed pack > loads, verifies and decodes the real body, then serves it from cache 327ms
+
+ Test Files  1 passed (1)
+      Tests  90 passed (90)
+   Start at  09:59:52
+   Duration  830ms (transform 107ms, setup 0ms, collect 122ms, tests 422ms, environment 0ms, prepare 72ms)
+
