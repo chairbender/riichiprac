@@ -1,17 +1,24 @@
 import type { DualGrade } from '../types/verdict';
 import { formatProbability } from '../types/ai';
 import {
-  acceptedAlternativeNote,
-  formatAcceptedTiles,
   mortalRecommendationLabel,
   outcomeHeadline,
   outcomeTone,
 } from '../types/verdict';
+import { answerDetailLine } from '../verdictText';
 
 interface AnswerSummaryProps {
   grade: DualGrade;
-  /** Scroll to the full book-vs-Mortal comparison. */
+  /** Open the full book-vs-Mortal comparison. */
   onDetails: () => void;
+  /**
+   * Whether this strip is the result's live region (the 2D dock's default).
+   *
+   * The 3D result card passes `false`: the HUD owns one persistent live region,
+   * so mounting/unmounting the card around the verdict sheet cannot
+   * re-announce the same answer (`3d_hud.md` §6.5.10).
+   */
+  live?: boolean;
 }
 
 /**
@@ -22,7 +29,11 @@ interface AnswerSummaryProps {
  * Because it sits inside the dock rather than over the table, it stays visible
  * without covering the board, action controls, or tiles.
  */
-export function AnswerSummary({ grade, onDetails }: AnswerSummaryProps) {
+export function AnswerSummary({
+  grade,
+  onDetails,
+  live = true,
+}: AnswerSummaryProps) {
   const tone = outcomeTone(grade.outcome);
 
   return (
@@ -34,11 +45,15 @@ export function AnswerSummary({ grade, onDetails }: AnswerSummaryProps) {
         {toneMark(tone)}
       </span>
 
-      <span className="answer-summary-text" role="status" aria-live="polite">
+      <span
+        className="answer-summary-text"
+        role={live ? 'status' : undefined}
+        aria-live={live ? 'polite' : undefined}
+      >
         <span className="answer-summary-headline">
           {outcomeHeadline(grade.outcome, grade.mode)}
         </span>
-        <span className="answer-summary-detail">{detailLine(grade)}</span>
+        <span className="answer-summary-detail">{answerDetailLine(grade)}</span>
       </span>
 
       <span className="answer-summary-marks">
@@ -126,79 +141,4 @@ function mortalMarkLabel(grade: DualGrade): string {
   if (!grade.mortal) return 'Mortal';
   if (grade.mortal.agrees) return 'Mortal: agrees';
   return `Mortal: recommends ${mortalRecommendationLabel(grade.mortal)}`;
-}
-
-function detailLine(grade: DualGrade): string {
-  const mortalPick = mortalRecommendationLabel(grade.mortal ?? null);
-
-  switch (grade.outcome) {
-    case 'both_agree':
-      return 'The book and Mortal agree.';
-    case 'book_agrees_mortal_does_not':
-      return (
-        acceptedAlternativeNote(grade.book, grade.mortal) ??
-        `Mortal would play ${mortalPick}.`
-      );
-    case 'mortal_agrees_book_does_not':
-      return `The book says ${bookPick(grade)}.`;
-    case 'neither_agrees':
-      return grade.mortal?.confidence === 'low'
-        ? 'Neither the book nor Mortal picks this — Mortal is nearly split.'
-        : 'Neither the book nor Mortal picks this.';
-    case 'only_available_agrees':
-      return grade.mode === 'mortal_only'
-        ? 'Mortal drill — graded by the model alone.'
-        : 'Mortal isn’t loaded, so this was graded against the book only.';
-    case 'only_available_disagrees':
-      return grade.mode === 'mortal_only'
-        ? 'Mortal drill — graded by the model alone.'
-        : 'Mortal isn’t loaded, so this isn’t graded as wrong.';
-    case 'ungraded':
-      return 'Mortal isn’t loaded, so this hand can’t be graded yet.';
-  }
-}
-
-function bookPick(grade: DualGrade): string {
-  if (!grade.book) return 'something else';
-  // A tied shape lesson names both accepted discards: "discarding 5p or 3p".
-  const tiles = formatAcceptedTiles(grade.book);
-  switch (grade.book.expected_action) {
-    case 'kan':
-      return `Kan on ${tiles}`;
-    case 'discard':
-      return `No Kan, discard ${tiles}`;
-    case 'riichi':
-      return `Riichi, discarding ${tiles}`;
-    case 'dama':
-      return `Dama, discarding ${tiles}`;
-    case 'fold':
-      return `Fold, discarding ${tiles}`;
-    case 'pass':
-      return 'Pass on the call';
-    case 'call':
-      return 'Take the call';
-    default:
-      return actionTypeLabel(grade.book.expected_action);
-  }
-}
-
-function actionTypeLabel(action: string): string {
-  switch (action) {
-    case 'riichi':
-      return 'Riichi';
-    case 'dama':
-      return 'Dama';
-    case 'fold':
-      return 'Fold';
-    case 'kan':
-      return 'Kan';
-    case 'discard':
-      return 'No Kan';
-    case 'pass':
-      return 'Pass';
-    case 'call':
-      return 'Call';
-    default:
-      return 'Mortal action';
-  }
 }

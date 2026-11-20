@@ -15,7 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NESTED_LAYER_ATTRIBUTE, Sheet } from './Sheet';
 
@@ -32,6 +32,7 @@ interface HarnessProps {
   /** Mark a nested popover open inside the sheet body. */
   readonly nestedOpen?: boolean;
   readonly reducedMotion?: boolean;
+  readonly actions?: ReactNode;
   readonly children?: ReactNode;
 }
 
@@ -56,6 +57,7 @@ function Harness({
   dropOpener = false,
   nestedOpen = false,
   reducedMotion = false,
+  actions,
   children,
 }: HarnessProps) {
   const [open, setOpen] = useState(initialOpen);
@@ -78,6 +80,7 @@ function Harness({
       <Sheet
         open={open}
         title="Setup"
+        actions={actions}
         rect={{ left: 10, top: 20, width: 300, height: 400 }}
         inertTargets={[barRef, sceneRef]}
         fallbackFocus={barRef}
@@ -138,6 +141,28 @@ describe('Sheet: the dialog itself', () => {
     render(<Harness />);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.querySelector('.hud-sheet-scrim')).toBeNull();
+  });
+
+  it('puts header actions in the dialog, before Close, inside the Tab cycle', () => {
+    render(
+      <Harness
+        actions={<button type="button">Next scenario</button>}
+      />,
+    );
+    const dialog = openSheet();
+    const action = within(dialog).getByRole('button', {
+      name: 'Next scenario',
+    });
+    const close = within(dialog).getByRole('button', { name: 'Close' });
+    expect(
+      action.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    // The action is the trap's first stop: Tab from the last body control
+    // wraps to it, so a header control is never stranded outside the cycle.
+    screen.getByRole('button', { name: 'Inner two' }).focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(action);
   });
 });
 

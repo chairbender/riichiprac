@@ -38,6 +38,11 @@ export interface SheetProps {
   readonly onClose: () => void;
   /** The sheet's body, supplied by H4/H5. */
   readonly children?: ReactNode;
+  /**
+   * Header actions beside the heading, before Close (H5's Next hand). They live
+   * inside the dialog, so they are reachable without scrolling the body.
+   */
+  readonly actions?: ReactNode;
   /** The panel's rect from `hudLayout()`; omitted, CSS decides nothing. */
   readonly rect?: HudRect | null;
   /**
@@ -100,6 +105,7 @@ export function Sheet({
   title,
   onClose,
   children,
+  actions,
   rect = null,
   inertTargets = [],
   fallbackFocus,
@@ -270,6 +276,7 @@ export function Sheet({
           <h2 id={titleId} ref={headingRef} className="hud-sheet-heading" tabIndex={-1}>
             {title}
           </h2>
+          {actions ? <div className="hud-sheet-actions">{actions}</div> : null}
           <button type="button" className="hud-sheet-close" onClick={onClose}>
             Close
           </button>

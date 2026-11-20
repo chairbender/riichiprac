@@ -2999,6 +2999,20 @@ for one unrelated change with it: the snapshot adapter now sorts every hand into
 display order, so the 3D canvas draws the same hand the projected buttons and the
 2D dock show (`snapshot.test.ts` pins it).
 
+**Landed: 3D-H5 (2026-11-20).** The post-answer result card and the verdict
+sheet are in: `hud/{ResultCard,VerdictSheet}.tsx` re-host `AnswerSummary` and
+`VerdictPanel`, `src/verdictText.ts` is the one source for their wording,
+`HandRail`'s Mortal chip opens the same sheet pre-answer (Peek/Retry live
+there), and `HudLayer` owns one persistent result live region. `hudLayout()`
+returns the card's content box and its Details trigger, and the collision gate
+names both at every supported aspect. `App.tsx` changed only at the 3D mount
+seam (`verdictOpen` plus the slot wiring); a new hand closes the sheet without
+re-dealing or re-grading. At the user's request (2026-11-20) the result card and
+the verdict sheet header each carry their own Next Scenario control, so dealing
+again never requires the top bar; the top bar's stays as it was. `3d_hud.md` §9
+records the as-built facts. The composition handoff awaits the user's verdict;
+3D-15/16 remain.
+
 **Rules binding all five units.**
 
 - **One hand.** The projected DOM buttons from 3D-08 are the only hand controls;

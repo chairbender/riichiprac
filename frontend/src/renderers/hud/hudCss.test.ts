@@ -187,6 +187,42 @@ describe('HUD stylesheet: the committed visual tokens (3d_hud.md §8)', () => {
     expect(TOKEN_DECLARATIONS.get('--hud-tap')).toBe('44px');
   });
 
+  it('gives the result card only a bounded fade, suppressed by reduced motion', () => {
+    // The 2D summary's own entrance animation is neutralised; the card fades
+    // for at most 120 ms when motion is allowed, and not at all when it is not.
+    const summary = blocksFor(HUD, '.hud-result-card .answer-summary')[0];
+    expect(summary).toBeDefined();
+    expect(declarations(summary.body).get('animation')).toBe('none');
+    expect(HUD).toMatch(
+      /\.hud-root\[data-reduced-motion='false'\] \.hud-result-card-content \{[^}]*animation: hud-fade-in 120ms/,
+    );
+    expect(HUD).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.hud-result-card-content \{[^}]*animation: none/,
+    );
+  });
+
+  it('paints the result tone on the whole panel edge, not an inner box', () => {
+    // The outline is the card's outer edge (the panel), so the panel's own
+    // padding is the gap to the card's controls (user request 2026-11-20).
+    const tones = [
+      ['correct', '--hud-tone-ok', '--hud-ok'],
+      ['contested', '--hud-tone-warn', '--hud-warn'],
+      ['incorrect', '--hud-tone-bad', '--hud-bad'],
+    ] as const;
+    for (const [tone, surface, border] of tones) {
+      const [block] = blocksFor(
+        HUD,
+        `.hud-panel[data-slot='result'][data-tone='${tone}']`,
+      );
+      expect(block, tone).toBeDefined();
+      const decls = declarations(block.body);
+      expect(decls.get('background-color')).toBe(`var(${surface})`);
+      expect(decls.get('border-color')).toBe(`var(${border})`);
+    }
+    // No inner result box may paint its own tone surface.
+    expect(HUD).not.toMatch(/\.hud-result-card-content\[data-tone/);
+  });
+
   it('reads the safe-area insets in exactly one probe, with no layout impact', () => {
     const [probe] = blocksFor(HUD, '.hud-inset-probe');
     expect(probe).toBeDefined();

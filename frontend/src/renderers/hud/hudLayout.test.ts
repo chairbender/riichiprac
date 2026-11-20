@@ -32,8 +32,12 @@ import {
   HUD_PANEL_ACTIONS_ONE_ROW,
   HUD_PANEL_ACTIONS_TWO_ROWS,
   HUD_PANEL_HINT_ONLY,
+  HUD_PANEL_PAD,
   HUD_PANEL_RESULT,
   HUD_RAIL_GAP,
+  HUD_RESULT_PICKS_HEIGHT,
+  HUD_RESULT_TRIGGER_HEIGHT,
+  HUD_RESULT_TRIGGER_WIDTH,
   NO_INSETS,
   hudAtRestRects,
   hudCollisions,
@@ -460,7 +464,8 @@ describe('HUD layout: the panel rows (3d_hud.md §5, 3D-H3)', () => {
 
   it('derives the same rows from any panel rect, with no side effects', () => {
     const panel = { left: 100, top: 200, width: 576, height: 128 };
-    expect(hudPanelRows(panel, 'actions', 2)).toEqual({
+    const railRows = hudPanelRows(panel, 'actions', 2);
+    expect(railRows).toEqual({
       handRail: {
         left: 112,
         top: 208,
@@ -471,10 +476,30 @@ describe('HUD layout: the panel rows (3d_hud.md §5, 3D-H3)', () => {
         { left: 112, top: 236, width: 552, height: HUD_ACTION_RAIL_HEIGHT },
         { left: 112, top: 284, width: 552, height: HUD_ACTION_RAIL_HEIGHT },
       ],
+      resultCard: null,
+      sheetTrigger: null,
     });
-    expect(hudPanelRows(panel, 'result', 1)).toEqual({
-      handRail: null,
-      actionRail: [],
+
+    // H5: the result card fills the padded content box and the trigger sits in
+    // its top-right corner at tap height, both inside the fixed 104 px panel.
+    const result = hudPanelRows(
+      { left: 100, top: 200, width: 576, height: HUD_PANEL_RESULT },
+      'result',
+      1,
+    );
+    expect(result.handRail).toBeNull();
+    expect(result.actionRail).toEqual([]);
+    expect(result.resultCard).toEqual({
+      left: 112,
+      top: 208,
+      width: 552,
+      height: HUD_PANEL_RESULT - 2 * HUD_PANEL_PAD,
+    });
+    expect(result.sheetTrigger).toEqual({
+      left: 112 + 552 - HUD_RESULT_TRIGGER_WIDTH,
+      top: 208,
+      width: HUD_RESULT_TRIGGER_WIDTH,
+      height: HUD_RESULT_TRIGGER_HEIGHT,
     });
   });
 
@@ -584,6 +609,99 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
     expect(layout.sheet).toBeNull();
     expect(layout.toasts).toBeNull();
     expect(Number.isFinite(layout.topBar.height)).toBe(true);
+  });
+});
+
+describe('HUD layout: the result card and its sheet trigger (3D-H5)', () => {
+  it('fits the outcome row and picks line inside the fixed 104 px card', () => {
+    // The card's own rows are what keeps it from growing with its text: the
+    // 44 px trigger row, a 4 px gap and the 18 px picks line, inside the
+    // 88 px content box. A change that overflows this is a broken §7.4 number.
+    expect(
+      HUD_RESULT_TRIGGER_HEIGHT + HUD_RAIL_GAP + HUD_RESULT_PICKS_HEIGHT,
+    ).toBeLessThanOrEqual(HUD_PANEL_RESULT - 2 * HUD_PANEL_PAD);
+  });
+
+  it('names the result card and the Details trigger in the at-rest set', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const result = layoutFor(stage, scene, {
+      slot: 'result',
+      sheet: false,
+      toasts: 0,
+    });
+
+    expect(result.resultCard).not.toBeNull();
+    expect(result.sheetTrigger).not.toBeNull();
+    const names = hudAtRestRects(result).map((entry) => entry.name);
+    expect(names).toEqual([
+      'top bar',
+      'hand panel',
+      'result card',
+      'sheet trigger',
+    ]);
+
+    // Both rects live inside the panel, and the trigger inside the card, at a
+    // tap-height and hard against the card's trailing edge.
+    for (const rect of [result.resultCard!, result.sheetTrigger!]) {
+      expect(rect.left).toBeGreaterThanOrEqual(result.panel!.left);
+      expect(rect.left + rect.width).toBeLessThanOrEqual(
+        result.panel!.left + result.panel!.width + 0.01,
+      );
+      expect(rect.top).toBeGreaterThanOrEqual(result.panel!.top);
+      expect(rect.top + rect.height).toBeLessThanOrEqual(
+        result.panel!.top + result.panel!.height + 0.01,
+      );
+    }
+    expect(result.sheetTrigger!.height).toBe(HUD_ACTION_RAIL_HEIGHT);
+    expect(result.sheetTrigger!.top).toBe(result.resultCard!.top);
+    expect(
+      result.sheetTrigger!.left + result.sheetTrigger!.width,
+    ).toBeCloseTo(result.resultCard!.left + result.resultCard!.width, 6);
+  });
+
+  it('checks the card and trigger against the hand and the compass at every aspect', () => {
+    for (const stage of GATE_STAGES) {
+      const scene = sceneFor(stage, {});
+      const layout = layoutFor(stage, scene, {
+        slot: 'result',
+        sheet: false,
+        toasts: 2,
+      });
+      const violations = hudCollisions(hudAtRestRects(layout), {
+        handBand: scene.anchors.handBand,
+        compassBox: scene.compassBox,
+        hitRects: scene.targets,
+      });
+      expect(
+        violations,
+        `${stage.label}: ${describeViolations(violations)}`,
+      ).toEqual([]);
+      // The card is anchored inside the stage, not off an edge.
+      expect(layout.resultCard!.top).toBeGreaterThanOrEqual(0);
+      expect(
+        layout.resultCard!.left + layout.resultCard!.width,
+      ).toBeLessThanOrEqual(stage.width + 0.01);
+      expect(
+        layout.resultCard!.top + layout.resultCard!.height,
+      ).toBeLessThanOrEqual(stage.height + 0.01);
+    }
+  });
+
+  it('hides the card and trigger while the sheet is open (the panel collapses)', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const open = layoutFor(stage, scene, {
+      slot: 'result',
+      sheet: true,
+      toasts: 0,
+    });
+    expect(open.panelSlot).toBe('hint');
+    expect(open.resultCard).toBeNull();
+    expect(open.sheetTrigger).toBeNull();
+    expect(hudAtRestRects(open).map((entry) => entry.name)).not.toContain(
+      'sheet trigger',
+    );
   });
 });
 

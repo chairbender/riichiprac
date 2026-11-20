@@ -54,6 +54,16 @@ export const HUD_HAND_RAIL_HEIGHT = 24;
 export const HUD_RAIL_GAP = 4;
 export const HUD_ACTION_RAIL_HEIGHT = 44;
 
+/**
+ * The result card's own rows (3D-H5): the outcome row carries the tap-sized
+ * Details control (`--hud-tap`), and the picks line sits under it. Both are
+ * inside the fixed `104 px` panel, so a longer verdict cannot grow the card
+ * into the hand (`3d_hud.md` §7.4).
+ */
+export const HUD_RESULT_TRIGGER_WIDTH = 84;
+export const HUD_RESULT_TRIGGER_HEIGHT = HUD_ACTION_RAIL_HEIGHT;
+export const HUD_RESULT_PICKS_HEIGHT = 18;
+
 /** The toast stack's width cap: `32rem`, and the height H2 reserves per toast. */
 export const HUD_TOAST_MAX_WIDTH = 512;
 export const HUD_TOAST_HEIGHT = 56;
@@ -150,6 +160,18 @@ export interface HudLayout {
    * empty whenever the panel is the hint row alone or the result card.
    */
   readonly actionRail: readonly HudRect[];
+  /**
+   * The result card's content box inside the panel (H5), or null unless the
+   * panel is the result card. The card's outcome row and picks line are fixed
+   * by the panel's 104 px shape.
+   */
+  readonly resultCard: HudRect | null;
+  /**
+   * The result card's Details affordance (H5): the sheet trigger's own rect.
+   * It is inside the card, and the collision gate names it separately so a
+   * failing composition points at the control rather than only the surface.
+   */
+  readonly sheetTrigger: HudRect | null;
   /** The toast stack under the top bar, or null when empty. */
   readonly toasts: HudRect | null;
   /** The open sheet's panel, or null when closed (or the stage is too short). */
@@ -245,26 +267,54 @@ function anchorPanel(
 }
 
 /**
- * The panel's inner rows (H3), in stage coordinates.
+ * The panel's inner rows (H3, extended by H5), in stage coordinates.
  *
  * The row heights and gaps are the committed §5 table; the horizontal inset is
  * the surface's own padding, so a row's box is exactly where its text and
- * controls are drawn. A result card has no rows, and a hint-only panel has no
- * action rail — that is the "unmounted, not reserved" rule.
+ * controls are drawn. A hint-only panel has no action rail — that is the
+ * "unmounted, not reserved" rule. A result card instead has one content box and
+ * its Details trigger, positioned from the card's fixed shape:
+ *
+ *   outcome row  8 → 8 + 44 (the tap-sized trigger)
+ *   picks line   8 + 44 + 4 → + 18
+ *   (the 104 px panel leaves the card centred in its own box)
  */
 export function hudPanelRows(
   panel: HudRect,
   slot: HudPanelSlot,
   actionRows: 1 | 2,
-): { handRail: HudRect | null; actionRail: HudRect[] } {
-  if (slot === 'none' || slot === 'result') {
-    return { handRail: null, actionRail: [] };
+): {
+  handRail: HudRect | null;
+  actionRail: HudRect[];
+  resultCard: HudRect | null;
+  sheetTrigger: HudRect | null;
+} {
+  if (slot === 'none') {
+    return { handRail: null, actionRail: [], resultCard: null, sheetTrigger: null };
   }
 
   const left = panel.left + HUD_PANEL_SIDE_PAD;
   const width = Math.max(0, panel.width - 2 * HUD_PANEL_SIDE_PAD);
+  if (slot === 'result') {
+    const resultCard = rect(
+      left,
+      panel.top + HUD_PANEL_PAD,
+      width,
+      panel.height - 2 * HUD_PANEL_PAD,
+    );
+    const sheetTrigger = rect(
+      left + width - HUD_RESULT_TRIGGER_WIDTH,
+      resultCard.top,
+      HUD_RESULT_TRIGGER_WIDTH,
+      HUD_RESULT_TRIGGER_HEIGHT,
+    );
+    return { handRail: null, actionRail: [], resultCard, sheetTrigger };
+  }
+
   const handRail = rect(left, panel.top + HUD_PANEL_PAD, width, HUD_HAND_RAIL_HEIGHT);
-  if (slot !== 'actions') return { handRail, actionRail: [] };
+  if (slot !== 'actions') {
+    return { handRail, actionRail: [], resultCard: null, sheetTrigger: null };
+  }
 
   const first = panel.top + HUD_PANEL_PAD + HUD_HAND_RAIL_HEIGHT + HUD_RAIL_GAP;
   const actionRail: HudRect[] = [];
@@ -278,7 +328,7 @@ export function hudPanelRows(
       ),
     );
   }
-  return { handRail, actionRail };
+  return { handRail, actionRail, resultCard: null, sheetTrigger: null };
 }
 
 /**
@@ -324,6 +374,8 @@ export function hudLayout(
   let sheet: HudRect | null = null;
   let handRail: HudRect | null = null;
   let actionRail: HudRect[] = [];
+  let resultCard: HudRect | null = null;
+  let sheetTrigger: HudRect | null = null;
   let panelCompassClearance: number | null = null;
   let panelHandClearance: number | null = null;
 
@@ -345,7 +397,11 @@ export function hudLayout(
       const left = anchored.anchor === 'above' ? (width - panelWidth) / 2 : HUD_GAP;
       panel = rect(left, top, panelWidth, panelHeightPx);
       panelAnchor = anchored.anchor;
-      ({ handRail, actionRail } = hudPanelRows(panel, panelSlot, actionRows));
+      ({ handRail, actionRail, resultCard, sheetTrigger } = hudPanelRows(
+        panel,
+        panelSlot,
+        actionRows,
+      ));
       panelHandClearance =
         anchored.anchor === 'above'
           ? band.top - (top + panelHeightPx)
@@ -400,6 +456,8 @@ export function hudLayout(
     panelAnchor,
     handRail,
     actionRail,
+    resultCard,
+    sheetTrigger,
     toasts,
     sheet,
     panelCompassClearance,
@@ -409,12 +467,13 @@ export function hudLayout(
 
 /**
  * Every at-rest rect the HUD can cover with: the top bar, the panel **and each
- * of its rows**, and the toasts.
+ * of its rows or the result card**, and the toasts.
  *
  * The rows are listed individually as well as the panel that contains them
  * (H3): the hint row and each action row are the boxes the controls are drawn
  * in, so a violation names the row — "action rail 2" — rather than only the
- * surface around it.
+ * surface around it. H5 adds the result card and its Details trigger, so a card
+ * that ever reaches the hand or the compass fails with the control's own name.
  */
 export function hudAtRestRects(layout: HudLayout): HudNamedRect[] {
   const rects: HudNamedRect[] = [{ name: 'top bar', rect: layout.topBar }];
@@ -427,6 +486,12 @@ export function hudAtRestRects(layout: HudLayout): HudNamedRect[] {
       rect: row,
     });
   });
+  if (layout.resultCard) {
+    rects.push({ name: 'result card', rect: layout.resultCard });
+  }
+  if (layout.sheetTrigger) {
+    rects.push({ name: 'sheet trigger', rect: layout.sheetTrigger });
+  }
   if (layout.toasts) rects.push({ name: 'toast stack', rect: layout.toasts });
   return rects;
 }

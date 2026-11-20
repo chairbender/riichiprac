@@ -12,8 +12,8 @@
  *   (`3d_hud.md` §4 supersedes the draft task text on both counts).
  */
 
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HandRail } from './HandRail';
 import { mortalChip } from './handRail';
 import type { HandRailProps } from './HandRail';
@@ -101,5 +101,24 @@ describe('3D hand rail: the pre-answer Mortal chip', () => {
     expect(chip?.getAttribute('role')).toBeNull();
     // Exactly one live region in the row.
     expect(container.querySelectorAll('[aria-live]')).toHaveLength(1);
+  });
+
+  it('opens the verdict sheet from the chip (3D-H5)', () => {
+    const onOpenVerdict = vi.fn();
+    render(rail({ onOpenVerdict }));
+    const trigger = screen.getByRole('button', {
+      name: 'Mortal ready: open the verdict',
+    });
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+    fireEvent.click(trigger);
+    expect(onOpenVerdict).toHaveBeenCalledTimes(1);
+    // The only button the rail adds is the sheet trigger: no hand control.
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(trigger.classList.contains('hud-mortal-chip')).toBe(true);
+  });
+
+  it('can stop announcing the hint once the result card owns the message', () => {
+    const { container } = render(rail({ answered: true, announceHint: false }));
+    expect(container.querySelectorAll('[aria-live]')).toHaveLength(0);
   });
 });

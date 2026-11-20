@@ -12,12 +12,34 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const DEFAULT_GRADE = JSON.stringify({
+  mode: 'book_only',
+  book: null,
+  mortal: null,
+  outcome: 'ungraded',
+});
 
 const wasmMock = vi.hoisted(() => ({
   generatedJson: '{}',
+  gradedJson: JSON.stringify({
+    mode: 'book_only',
+    book: null,
+    mortal: null,
+    outcome: 'ungraded',
+  }),
   generateCalls: 0,
+  gradeCalls: 0,
 }));
 
 vi.mock('riichiprac', () => ({
@@ -46,9 +68,10 @@ vi.mock('riichiprac', () => ({
       },
     ]),
   ),
-  grade_answer_json: vi.fn(() =>
-    JSON.stringify({ mode: 'book_only', book: null, mortal: null, outcome: 'ungraded' }),
-  ),
+  grade_answer_json: vi.fn(() => {
+    wasmMock.gradeCalls += 1;
+    return wasmMock.gradedJson;
+  }),
   parse_scenario_report: vi.fn(() => JSON.stringify({ error: 'not used' })),
 }));
 
@@ -79,6 +102,7 @@ vi.mock('./renderers/RendererHost', () => ({
 import { App } from './App';
 import { useGameStore } from './store/useGameStore';
 import { clearHudAnchors, publishHudAnchors } from './renderers/hud/hudAnchors';
+import type { AiEvaluation } from './types/ai';
 import type { GameState, PlayerState } from './types/game';
 
 const scenariosDir = join(process.cwd(), 'public', 'scenarios');
@@ -207,6 +231,8 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
   useGameStore.getState().reset();
   wasmMock.generateCalls = 0;
+  wasmMock.gradeCalls = 0;
+  wasmMock.gradedJson = DEFAULT_GRADE;
   hostMock.mounted = 0;
   hostMock.props = null;
 });
@@ -401,4 +427,202 @@ describe('App 3D practice HUD (3D-H3)', () => {
     // Once the deal lands the status toast is gone.
     expect(container.querySelector('.hud-toast--status')).toBeNull();
   });
+});
+
+describe('App 3D result card and verdict sheet (3D-H5)', () => {
+  const ANCHOR_OWNER = {};
+
+  const EVALUATION: AiEvaluation = {
+    model: 'mortal_298k.safetensors',
+    expected_value: 0.31,
+    recommended_action: 'Pass',
+    evaluations: [
+      { action: 'Pass', label: 'Pass', type: 'pass', probability: 0.71 },
+      { action: 'Pon', label: 'Pon 5z', type: 'pon', probability: 0.24 },
+    ],
+  };
+
+  const GRADE = {
+    mode: 'book_and_mortal',
+    outcome: 'both_agree',
+    book: {
+      is_action_correct: true,
+      is_tile_correct: true,
+      expected_action: 'pass',
+      expected_tile: '',
+    },
+    mortal: {
+      model: 'mortal_298k.safetensors',
+      recommended_action: 'Pass',
+      recommended_base: 'Pass',
+      recommended_label: 'Pass',
+      recommended_riichi: false,
+      answer_action: 'Pass',
+      matches_action: true,
+      matches_tile: true,
+      agrees: true,
+      answer_probability: 0.71,
+      top_probability: 0.71,
+      confidence: 'high',
+      close_second: false,
+    },
+  };
+
+  beforeEach(() => {
+    publishHudAnchors(ANCHOR_OWNER, {
+      handBand: { left: 400, top: 640, width: 200, height: 60 },
+      compass: null,
+    });
+  });
+
+  afterEach(() => {
+    clearHudAnchors(ANCHOR_OWNER);
+  });
+
+  it('answers into a compact card, and only Details opens the sheet', async () => {
+    wasmMock.gradedJson = JSON.stringify(GRADE);
+    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+
+    const dealtState = useGameStore.getState().gameState;
+    const dealsBefore = wasmMock.generateCalls;
+    const gradesBefore = wasmMock.gradeCalls;
+    const announcer = container.querySelector('.hud-announcer') as HTMLElement;
+    expect(announcer.textContent).toBe('');
+
+    await act(async () => {
+      useGameStore.getState().submitAnswer({ action: 'pass', tile: '' });
+    });
+
+    // Post-answer state machine: the rail is gone, the card is in its slot,
+    // and nothing expanded on its own (user decision 2026-11-19).
+    expect(wasmMock.gradeCalls).toBe(gradesBefore + 1);
+    expect(container.querySelector('.hud-action-rail')).toBeNull();
+    const panel = container.querySelector('.hud-panel') as HTMLElement;
+    expect(panel.getAttribute('data-slot')).toBe('result');
+    // The green/red outline is the whole panel's, not an inner box's.
+    expect(panel.getAttribute('data-tone')).toBe('correct');
+    expect(container.querySelector('.hud-result-card')).not.toBeNull();
+    expect(container.querySelector('.answer-summary-headline')?.textContent).toBe(
+      'Correct',
+    );
+    expect(container.querySelector('.hud-result-card__picks')?.textContent).toBe(
+      'Book: Pass on Pon 5z · Mortal: Pass',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    // The result is announced once by the HUD's persistent live region.
+    expect(container.querySelector('.hud-announcer')).toBe(announcer);
+    expect(announcer.textContent).toBe(
+      'Result: Correct. The book and Mortal agree.',
+    );
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Show the full book and Mortal comparison',
+        }),
+      );
+    });
+
+    // The sheet is the full 2D verdict panel; opening it changed neither the
+    // hand nor the grade, and it did not deal or re-evaluate.
+    expect(screen.getByRole('dialog', { name: 'Verdict' })).toBeTruthy();
+    expect(container.querySelector('.verdict-panel')).not.toBeNull();
+    expect(useGameStore.getState().gameState).toBe(dealtState);
+    expect(wasmMock.generateCalls).toBe(dealsBefore);
+    expect(wasmMock.gradeCalls).toBe(gradesBefore + 1);
+    expect(container.querySelector('.hud-announcer')).toBe(announcer);
+    expect(announcer.textContent).toBe(
+      'Result: Correct. The book and Mortal agree.',
+    );
+    // The scene stays mounted and inert behind the modal, never remounted.
+    expect(container.querySelector('[data-testid="renderer-host"]')).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const card = container.querySelector('.hud-result-card') as HTMLElement;
+    expect(card).not.toBeNull();
+
+    // The card carries its own Next, so the corner is not the only way on
+    // (user request 2026-11-20).
+    await act(async () => {
+      fireEvent.click(
+        within(card).getByRole('button', { name: 'Next scenario' }),
+      );
+    });
+    await waitFor(() =>
+      expect(wasmMock.generateCalls).toBeGreaterThan(dealsBefore),
+    );
+    await waitFor(() =>
+      expect(container.querySelector('.hud-result-card')).toBeNull(),
+    );
+    expect(announcer.textContent).toBe('');
+  }, 60000);
+
+  it('deals the next hand from the verdict sheet header', async () => {
+    wasmMock.gradedJson = JSON.stringify(GRADE);
+    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+    const dealsBefore = wasmMock.generateCalls;
+
+    await act(async () => {
+      useGameStore.getState().submitAnswer({ action: 'pass', tile: '' });
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Show the full book and Mortal comparison',
+        }),
+      );
+    });
+
+    const dialog = screen.getByRole('dialog', { name: 'Verdict' });
+    const next = within(dialog).getByRole('button', { name: 'Next scenario' });
+    expect(next.textContent).toBe('Next Scenario');
+
+    await act(async () => {
+      fireEvent.click(next);
+    });
+    await waitFor(() =>
+      expect(wasmMock.generateCalls).toBeGreaterThan(dealsBefore),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(container.querySelector('.hud-result-card')).toBeNull();
+  }, 60000);
+
+  it('opens the pre-answer sheet from the Mortal chip, where Peek lives', async () => {
+    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+    // The weights mock fails on first paint; wait for that to settle before
+    // giving the store a ready evaluation, so the late catch cannot undo it.
+    await waitFor(() =>
+      expect(useGameStore.getState().aiStatus).toBe('error'),
+    );
+
+    await act(async () => {
+      useGameStore.setState({
+        aiStatus: 'ready',
+        evaluation: EVALUATION,
+        isEvaluating: false,
+      });
+    });
+
+    const chip = container.querySelector('.hud-mortal-chip--trigger');
+    expect(chip).not.toBeNull();
+    fireEvent.click(chip as HTMLElement);
+
+    expect(screen.getByRole('dialog', { name: 'Verdict' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeTruthy();
+    const peek = screen.getByRole('button', { name: 'Peek' });
+
+    // Peek reveals Mortal's line without submitting an answer.
+    fireEvent.click(peek);
+    expect(useGameStore.getState().peekedBeforeAnswer).toBe(true);
+    expect(useGameStore.getState().dualGrade).toBeNull();
+    expect(container.querySelector('.hud-result-card')).toBeNull();
+    expect(screen.getByText(/peeked before answering/)).toBeTruthy();
+  }, 60000);
 });

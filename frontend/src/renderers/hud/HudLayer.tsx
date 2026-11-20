@@ -38,10 +38,12 @@ import { Sheet } from './Sheet';
 import './tokens.css';
 import './Hud.css';
 
-/** One sheet's content: the title H4/H5 supply and the body they fill. */
+/** One sheet's content: the title H4/H5 supply, the body and header actions. */
 export interface HudSheetContent {
   readonly title: string;
   readonly body: ReactNode;
+  /** Optional controls beside the heading (H5's deterministic Next hand). */
+  readonly actions?: ReactNode;
 }
 
 export interface HudLayerProps {
@@ -67,6 +69,12 @@ export interface HudLayerProps {
   readonly actionRail?: ReactNode;
   /** H5: the result card; replaces both rows and keeps the panel's fixed shape. */
   readonly resultCard?: ReactNode;
+  /**
+   * H5: the result panel's tone (`outcomeTone`). The tone surface and its
+   * green/amber/red outline are the **panel's**, not an inner box's, so the
+   * card's buttons keep the panel's padding between them and the edge.
+   */
+  readonly resultTone?: 'correct' | 'contested' | 'incorrect' | 'neutral';
   /** H3: the toast stack's contents. */
   readonly toasts?: ReactNode;
   /** How many toasts the stack holds (1–3); defaults from `toasts`. */
@@ -75,6 +83,15 @@ export interface HudLayerProps {
   readonly sheet?: HudSheetContent | null;
   /** Close the sheet (Escape, scrim tap, Close button). */
   readonly onCloseSheet?: () => void;
+  /**
+   * H5: the result's text for the layer's one persistent live region.
+   *
+   * It is mounted for the life of the HUD and only its text changes, so a
+   * result is announced once when the answer lands. Opening or closing the
+   * verdict sheet remounts the result card but not this node, so the same
+   * answer is never announced twice (`3d_hud.md` §6.5.10).
+   */
+  readonly announcement?: string;
 }
 
 interface HudMetrics {
@@ -124,10 +141,12 @@ export function HudLayer({
   hintRow,
   actionRail,
   resultCard,
+  resultTone,
   toasts,
   toastCount,
   sheet = null,
   onCloseSheet,
+  announcement = '',
 }: HudLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
@@ -235,6 +254,20 @@ export function HudLayer({
       {/* The only element that reads env(safe-area-inset-*); it never paints. */}
       <span ref={probeRef} className="hud-inset-probe" aria-hidden="true" />
 
+      {/*
+       * H5: the HUD's one result live region. It stays mounted while the card
+       * comes and goes with the verdict sheet, so its text changes exactly once
+       * per answer (§6.5.10).
+       */}
+      <p
+        className="hud-announcer hud-visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {announcement}
+      </p>
+
       {layout && (
         <div
           ref={topBarRef}
@@ -261,6 +294,7 @@ export function HudLayer({
           ref={panelRef}
           className="hud-panel"
           data-slot={panelSlot}
+          data-tone={panelSlot === 'result' ? resultTone : undefined}
           data-dimmed={sheetOpen ? 'true' : 'false'}
           style={rectStyle(layout.panel)}
         >
@@ -287,6 +321,7 @@ export function HudLayer({
         <Sheet
           open={sheetOpen}
           title={sheet?.title ?? ''}
+          actions={sheet?.actions}
           onClose={() => onCloseSheet?.()}
           rect={layout?.sheet ?? null}
           inertTargets={[topBarRef, panelRef, toastRef, stageRef]}
