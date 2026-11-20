@@ -71,11 +71,11 @@ result card — but they are one rect.
 
 | Region | Contents | Visibility | Owner |
 | --- | --- | --- | --- |
-| **Top bar** | Next hand (the only next-hand control), setup trigger, full-screen toggle | always | H2 |
+| **Top bar** | Next hand (the corner control; the result card and the verdict sheet carry their own after an answer, §4), setup trigger, full-screen toggle | always | H2 |
 | **Hand panel** | one anchored surface above the hand with two rows | always (once the scene publishes anchors) | H3/H5 |
 | — *hand rail* row | the live-region hint (`handHint`) + the pre-answer Mortal chip | always | H3 |
 | — *action rail* row | `ActionBar`'s non-discard actions, Riichi toggle, Kan toggle | while unanswered and non-empty | H3 |
-| — *result card* | the compact result (`AnswerSummary` + one line of verdict) | after an answer; replaces both rows | H5 |
+| — *result card* | the compact result (`AnswerSummary` + one line of verdict) and its own Next control | after an answer; replaces both rows | H5 |
 | **Setup sheet** | scenario pool, AI Hotseat, settings, position, table info, notes | on demand | H4 |
 | **Verdict sheet** | full `VerdictPanel` (book, Mortal, ranking, explanation, peek) | on demand | H5 |
 | **Toast stack** | status, error and file notices | transient/persistent, max 3 | H3 |
@@ -124,7 +124,7 @@ unchanged), **DROPPED**, **2D ONLY**.
 | 13 | Panel dismiss (outside click, Escape) | panel | the H2 sheet's own rules (§6.5) | H2/H4 |
 | 14 | "Mortal must agree" checkbox + label + hint tooltip + `disabled` when Mortal is not ready | header | **SETUP SHEET**, settings section, hint inline | H4 |
 | 15 | View label + select (stacked / top-down / rendered3d) + hint | header | **SETUP SHEET**, settings section (adding the 3D value is R14's) | H4 |
-| 16 | `NextScenarioButton` (header variant) | header | **TOP BAR** — always visible, the only next-hand control | H2 |
+| 16 | `NextScenarioButton` (header variant) | header | **TOP BAR** — always visible; the post-answer result card and the verdict sheet also carry one (user request 2026-11-20) | H2 |
 | 17 | Export button | header | **SETUP SHEET**, position section | H4 |
 | 18 | Import button + hidden file input + "Importing…" | header | **SETUP SHEET**, position section | H4 |
 | 19 | Description label + textarea + max length | header | **SETUP SHEET**, position section | H4 |
@@ -161,7 +161,7 @@ unchanged), **DROPPED**, **2D ONLY**.
 | 50 | Riichi toggle (`aria-pressed`, ON/OFF) | dock | **ACTION RAIL** | H3 |
 | 51 | Kan toggle (tile label, probability, ON/OFF) | dock | **ACTION RAIL** | H3 |
 | 52 | Hint line (`.hand-dock-label`, `aria-live`) | dock | **HAND RAIL** | H3 |
-| 53 | Dock `NextScenarioButton` | dock | **DROPPED** — the top bar's Next is the single control | H3 |
+| 53 | Dock `NextScenarioButton` | dock | **DROPPED** — the top bar, the post-answer result card and the verdict sheet carry Next; the dock's is not re-mounted | H3/H5 |
 | 54 | `ActionBar` (non-discard actions, labels, probabilities, `aria-pressed`) | below the table | **ACTION RAIL** | H3 |
 | 55 | `DecisionPopup` (built, never mounted) | — | **DROPPED** — the rail is the only call surface; do not mount a second one | H3 |
 | 56 | `statusMessage` (loading table/pack/agreement/Mortal/hotseat) | `role="status"` | **TOAST**, persistent while loading | H3 |
@@ -191,7 +191,7 @@ second strip of tiles.
 | Hint line (`handHint`, `aria-live`) | **hand rail** row of the panel (H3) | one line directly above the hand; it explains the tap |
 | Hand + draw tile buttons | **scene** (3D-08) | the projected buttons; the HUD never renders a second hand |
 | `hand` grid + tile images | **scene** (canvas) | drawn in 3D |
-| Dock `NextScenarioButton` | **dropped** | the top bar's Next hand is always visible and is the single control |
+| Dock `NextScenarioButton` | **dropped** | the top bar, the post-answer result card and the verdict sheet each carry Next (user request 2026-11-20); the dock's is not re-mounted |
 | Hint row post-answer | **folded into the result card** | "Answer submitted" is redundant beside the result; the outcome is the message |
 
 Consequences the units must honour:
@@ -224,7 +224,7 @@ The bottom of the composition is **one panel**, not three strips:
 | --- | --- | --- |
 | hint row (the hand rail) | `24 px` | always |
 | action row (the action rail: `ActionBar` + Riichi/Kan toggles) | `44 px` + `4 px` gap | pre-answer, when it has content |
-| result card | `104 px` | after an answer (replaces both rows) |
+| result card | `104 px` (two `44 px` rows: outcome, then picks + Next) | after an answer (replaces both rows) |
 
 So the panel is `84 px` with the action row (`128 px` if the row wraps to two),
 `40 px` with the hint alone, and `104 px` with the result card. It is
@@ -1042,9 +1042,15 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   `HudLayer` gained one persistent `role="status"` announcer. `App.tsx` gained
   `verdictOpen` and the slot wiring at the 3D mount seam.
 - **The card.** It is the 2D answer summary (mark, headline, detail,
-  Book/Mortal chips, Details) inside one fixed 104 px tone surface plus one
+  Book/Mortal chips, Details) inside one fixed 104 px tone surface, plus one
   clamped line: `Book: <pick> · Mortal: <pick>`. It replaces both panel rows and
-  never expands on its own; Details is the only way into the sheet.
+  never expands on its own; Details is the only way into the sheet. The card's
+  two rows are both `44 px` — the outcome row, then the picks line with the
+  card's own **Next Scenario** control on its right (user request 2026-11-20),
+  so dealing again does not require the top bar.
+- **Next is on the sheet too.** The sheet header carries the same Next control
+  beside Close (always visible, no scrolling the body); it closes the sheet and
+  deals. The top bar's Next remains, and the 2D dock still has only its own.
 - **The sheet.** `VerdictSheet` is the 2D `VerdictPanel` unchanged: grade
   columns, `ActionRanking`, `CallReport`, `ScenarioExplanation`, the outcome
   band, the peek card and Retry. Pre-answer the same sheet opens from the hand

@@ -13,6 +13,7 @@ import { AppControls } from './components/AppControls';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
 import { HotseatCard } from './components/HotseatCard';
+import { NextScenarioButton } from './components/NextScenarioButton';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
@@ -1134,6 +1135,8 @@ export const App = () => {
         grade={dualGrade}
         state={gameState}
         onDetails={() => setVerdictOpen(true)}
+        onNext={handleNextScenario}
+        nextDisabled={isLoading}
       />
     ) : undefined;
 
@@ -1159,6 +1162,17 @@ export const App = () => {
               redFives={humanPlayer?.red_fives ?? []}
               onPeek={peekMortal}
               onRetry={retryMortalEvaluation}
+            />
+          ),
+          actions: (
+            <NextScenarioButton
+              onClick={() => {
+                // Close first so the deal is not read as a sheet re-evaluation,
+                // and the player sees the new hand arrive.
+                setVerdictOpen(false);
+                handleNextScenario();
+              }}
+              disabled={isLoading}
             />
           ),
         }

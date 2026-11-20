@@ -38,10 +38,12 @@ import { Sheet } from './Sheet';
 import './tokens.css';
 import './Hud.css';
 
-/** One sheet's content: the title H4/H5 supply and the body they fill. */
+/** One sheet's content: the title H4/H5 supply, the body and header actions. */
 export interface HudSheetContent {
   readonly title: string;
   readonly body: ReactNode;
+  /** Optional controls beside the heading (H5's deterministic Next hand). */
+  readonly actions?: ReactNode;
 }
 
 export interface HudLayerProps {
@@ -311,6 +313,7 @@ export function HudLayer({
         <Sheet
           open={sheetOpen}
           title={sheet?.title ?? ''}
+          actions={sheet?.actions}
           onClose={() => onCloseSheet?.()}
           rect={layout?.sheet ?? null}
           inertTargets={[topBarRef, panelRef, toastRef, stageRef]}

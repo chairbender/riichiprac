@@ -12,7 +12,15 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const DEFAULT_GRADE = JSON.stringify({
@@ -534,10 +542,15 @@ describe('App 3D result card and verdict sheet (3D-H5)', () => {
       fireEvent.keyDown(document, { key: 'Escape' });
     });
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(container.querySelector('.hud-result-card')).not.toBeNull();
+    const card = container.querySelector('.hud-result-card') as HTMLElement;
+    expect(card).not.toBeNull();
 
+    // The card carries its own Next, so the corner is not the only way on
+    // (user request 2026-11-20).
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Next scenario' }));
+      fireEvent.click(
+        within(card).getByRole('button', { name: 'Next scenario' }),
+      );
     });
     await waitFor(() =>
       expect(wasmMock.generateCalls).toBeGreaterThan(dealsBefore),
@@ -546,6 +559,37 @@ describe('App 3D result card and verdict sheet (3D-H5)', () => {
       expect(container.querySelector('.hud-result-card')).toBeNull(),
     );
     expect(announcer.textContent).toBe('');
+  }, 60000);
+
+  it('deals the next hand from the verdict sheet header', async () => {
+    wasmMock.gradedJson = JSON.stringify(GRADE);
+    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+    const dealsBefore = wasmMock.generateCalls;
+
+    await act(async () => {
+      useGameStore.getState().submitAnswer({ action: 'pass', tile: '' });
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Show the full book and Mortal comparison',
+        }),
+      );
+    });
+
+    const dialog = screen.getByRole('dialog', { name: 'Verdict' });
+    const next = within(dialog).getByRole('button', { name: 'Next scenario' });
+    expect(next.textContent).toBe('Next Scenario');
+
+    await act(async () => {
+      fireEvent.click(next);
+    });
+    await waitFor(() =>
+      expect(wasmMock.generateCalls).toBeGreaterThan(dealsBefore),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(container.querySelector('.hud-result-card')).toBeNull();
   }, 60000);
 
   it('opens the pre-answer sheet from the Mortal chip, where Peek lives', async () => {

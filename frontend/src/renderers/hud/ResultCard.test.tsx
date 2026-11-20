@@ -119,14 +119,14 @@ describe('3D result card: the compact result', () => {
     cleanup();
 
     const card = render(
-      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} />,
+      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
     );
     expect(readSummary(card.container as HTMLElement)).toEqual(expected);
   });
 
   it('adds the book-versus-Mortal pick line and the outcome tone', () => {
     const { container } = render(
-      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} />,
+      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
     );
     const content = container.querySelector('.hud-result-card-content');
     // Book agrees, Mortal does not: the summary's own vocabulary for it.
@@ -148,6 +148,7 @@ describe('3D result card: the compact result', () => {
           },
         })}
         onDetails={() => undefined}
+        onNext={() => undefined}
       />,
     );
     expect(container.querySelector('.hud-result-card__picks')?.textContent).toBe(
@@ -159,6 +160,7 @@ describe('3D result card: the compact result', () => {
         grade={{ ...GRADE, mortal: null, outcome: 'only_available_agrees', mode: 'book_only' }}
         state={state()}
         onDetails={() => undefined}
+        onNext={() => undefined}
       />,
     );
     expect(container.querySelector('.hud-result-card__picks')?.textContent).toBe(
@@ -168,7 +170,7 @@ describe('3D result card: the compact result', () => {
 
   it('is not a live region: the HUD’s announcer speaks once', () => {
     const { container } = render(
-      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} />,
+      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
     );
     // The summary's own polite region is suppressed in the 3D card.
     expect(container.querySelectorAll('[aria-live]')).toHaveLength(0);
@@ -177,7 +179,7 @@ describe('3D result card: the compact result', () => {
 
   it('opens the verdict only through Details', () => {
     const onDetails = vi.fn();
-    render(<ResultCard grade={GRADE} state={state()} onDetails={onDetails} />);
+    render(<ResultCard grade={GRADE} state={state()} onDetails={onDetails} onNext={() => undefined} />);
     const details = screen.getByRole('button', {
       name: 'Show the full book and Mortal comparison',
     });
@@ -185,8 +187,38 @@ describe('3D result card: the compact result', () => {
     expect(onDetails).toHaveBeenCalledTimes(1);
   });
 
+  it('carries its own Next control, so the corner is not the only way on', () => {
+    const onNext = vi.fn();
+    const { rerender } = render(
+      <ResultCard
+        grade={GRADE}
+        state={state()}
+        onDetails={() => undefined}
+        onNext={onNext}
+      />,
+    );
+    const next = screen.getByRole('button', { name: 'Next scenario' });
+    expect(next.textContent).toBe('Next Scenario');
+    fireEvent.click(next);
+    expect(onNext).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ResultCard
+        grade={GRADE}
+        state={state()}
+        onDetails={() => undefined}
+        onNext={onNext}
+        nextDisabled
+      />,
+    );
+    expect(
+      (screen.getByRole('button', { name: 'Next scenario' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+
   it('takes focus when the answer removed the focused control', () => {
-    render(<ResultCard grade={GRADE} state={state()} onDetails={() => undefined} />);
+    render(<ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />);
     expect(document.activeElement).toBe(
       screen.getByRole('button', {
         name: 'Show the full book and Mortal comparison',
@@ -201,7 +233,7 @@ describe('3D result card: the compact result', () => {
     outside.focus();
     try {
       render(
-        <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} />,
+        <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
       );
       expect(document.activeElement).toBe(outside);
     } finally {

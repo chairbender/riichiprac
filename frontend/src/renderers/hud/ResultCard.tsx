@@ -24,6 +24,7 @@
 
 import { useEffect, useRef } from 'react';
 import { AnswerSummary } from '../../components/AnswerSummary';
+import { NextScenarioButton } from '../../components/NextScenarioButton';
 import type { GameState } from '../../types/game';
 import type { DualGrade } from '../../types/verdict';
 import { outcomeTone } from '../../types/verdict';
@@ -36,6 +37,16 @@ export interface ResultCardProps {
   readonly state: GameState;
   /** Open the verdict sheet: the only way to expand the result. */
   readonly onDetails: () => void;
+  /**
+   * Deal the next hand (user request 2026-11-20).
+   *
+   * The top bar keeps its Next, but the card is where the player is looking
+   * after an answer, so it carries its own copy rather than sending them to the
+   * corner. The sheet header carries a third one for the same reason.
+   */
+  readonly onNext: () => void;
+  /** True while the next hand is being generated. */
+  readonly nextDisabled?: boolean;
 }
 
 /** True when nothing that can receive focus survived the answer. */
@@ -49,7 +60,13 @@ function focusWasLost(): boolean {
   );
 }
 
-export function ResultCard({ grade, state, onDetails }: ResultCardProps) {
+export function ResultCard({
+  grade,
+  state,
+  onDetails,
+  onNext,
+  nextDisabled = false,
+}: ResultCardProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,7 +85,10 @@ export function ResultCard({ grade, state, onDetails }: ResultCardProps) {
       data-tone={outcomeTone(grade.outcome)}
     >
       <AnswerSummary grade={grade} onDetails={onDetails} live={false} />
-      {picks && <p className="hud-result-card__picks">{picks}</p>}
+      <div className="hud-result-card-actions">
+        {picks && <p className="hud-result-card__picks">{picks}</p>}
+        <NextScenarioButton onClick={onNext} disabled={nextDisabled} />
+      </div>
     </div>
   );
 }

@@ -3007,8 +3007,11 @@ there), and `HudLayer` owns one persistent result live region. `hudLayout()`
 returns the card's content box and its Details trigger, and the collision gate
 names both at every supported aspect. `App.tsx` changed only at the 3D mount
 seam (`verdictOpen` plus the slot wiring); a new hand closes the sheet without
-re-dealing or re-grading. `3d_hud.md` §9 records the as-built facts. The
-composition handoff awaits the user's verdict; 3D-15/16 remain.
+re-dealing or re-grading. At the user's request (2026-11-20) the result card and
+the verdict sheet header each carry their own Next Scenario control, so dealing
+again never requires the top bar; the top bar's stays as it was. `3d_hud.md` §9
+records the as-built facts. The composition handoff awaits the user's verdict;
+3D-15/16 remain.
 
 **Rules binding all five units.**
 

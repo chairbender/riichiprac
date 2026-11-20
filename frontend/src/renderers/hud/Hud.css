@@ -285,12 +285,12 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: center;
-  gap: 4px;
   box-sizing: border-box;
   min-width: 0;
   min-height: 0;
-  padding: 4px 10px;
+  /* Two 44 px rows fill the 88 px content box exactly: the outcome row and the
+     picks/Next row. No gap, so the fixed 104 px panel never has to grow. */
+  padding: 0 10px;
   background-color: var(--hud-surface-solid);
   border: var(--hud-border);
   border-radius: var(--hud-radius-control);
@@ -375,14 +375,65 @@
   outline-offset: 2px;
 }
 
+/*
+ * The second row: the book answer against Mortal's pick on the left, and the
+ * card's own Next control on the right (user request 2026-11-20). It stays a
+ * tap-height row so the player can deal again without reaching the top bar.
+ */
+.hud-result-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
+  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+}
+
 /* The book answer against Mortal's pick: one line, clamped, secondary text. */
 .hud-result-card__picks {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   overflow: hidden;
   color: var(--hud-text-muted);
   font-size: var(--hud-text-xs);
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.hud-result-card .new-hand-button,
+.hud-sheet-actions .new-hand-button {
+  flex: 0 0 auto;
+  min-height: var(--hud-tap);
+  margin: 0;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: var(--hud-text-sm);
+  font-weight: 600;
+  color: var(--hud-accent);
+  background-color: rgba(165, 216, 255, 0.08);
+  border: 1px solid var(--hud-border-accent);
+  border-radius: var(--hud-radius-control);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hud-result-card .new-hand-button:hover,
+.hud-sheet-actions .new-hand-button:hover {
+  background-color: rgba(165, 216, 255, 0.16);
+}
+
+.hud-result-card .new-hand-button:disabled,
+.hud-sheet-actions .new-hand-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.hud-result-card .new-hand-button:focus-visible,
+.hud-sheet-actions .new-hand-button:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
 }
 
 /* A plain opacity fade, and only when motion is allowed (§6.4). */
@@ -565,6 +616,14 @@
 
 .hud-sheet-heading:focus {
   outline: none;
+}
+
+/* Header actions (H5's Next hand) sit between the heading and Close. */
+.hud-sheet-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--hud-space);
 }
 
 .hud-sheet-close {
