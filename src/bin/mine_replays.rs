@@ -236,7 +236,9 @@ enum Command {
         #[arg(long, value_name = "LIST", value_delimiter = ',')]
         corpus_cap: Vec<String>,
 
-        /// Maximum selected bases from one source replay.
+        /// Maximum selected bases from one source replay. The last-resort fill
+        /// may exceed it (and reports `source_replay_relaxed`) when the pack
+        /// would otherwise ship short.
         #[arg(long, value_name = "N")]
         max_per_replay: Option<usize>,
 

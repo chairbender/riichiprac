@@ -1763,7 +1763,10 @@ licence gates pass; no single family crowding out the others.
 > bucket, the selector relaxes the cap, repairs under-quota families first and
 > records `cap_relaxed`/`relaxed_fill`; a family that still falls short reports
 > `no_candidates`, `shared_with_other_families`, `cap_limited`, `exhausted` or
-> `pack_full` rather than substituting.
+> `pack_full` rather than substituting. The per-replay cap (`--max-per-replay`)
+> is relaxed the same way by the last-resort fill and recorded as
+> `source_replay_relaxed`; a corpus-family cap (`--corpus-cap`) is a mix rule
+> and is never relaxed.
 >
 > Corpus sample (`selection-s2-sample.md`, report at
 > `testdata/reports/s2-selection-sample.json`): the S1 sample's two

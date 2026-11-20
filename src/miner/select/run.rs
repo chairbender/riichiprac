@@ -673,6 +673,14 @@ pub fn run_selection(
             plan.source_replay_cap_blocked
         ));
     }
+    if plan.source_replay_relaxed > 0 {
+        notes.push(format!(
+            "{} scenario(s) were selected beyond the per-replay cap by the last-resort fill: \
+             every remaining candidate came from a replay already at its maximum, so the pack \
+             filled the slot instead of reporting a shortfall",
+            plan.source_replay_relaxed
+        ));
+    }
     if let Some(scope) = options.config.scope_note() {
         notes.push(scope);
     }
@@ -720,6 +728,7 @@ pub fn run_selection(
         gates: gate_rows,
         dedupe: plan.dedupe,
         cap_relaxed: plan.cap_relaxed,
+        source_replay_relaxed: plan.source_replay_relaxed,
         relaxed_fill: plan.relaxed_fill,
         held_out: HeldOutStats {
             target: held_out_target,

@@ -105,6 +105,7 @@ def main() -> int:
             "decisions_seen": selection.get("decisions_seen"),
             "decisions_labelled": selection.get("decisions_labelled"),
             "cap_relaxed": selection.get("cap_relaxed"),
+            "source_replay_relaxed": selection.get("source_replay_relaxed"),
             "relaxed_fill": selection.get("relaxed_fill"),
             "funnel": selection.get("funnel"),
             "replay_families": selection.get("replay_families"),

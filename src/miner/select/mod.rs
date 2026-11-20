@@ -161,7 +161,10 @@ pub struct SelectionConfig {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub replay_family_caps: BTreeMap<String, usize>,
     /// Maximum selected bases from one source replay. `None` is uncapped. This
-    /// keeps several adjacent turns of one game from looking like repeats.
+    /// keeps several adjacent turns of one game from looking like repeats. It
+    /// is a crowding-out guard like the diversity caps: the last-resort fill
+    /// may exceed it when the pack would otherwise ship short, and reports the
+    /// slots as `source_replay_relaxed`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_per_replay: Option<usize>,
     /// Keep only stable book labels; a contested (book vs Mortal disagreement)
@@ -697,6 +700,12 @@ pub struct SelectionPlan {
     pub replay_cap_blocked: u64,
     /// Selections skipped because a source replay already had its maximum.
     pub source_replay_cap_blocked: u64,
+    /// Scenarios selected **beyond** the per-replay cap by the last-resort fill,
+    /// because every remaining candidate came from a replay that had already
+    /// hit its maximum. The per-replay cap is a variety guard, like the
+    /// diversity caps, so the pack fills the slot and records the cost instead
+    /// of shipping short. Corpus-family caps are a mix rule and never relax.
+    pub source_replay_relaxed: u64,
     /// Scenarios selected **beyond** a diversity cap because the remaining pool
     /// had nothing else to offer.
     pub cap_relaxed: u64,
@@ -858,6 +867,7 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
     let mut cap_blocked = 0_u64;
     let mut replay_cap_blocked = 0_u64;
     let mut source_replay_cap_blocked = 0_u64;
+    let mut source_replay_relaxed = 0_u64;
 
     let caps_ok = |candidate: &Candidate,
                    sections: &BTreeMap<String, usize>,
@@ -1261,6 +1271,95 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
         }
     }
 
+    // The per-replay cap is a variety guard, not a mix rule: it keeps several
+    // adjacent turns of one game from looking like repeats. Like the diversity
+    // caps above, it is not a reason to ship a short pack. When every remaining
+    // candidate comes from a replay that has already hit its maximum (the
+    // common shape of a stable-book chapter pack, whose candidates cluster in
+    // the few games that played that shape), take the best of them anyway and
+    // record exactly how many slots the pack filled this way. Corpus-family
+    // caps stay hard: they are the mix rule, and the pack still reports a
+    // shortfall rather than exceeding one.
+    if selected.len() < config.pack_size && config.max_per_replay.is_some() {
+        let mut order: Vec<usize> = (0..candidates.len())
+            .filter(|index| {
+                !held_out_set.contains(index)
+                    && !selected_indices.contains(index)
+                    && !duplicate_indices.contains(index)
+            })
+            .collect();
+        order.sort_by(|left, right| rank_key(&candidates[*left], &candidates[*right]));
+        for index in order {
+            if selected.len() >= config.pack_size {
+                break;
+            }
+            let candidate = &candidates[index];
+            let over_replay_cap = !source_replay_ok(candidate, &replay_id_counts);
+            let replay_ok = config
+                .replay_family_caps
+                .get(&candidate.replay_family)
+                .is_none_or(|cap| {
+                    replay_counts
+                        .get(&candidate.replay_family)
+                        .copied()
+                        .unwrap_or(0)
+                        < *cap
+                });
+            if !replay_ok {
+                replay_cap_blocked += 1;
+                continue;
+            }
+            let Some(family) = balanced_family(candidate, &family_selected, &quotas) else {
+                continue;
+            };
+            let over_cap = !caps_ok(
+                candidate,
+                &section_counts,
+                &kind_counts,
+                &turn_counts,
+                &replay_counts,
+            );
+            if let Some(failure) = seen.insert(
+                candidate.exact_hash.clone(),
+                candidate.visible_fingerprint.clone(),
+                &candidate.decision_id,
+            ) {
+                count_duplicate(&mut dedupe, &failure);
+                duplicate_indices.insert(index);
+                continue;
+            }
+            if over_cap {
+                cap_relaxed += 1;
+            }
+            if over_replay_cap {
+                source_replay_relaxed += 1;
+            }
+            selected_indices.insert(index);
+            *family_selected.entry(family).or_insert(0) += 1;
+            *section_counts
+                .entry(candidate.section_key().to_string())
+                .or_insert(0) += 1;
+            *kind_counts
+                .entry(candidate.kind_key().to_string())
+                .or_insert(0) += 1;
+            *turn_counts
+                .entry(candidate.turn_key().to_string())
+                .or_insert(0) += 1;
+            *replay_counts
+                .entry(candidate.replay_family.clone())
+                .or_insert(0) += 1;
+            *replay_id_counts
+                .entry(candidate.replay_id.clone())
+                .or_insert(0) += 1;
+            selected.push(SelectedScenario {
+                candidate: candidate.clone(),
+                family,
+                rank: ranks.get(&(family, index)).copied().unwrap_or(0),
+            });
+            relaxed_fill += 1;
+        }
+    }
+
     let families = Family::ALL
         .into_iter()
         .map(|family| {
@@ -1381,6 +1480,7 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
         open_slots_used,
         replay_cap_blocked,
         source_replay_cap_blocked,
+        source_replay_relaxed,
     }
 }
 
@@ -1389,6 +1489,11 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
 /// The relaxed fill has no quota left to aim at, so it assigns each extra
 /// scenario to the family that is furthest below its quota. That keeps a late
 /// fill from piling onto the family whose bucket happens to sort first.
+///
+/// A family that has already met (or exceeded) its quota is still eligible:
+/// the final fill exists to fill the pack, so only a candidate that feeds no
+/// family at all returns `None`. The family rows report the resulting
+/// over-quota counts.
 fn balanced_family(
     candidate: &Candidate,
     family_selected: &BTreeMap<Family, usize>,

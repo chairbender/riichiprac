@@ -1372,16 +1372,20 @@ fn a_corpus_family_cap_balances_the_pack_and_is_never_relaxed() {
 }
 
 #[test]
-fn a_source_replay_cap_keeps_one_game_from_filling_the_pack() {
-    let mut candidates = Vec::new();
-    for index in 0..10 {
-        let mut candidate = fixture::candidate(&format!("r{index}"), Family::Book, Some("ch8.2"));
-        candidate.replay_id = format!("{:064x}", index / 2);
-        candidates.push(candidate);
-    }
-    let mut config = config(BTreeMap::from([(Family::Book, 1.0)]), 10);
-    config.max_per_replay = Some(1);
-    let plan = plan_selection(candidates, &config);
+fn the_last_resort_fill_relaxes_a_source_replay_cap_but_records_it() {
+    let candidates: Vec<Candidate> = (0..10)
+        .map(|index| {
+            let mut candidate =
+                fixture::candidate(&format!("r{index}"), Family::Book, Some("ch8.2"));
+            candidate.replay_id = format!("{:064x}", index / 2);
+            candidate
+        })
+        .collect();
+
+    // A pack inside the cap is not relaxed: one base per game.
+    let mut strict = config(BTreeMap::from([(Family::Book, 1.0)]), 5);
+    strict.max_per_replay = Some(1);
+    let plan = plan_selection(candidates.clone(), &strict);
     assert_eq!(plan.selected.len(), 5);
     let seen: BTreeSet<&str> = plan
         .selected
@@ -1389,5 +1393,97 @@ fn a_source_replay_cap_keeps_one_game_from_filling_the_pack() {
         .map(|scenario| scenario.candidate.replay_id.as_str())
         .collect();
     assert_eq!(seen.len(), 5, "one base per replay");
+    assert_eq!(plan.source_replay_relaxed, 0);
+
+    // A pack larger than the cap allows fills from the remaining turns of the
+    // same games, and the report records the variety cost instead of shipping
+    // five bases short.
+    let mut relax = config(BTreeMap::from([(Family::Book, 1.0)]), 10);
+    relax.max_per_replay = Some(1);
+    let plan = plan_selection(candidates, &relax);
+    assert_eq!(plan.selected.len(), 10);
     assert!(plan.source_replay_cap_blocked > 0);
+    assert_eq!(plan.source_replay_relaxed, 5);
+}
+
+#[test]
+fn a_book_only_pool_slightly_larger_than_the_pack_fills_it() {
+    // Every candidate is a stable-book shape, so the pool can only feed the
+    // book, coverage and placement families. It is only slightly larger than
+    // the pack and clusters in a few replays: the strict fill stops at the
+    // per-replay cap, and the last-resort fill takes the rest instead of
+    // shipping short. This is the ch. 5 Q4 shape at fixture scale.
+    let mut candidates = Vec::new();
+    let mut index = 0;
+    for (replay, copies) in (0..30)
+        .map(|replay| (replay, 2))
+        .chain((30..42).map(|replay| (replay, 5)))
+    {
+        for _ in 0..copies {
+            let section = ["ch5.3", "ch5.4", "ch5.4", "ch5.4", "ch5.5"][index % 5];
+            let mut candidate =
+                fixture::candidate(&format!("b{index}"), Family::Book, Some(section));
+            candidate.replay_id = format!("{replay:064x}");
+            candidate.families =
+                BTreeSet::from([Family::Book, Family::Coverage, Family::Placement]);
+            candidates.push(candidate);
+            index += 1;
+        }
+    }
+    assert_eq!(candidates.len(), 120, "30 x 2 + 12 x 5");
+
+    let mut config = config(QuotaConfig::default().families, 100);
+    config.max_per_replay = Some(2);
+    let plan = plan_selection(candidates, &config);
+
+    // 30 x 2 + 12 x 2 = 84 bases sit inside the per-replay cap; the other 16
+    // can only come from the last-resort fill.
+    assert_eq!(plan.selected.len(), 100);
+    assert_eq!(plan.source_replay_relaxed, 16);
+    assert_eq!(plan.relaxed_fill, 50, "34 strict fill + 16 relaxed");
+
+    let per_replay = plan
+        .selected
+        .iter()
+        .fold(BTreeMap::new(), |mut counts, scenario| {
+            *counts
+                .entry(scenario.candidate.replay_id.as_str())
+                .or_insert(0) += 1;
+            counts
+        });
+    assert!(
+        per_replay.values().any(|count| *count > 2),
+        "the relaxed fill must have gone past the cap"
+    );
+
+    let row = |family: Family| {
+        plan.families
+            .iter()
+            .find(|row| row.family == family)
+            .expect("one row per family")
+    };
+    for family in [Family::Book, Family::Coverage, Family::Placement] {
+        assert!(
+            row(family).selected >= row(family).quota,
+            "{family} must reach its quota"
+        );
+        assert!(row(family).shortfall.is_none(), "{family} is not short");
+    }
+    for family in [
+        Family::Contested,
+        Family::MortalBest,
+        Family::Mistake,
+        Family::CloseCall,
+        Family::SpeedValue,
+        Family::TableRead,
+    ] {
+        assert_eq!(row(family).candidates, 0, "{family} has no candidates");
+        assert_eq!(
+            row(family).shortfall.as_deref(),
+            Some("no_candidates"),
+            "{family} reports why it is short"
+        );
+    }
+    assert_eq!(row(Family::MultiStep).quota, 0);
+    assert!(row(Family::MultiStep).shortfall.is_none());
 }
