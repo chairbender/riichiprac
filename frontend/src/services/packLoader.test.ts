@@ -17,6 +17,7 @@ import {
   parsePackManifest,
   pickPackScenario,
   pickUnseenPackScenario,
+  reviewedBasesByLesson,
   sha256FallbackHex,
   sha256Hex,
 } from './packLoader';
@@ -198,6 +199,22 @@ describe('committed pack', () => {
     expect(fixtureBody.byteLength).toBe(fixtureEntry.bytes);
   });
 
+  it('reads per-lesson coverage from the manifest without the body', () => {
+    // The manifest alone (no body fetch, no cache) answers the coverage
+    // question the replay-first picker asks.
+    expect(fixtureEntry.lesson_counts).toBeDefined();
+    expect(Object.keys(fixtureEntry.lesson_counts ?? {}).sort()).toEqual(
+      [...fixtureEntry.lesson_ids].sort(),
+    );
+    expect(fixtureEntry.lesson_counts?.fold_to_riichi).toBeGreaterThanOrEqual(40);
+    expect(
+      Object.values(fixtureEntry.lesson_counts ?? {}).reduce(
+        (sum, count) => sum + count,
+        0,
+      ),
+    ).toBeLessThanOrEqual(fixtureEntry.scenario_count);
+  });
+
   it('loads, verifies and decodes the real body, then serves it from cache', async () => {
     const memory = memoryCache();
     const fetched: string[] = [];
@@ -281,6 +298,18 @@ describe('parsePackManifest', () => {
     expect(manifest.packs[0].sha256).toBe(HASH);
   });
 
+  it('accepts and exposes per-lesson coverage', () => {
+    const manifest = parsePackManifest(
+      manifestText([okEntry({ lesson_counts: { fold_to_riichi: 1 } })]),
+    );
+    expect(manifest.packs[0].lesson_counts).toEqual({ fold_to_riichi: 1 });
+  });
+
+  it('accepts a manifest published before lesson_counts existed', () => {
+    const manifest = parsePackManifest(manifestText([okEntry()]));
+    expect(manifest.packs[0].lesson_counts).toBeUndefined();
+  });
+
   it.each([
     ['wrong schema', manifestText([]).replace(PACK_MANIFEST_SCHEMA, 'other')],
     ['wrong version', manifestText([]).replace('"version":1', '"version":2')],
@@ -305,6 +334,12 @@ describe('parsePackManifest', () => {
     ['a non-boolean requires_model', { requires_model: 'yes' }],
     ['a non-boolean data_commercial_use', { data_commercial_use: 1 }],
     ['an unsafe id', { id: '../pack' }],
+    ['a non-object lesson_counts', { lesson_counts: [] }],
+    ['a zero lesson count', { lesson_counts: { fold_to_riichi: 0 } }],
+    ['a fractional lesson count', { lesson_counts: { fold_to_riichi: 1.5 } }],
+    ['lesson_counts naming another lesson', { lesson_counts: { push_or_fold: 1 } }],
+    ['lesson_counts above the scenario count', { lesson_counts: { fold_to_riichi: 2 } }],
+    ['an unsafe lesson id in lesson_counts', { lesson_counts: { '../x': 1 } }],
   ])('rejects %s', (_label, overrides) => {
     expect(() => parsePackManifest(manifestText([okEntry(overrides)]))).toThrow(
       PackLoadError,
@@ -549,6 +584,26 @@ describe('parsePackBody', () => {
     );
   });
 
+  it('checks a recorded lesson_counts map against the body', async () => {
+    const scenarios = [scenario(), scenario('ryanmen_protorun', 'fixture-rya')];
+    const body = await gzip(packJson(scenarios));
+    const truthful = entryFor(body, {
+      scenario_count: 2,
+      lesson_ids: ['fold_to_riichi', 'ryanmen_protorun'],
+      lesson_counts: { fold_to_riichi: 1, ryanmen_protorun: 1 },
+    });
+    await expect(parsePackBody(body, truthful)).resolves.toBeTruthy();
+
+    const lying = entryFor(body, {
+      scenario_count: 2,
+      lesson_ids: ['fold_to_riichi', 'ryanmen_protorun'],
+      lesson_counts: { fold_to_riichi: 2, ryanmen_protorun: 1 },
+    });
+    await expect(parsePackBody(body, lying)).rejects.toThrow(
+      /lesson_counts disagree with the body/,
+    );
+  });
+
   it('rejects a book-section mismatch', async () => {
     const body = await gzip(packJson([scenario()]));
     const entry = entryFor(body, { book_sections: ['ch8.4'] });
@@ -614,10 +669,27 @@ describe('parsePackBody', () => {
   });
 });
 
+describe('reviewedBasesByLesson', () => {
+  it('counts reviewed bases, not variants', () => {
+    const base = scenario();
+    const variant = scenario('fold_to_riichi', 'fixture-variant', {
+      provenance: { variant_of: 'fixture-fold_to_riichi' },
+    });
+    const chained = scenario('fold_to_riichi', 'fixture-chained', {
+      provenance: { transforms: ['suit_perm'] },
+    });
+    const other = scenario('ryanmen_protorun', 'fixture-rya');
+
+    expect(reviewedBasesByLesson([base, variant, chained, other])).toEqual({
+      fold_to_riichi: 1,
+      ryanmen_protorun: 1,
+    });
+  });
+});
+
 /* -------------------------------------------------------------------------- */
 /* Hashing                                                                    */
 /* -------------------------------------------------------------------------- */
-
 describe('sha256', () => {
   const vectors: Array<[string, string]> = [
     ['', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'],

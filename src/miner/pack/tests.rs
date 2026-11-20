@@ -598,6 +598,14 @@ fn publish_writes_content_addressed_body_and_manifest_atomically() {
     assert_eq!(entry.sha256, published.audit.sha256);
     assert_eq!(entry.bytes, published.audit.bytes);
     assert_eq!(entry.scenario_count, 2);
+    assert_eq!(
+        entry.lesson_counts,
+        BTreeMap::from([
+            ("fold_to_riichi".to_string(), 1),
+            ("ryanmen_protorun".to_string(), 1),
+        ]),
+        "publish records the reviewed bases per lesson"
+    );
     assert!(entry.requires_model);
     assert_eq!(
         fs::read(&published.path).expect("body").len() as u64,
@@ -695,6 +703,120 @@ fn directory_audit_is_clean_and_strict_after_publishing() {
 }
 
 #[test]
+fn manifest_lesson_counts_are_checked_against_the_body() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let (pack, _games) = publish_fixture(dir.path());
+    let manifest_path = dir.path().join(MANIFEST_FILE_NAME);
+    let manifest = load_manifest(&manifest_path).expect("manifest");
+    assert_eq!(manifest.packs[0].lesson_counts, pack.lesson_counts());
+    assert_eq!(
+        manifest.packs[0]
+            .lesson_counts
+            .values()
+            .copied()
+            .sum::<u32>(),
+        2,
+        "both fixture scenarios are reviewed bases"
+    );
+
+    // A recorded count that disagrees with the body is an error, not the
+    // strict-only metadata drift `lesson_ids` is. Keep the entry's shape valid
+    // (a positive count per lesson, total <= scenario_count) so the body check
+    // is the one that fires.
+    let mut lying = manifest.clone();
+    lying.packs[0].scenario_count = 3;
+    lying.packs[0].lesson_counts = BTreeMap::from([
+        ("fold_to_riichi".to_string(), 1),
+        ("ryanmen_protorun".to_string(), 2),
+    ]);
+    fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&lying).expect("json"),
+    )
+    .expect("write manifest");
+    let report = audit_pack_dir(dir.path(), None, &AuditOptions::default()).expect("audit");
+    assert!(!report.is_clean());
+    let mismatch = report
+        .findings
+        .iter()
+        .find(|finding| finding.code == PackFindingCode::LessonCountMismatch)
+        .expect("a truthful count mismatch is reported");
+    assert_eq!(mismatch.severity, FindingSeverity::Error);
+
+    // A manifest published before the field existed still audits; it is a
+    // strict-mode warning, and `pack publish` is what fills the counts in.
+    let mut missing = manifest.clone();
+    missing.packs[0].lesson_counts.clear();
+    fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&missing).expect("json"),
+    )
+    .expect("write manifest");
+    let report = audit_pack_dir(dir.path(), None, &AuditOptions::default()).expect("audit");
+    assert!(report.is_clean(), "{:?}", report.findings);
+    assert!(report.findings.iter().any(|finding| finding.code
+        == PackFindingCode::LessonCountsMissing
+        && finding.severity == FindingSeverity::Warning));
+    let strict = audit_pack_dir(
+        dir.path(),
+        None,
+        &AuditOptions {
+            strict: true,
+            ..AuditOptions::default()
+        },
+    )
+    .expect("audit");
+    assert!(!strict.is_clean(), "strict mode requires the counts");
+}
+
+#[test]
+fn lesson_counts_count_bases_not_variants_and_reject_a_bad_shape() {
+    let (mut pack, _games) = fixture();
+    let base_lesson = pack.scenarios[0].lesson_id.clone();
+    let base_id = pack.scenarios[0].id.clone();
+    let base_counts = pack.lesson_counts();
+    assert_eq!(base_counts.values().copied().sum::<u32>(), 2);
+
+    // A derived variant is a dealable scenario but not another reviewed base.
+    let mut variant = pack.scenarios[0].clone();
+    variant.id = ScenarioKey::parse("fixture-variant").expect("id");
+    variant.provenance.variant_of = Some(base_id.clone());
+    pack.scenarios.push(variant);
+    assert_eq!(pack.scenarios.len(), 3);
+    assert_eq!(pack.lesson_counts(), base_counts);
+    assert_eq!(
+        pack.lesson_counts().get(&base_lesson).copied(),
+        Some(1),
+        "the variant does not raise its lesson's coverage"
+    );
+
+    // Shape checks `load_manifest` and `write_manifest_atomic` enforce.
+    let encoded = encode_pack(&pack).expect("encode");
+    let mut entry = ManifestEntry::new(
+        &pack,
+        pack_file_name(&pack.pack_id, &encoded.sha256).expect("name"),
+        encoded.sha256.clone(),
+        encoded.len(),
+    );
+    assert!(super::write::validate_entry(&entry).is_ok());
+
+    entry.lesson_counts = BTreeMap::from([(base_lesson.clone(), 2)]);
+    assert!(
+        super::write::validate_entry(&entry).is_err(),
+        "counts must name exactly the entry's lessons"
+    );
+
+    entry.lesson_counts = BTreeMap::from([
+        ("fold_to_riichi".to_string(), 2),
+        ("ryanmen_protorun".to_string(), 2),
+    ]);
+    assert!(
+        super::write::validate_entry(&entry).is_err(),
+        "counts may not claim more bases than the body has scenarios"
+    );
+}
+
+#[test]
 fn directory_audit_rejects_hash_byte_and_shape_tampering() {
     let dir = tempfile::tempdir().expect("tempdir");
     publish_fixture(dir.path());
@@ -787,6 +909,10 @@ fn strict_audit_reports_manifest_drift_and_unlisted_bodies() {
     let manifest_path = dir.path().join(MANIFEST_FILE_NAME);
     let mut manifest = load_manifest(&manifest_path).expect("manifest");
     manifest.packs[0].lesson_ids = vec!["bogus_lesson".to_string()];
+    // The counts are cleared with the ids: a recorded coverage map that
+    // disagrees with the body is an error, and this test is about recoverable
+    // metadata drift (a missing map is only a strict-mode warning).
+    manifest.packs[0].lesson_counts.clear();
     fs::write(
         &manifest_path,
         serde_json::to_vec_pretty(&manifest).expect("json"),

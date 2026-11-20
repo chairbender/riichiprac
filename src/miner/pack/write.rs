@@ -246,6 +246,40 @@ pub(crate) fn validate_entry(entry: &ManifestEntry) -> Result<(), String> {
             entry.id
         ));
     }
+    // `lesson_counts` is additive within v1: an empty map is a manifest written
+    // before the field existed, and is accepted. A recorded map must describe
+    // exactly this entry's lessons and cannot claim more bases than the body has
+    // scenarios (variants are not bases, so the sum may be lower).
+    if !entry.lesson_counts.is_empty() {
+        if entry.lesson_counts.len() != entry.lesson_ids.len()
+            || entry
+                .lesson_counts
+                .keys()
+                .any(|lesson| !entry.lesson_ids.contains(lesson))
+        {
+            return Err(format!(
+                "pack `{}` lesson_counts do not name exactly its lesson_ids",
+                entry.id
+            ));
+        }
+        if entry.lesson_counts.values().any(|count| *count == 0) {
+            return Err(format!(
+                "pack `{}` lesson_counts has a zero lesson count",
+                entry.id
+            ));
+        }
+        let counted: u64 = entry
+            .lesson_counts
+            .values()
+            .map(|count| u64::from(*count))
+            .sum();
+        if counted > u64::from(entry.scenario_count) {
+            return Err(format!(
+                "pack `{}` lesson_counts total {counted}, above its {} scenario(s)",
+                entry.id, entry.scenario_count
+            ));
+        }
+    }
     let sections = sorted_unique(&entry.book_sections);
     if sections != entry.book_sections {
         return Err(format!(
