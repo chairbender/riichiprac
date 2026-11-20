@@ -1,0 +1,63 @@
+{
+  "bodies": [
+    "frontend/public/scenarios/replay.ch7-riichi-dama.2026-11-08cbeacac15f.json.gz",
+    "frontend/public/scenarios/replay.ch8-defense-multi-threat.2026-11-15fe519c65df.json.gz",
+    "frontend/public/scenarios/replay.ch8-defense.2026-11-6ae2c924e80c.json.gz"
+  ],
+  "manifest": "frontend/public/scenarios/manifest.json",
+  "report": {
+    "budget_bytes": 50000000,
+    "dest": "frontend/public/scenarios",
+    "dry_run": false,
+    "entries": [
+      {
+        "bytes": 2176750,
+        "id": "replay.ch7-riichi-dama.2026-11",
+        "lesson_counts": {
+          "chiitoitsu_riichi_vs_dama": 151,
+          "dama_bad_wait": 982,
+          "dama_expensive_hand": 111,
+          "dama_genbutsu_wait": 119,
+          "dama_improving_hand": 57,
+          "riichi_judgement": 1426
+        },
+        "licence": "CC-BY-4.0",
+        "path": "replay.ch7-riichi-dama.2026-11-08cbeacac15f.json.gz",
+        "scenario_count": 2846,
+        "sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d"
+      },
+      {
+        "bytes": 591096,
+        "id": "replay.ch8-defense-multi-threat.2026-11",
+        "lesson_counts": {
+          "defense_multi_threat": 764
+        },
+        "licence": "CC-BY-4.0",
+        "path": "replay.ch8-defense-multi-threat.2026-11-15fe519c65df.json.gz",
+        "scenario_count": 764,
+        "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94"
+      },
+      {
+        "bytes": 2260809,
+        "id": "replay.ch8-defense.2026-11",
+        "lesson_counts": {
+          "defense_safety_chart": 766,
+          "defense_stuck_heuristic": 32,
+          "fold_to_riichi": 731,
+          "kabe_double_one_chance": 13,
+          "kabe_one_chance": 17,
+          "push_or_fold": 295,
+          "suji_kabe_safety": 357
+        },
+        "licence": "CC-BY-4.0",
+        "path": "replay.ch8-defense.2026-11-6ae2c924e80c.json.gz",
+        "scenario_count": 2211,
+        "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43"
+      }
+    ],
+    "manifest_bytes": 2533,
+    "removed": [],
+    "source": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/packs",
+    "total_bytes": 5028655
+  }
+}

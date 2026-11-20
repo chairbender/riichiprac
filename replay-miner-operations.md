@@ -1117,7 +1117,9 @@ One-at-a-time review does not scale past roughly a thousand candidates. Two
 additions make a ~2,000-candidate queue reviewable:
 
 - **Bulk verdicts.** `scripts/review-q2-queue.py --verdicts-out FILE` applies the
-  mechanical ch. 8 rules to the whole queue and writes one
+  mechanical chapter rules (`--chapter ch8` by default, or `ch7` for the
+  riichi/dama queue, where the ready-hand rejection does not apply) to the whole
+  queue and writes one
   `riichiprac.review-verdicts` v1 document:
   `{"schema": "riichiprac.review-verdicts", "version": 1, "note": "...",
   "verdicts": [{"queue_id": "...", "verdict": "accepted"|"rejected",
@@ -1135,8 +1137,10 @@ additions make a ~2,000-candidate queue reviewable:
 
 The mechanical pass is still a gate, not a judgement: it rejects out-of-scope
 sections/lessons, non-book or contested labels, report/lesson mismatches,
-illegal answers, ready hands, duplicate exact/visible states and dirty walks.
-The human sample is the evidence that the remaining positions teach.
+illegal answers, duplicate exact/visible states and dirty walks. The ch. 8
+scope also rejects a ready hand (that is an offense drill); the ch. 7 scope
+keeps it, because a riichi/dama decision is tenpai by definition. The human
+sample is the evidence that the remaining positions teach.
 
 #### Filtering, progress and the review surface (Q2r2)
 
@@ -2029,6 +2033,18 @@ dedicated `replay.ch8-defense-multi-threat.2026-11` pack (780 reviewed, 764
 shipped after duplicate hands, 591,096 bytes). The run also fixed the stale-label
 and selection-version contract above. Details:
 [`q2-multi-threat.md`](q2-multi-threat.md).
+
+**Ch. 7 riichi/dama pack (Q3, 2026-11-19).** The same corpus at classifier v3
+(B4's seven-pairs recogniser) produced `replay.ch7-riichi-dama.2026-11`:
+`select --section ch7` returned 2,901 reviewed bases from 7,295 gate passes
+(2,846 shipped after `--unique-hands`), all six ch7 lessons at or above the
+40-base floor, 2,176,750 bytes, 1,509 source replays, 2,846 unique hands. The
+mechanical review now takes `--chapter ch7` (ready hands are not rejected: a
+riichi/dama decision is tenpai), 2,901/2,901 were accepted, and a 304-row
+stratified sample covers every lesson including all 60 `dama_improving_hand`
+bases. Details: [`q3-ch7-riichi-dama-pack.md`](q3-ch7-riichi-dama-pack.md),
+evidence: [`testdata/reports/q3-ch7/`](testdata/reports/q3-ch7/); coverage:
+`node scripts/replay-coverage-report.mjs`.
 
 **Replay-first rollout.** The next product phase extends packs to the remaining
 book sections and makes replay the default source for covered lessons. Per-lesson

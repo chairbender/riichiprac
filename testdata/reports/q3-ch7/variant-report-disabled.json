@@ -1,0 +1,472 @@
+{
+  "schema": "riichiprac.variant-report",
+  "version": 1,
+  "generated_at": "2026-11-19T00:00:00Z",
+  "pack_id": "replay.ch7-riichi-dama.2026-11",
+  "bases": 2901,
+  "variants_per_base": 1,
+  "attempts": 11631,
+  "preserved": 6758,
+  "shipped": 5592,
+  "withdrawn_disabled": 1166,
+  "dropped_by_cap": 0,
+  "duplicate_states": 0,
+  "rejections": {
+    "answer_changed": 1,
+    "disabled_pair": 1166,
+    "label_conflict": 5,
+    "lesson_missing": 101,
+    "state_unreachable": 4108,
+    "tile_ledger": 63,
+    "transform_rejected": 595
+  },
+  "pair_yield": [
+    {
+      "lesson": "chiitoitsu_riichi_vs_dama",
+      "transform": "seat_perm",
+      "attempted": 155,
+      "preserved": 46,
+      "ratio": 0.29677418,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 65,
+        "transform_rejected": 44
+      }
+    },
+    {
+      "lesson": "chiitoitsu_riichi_vs_dama",
+      "transform": "suit_perm",
+      "attempted": 155,
+      "preserved": 151,
+      "ratio": 0.9741936,
+      "disabled": false,
+      "rejections": {
+        "tile_ledger": 2,
+        "transform_rejected": 2
+      }
+    },
+    {
+      "lesson": "chiitoitsu_riichi_vs_dama",
+      "transform": "rank_mirror",
+      "attempted": 153,
+      "preserved": 149,
+      "ratio": 0.9738562,
+      "disabled": false,
+      "rejections": {
+        "answer_changed": 1,
+        "lesson_missing": 1,
+        "tile_ledger": 2
+      }
+    },
+    {
+      "lesson": "chiitoitsu_riichi_vs_dama",
+      "transform": "wind_relabel",
+      "attempted": 153,
+      "preserved": 8,
+      "ratio": 0.052287582,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 145
+      }
+    },
+    {
+      "lesson": "dama_bad_wait",
+      "transform": "seat_perm",
+      "attempted": 1016,
+      "preserved": 344,
+      "ratio": 0.33858266,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 418,
+        "transform_rejected": 254
+      }
+    },
+    {
+      "lesson": "dama_bad_wait",
+      "transform": "suit_perm",
+      "attempted": 1016,
+      "preserved": 990,
+      "ratio": 0.97440946,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 2,
+        "tile_ledger": 13,
+        "transform_rejected": 11
+      }
+    },
+    {
+      "lesson": "dama_bad_wait",
+      "transform": "rank_mirror",
+      "attempted": 1003,
+      "preserved": 985,
+      "ratio": 0.9820538,
+      "disabled": false,
+      "rejections": {
+        "label_conflict": 5,
+        "tile_ledger": 13
+      }
+    },
+    {
+      "lesson": "dama_bad_wait",
+      "transform": "wind_relabel",
+      "attempted": 1003,
+      "preserved": 38,
+      "ratio": 0.03788634,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 963,
+        "tile_ledger": 2
+      }
+    },
+    {
+      "lesson": "dama_expensive_hand",
+      "transform": "seat_perm",
+      "attempted": 115,
+      "preserved": 48,
+      "ratio": 0.4173913,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 43,
+        "tile_ledger": 2,
+        "transform_rejected": 22
+      }
+    },
+    {
+      "lesson": "dama_expensive_hand",
+      "transform": "suit_perm",
+      "attempted": 115,
+      "preserved": 109,
+      "ratio": 0.9478261,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 1,
+        "tile_ledger": 4,
+        "transform_rejected": 1
+      }
+    },
+    {
+      "lesson": "dama_expensive_hand",
+      "transform": "rank_mirror",
+      "attempted": 112,
+      "preserved": 51,
+      "ratio": 0.45535713,
+      "disabled": true,
+      "rejections": {
+        "lesson_missing": 58,
+        "tile_ledger": 3
+      }
+    },
+    {
+      "lesson": "dama_expensive_hand",
+      "transform": "wind_relabel",
+      "attempted": 112,
+      "preserved": 5,
+      "ratio": 0.04464286,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 107
+      }
+    },
+    {
+      "lesson": "dama_genbutsu_wait",
+      "transform": "seat_perm",
+      "attempted": 124,
+      "preserved": 44,
+      "ratio": 0.3548387,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 49,
+        "tile_ledger": 2,
+        "transform_rejected": 29
+      }
+    },
+    {
+      "lesson": "dama_genbutsu_wait",
+      "transform": "suit_perm",
+      "attempted": 124,
+      "preserved": 118,
+      "ratio": 0.9516129,
+      "disabled": false,
+      "rejections": {
+        "tile_ledger": 4,
+        "transform_rejected": 2
+      }
+    },
+    {
+      "lesson": "dama_genbutsu_wait",
+      "transform": "rank_mirror",
+      "attempted": 121,
+      "preserved": 118,
+      "ratio": 0.9752066,
+      "disabled": false,
+      "rejections": {
+        "tile_ledger": 3
+      }
+    },
+    {
+      "lesson": "dama_genbutsu_wait",
+      "transform": "wind_relabel",
+      "attempted": 121,
+      "preserved": 4,
+      "ratio": 0.03305785,
+      "disabled": true,
+      "rejections": {
+        "lesson_missing": 1,
+        "state_unreachable": 116
+      }
+    },
+    {
+      "lesson": "dama_improving_hand",
+      "transform": "seat_perm",
+      "attempted": 60,
+      "preserved": 28,
+      "ratio": 0.46666667,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 23,
+        "transform_rejected": 9
+      }
+    },
+    {
+      "lesson": "dama_improving_hand",
+      "transform": "suit_perm",
+      "attempted": 60,
+      "preserved": 60,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "dama_improving_hand",
+      "transform": "rank_mirror",
+      "attempted": 60,
+      "preserved": 47,
+      "ratio": 0.78333336,
+      "disabled": false,
+      "rejections": {
+        "lesson_missing": 13
+      }
+    },
+    {
+      "lesson": "dama_improving_hand",
+      "transform": "wind_relabel",
+      "attempted": 60,
+      "preserved": 4,
+      "ratio": 0.06666667,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 56
+      }
+    },
+    {
+      "lesson": "riichi_judgement",
+      "transform": "seat_perm",
+      "attempted": 1458,
+      "preserved": 489,
+      "ratio": 0.33539096,
+      "disabled": true,
+      "rejections": {
+        "lesson_missing": 1,
+        "state_unreachable": 730,
+        "tile_ledger": 1,
+        "transform_rejected": 237
+      }
+    },
+    {
+      "lesson": "riichi_judgement",
+      "transform": "suit_perm",
+      "attempted": 1458,
+      "preserved": 1446,
+      "ratio": 0.99176955,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 2,
+        "tile_ledger": 7,
+        "transform_rejected": 3
+      }
+    },
+    {
+      "lesson": "riichi_judgement",
+      "transform": "rank_mirror",
+      "attempted": 1452,
+      "preserved": 1419,
+      "ratio": 0.97727275,
+      "disabled": false,
+      "rejections": {
+        "lesson_missing": 27,
+        "tile_ledger": 6
+      }
+    },
+    {
+      "lesson": "riichi_judgement",
+      "transform": "wind_relabel",
+      "attempted": 1452,
+      "preserved": 57,
+      "ratio": 0.0392562,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 1393,
+        "tile_ledger": 2
+      }
+    }
+  ],
+  "disabled_pairs": [
+    {
+      "lesson": "chiitoitsu_riichi_vs_dama",
+      "transform": "seat_perm",
+      "ratio": 0.29677418,
+      "min_yield": 0.5,
+      "attempted": 155,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "chiitoitsu_riichi_vs_dama",
+      "transform": "wind_relabel",
+      "ratio": 0.052287582,
+      "min_yield": 0.5,
+      "attempted": 153,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_bad_wait",
+      "transform": "seat_perm",
+      "ratio": 0.33858266,
+      "min_yield": 0.5,
+      "attempted": 1016,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_bad_wait",
+      "transform": "wind_relabel",
+      "ratio": 0.03788634,
+      "min_yield": 0.5,
+      "attempted": 1003,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_expensive_hand",
+      "transform": "seat_perm",
+      "ratio": 0.4173913,
+      "min_yield": 0.5,
+      "attempted": 115,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_expensive_hand",
+      "transform": "rank_mirror",
+      "ratio": 0.45535713,
+      "min_yield": 0.5,
+      "attempted": 112,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_expensive_hand",
+      "transform": "wind_relabel",
+      "ratio": 0.04464286,
+      "min_yield": 0.5,
+      "attempted": 112,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_genbutsu_wait",
+      "transform": "seat_perm",
+      "ratio": 0.3548387,
+      "min_yield": 0.5,
+      "attempted": 124,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_genbutsu_wait",
+      "transform": "wind_relabel",
+      "ratio": 0.03305785,
+      "min_yield": 0.5,
+      "attempted": 121,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_improving_hand",
+      "transform": "seat_perm",
+      "ratio": 0.46666667,
+      "min_yield": 0.5,
+      "attempted": 60,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "dama_improving_hand",
+      "transform": "wind_relabel",
+      "ratio": 0.06666667,
+      "min_yield": 0.5,
+      "attempted": 60,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "riichi_judgement",
+      "transform": "seat_perm",
+      "ratio": 0.33539096,
+      "min_yield": 0.5,
+      "attempted": 1458,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "riichi_judgement",
+      "transform": "wind_relabel",
+      "ratio": 0.0392562,
+      "min_yield": 0.5,
+      "attempted": 1452,
+      "reviewed": false,
+      "reason": "below_threshold"
+    }
+  ],
+  "cap_limited": [],
+  "effective_cap": 8,
+  "cap_cause": "per_base",
+  "min_yield": 0.5,
+  "label_kinds": {
+    "book": 5592
+  },
+  "labels": {
+    "cached": 0,
+    "evaluated": 0,
+    "retried": 0
+  },
+  "share": {
+    "bases": 2901,
+    "variants": 5592,
+    "pack_scenarios": 8493,
+    "variant_share": 0.65842456,
+    "largest_base": {
+      "base": "replay.ch7-riichi-dama.2026-11-001",
+      "scenarios": 3
+    },
+    "largest_base_share": 0.00035323208,
+    "transform_families": [
+      "rank_mirror",
+      "suit_perm"
+    ],
+    "by_family": {
+      "rank_mirror": 2718,
+      "suit_perm": 2874
+    },
+    "by_chain": {
+      "rank_mirror": 2718,
+      "suit_perm": 2874
+    }
+  },
+  "workers": 14,
+  "wall_time_ms": 7130,
+  "notes": [
+    "queue: 2901 base(s) from `/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch7-riichi-dama.2026-11/review-queue.jsonl`; 0 held-out item(s) skipped; 0 reviewer-rejected item(s) skipped; 0 unusable item(s)"
+  ],
+  "errors": []
+}

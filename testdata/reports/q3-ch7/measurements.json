@@ -1,0 +1,215 @@
+{
+  "schema": "riichiprac.pack-run",
+  "version": 1,
+  "task": "261119-171935",
+  "pack_id": "replay.ch7-riichi-dama.2026-11",
+  "corpus": {
+    "data_root": "~/riichiprac-data/q2-ch8-defense-2026-11",
+    "replays": 1542,
+    "decisions": 787052,
+    "book_labels": 113094,
+    "candidates_valid": 7295
+  },
+  "selection": {
+    "pack_size": 3000,
+    "selected": 2901,
+    "held_out": 150,
+    "sections": [
+      {
+        "bucket": "ch7.1",
+        "cap": 1500,
+        "candidates": 3130,
+        "selected": 1452,
+        "cap_reached": false
+      },
+      {
+        "bucket": "ch7.2",
+        "cap": 1500,
+        "candidates": 242,
+        "selected": 153,
+        "cap_reached": false
+      },
+      {
+        "bucket": "ch7.3",
+        "cap": 1500,
+        "candidates": 3773,
+        "selected": 1296,
+        "cap_reached": false
+      }
+    ],
+    "replay_families": [
+      {
+        "bucket": "akochan_tactics",
+        "candidates": 61,
+        "selected": 25,
+        "cap_reached": false
+      },
+      {
+        "bucket": "akochan_vs_mortal",
+        "candidates": 65,
+        "selected": 30,
+        "cap_reached": false
+      },
+      {
+        "bucket": "heterogeneous_table",
+        "candidates": 81,
+        "selected": 27,
+        "cap_reached": false
+      },
+      {
+        "bucket": "mortal_mirror",
+        "candidates": 3427,
+        "selected": 1410,
+        "cap_reached": false
+      },
+      {
+        "bucket": "mortal_sampling_sweep",
+        "candidates": 3511,
+        "selected": 1409,
+        "cap_reached": false
+      }
+    ],
+    "dedupe": {
+      "exact": 11,
+      "near": 0
+    },
+    "cap_relaxed": 201,
+    "relaxed_fill": 850,
+    "wall_time_ms": 3838218,
+    "workers": 14,
+    "lessons": {
+      "chiitoitsu_riichi_vs_dama": 153,
+      "dama_bad_wait": 1003,
+      "dama_expensive_hand": 112,
+      "dama_genbutsu_wait": 121,
+      "dama_improving_hand": 60,
+      "riichi_judgement": 1452
+    }
+  },
+  "mechanical_review": {
+    "chapter": "ch7",
+    "items": 2901,
+    "accepted": 2901,
+    "rejected": 0,
+    "reasons": {}
+  },
+  "review": {
+    "items": 2901,
+    "valid": 2901,
+    "invalid": 0,
+    "pending": 0,
+    "accepted": 2901,
+    "rejected": 0
+  },
+  "sample": {
+    "sampled": 304,
+    "lessons": {
+      "chiitoitsu_riichi_vs_dama": 35,
+      "dama_bad_wait": 67,
+      "dama_expensive_hand": 32,
+      "dama_genbutsu_wait": 36,
+      "dama_improving_hand": 60,
+      "riichi_judgement": 74
+    },
+    "families": {
+      "akochan_tactics": 20,
+      "akochan_vs_mortal": 20,
+      "heterogeneous_table": 21,
+      "mortal_mirror": 130,
+      "mortal_sampling_sweep": 113
+    }
+  },
+  "variant_stage": {
+    "bases": 2901,
+    "attempts": 11631,
+    "preserved": 6758,
+    "shipped_for_report": 5592,
+    "shipped_in_pack": 0,
+    "wall_time_ms": 7130,
+    "note": "variants remain disabled: assembly drops every variant row"
+  },
+  "assembly": {
+    "scenarios": 2846,
+    "bases": 2846,
+    "variants": 0,
+    "drop_counts": {
+      "base_dropped": 108,
+      "duplicate_hand": 66,
+      "variants_disabled": 5473
+    },
+    "bytes": 2176750,
+    "sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d",
+    "lessons": {
+      "riichi_judgement": 1426,
+      "chiitoitsu_riichi_vs_dama": 151,
+      "dama_bad_wait": 982,
+      "dama_expensive_hand": 111,
+      "dama_genbutsu_wait": 119,
+      "dama_improving_hand": 57
+    },
+    "review": {
+      "checked": true,
+      "items": 2901,
+      "accepted": 2901,
+      "rejected": 0
+    }
+  },
+  "body": {
+    "bytes": 2176750,
+    "sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d",
+    "uncompressed_bytes": 21813400,
+    "gzip_ratio": 0.09978957888270512,
+    "gunzip_ms": 33.9,
+    "json_parse_ms": 119.1,
+    "manifest_bytes": 2533
+  },
+  "coverage": {
+    "floor": 40,
+    "lessons": {
+      "lessons": 14,
+      "replay_default": 11,
+      "below_floor": 3,
+      "reviewed_bases": 5821
+    },
+    "replay_default": [
+      "chiitoitsu_riichi_vs_dama",
+      "dama_bad_wait",
+      "dama_expensive_hand",
+      "dama_genbutsu_wait",
+      "dama_improving_hand",
+      "defense_multi_threat",
+      "defense_safety_chart",
+      "fold_to_riichi",
+      "push_or_fold",
+      "riichi_judgement",
+      "suji_kabe_safety"
+    ],
+    "below_floor": [
+      "defense_stuck_heuristic",
+      "kabe_double_one_chance",
+      "kabe_one_chance"
+    ]
+  },
+  "checks": {
+    "audit_hosted_findings": 0,
+    "hosting_source": "113/113",
+    "hosting_dist": "113/113",
+    "ch7_content": "27/27",
+    "ch8_content": "27/27",
+    "ch8_multi_content": "27/27",
+    "serving": "20/20",
+    "frontend_tests": "783 passed, 1 skipped",
+    "frontend_build": "pass",
+    "frontend_lint": "pass",
+    "q1_e2e": "PASS",
+    "q1_loader_smoke": "pass (ch7 body through the runtime loader)"
+  },
+  "source_replays": 1509,
+  "adjacent_same_replay": 0,
+  "unique_hands": 2846,
+  "user_signoff": {
+    "approved": true,
+    "date": "2026-11-19",
+    "scope": "2,846-base, 0-variant pack and the 304-row sampled content review"
+  }
+}

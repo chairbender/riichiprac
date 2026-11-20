@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
-"""Agent-assisted review of the Q2 ch. 8 defense queue.
+"""Agent-assisted mechanical review of a curated replay pack queue.
 
 Reads a `reviews/<pack>/review-queue.jsonl`, applies the mechanical review
-rules for a stable-book ch. 8 pack, prints a machine-readable summary, and
-exits 1 when any candidate must be rejected.
+rules for a stable-book pack, prints a machine-readable summary, and exits 1
+when any selected candidate must be rejected.
 
-This is not the human review (Q2r). It removes ambiguous, out-of-scope,
-duplicate, spoiling or mechanically broken candidates so the human queue is
-only the positions that can teach.
+This is not the human review. It removes ambiguous, out-of-scope, duplicate,
+spoiling or mechanically broken candidates so the human queue is only the
+positions that can teach.
+
+The rules are chapter-scoped (`--chapter`):
+
+* `ch8` (default, Q2/Q2r2) — the ch. 8 defense lessons, and a ready hand is
+  rejected because it is an offense drill, not a defense drill.
+* `ch7` (Q3) — the riichi/dama declaration lessons. Those decisions are tenpai
+  by definition, so the ready-hand rule does not apply.
 
 For a large queue (Q2r2), `--verdicts-out FILE` writes one
 `riichiprac.review-verdicts` document that
@@ -31,9 +38,43 @@ CH8_LESSONS = {
     "defense_multi_threat",
     "push_or_fold",
 }
+CH7_LESSONS = {
+    "riichi_judgement",
+    "chiitoitsu_riichi_vs_dama",
+    "dama_bad_wait",
+    "dama_genbutsu_wait",
+    "dama_expensive_hand",
+    "dama_improving_hand",
+}
+
+SCOPES = {
+    "ch7": {
+        "prefix": "ch7.",
+        "lessons": CH7_LESSONS,
+        "reject_ready_hand": False,
+        "note": (
+            "q3 mechanical review: stable ch7 book label, legal answer, "
+            "unique visible state, clean walk"
+        ),
+    },
+    "ch8": {
+        "prefix": "ch8.",
+        "lessons": CH8_LESSONS,
+        "reject_ready_hand": True,
+        "note": (
+            "q2r2 mechanical review: stable ch8 book label, legal answer, "
+            "unique visible state, clean walk"
+        ),
+    },
+}
 
 
-def main(path, verdicts_out=None, note=None):
+def main(path, verdicts_out=None, note=None, chapter="ch8"):
+    scope = SCOPES[chapter]
+    lessons_allowed = scope["lessons"]
+    section_prefix = scope["prefix"]
+    reject_ready_hand = scope["reject_ready_hand"]
+
     items = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
     selected = [item for item in items if not item.get("held_out")]
     held_out = [item for item in items if item.get("held_out")]
@@ -55,11 +96,11 @@ def main(path, verdicts_out=None, note=None):
         verdict = decision.get("verdict") or {}
         lesson = item.get("lesson")
         section = item.get("book_section") or ""
-        if section and not section.startswith("ch8."):
+        if section and not section.startswith(section_prefix):
             problems.append("out_of_scope_section")
         if not section:
             problems.append("missing_book_section")
-        if lesson not in CH8_LESSONS:
+        if lesson not in lessons_allowed:
             problems.append("out_of_scope_lesson")
         if item.get("label_kind") != "book":
             problems.append("not_book_label")
@@ -69,7 +110,11 @@ def main(path, verdicts_out=None, note=None):
             problems.append("report_lesson_mismatch")
         if not verdict.get("is_correct"):
             problems.append("report_answer_not_legal")
-        if table.get("shanten") is not None and table.get("shanten") == 0:
+        if (
+            reject_ready_hand
+            and table.get("shanten") is not None
+            and table.get("shanten") == 0
+        ):
             # A ready hand is an offense/riichi drill, not a defense drill.
             problems.append("ready_hand")
         if item.get("exact_hash") in seen_exact:
@@ -97,6 +142,7 @@ def main(path, verdicts_out=None, note=None):
 
     summary = {
         "queue": path,
+        "chapter": chapter,
         "items": len(items),
         "selected": len(selected),
         "held_out": len(held_out),
@@ -115,7 +161,7 @@ def main(path, verdicts_out=None, note=None):
         document = {
             "schema": "riichiprac.review-verdicts",
             "version": 1,
-            "note": note or "q2r2 mechanical review: stable ch8 book label, legal answer, unique visible state, clean walk",
+            "note": note or scope["note"],
             "verdicts": [
                 {
                     "queue_id": verdict["queue_id"],
@@ -140,5 +186,11 @@ if __name__ == "__main__":
     parser.add_argument("queue")
     parser.add_argument("--verdicts-out", help="write a bulk review-verdicts document")
     parser.add_argument("--note", default=None, help="run-wide disposition note")
+    parser.add_argument(
+        "--chapter",
+        choices=sorted(SCOPES),
+        default="ch8",
+        help="chapter scope for the mechanical rules (default: ch8)",
+    )
     args = parser.parse_args()
-    sys.exit(main(args.queue, args.verdicts_out, args.note))
+    sys.exit(main(args.queue, args.verdicts_out, args.note, args.chapter))

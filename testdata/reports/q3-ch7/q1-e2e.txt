@@ -1,0 +1,214 @@
+
+== Build the miner (release) ==
+    Finished `release` profile [optimized] target(s) in 0.09s
+
+== Run the fixture pipeline (run A) ==
+
+== Run the fixture pipeline (run B) ==
+
+== G10: the same inputs produce the same pack hash ==
+pack sha256: e39dac8d7456b00ea76e7abccaa0a3c11352cd9ec77e5826434f416f8a556fe6
+pack bytes:  25996
+scenarios:   34
+selected:    8 (+2 held out)
+variants:    22 shipped / 54 attempted
+snapshot:    ok
+
+== P2/P3: verify the staged hosting directory ==
+pack hosting: /home/kylehipke/workspaces/riichiprac-261119-171935/target/q1/run-a/hosted
+  q1-rehearsal · 25996 B · 34 scenario(s) · sha256:e39dac8d7456
+  1 pack(s), 25996 body bytes of 50000000 allowed, 1371 byte manifest
+  PASS (45 checks)
+
+== G9: load the pipeline pack through the frontend loader ==
+
+ RUN  v2.1.9 /home/kylehipke/workspaces/riichiprac-261119-171935/frontend
+
+ ✓ src/services/packLoader.q1.test.ts (1 test) 18ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  23:23:37
+   Duration  347ms (transform 80ms, setup 0ms, collect 81ms, tests 18ms, environment 0ms, prepare 59ms)
+
+
+== Gate matrix: every hard gate has a failing fixture ==
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling cfg-if v1.0.5
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling libc v0.2.191
+   Compiling getrandom v0.3.4
+   Compiling zerocopy v0.8.63
+   Compiling crossbeam-utils v0.8.23
+   Compiling crossbeam-epoch v0.9.21
+   Compiling crossbeam-deque v0.8.8
+   Compiling rayon-core v1.13.0
+   Compiling reborrow v0.5.5
+   Compiling version_check v0.9.5
+   Compiling once_cell v1.21.4
+   Compiling paste v1.0.15
+   Compiling either v1.19.0
+   Compiling seq-macro v0.3.6
+   Compiling bitflags v2.13.2
+   Compiling dyn-stack-macros v0.1.3
+   Compiling serde_core v1.0.229
+   Compiling bitflags v1.3.2
+   Compiling pulp v0.21.5
+   Compiling raw-cpuid v10.7.0
+   Compiling wasm-bindgen-shared v0.2.130
+   Compiling zmij v1.0.23
+   Compiling num-traits v0.2.19
+   Compiling raw-cpuid v11.6.0
+   Compiling serde v1.0.229
+   Compiling pin-project-lite v0.2.17
+   Compiling rustversion v1.0.23
+   Compiling serde_json v1.0.154
+   Compiling itoa v1.0.19
+   Compiling foldhash v0.2.0
+   Compiling memchr v2.8.3
+   Compiling generic-array v0.14.7
+   Compiling hashbrown v0.17.1
+   Compiling crc32fast v1.5.5
+   Compiling thiserror v1.0.69
+   Compiling syn v3.0.10
+   Compiling syn v2.0.119
+   Compiling bumpalo v3.20.3
+   Compiling typenum v1.20.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling utf8parse v0.2.2
+   Compiling shlex v2.0.1
+   Compiling stable_deref_trait v1.2.1
+   Compiling wasm-bindgen v0.2.130
+   Compiling anstyle-parse v1.0.0
+   Compiling rayon v1.12.0
+   Compiling cc v1.11.1
+   Compiling tracing-core v0.1.36
+   Compiling rand_core v0.9.5
+   Compiling anstyle-query v1.1.5
+   Compiling zip v1.3.1
+   Compiling num-integer v0.1.47
+   Compiling futures-task v0.3.34
+   Compiling vcpkg v0.2.15
+   Compiling pkg-config v0.3.34
+   Compiling equivalent v1.0.3
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstyle v1.0.14
+   Compiling colorchoice v1.0.5
+   Compiling futures-core v0.3.34
+   Compiling num-bigint v0.4.8
+   Compiling num-iter v0.1.46
+   Compiling slab v0.4.12
+   Compiling anstream v1.0.0
+   Compiling indexmap v2.14.2
+   Compiling futures-util v0.3.34
+   Compiling num_cpus v1.17.0
+   Compiling memmap2 v0.9.12
+   Compiling libloading v0.8.9
+   Compiling clap_lex v1.1.1
+   Compiling heck v0.5.0
+   Compiling strsim v0.11.1
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling adler2 v2.0.1
+   Compiling byteorder v1.5.0
+   Compiling simd-adler32 v0.3.10
+   Compiling digest v0.10.7
+   Compiling clap_builder v4.6.7
+   Compiling hashlink v0.12.2
+   Compiling miniz_oxide v0.9.1
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling cpufeatures v0.2.17
+   Compiling smallvec v1.16.5
+   Compiling fallible-iterator v0.3.0
+   Compiling colored v3.1.1
+   Compiling sha2 v0.10.9
+   Compiling rustix v1.1.6
+   Compiling num-rational v0.4.2
+   Compiling flate2 v1.1.11
+   Compiling linux-raw-sys v0.12.1
+   Compiling oorandom v11.1.5
+   Compiling libsqlite3-sys v0.40.0
+   Compiling fastrand v2.5.0
+   Compiling cast v0.3.0
+   Compiling nu-ansi-term v0.50.3
+   Compiling wasm-bindgen-test-shared v0.2.130
+   Compiling synstructure v0.13.2
+   Compiling tempfile v3.27.0
+   Compiling synstructure v0.14.0
+   Compiling wasm-bindgen-macro-support v0.2.130
+   Compiling zerocopy-derive v0.8.63
+   Compiling thiserror-impl v1.0.69
+   Compiling tracing-attributes v0.1.31
+   Compiling yoke-derive v0.7.5
+   Compiling bytemuck_derive v1.12.1
+   Compiling serde_derive v1.0.229
+   Compiling zerofrom-derive v0.1.8
+   Compiling displaydoc v0.2.7
+   Compiling clap_derive v4.6.7
+   Compiling wasm-bindgen-test-macro v0.3.80
+   Compiling tracing v0.1.44
+   Compiling zerofrom v0.1.8
+   Compiling yoke v0.7.5
+   Compiling bytemuck v1.25.2
+   Compiling num-complex v0.4.6
+   Compiling dyn-stack v0.13.2
+   Compiling dyn-stack v0.10.0
+   Compiling clap v4.6.7
+   Compiling pulp v0.18.22
+   Compiling num v0.4.3
+   Compiling safetensors v0.4.5
+   Compiling agari v0.27.0 (https://github.com/agari-industries/agari#77c0cdc3)
+   Compiling wasm-bindgen-macro v0.2.130
+   Compiling js-sys v0.3.107
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rusqlite v0.43.0
+   Compiling rand v0.9.5
+   Compiling rand_distr v0.5.1
+   Compiling half v2.7.1
+   Compiling gemm-common v0.18.2
+   Compiling gemm-common v0.17.1
+   Compiling gemm-f32 v0.17.1
+   Compiling gemm-c64 v0.17.1
+   Compiling gemm-c32 v0.17.1
+   Compiling gemm-f64 v0.17.1
+   Compiling gemm-f32 v0.18.2
+   Compiling gemm-c64 v0.18.2
+   Compiling gemm-c32 v0.18.2
+   Compiling gemm-f64 v0.18.2
+   Compiling gemm-f16 v0.17.1
+   Compiling gemm-f16 v0.18.2
+   Compiling gemm v0.17.1
+   Compiling gemm v0.18.2
+   Compiling ug v0.1.0
+   Compiling candle-core v0.8.4
+   Compiling wasm-bindgen-futures v0.4.80
+   Compiling wasm-bindgen-test v0.3.80
+   Compiling candle-nn v0.8.4
+   Compiling riichiprac v0.1.0 (/home/kylehipke/workspaces/riichiprac-261119-171935)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 39.43s
+     Running tests/q1_gates.rs (target/debug/build/riichiprac/85899a3cbddb58f5/out/q1_gates-85899a3cbddb58f5)
+
+running 10 tests
+test g1_parser_rejects_malformed_jsonl ... ok
+test g3_a_corpus_family_must_be_a_slug ... ok
+test g2_reconstruction_rejects_an_impossible_table ... ok
+test g6_selection_rejects_an_illegal_answer ... ok
+test g4_classifier_positive_and_near_miss ... ok
+test g11_storage_snapshot_integrity_and_content_addressed_paths ... ok
+test g0_source_and_provenance_fail_closed ... ok
+test g5_label_cache_hits_and_q_values_are_kept ... ok
+test g8_pack_audit_rejects_a_bad_source_licence_answer_spoiler_and_budget ... ok
+test g7_variant_gate_rejects_a_changed_answer ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+
+== Q1 verdict ==
+PASS
+  pack:    /home/kylehipke/workspaces/riichiprac-261119-171935/target/q1/run-a/packs/q1-rehearsal-e39dac8d7456.json.gz
+  hosted:  /home/kylehipke/workspaces/riichiprac-261119-171935/target/q1/run-a/hosted
+  reports: /home/kylehipke/workspaces/riichiprac-261119-171935/target/q1/run-a.json /home/kylehipke/workspaces/riichiprac-261119-171935/target/q1/run-b.json
