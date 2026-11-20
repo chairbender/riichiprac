@@ -81,6 +81,7 @@ import { stackOrder } from './seatOrder';
 import { pickUnseen } from './session';
 import { useGameStore } from './store/useGameStore';
 import { isTableView, useSettingsStore } from './store/useSettingsStore';
+import { outcomeTone } from './types/verdict';
 import { answerAnnouncement } from './verdictText';
 import { ensureWasmReady } from './wasm';
 import './App.css';
@@ -1139,6 +1140,10 @@ export const App = () => {
         nextDisabled={isLoading}
       />
     ) : undefined;
+  // The outcome's green/amber/red is the result panel's outline, not an inner
+  // box's, so the card's buttons never sit on it (user request 2026-11-20).
+  const hudResultTone =
+    answered && dualGrade ? outcomeTone(dualGrade.outcome) : undefined;
 
   /*
    * The one HUD sheet (H2's primitive): the full 2D verdict panel, pre-answer
@@ -1333,6 +1338,7 @@ export const App = () => {
           hintRow={hudHintRow}
           actionRail={hudActionRail}
           resultCard={hudResultCard}
+          resultTone={hudResultTone}
           sheet={hudVerdictSheet}
           onCloseSheet={() => setVerdictOpen(false)}
           announcement={hudAnnouncement}

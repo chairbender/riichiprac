@@ -27,7 +27,6 @@ import { AnswerSummary } from '../../components/AnswerSummary';
 import { NextScenarioButton } from '../../components/NextScenarioButton';
 import type { GameState } from '../../types/game';
 import type { DualGrade } from '../../types/verdict';
-import { outcomeTone } from '../../types/verdict';
 import { verdictPicksLine } from '../../verdictText';
 
 export interface ResultCardProps {
@@ -79,11 +78,7 @@ export function ResultCard({
   const picks = verdictPicksLine(state, grade);
 
   return (
-    <div
-      ref={rootRef}
-      className="hud-result-card-content"
-      data-tone={outcomeTone(grade.outcome)}
-    >
+    <div ref={rootRef} className="hud-result-card-content">
       <AnswerSummary grade={grade} onDetails={onDetails} live={false} />
       <div className="hud-result-card-actions">
         {picks && <p className="hud-result-card__picks">{picks}</p>}

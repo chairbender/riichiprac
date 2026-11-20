@@ -288,25 +288,31 @@
   box-sizing: border-box;
   min-width: 0;
   min-height: 0;
-  /* Two 44 px rows fill the 88 px content box exactly: the outcome row and the
-     picks/Next row. No gap, so the fixed 104 px panel never has to grow. */
-  padding: 0 10px;
-  background-color: var(--hud-surface-solid);
-  border: var(--hud-border);
-  border-radius: var(--hud-radius-control);
+  /* Two 44 px rows fill the panel's 88 px content box exactly: the outcome row
+     and the picks/Next row. No gap, so the fixed 104 px panel never grows. */
 }
 
-.hud-result-card-content[data-tone='correct'] {
+/*
+ * The outcome tone is the **whole card's** surface and outline (user request
+ * 2026-11-20): the panel carries it, so the panel's own 8/12 px padding is the
+ * gap between the outline and the card's buttons instead of them sitting flush
+ * against an inner box's edge.
+ */
+.hud-panel[data-slot='result'] {
+  background-color: var(--hud-surface-solid);
+}
+
+.hud-panel[data-slot='result'][data-tone='correct'] {
   background-color: var(--hud-tone-ok);
   border-color: var(--hud-ok);
 }
 
-.hud-result-card-content[data-tone='contested'] {
+.hud-panel[data-slot='result'][data-tone='contested'] {
   background-color: var(--hud-tone-warn);
   border-color: var(--hud-warn);
 }
 
-.hud-result-card-content[data-tone='incorrect'] {
+.hud-panel[data-slot='result'][data-tone='incorrect'] {
   background-color: var(--hud-tone-bad);
   border-color: var(--hud-bad);
 }

@@ -229,14 +229,34 @@ describe('HudLayer: the hand panel slot', () => {
         hintRow={<span>hint</span>}
         actionRail={<button type="button">Riichi</button>}
         resultCard={<span>Correct: 9m</span>}
+        resultTone="contested"
       />,
     );
     const panel = document.querySelector('.hud-panel') as HTMLElement;
     expect(panel.dataset.slot).toBe('result');
+    // The tone is the panel's, so its outline is the whole card's edge.
+    expect(panel.dataset.tone).toBe('contested');
     expect(panel.style.top).toBe('488px');
     expect(panel.style.height).toBe('104px');
     expect(panel.textContent).toContain('Correct: 9m');
     expect(panel.textContent).not.toContain('Riichi');
+  });
+
+  it('keeps the tone off the hint and action panels', () => {
+    const { rerender } = render(<Harness hintRow={<span>hint</span>} />);
+    let panel = document.querySelector('.hud-panel') as HTMLElement;
+    expect(panel.dataset.tone).toBeUndefined();
+
+    rerender(
+      <Harness
+        hintRow={<span>hint</span>}
+        actionRail={<button type="button">Riichi</button>}
+        resultTone="correct"
+      />,
+    );
+    panel = document.querySelector('.hud-panel') as HTMLElement;
+    expect(panel.dataset.slot).toBe('actions');
+    expect(panel.dataset.tone).toBeUndefined();
   });
 
   it('follows a new projection instead of caching the old one', () => {

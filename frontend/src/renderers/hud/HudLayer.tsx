@@ -69,6 +69,12 @@ export interface HudLayerProps {
   readonly actionRail?: ReactNode;
   /** H5: the result card; replaces both rows and keeps the panel's fixed shape. */
   readonly resultCard?: ReactNode;
+  /**
+   * H5: the result panel's tone (`outcomeTone`). The tone surface and its
+   * green/amber/red outline are the **panel's**, not an inner box's, so the
+   * card's buttons keep the panel's padding between them and the edge.
+   */
+  readonly resultTone?: 'correct' | 'contested' | 'incorrect' | 'neutral';
   /** H3: the toast stack's contents. */
   readonly toasts?: ReactNode;
   /** How many toasts the stack holds (1–3); defaults from `toasts`. */
@@ -135,6 +141,7 @@ export function HudLayer({
   hintRow,
   actionRail,
   resultCard,
+  resultTone,
   toasts,
   toastCount,
   sheet = null,
@@ -287,6 +294,7 @@ export function HudLayer({
           ref={panelRef}
           className="hud-panel"
           data-slot={panelSlot}
+          data-tone={panelSlot === 'result' ? resultTone : undefined}
           data-dimmed={sheetOpen ? 'true' : 'false'}
           style={rectStyle(layout.panel)}
         >

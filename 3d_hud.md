@@ -1043,7 +1043,10 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   `verdictOpen` and the slot wiring at the 3D mount seam.
 - **The card.** It is the 2D answer summary (mark, headline, detail,
   Book/Mortal chips, Details) inside one fixed 104 px tone surface, plus one
-  clamped line: `Book: <pick> · Mortal: <pick>`. It replaces both panel rows and
+  clamped line: `Book: <pick> · Mortal: <pick>`. The tone background and its
+  green/amber/red outline are the **panel's** — the whole card's edge — so the
+  panel's own padding keeps the buttons clear of the outline (user request
+  2026-11-20). It replaces both panel rows and
   never expands on its own; Details is the only way into the sheet. The card's
   two rows are both `44 px` — the outcome row, then the picks line with the
   card's own **Next Scenario** control on its right (user request 2026-11-20),

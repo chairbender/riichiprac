@@ -124,13 +124,14 @@ describe('3D result card: the compact result', () => {
     expect(readSummary(card.container as HTMLElement)).toEqual(expected);
   });
 
-  it('adds the book-versus-Mortal pick line and the outcome tone', () => {
+  it('adds the book-versus-Mortal pick line without painting an inner box', () => {
     const { container } = render(
       <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
     );
     const content = container.querySelector('.hud-result-card-content');
-    // Book agrees, Mortal does not: the summary's own vocabulary for it.
-    expect(content?.getAttribute('data-tone')).toBe('contested');
+    // The outcome tone belongs to the whole panel (HudLayer), not this box: an
+    // inner outline was what sat against the card's buttons.
+    expect(content?.getAttribute('data-tone')).toBeNull();
     expect(container.querySelector('.hud-result-card__picks')?.textContent).toBe(
       'Book: Riichi · discard 9p · Mortal: Discard 1m',
     );

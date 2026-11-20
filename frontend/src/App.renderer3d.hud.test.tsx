@@ -498,9 +498,10 @@ describe('App 3D result card and verdict sheet (3D-H5)', () => {
     // and nothing expanded on its own (user decision 2026-11-19).
     expect(wasmMock.gradeCalls).toBe(gradesBefore + 1);
     expect(container.querySelector('.hud-action-rail')).toBeNull();
-    expect(container.querySelector('.hud-panel')?.getAttribute('data-slot')).toBe(
-      'result',
-    );
+    const panel = container.querySelector('.hud-panel') as HTMLElement;
+    expect(panel.getAttribute('data-slot')).toBe('result');
+    // The green/red outline is the whole panel's, not an inner box's.
+    expect(panel.getAttribute('data-tone')).toBe('correct');
     expect(container.querySelector('.hud-result-card')).not.toBeNull();
     expect(container.querySelector('.answer-summary-headline')?.textContent).toBe(
       'Correct',
