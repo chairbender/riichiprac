@@ -206,6 +206,10 @@ export interface RendererStats {
   readonly drawCalls: number;
   readonly triangles: number;
   readonly instances: number;
+  /** The ratio the backing store is actually rendered at, after the tier cap (3D-13). */
+  readonly devicePixelRatio: number;
+  /** The drawing buffer's pixel area: CSS area x ratio squared (3D-13). */
+  readonly backingStorePixels: number;
   readonly atlasBytes: number;
   /** Which relief source the scene draws; absent before assets load (3D-03). */
   readonly relief?: ReliefStatus;
@@ -221,6 +225,8 @@ export interface RendererStats {
   readonly shadowSteps?: number;
   readonly frameMsP50: number;
   readonly frameMsP95: number;
+  /** How many frame durations the percentiles are computed over (3D-13). */
+  readonly frameSamples: number;
 }
 
 /** One interactive tile's projected CSS rect, produced by `hitRects()`. */

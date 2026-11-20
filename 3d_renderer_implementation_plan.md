@@ -592,6 +592,34 @@ Deferred-with-a-reason: MSAA (fill rate), shadow maps (a ~280-caster map pass at
 this size costs more than the contact quads and looks worse on a mat), and
 post-processing / tone mapping (adds a full-screen pass and changes the ivory).
 
+**Measurement protocol (3D-13).** Every performance number quoted for this
+renderer — in unit reports and in 3D-15's verification report — is taken the
+same way, so two runs are comparable:
+
+1. Serve the production build (`npm run build` then preview) and open
+   `?renderer=3d&perf=1`. Record the browser and its version, and the GPU/driver
+   string from `chrome://gpu` (or the platform equivalent).
+2. Three viewports: **1920 × 1080 at DPR 1** (the reference frame the camera was
+   solved against), **1366 × 768 at DPR 1** (a laptop), and **820 × 1180 at
+   DPR 2** (a portrait phone). The HUD prints the *resolved* DPR and backing-store
+   area, which is the number that matters: the tier cap may lower a 4K window's
+   DPR to 1, or a 5K window's below 1.
+3. Record the tier the HUD reports, and that tier's depth/self-shadow step
+   counts. Do not hand-pick a tier for a report unless it is labelled as a
+   pinned-tier run (`?quality=`).
+4. **Warm vs cold.** A *cold* number includes the first frame after the lazy
+   chunk's download, compile and texture upload; quote it only if it is labelled
+   cold. A *warm* number is read after the board reports ready and the HUD shows
+   at least `FRAME_STAT_WINDOW` (240) samples (about 4 s at 60 fps); the first
+   5 s after mount are the cold window and are never quoted as the result.
+5. Report **p50 and p95** frame time together, never a mean or a best frame. The
+   60 fps target is p95 ≤ 16.7 ms; the `compat` floor is p95 ≤ 33 ms. Also
+   record draw calls, instances and triangles from the HUD so a slow result can
+   be attributed (fill vs instance count vs overdraw).
+6. A run that trips the automatic downgrade is a real measurement of the lower
+   tier, not of the one that was pinned: report the tier the HUD ends on, and
+   say that a downgrade happened.
+
 ### 2.9 Licensing and hosting
 
 - **Three.js is MIT** (`three/MIT`), acceptable for an MIT app. Add its notice
@@ -2087,6 +2115,50 @@ the standard shell and keeps the notice dismissible.
 
 **Gate:** `npm run build && node frontend/scripts/check-3d-budget.mjs`, plus the
 frontend gate.
+
+**As built (3D-13, 2026-11-19).** Files: `frontend/scripts/check-3d-budget.mjs`
+(new, dependency-free: Node `fs`/`crypto`/`zlib` over `dist/` plus the app's own
+constants through Vite's SSR loader), `frontend/src/renderers/perfHud.ts` (new:
+the HUD's pure reading and its 250 ms sample interval), `perfHud.test.ts` (new),
+`frontend/src/renderers/RendererHost.tsx` / `RendererHost.css` (the `?perf=1`
+panel and its polling effect), `frontend/src/renderers/three/Scene.ts` (the
+three new `measure()` fields and continuous sampling while the HUD is open),
+`frontend/src/renderers/contract.ts` (`devicePixelRatio`, `backingStorePixels`,
+`frameSamples` on `RendererStats`), `RendererHost.test.tsx`, `frontend/package.json`
+(`budget:check`) and the measurement protocol above. No 2.5D file, no committed
+asset, no Rust change.
+
+*The script.* It loads the app's real constants (`PINNED_RELIEF3D_ATLASES`,
+`reliefGpuBytes`, `RELIEF_RASTER`, `TIER_BACKING_STORE`, `antiAliasFor`,
+`BOARD_TILE_CAPACITY`, `buildTileGeometry`, `SCENE_DRAW_CALLS`,
+`steadyStateDrawCalls`, the fixture/layout builders), then checks the build:
+the three `relief3d/` atlases exist with the pinned byte count and SHA-256 (and
+the manifest agrees with both the pins and the files); the published GPU totals
+are 58,490,880 B at `high`/`balanced` and 14,622,720 B at `compat`; one tile is
+480 triangles (budget 600), the widest legal board is 280 instances of 320, and
+a full-capacity board is 153,600 triangles of the 200 k ceiling; the steady plan
+is five draws of the hard ceiling twelve; and post-build, the entry names one
+lazy chunk that contains three.js, the entry reaches it only through
+`import(…)`, `index.html` neither loads nor preloads it, and three's marker
+strings appear in no other chunk. The chunk's gzip size is printed against the
+200 KB advisory and only warns when over. The exit code is non-zero only for
+atlas drift/missing files, a broken count or draw-call ceiling, or a leaked
+three import (the plan's rule). On this build the chunk was 661,989 B raw /
+178,226 B gzip and the entry 677,962 B raw / 119,796 B gzip.
+
+*The HUD.* `?perf=1` mounts a floating panel that reads `measure()` every 250 ms
+and prints tier, resolved DPR, backing-store MP, depth/shadow steps, draw calls,
+instances, triangles, frame p50/p95, sample count and atlas MB. It is off by
+default: with the flag absent there is no interval, no `measure()` call and no
+extra rendering. With it on, `Scene.startPerfSampling` keeps drawing and sampling
+real animation-frame deltas after the `PERF_SAMPLE_WINDOW_MS` window instead of
+returning to on-demand frames, so p50/p95 describe the live table. The 5 s
+window with the HUD off is unchanged (3D-11), and the monitor's 25 ms/33 ms rules
+still apply while the HUD is open.
+
+*Gate evidence.* `npm test`, `npm run build`, `npm run lint` and
+`node scripts/check-3d-budget.mjs` are green; the gate run's printed table is
+the script's own report, not a transcription.
 
 ---
 

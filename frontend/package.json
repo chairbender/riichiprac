@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "seams:check": "node scripts/check-3d-seams.mjs",
+    "budget:check": "node scripts/check-3d-budget.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

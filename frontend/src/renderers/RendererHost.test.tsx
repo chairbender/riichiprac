@@ -72,6 +72,8 @@ const hostMock = vi.hoisted(() => {
     rects: HitRect[];
     compass: CompassRect | null;
     hitRectCalls: number;
+    measureCalls: number;
+    stats: RendererStats;
     hover: unknown[];
   }
 
@@ -90,17 +92,20 @@ const hostMock = vi.hoisted(() => {
     rects: [],
     compass: null,
     hitRectCalls: 0,
+    measureCalls: 0,
+    stats: {
+      tier: 'high',
+      drawCalls: 1,
+      triangles: 2,
+      instances: 0,
+      devicePixelRatio: 1,
+      backingStorePixels: 480_000,
+      atlasBytes: 0,
+      frameMsP50: 0,
+      frameMsP95: 0,
+      frameSamples: 0,
+    },
     hover: [],
-  };
-
-  const stats: RendererStats = {
-    tier: 'high',
-    drawCalls: 1,
-    triangles: 2,
-    instances: 0,
-    atlasBytes: 0,
-    frameMsP50: 0,
-    frameMsP95: 0,
   };
 
   const createRenderer = vi.fn((_canvas: HTMLCanvasElement, options: RendererOptions): TableRenderer => {
@@ -126,7 +131,10 @@ const hostMock = vi.hoisted(() => {
         state.hover.push(tile);
       },
       playEvents: () => undefined,
-      measure: () => stats,
+      measure: () => {
+        state.measureCalls += 1;
+        return state.stats;
+      },
       heroReport: () => state.report as never,
       heroCaptures: () => state.captures as never,
       carveReport: () => state.carveReport as never,
@@ -207,6 +215,19 @@ beforeEach(() => {
     rects: [],
     compass: null,
     hitRectCalls: 0,
+    measureCalls: 0,
+    stats: {
+      tier: 'high',
+      drawCalls: 1,
+      triangles: 2,
+      instances: 0,
+      devicePixelRatio: 1,
+      backingStorePixels: 480_000,
+      atlasBytes: 0,
+      frameMsP50: 0,
+      frameMsP95: 0,
+      frameSamples: 0,
+    },
     hover: [],
   });
   hostMock.createRenderer.mockClear();
@@ -942,5 +963,82 @@ describe('RendererHost quality tiers and fallback (3D-11)', () => {
     // The settings store only knows the 2D views; the query flag is the only
     // way in while RENDERED3D_EXPOSED is false, so nothing writes a 3D value.
     expect(window.localStorage.getItem('riichiprac.settings')).toBeNull();
+  });
+});
+
+describe('RendererHost perf HUD (3D-13)', () => {
+  it('is absent and calls measure() zero times when ?perf is not set', async () => {
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    expect(
+      screen.queryByRole('complementary', {
+        name: '3D performance measurements',
+      }),
+    ).toBeNull();
+    expect(hostMock.state.measureCalls).toBe(0);
+  });
+
+  it('prints the live measurement when ?perf=1 is set', async () => {
+    hostMock.state.stats = {
+      tier: 'balanced',
+      drawCalls: 5,
+      triangles: 153_600,
+      instances: 249,
+      devicePixelRatio: 1.5,
+      backingStorePixels: 4_665_600,
+      atlasBytes: 58_490_880,
+      relief: 'relief3d',
+      pomSteps: 8,
+      shadowSteps: 2,
+      frameMsP50: 12.5,
+      frameMsP95: 15.75,
+      frameSamples: 240,
+    };
+    const { container } = render(
+      <RendererHost snapshot={snapshot()} perfHud fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    expect(
+      screen.getByRole('complementary', { name: '3D performance measurements' }),
+    ).toBeTruthy();
+    const stat = (name: string) =>
+      container.querySelector(`[data-stat="${name}"]`)?.textContent;
+    expect(stat('tier')).toBe('balanced');
+    expect(stat('dpr')).toBe('1.50');
+    expect(stat('backing-store')).toBe('4.67 MP');
+    expect(stat('steps')).toBe('8 / 2');
+    expect(stat('draw-calls')).toBe('5');
+    expect(stat('instances')).toBe('249');
+    expect(stat('triangles')).toBe('153600');
+    expect(stat('frame-ms')).toBe('12.50 / 15.75 ms');
+    expect(stat('frame-samples')).toBe('240');
+    expect(stat('atlas')).toBe('58.49 MB');
+    expect(hostMock.state.measureCalls).toBeGreaterThan(0);
+  });
+
+  it('refreshes the printed numbers while the HUD stays open', async () => {
+    const { unmount } = render(
+      <RendererHost snapshot={snapshot()} perfHud fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    expect(screen.getByText('1.00')).toBeTruthy();
+
+    hostMock.state.stats = {
+      ...hostMock.state.stats,
+      devicePixelRatio: 0.75,
+      frameMsP95: 21.25,
+    };
+    await waitFor(
+      () => expect(screen.getByText('0.75')).toBeTruthy(),
+      { timeout: 2000 },
+    );
+    expect(screen.getByText(/21\.25 ms/)).toBeTruthy();
+
+    const calls = hostMock.state.measureCalls;
+    unmount();
+    // No interval survives the unmount: the next reads never happen.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(hostMock.state.measureCalls).toBe(calls);
   });
 });
