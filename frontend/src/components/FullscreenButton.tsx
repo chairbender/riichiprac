@@ -11,9 +11,9 @@
  * document without the API) the button renders nothing, so the view never
  * offers a control that cannot work.
  *
- * The button is built and tested here but stays **unmounted** until the 3D HUD
- * shell lands (3D-H2). Leaving full screen on a view switch does not wait for
- * it: `fullscreen.ts` owns that, and App calls it (3D-14).
+ * The button is mounted by the 3D HUD's top bar (3D-H2), in front of the
+ * full-window stage. Leaving full screen on a view switch does not wait for it:
+ * `fullscreen.ts` owns that, and App calls it (3D-14).
  */
 
 import { useEffect, useState } from 'react';

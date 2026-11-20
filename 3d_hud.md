@@ -934,6 +934,39 @@ interface TableRenderer {
 path as the interaction rects (a drift test asserts the union equality while
 unanswered), so the anchor cannot diverge from the buttons it describes.
 
+### As built (3D-H2, 2026-11-19)
+
+H2 landed the shell exactly as specified above. The facts H3–H5 build on:
+
+- **Files.** `renderers/hud/{HudLayer.tsx, Hud.css, tokens.css, hudLayout.ts,
+  Sheet.tsx, hudAnchors.ts, domMetrics.ts}` plus their tests, and the contract
+  addition `BandRect` + `TableRenderer.handBandRect()` in `renderers/contract.ts`,
+  `three/hitTest.ts`, `three/Scene.ts`. `App.tsx` changed only at the 3D mount
+  seam: it renders `<HudLayer>` as the fixed sibling of `<main className="table-3d">`
+  and passes the shell/stage refs, the next-hand handler and its disabled flag.
+- **The anchor seam.** `RendererHost` publishes `{ handBand, compass }` into
+  `hud/hudAnchors.ts` on every re-projection (resize, new snapshot, board ready)
+  and clears them on unmount or degrade; `HudLayer` subscribes with
+  `useSyncExternalStore`. The renderer never reaches into the HUD and the HUD
+  never calls the renderer, so `hudLayout()` stays pure.
+- **Safe areas.** `.hud-inset-probe` is the only element that reads
+  `env(safe-area-inset-*)`; `domMetrics.readSafeAreaInsets()` reads its computed
+  padding once per resize pass and the numbers enter `hudLayout()`. The top bar's
+  inline padding is `max(6px, inset)` on each side and `max(6px, safeTop)` above.
+- **Slots.** `HudLayer` takes `hintRow`, `actionRail`, `resultCard`, `toasts` +
+  `toastCount`, and `sheet` + `onCloseSheet`. The panel mounts only when it has
+  content (`slot: none` paints nothing), keeps `84`/`128`/`40`/`104` px, and
+  collapses to the hint row while a sheet is open. H3 fills the two rows and the
+  toast root, H5 the result card, H4/H5 the sheet body.
+- **Nested layers.** A native document-level Escape listener cannot be stopped
+  by a descendant's `stopPropagation` (both run on `document`), so the sheet
+  consumes the first Escape when its body contains
+  `[data-hud-popover="open"]` (exported as `NESTED_LAYER_ATTRIBUTE`). H4 must set
+  that attribute on its open scenario picker / hotseat card.
+- **Retired.** The `?preview=deal` review aid (3D-12) is gone: the top bar's
+  Next Scenario control is the real one, so the deal-in is one tap away. The
+  `preview` query value is `sticks | null` only.
+
 ---
 
 ## 10. Non-goals

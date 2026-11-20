@@ -164,13 +164,12 @@ export interface RendererQuery {
   readonly perf: boolean;
   /**
    * A debug-only preview of a state the current hand may not contain, for
-   * visual inspection (3D-09, extended by 3D-12). `sticks` marks every seat
-   * riichi so the per-seat felt sticks and compass markers can be reviewed on
-   * any hand; `deal` shows a "Replay deal-in" control that re-cuts the current
-   * hand on demand, so the bounded deal-in can be watched without waiting for
-   * 3D-14's Next Scenario chrome. Neither changes the game state or the answer.
+   * visual inspection (3D-09). `sticks` marks every seat riichi so the per-seat
+   * felt sticks and compass markers can be reviewed on any hand. It changes
+   * neither the game state nor the answer. (3D-12's `deal` value was retired in
+   * 3D-H2, when the real Next Scenario control landed over the scene.)
    */
-  readonly preview: 'sticks' | 'deal' | null;
+  readonly preview: 'sticks' | null;
 }
 
 /**
@@ -196,8 +195,7 @@ export function parseRendererQuery(search: string): RendererQuery {
     debug: isDebugMode(debug) ? debug : null,
     perf:
       perf !== null && (perf === '' || perf === '1' || perf === 'true'),
-    preview:
-      preview === 'sticks' || preview === 'deal' ? preview : null,
+    preview: preview === 'sticks' ? preview : null,
   };
 }
 

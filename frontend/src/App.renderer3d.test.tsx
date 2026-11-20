@@ -103,7 +103,9 @@ describe('App 3D mount point', () => {
     // The opt-in view is mounted by the query parameter...
     expect(screen.getByRole('group', { name: '3D table view' })).toBeTruthy();
     // ...it explains why it cannot run...
-    expect(screen.getByText(/WebGL2 is not available/)).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByText(/WebGL2 is not available/)).toBeTruthy(),
+    );
     // ...and the scene alone owns the window: the shell drops the phone
     // column and no app chrome is mounted in the document flow.
     expect(document.querySelector('.app-shell--3d')).not.toBeNull();

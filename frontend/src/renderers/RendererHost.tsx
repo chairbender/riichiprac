@@ -54,6 +54,7 @@ import {
   HERO_READY_EVENT,
 } from './contract';
 import { usePrefersReducedMotion } from './motionPreference';
+import { clearHudAnchors, publishHudAnchors } from './hud/hudAnchors';
 import { TableCompass, TableOverlay } from './overlay';
 import type { OverlayHandTile } from './handOverlay';
 import { PERF_HUD_SAMPLE_INTERVAL_MS, perfHudReading } from './perfHud';
@@ -499,16 +500,40 @@ export function RendererHost({
   const [compassRect, setCompassRect] = useState<CompassRect | null>(null);
   const [perfReading, setPerfReading] = useState<PerfHudReading | null>(null);
   const [degradeNotice, setDegradeNotice] = useState<string | null>(null);
+  /**
+   * 3D-H2: this mount's token in the HUD's anchor store. Its own values are
+   * published on every re-projection below, and cleared on unmount.
+   */
+  const anchorsOwner = useMemo(() => ({}), []);
+
+  /*
+   * 3D-H2: release the HUD's projection when this host goes away, whatever path
+   * it took to get here (a renderer that mounted, one that never could, or a
+   * degrade). The renderer's own cleanup also clears it; this covers the mounts
+   * that return before creating a renderer at all.
+   */
+  useEffect(() => () => clearHudAnchors(anchorsOwner), [anchorsOwner]);
 
   /**
    * Re-read the renderer's pure projection. Called after everything that can
    * move a tile: a new snapshot, a resize, and the board/context becoming
    * current. It never draws and never creates DOM.
+   *
+   * It also publishes the HUD's two anchors (3D-H2): the hand band and the
+   * compass plate. The HUD is mounted by `App` as a sibling of the stage, so
+   * this is the seam between the renderer and that layer; publishing numbers
+   * (never DOM) is what lets the HUD's layout stay a pure function.
    */
   const refreshHitRects = useCallback(() => {
-    setHitRects(rendererRef.current?.hitRects() ?? []);
-    setCompassRect(rendererRef.current?.compassRect?.() ?? null);
-  }, []);
+    const renderer = rendererRef.current;
+    setHitRects(renderer?.hitRects() ?? []);
+    const compass = renderer?.compassRect?.() ?? null;
+    setCompassRect(compass);
+    publishHudAnchors(anchorsOwner, {
+      handBand: renderer?.handBandRect?.() ?? null,
+      compass,
+    });
+  }, [anchorsOwner]);
 
   const reportHoverTile = useCallback((tile: OverlayHandTile | null) => {
     const ref: HandTileRef | null = tile
@@ -704,6 +729,7 @@ export function RendererHost({
       rendererRef.current = null;
       setHitRects([]);
       setCompassRect(null);
+      clearHudAnchors(anchorsOwner);
       setDegradeNotice(message);
       setStatus({ state: 'degraded', message: null });
       onDegraded?.(message);
@@ -765,6 +791,8 @@ export function RendererHost({
       canvas = null;
       setHitRects([]);
       setCompassRect(null);
+      // The HUD anchors belonged to this renderer; a later mount republishes.
+      clearHudAnchors(anchorsOwner);
     };
   }, [
     capabilities,
@@ -777,6 +805,7 @@ export function RendererHost({
     refreshHitRects,
     resolvedTier,
     sessionFallbackMessage,
+    anchorsOwner,
   ]);
 
   // Redraw on a new snapshot without remounting the renderer, and re-project

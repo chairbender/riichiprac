@@ -1,0 +1,58 @@
+/*
+ * The 3D HUD's tokens (3D-H2, 3d_hud.md §6.1 and §8).
+ *
+ * One block, because two rules depend on it: no HUD stylesheet may write a bare
+ * `z-index` (they use the rungs below), and the panel surfaces' alpha floor is
+ * what keeps muted text at AA over the brightest felt. Both are asserted by
+ * `hudCss.test.ts` from the file text, so a stray number is a failing test, not
+ * a review note.
+ *
+ * The rungs are the whole ladder (`canvas < scene < HUD < sheet < toast`);
+ * the 2D shell's values (header 40, dock 30, hotseat backdrop 80) are not part
+ * of it, because no 2D chrome is mounted in the 3D view.
+ */
+
+:root {
+  /* Z ladder (§6.1) ------------------------------------------------------ */
+  --hud-z-canvas: 0;
+  --hud-z-scene: 10;
+  --hud-z-hud: 20;
+  --hud-z-sheet-scrim: 30;
+  --hud-z-sheet: 40;
+  --hud-z-toast: 50;
+
+  /* Surfaces, borders, shape (§8) --------------------------------------- */
+  --hud-surface: rgba(9, 14, 19, 0.88);
+  --hud-surface-solid: #12141a;
+  --hud-sheet-surface: #141b25;
+  --hud-border-color: #2a3442;
+  --hud-border: 1px solid var(--hud-border-color);
+  --hud-border-accent: #34506e;
+  --hud-radius-panel: 10px;
+  --hud-radius-control: 8px;
+  --hud-radius-chip: 999px;
+  --hud-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --hud-scrim: rgba(5, 8, 13, 0.45);
+  --hud-backdrop: blur(8px) saturate(1.1);
+
+  /* Text and tone (§8) --------------------------------------------------- */
+  --hud-text: #e7ecf3;
+  --hud-text-muted: #8b94a7;
+  --hud-accent: #a5d8ff;
+  --hud-focus: #74c0fc;
+  --hud-ok: #8ce99a;
+  --hud-warn: #ffd43b;
+  --hud-bad: #ff8a8a;
+  --hud-tone-ok: #122018;
+  --hud-tone-warn: #1f1a12;
+  --hud-tone-bad: #241717;
+
+  /* Type and space (§8) -------------------------------------------------- */
+  --hud-text-xs: 0.72rem;
+  --hud-text-sm: 0.78rem;
+  --hud-text-md: 0.86rem;
+  --hud-line-tight: 1.3;
+  --hud-line-body: 1.35;
+  --hud-space: 8px;
+  --hud-tap: 44px;
+}

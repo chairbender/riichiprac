@@ -2,8 +2,8 @@
  * Leaving full screen (3D-14).
  *
  * The full-screen toggle (`components/FullscreenButton.tsx`) is the only thing
- * that *enters* full screen, and it stays unmounted until the 3D HUD shell
- * lands (3D-H2). This helper is the other half: leaving. App calls it when the
+ * that *enters* full screen; 3D-H2 mounts it in the 3D HUD's top bar. This
+ * helper is the other half: leaving. App calls it when the
  * user switches away from the 3D stage, so a full-screen 3D table can never
  * strand them in a full-screen 2D layout, and the toggle uses the same path.
  *

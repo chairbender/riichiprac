@@ -178,21 +178,21 @@ status cards, the action bar, the hand dock, the projected hand/draw buttons and
 the compass — is positioned *over* the scene, the way a game HUD is, never
 outside it.
 
-**Interim state (as of 3D-14's landing).** While there is no floating layer yet,
-the 3D mount renders **the scene alone**: no header, no cards, no action bar and
-no hand dock are mounted, so nothing occupies Y space around the canvas. The
-2D views keep their existing layout. 3D-14 makes the view a reversible
-`TableView` value and guarantees that switching away removes the shell modifier
-and leaves full screen; the floating chrome is the 3D HUD chain's work (3D-H1…H5),
-and 3D-H2 owns the shell that hosts it.
+**Interim state (as of 3D-14's landing; superseded by 3D-H2 for the shell).**
+Before the floating layer, the 3D mount rendered **the scene alone**: no header,
+no cards, no action bar and no hand dock, so nothing occupied Y space around the
+canvas. The 2D views keep their existing layout. 3D-14 made the view a
+reversible `TableView` value and guarantees that switching away removes the
+shell modifier and leaves full screen; 3D-H2 (landed 2026-11-19) mounts the
+floating shell — the top bar's Next Scenario and full-screen controls — with the
+HUD chain's rows still to come (3D-H3…H5).
 
 A full-screen toggle uses the Fullscreen API on the **shell**, not on the
 canvas, so the floating layer travels with the scene; it is rendered only where
 `requestFullscreen` exists, and it reports the browser's own state rather than
 guessing. Browsers that do not support the API simply get the full-window view.
-The component is built and tested in 3D-02 but stays unmounted until the HUD
-shell exists (3D-H2), because offering a header control is UI; leaving full screen
-on a view switch is 3D-14's, through `fullscreen.ts`.
+The component was built and tested in 3D-02 and is mounted by 3D-H2's top bar;
+leaving full screen on a view switch is 3D-14's, through `fullscreen.ts`.
 
 ### 2.2 Repository and build boundaries
 
@@ -524,12 +524,11 @@ The canvas is an image. Everything a user can do or must hear is DOM:
 - The interaction layer is a pure function of `TableSnapshot` + camera matrices
   (`hitTest.ts`), so it is unit-testable in Node without WebGL.
 - **Chrome over the scene.** The stage is the whole window (§2.1). The floating
-  HUD is the 3D HUD chain (3D-H1…H5), not a renderer unit; once it lands (the
-  hand/draw buttons came in 3D-08, the compass in 3D-09), the app chrome —
-  header controls, status cards, the action bar and the hand dock — is
-  positioned *over* the canvas in Z order, never in the document flow above or
-  below it. 3D-14 deliberately keeps the scene-only mount: no chrome at all
-  until 3D-H2. No overlay may capture pointer events outside its own controls:
+  HUD is the 3D HUD chain (3D-H1…H5), not a renderer unit; its shell landed in
+  3D-H2 (the hand/draw buttons came in 3D-08, the compass in 3D-09), and the
+  app chrome — header controls, status cards, the action bar and the hand dock —
+  is positioned *over* the canvas in Z order, never in the document flow above or
+  below it. No overlay may capture pointer events outside its own controls:
   clicking the felt (once anything is bound to it) and every chrome control must
   keep working. Floating panels keep their own backgrounds so they stay readable
   over the felt.
@@ -2973,6 +2972,15 @@ different composition edits `3d_hud.md` first.
      └─ 3D-H4 (setup sheet)
 3D-15 runs the joint matrix after H5; 3D-16 records the HUD as built.
 ```
+
+**Landed: 3D-H2 (2026-11-19).** The shell, the tokens, `hudLayout()`, the sheet
+primitive, the anchor store (`renderers/hud/hudAnchors.ts`), the
+`handBandRect()` contract addition and the mounted full-screen toggle are in.
+`App.tsx`'s 3D branch is now `<HudLayer>` + the fixed stage; the top bar holds
+Next Scenario and full screen only, and no 2D header is mounted in 3D. The
+`?preview=deal` review aid was retired with it. `3d_hud.md` §9 records the
+as-built details (the anchor seam, the safe-area probe and the nested-layer
+marker) that H3–H5 depend on.
 
 **Rules binding all five units.**
 
