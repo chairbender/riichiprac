@@ -2111,6 +2111,13 @@ animation; a test submits an answer immediately after a revision cut and asserts
 the handler runs synchronously with the same `(tile, index, draw)` arguments the
 stacked view sends.
 
+*Review aid.* `?renderer=3d&preview=deal` adds one floating "Replay deal-in
+(preview)" button to the bare 3D stage. It bumps the snapshot revision on the
+current hand, so the motion can be watched repeatedly before 3D-14 mounts the
+Next Scenario chrome over the scene; the game state, the answer and the 2D views
+never see it. It is the same review-only shape as 3D-09's `?preview=sticks`, and
+a test asserts the revision moves while the seats and locked flag do not.
+
 *Evidence.* `motion.test.ts` asserts the cut rule (including the
 same-revision/locked no-op over the full fixture), the 400 ms bound, the
 monotone lift to exactly zero, the exact settle, reduced motion, and every event
