@@ -102,6 +102,8 @@ import { HERO_SLOTS, heroInstances, heroParallaxAt, heroVisibleNormal, probeWorl
 import type { HeroInstance, HeroSlot } from './hero';
 import { withHoverLift } from './hover';
 import { compassPlateRect, hitRects as projectHitRects } from './hitTest';
+import { DealInMotion, systemMotionClock, withVerticalLift } from './motion';
+import type { DealInSample, MotionClock } from './motion';
 import { sceneLightSpecs } from './lighting';
 import { FrameTimeMonitor } from './perf';
 import { allProbesPass, readProbes } from './probes';
@@ -273,6 +275,17 @@ export class TableScene implements TableRenderer {
   private locked = false;
   /** The hand button the pointer/focus is on, lifted by half a tile height. */
   private hover: HandTileRef | null = null;
+  /**
+   * The bounded deal-in (3D-12): a cut's settle from half a tile height, or
+   * nothing at all. Only a new snapshot revision starts it.
+   */
+  private readonly dealIn: DealInMotion;
+  /** {prefers-reduced-motion}: no deal-in, no lift (the DOM focus ring stays). */
+  private readonly reducedMotion: boolean;
+  /** `?debug=hero`: a fixed macro shot of four tiles, so the deal-in never runs. */
+  private readonly heroView: boolean;
+  /** The deal-in's frame loop, while one is running. */
+  private motionHandle: number | null = null;
   /** 3D-11's frame-time monitor: one tier downgrade per sustained window. */
   private readonly perf: FrameTimeMonitor;
   /** The latest devicePixelRatio the host reported (setSize). */
@@ -282,10 +295,21 @@ export class TableScene implements TableRenderer {
   private sampleStartedMs: number | null = null;
   private sampled = false;
 
-  constructor(canvas: HTMLCanvasElement, options: RendererOptions) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    options: RendererOptions,
+    /**
+     * The motion clock (3D-12). The host never supplies one; tests do, so the
+     * deal-in runs without real timers.
+     */
+    clock: MotionClock = systemMotionClock(),
+  ) {
     this.tier = options.tier;
     this.debugMode = options.debug;
     this.canvas = canvas;
+    this.reducedMotion = options.reducedMotion;
+    this.heroView = options.debug === 'hero';
+    this.dealIn = new DealInMotion(clock, options.reducedMotion);
     this.perf = new FrameTimeMonitor(options.tier);
 
     const context = canvas.getContext('webgl2', {
@@ -357,10 +381,13 @@ export class TableScene implements TableRenderer {
    *
    * Idempotent and O(tiles): the same snapshot produces identical buffers, and
    * no geometry, material or texture is reallocated. A new revision is a cut,
-   * never a move (the buffer is replaced wholesale; 3D-12 owns any motion).
+   * never a move (3D-12): the buffer is replaced wholesale and the only motion a
+   * cut may start is one bounded deal-in. A same-revision update (an answer, a
+   * highlight) changes flags, never positions, and starts nothing.
    */
   syncState(snapshot: TableSnapshot): void {
     if (this.disposed) return;
+    const isCut = this.dealIn.cut(snapshot.revision);
     this.revision = snapshot.revision;
     this.locked = snapshot.locked;
     const layout = layoutBoard(snapshot);
@@ -369,6 +396,12 @@ export class TableScene implements TableRenderer {
     // A deeper river or a taller hand can move the solved camera, so the frame
     // and the felt follow the layout, not only the viewport.
     this.reframe();
+    if (isCut) {
+      // The hero view is a fixed macro shot of four tiles, not a deal: no
+      // deal-in there, and no frame loop to run one.
+      if (this.heroView) this.dealIn.cancel();
+      else this.startDealIn();
+    }
     this.requestFrame();
   }
 
@@ -514,11 +547,12 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * 3D-12's hover lift, landed here because 3D-08 owns the report and the user
-   * asked for it now: the hovered/focused hand tile rises half a tile height
-   * (14 mm) on top of the DOM button's tint. The button does not move; its rect
-   * comes from the un-lifted pose (see `hitTest.ts`), so the pointer stays on
-   * the same target while the tile rises beneath it.
+   * 3D-12's hover lift, landed in 3D-08 because the user asked for it there: the
+   * hovered/focused hand tile rises half a tile height (14 mm) on top of the DOM
+   * button's tint. The button does not move; its rect comes from the un-lifted
+   * pose (see `hitTest.ts`), so the pointer stays on the same target while the
+   * tile rises beneath it. Reduced motion suppresses the lift (the overlay stops
+   * reporting it, and the scene ignores one that arrives anyway).
    */
   setHoverTile(tile: HandTileRef | null): void {
     const current = this.hover;
@@ -537,10 +571,17 @@ export class TableScene implements TableRenderer {
     this.requestFrame();
   }
 
-  /** Reserved for a future live/replay source; v1 draws no tile motion. */
+  /**
+   * Reserved for a future live/replay source; v1 draws no tile motion.
+   *
+   * The seam's math lives in `motion.ts` (`flightWaypoints`/`sampleFlight`,
+   * unit-tested for `draw`, `discard`, `meld` and `flip`), but no source emits
+   * `RendererEvent`s in v1: the app has no event stream and the diff rule
+   * forbids inventing a move from a snapshot change. A test proves the host
+   * never calls this.
+   */
   playEvents(): void {
-    // Intentionally empty: see contract.ts. No caller in v1, and 3D-12 proves
-    // the host never calls it.
+    // Intentionally empty: see contract.ts and `motion.ts`.
   }
 
   /** The numbers the perf HUD and the budget gate read (final in 3D-13). */
@@ -1008,6 +1049,11 @@ export class TableScene implements TableRenderer {
     if (this.disposed) return;
     this.disposed = true;
     this.stopPerfSampling();
+    this.dealIn.cancel();
+    if (this.motionHandle !== null) {
+      globalThis.cancelAnimationFrame?.(this.motionHandle);
+      this.motionHandle = null;
+    }
     if (this.frameHandle !== null) {
       globalThis.cancelAnimationFrame?.(this.frameHandle);
       this.frameHandle = null;
@@ -1067,24 +1113,62 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * Rewrite the tile instances only, applying the current hover lift.
+   * Rewrite the tile instances only, applying the hover lift and the deal-in.
    *
    * The atlas cells are looked up per face; `withHoverLift` copies just the
    * hovered instance's matrix, so the rest of the buffer is byte-identical and
-   * a hover change cannot disturb any other tile.
+   * a hover change cannot disturb any other tile. The deal-in adds one uniform
+   * lift to every instance and is exactly zero once it has settled, so the final
+   * buffer is the layout's own transforms.
    */
-  private syncTiles(layout: BoardLayout): void {
+  private syncTiles(layout: BoardLayout, sample: DealInSample = this.dealIn.sample()): void {
     const board = this.board;
     if (!board) return;
-    board.tiles.sync(
-      withHoverLift(
-        buildBoardInstances(layout, (face: TileFaceId) =>
-          board.assets.cellForFace(face),
-        ),
-        layout,
-        this.hover,
-      ),
+    board.tiles.sync(this.boardInstances(layout, board.assets, sample));
+  }
+
+  /** The composed instance buffer: layout → hover lift → deal-in lift. */
+  private boardInstances(
+    layout: BoardLayout,
+    assets: ReliefAssets<ReliefGpuTexture>,
+    sample: DealInSample = this.dealIn.sample(),
+  ): readonly BoardInstance[] {
+    const base = buildBoardInstances(layout, (face: TileFaceId) =>
+      assets.cellForFace(face),
     );
+    const hovered = this.reducedMotion ? null : this.hover;
+    const lifted = withHoverLift(base, layout, hovered);
+    const liftUnits = this.reducedMotion ? 0 : sample.liftUnits;
+    return withVerticalLift(lifted, liftUnits);
+  }
+
+  /**
+   * Run the deal-in (3D-12): a bounded settle from half a tile height.
+   *
+   * The scene draws on demand, so the animation owns its frames: each one
+   * re-syncs the instances with the clock's remaining lift and stops as soon as
+   * the sample reports `done`, at which point the buffer is exactly the layout's
+   * transforms again. Reduced motion never reaches here (`cut()` returns false).
+   */
+  private startDealIn(): void {
+    if (this.disposed || this.motionHandle !== null || !this.dealIn.active) return;
+    const schedule = globalThis.requestAnimationFrame;
+    if (typeof schedule !== 'function') {
+      // No animation clock (an exotic embed): settle immediately, never leave
+      // the board holding a lift that no frame will ever decay.
+      this.dealIn.cancel();
+      if (this.layout) this.syncTiles(this.layout);
+      this.requestFrame();
+      return;
+    }
+    const step = (): void => {
+      this.motionHandle = null;
+      if (this.disposed) return;
+      if (this.layout) this.syncTiles(this.layout);
+      this.draw();
+      if (this.dealIn.active) this.motionHandle = schedule(step);
+    };
+    this.motionHandle = schedule(step);
   }
 
   /** Load the committed relief atlases and mount the four hero tiles. */
@@ -1200,13 +1284,7 @@ export class TableScene implements TableRenderer {
     });
     const layout = this.layout;
     const tiles = createBoardMesh(
-      layout
-        ? withHoverLift(
-            buildBoardInstances(layout, (face) => assets.cellForFace(face)),
-            layout,
-            this.hover,
-          )
-        : [],
+      layout ? this.boardInstances(layout, assets) : [],
       material,
     );
     const shadows = createShadowLayer(layout ? shadowInstances(layout) : []);

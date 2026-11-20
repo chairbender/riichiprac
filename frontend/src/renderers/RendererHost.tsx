@@ -82,7 +82,7 @@ export interface RendererHostProps {
   readonly debug?: DebugMode | null;
   /** `?perf`, used from 3D-13 onwards. */
   readonly perfHud?: boolean;
-  /** `prefers-reduced-motion`; consumed from 3D-12 onwards. */
+  /** `prefers-reduced-motion`: suppresses the hover lift and the deal-in (3D-12). */
   readonly reducedMotion?: boolean;
   /**
    * The view to keep showing while the 3D scene loads, is unsupported or has

@@ -73,6 +73,7 @@ const hostMock = vi.hoisted(() => {
     compass: CompassRect | null;
     hitRectCalls: number;
     hover: unknown[];
+    playEventCalls: number;
   }
 
   const state: MockState = {
@@ -91,6 +92,7 @@ const hostMock = vi.hoisted(() => {
     compass: null,
     hitRectCalls: 0,
     hover: [],
+    playEventCalls: 0,
   };
 
   const stats: RendererStats = {
@@ -125,7 +127,9 @@ const hostMock = vi.hoisted(() => {
       setHoverTile: (tile: unknown) => {
         state.hover.push(tile);
       },
-      playEvents: () => undefined,
+      playEvents: () => {
+        state.playEventCalls += 1;
+      },
       measure: () => stats,
       heroReport: () => state.report as never,
       heroCaptures: () => state.captures as never,
@@ -208,6 +212,7 @@ beforeEach(() => {
     compass: null,
     hitRectCalls: 0,
     hover: [],
+    playEventCalls: 0,
   });
   hostMock.createRenderer.mockClear();
 
@@ -556,6 +561,71 @@ describe('RendererHost interaction overlay (3D-08)', () => {
     expect(description?.textContent).toMatch(/buttons/);
     const canvas = document.querySelector('canvas');
     expect(canvas?.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
+describe('RendererHost motion seam (3D-12)', () => {
+  it('never calls the reserved playEvents seam', async () => {
+    hostMock.state.rects = [HAND_RECT];
+    const { rerender } = render(
+      <RendererHost
+        snapshot={handSnapshot(1)}
+        onSelectTile={() => undefined}
+        fallback={fallbackTable()}
+      />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    // A new deal, a hover and an answer are every interaction that could tempt a
+    // renderer to animate; none of them reaches the unused event seam. The
+    // renderer owns the deal-in internally (a revision cut), so the host has no
+    // reason to push events at all in v1.
+    rerender(
+      <RendererHost
+        snapshot={handSnapshot(2)}
+        onSelectTile={() => undefined}
+        fallback={fallbackTable()}
+      />,
+    );
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Discard 1m' }));
+    rerender(
+      <RendererHost
+        snapshot={{ ...handSnapshot(2), locked: true }}
+        onSelectTile={() => undefined}
+        fallback={fallbackTable()}
+      />,
+    );
+
+    expect(hostMock.state.playEventCalls).toBe(0);
+  });
+
+  it('answers immediately while a deal-in is running', async () => {
+    hostMock.state.rects = [HAND_RECT];
+    const onSelectTile = vi.fn();
+    const { rerender } = render(
+      <RendererHost
+        snapshot={handSnapshot(1)}
+        onSelectTile={onSelectTile}
+        fallback={fallbackTable()}
+      />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    // Revision 2 is a cut, so the scene is mid-deal-in. The hand buttons are
+    // never gated on motion: the click is synchronous and carries exactly the
+    // tile, index and draw flag the stacked view would send.
+    rerender(
+      <RendererHost
+        snapshot={handSnapshot(2)}
+        onSelectTile={onSelectTile}
+        fallback={fallbackTable()}
+      />,
+    );
+    const button = screen.getByRole('button', { name: 'Discard 1m' });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(button);
+    expect(onSelectTile).toHaveBeenCalledTimes(1);
+    expect(onSelectTile).toHaveBeenCalledWith('1m', 0, false);
   });
 });
 
