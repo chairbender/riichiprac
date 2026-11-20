@@ -1913,6 +1913,42 @@
   font-size: 0.82rem;
 }
 
+/*
+ * 3D-11's dismissible fallback notice. The 3D view closed itself (compat could
+ * not hold 30 fps) and App returned to the stored view; this is the one line
+ * that says why, and it stays until the user dismisses it.
+ */
+.three-fallback-notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 8px;
+  padding: 8px 12px;
+  border: 1px solid #6b5a2a;
+  border-radius: 8px;
+  background-color: #242017;
+  color: #e7d9b0;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.three-fallback-notice button {
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #0b1116;
+  background: #e7d9b0;
+  border: 1px solid #c9b984;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.three-fallback-notice button:hover {
+  background: #f4e8c8;
+}
+
 /* AI evaluator ------------------------------------------------------------ */
 
 .ai-panel {

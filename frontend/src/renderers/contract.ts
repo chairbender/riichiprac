@@ -514,6 +514,33 @@ export const HERO_READY_EVENT = 'tile3d:hero-ready';
 export const HERO_FAILED_EVENT = 'tile3d:hero-failed';
 
 /**
+ * Automatic quality changes (3D-11), dispatched by the scene on the canvas.
+ *
+ * `QUALITY_CHANGED_EVENT` fires once per automatic downgrade, with the new tier
+ * and the frame-time EMA that caused it. `DEGRADED_EVENT` fires when even the
+ * `compat` tier stayed above 33 ms for two seconds: it is the host's signal to
+ * close the view, remember the reason for the session and show the notice. Both
+ * carry {@link QualityChangeDetail}.
+ *
+ * Events rather than polling for the same reason as the ready/failed events:
+ * the host must not import the lazy three chunk to learn what the scene decided.
+ */
+export const QUALITY_CHANGED_EVENT = 'tile3d:quality-changed';
+export const DEGRADED_EVENT = 'tile3d:degraded';
+
+/** The detail carried by {@link QUALITY_CHANGED_EVENT} and {@link DEGRADED_EVENT}. */
+export interface QualityChangeDetail {
+  /** The tier now in force (`DEGRADED_EVENT` always reports `compat`). */
+  readonly tier: QualityTier;
+  /** The rolling frame-time EMA in milliseconds when the decision was made. */
+  readonly frameMsEma: number;
+  /** Why the view changed: a one-tier downgrade, or the terminal degrade. */
+  readonly kind: 'downgrade' | 'degrade';
+  /** A human-readable reason, for the host's notice and the one-time log. */
+  readonly reason: string;
+}
+
+/**
  * The board's ready/failed notifications (3D-07), on the same canvas and for the
  * same reason: the relief atlases load asynchronously, so the host learns when
  * the whole table is on screen (or why it is not) without polling `measure()`.

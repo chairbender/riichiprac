@@ -230,6 +230,21 @@ describe('POM step tiers and the kill switch', () => {
     handle.dispose();
   });
 
+  it('rebinds new atlas textures when a tier changes the upload scale', () => {
+    const handle = material('high');
+    const albedo = new Texture();
+    const normalDepth = new Texture();
+    const aoRoughness = new Texture();
+    handle.setTextures({ albedo, normalDepth, aoRoughness });
+    expect(handle.uniforms.uAlbedo.value).toBe(albedo);
+    expect(handle.uniforms.uNormalDepth.value).toBe(normalDepth);
+    expect(handle.uniforms.uAoRoughness.value).toBe(aoRoughness);
+    // The cell size follows the tier independently of the texture swap.
+    handle.setTier('compat');
+    expect(handle.uniforms.uCellTexels.value).toEqual([128, 170]);
+    handle.dispose();
+  });
+
   it('clamps the self-shadow controls to their supported ranges', () => {
     const handle = material('high');
     expect(handle.shadowStrength()).toBe(SHADOW_CALIBRATION.strength);

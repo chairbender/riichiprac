@@ -3,16 +3,32 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BACKING_STORE_MAX_PIXELS,
   MSAA_SAMPLES,
+  MIN_DEVICE_PIXEL_RATIO,
+  TIER_BACKING_STORE,
   antiAliasFor,
+  autoQualityTier,
   backingStoreBytes,
+  backingStorePixels,
+  clearThreeFallback,
+  effectiveDevicePixelRatio,
+  highPerformanceHint,
+  isDebugMode,
+  isLargeViewport,
+  isQualityTier,
+  isSmallViewport,
   MAX_DEVICE_PIXEL_RATIO,
   RENDERED3D_EXPOSED,
-  effectiveDevicePixelRatio,
-  isDebugMode,
-  isQualityTier,
+  readStoredQualityTier,
+  readThreeFallback,
+  readTierEnvironment,
+  rememberThreeFallback,
+  resolveQualityTier,
+  storeQualityTier,
+  threeViewUnavailableReason,
   parseRendererQuery,
   probeCapabilities,
 } from './capabilities';
+import type { TierEnvironment } from './capabilities';
 
 const MAX_TEXTURE_SIZE = 0x0d33;
 
@@ -147,8 +163,9 @@ describe('backing-store cap', () => {
 
   it('shrinks the backing store at 4K instead of quadrupling it', () => {
     const dpr = effectiveDevicePixelRatio(3840, 2160, 2);
-    expect(dpr).toBeGreaterThanOrEqual(1);
-    expect(dpr).toBeLessThan(1.0001);
+    // 3840 x 2160 is a hair above the 8.29 MP cap, so the ratio lands a hair
+    // under 1 rather than at 1.
+    expect(dpr).toBeCloseTo(1, 2);
     expect(3840 * 2160 * dpr * dpr).toBeLessThanOrEqual(
       BACKING_STORE_MAX_PIXELS + 5000,
     );
@@ -161,8 +178,12 @@ describe('backing-store cap', () => {
     expect(2880 * 2160 * dpr * dpr).toBeCloseTo(BACKING_STORE_MAX_PIXELS, -2);
   });
 
-  it('never returns less than 1 and never returns a nonsensical value', () => {
-    expect(effectiveDevicePixelRatio(3000, 3000, 2)).toBe(1);
+  it('can drop below DPR 1 to hold the area cap on a very large viewport', () => {
+    const dpr = effectiveDevicePixelRatio(3000, 3000, 2);
+    expect(dpr).toBeLessThan(1);
+    expect(3000 * 3000 * dpr * dpr).toBeLessThanOrEqual(
+      BACKING_STORE_MAX_PIXELS + 5000,
+    );
     expect(effectiveDevicePixelRatio(800, 600, 1)).toBe(1);
     expect(effectiveDevicePixelRatio(0, 600, 2)).toBe(1);
     expect(effectiveDevicePixelRatio(800, -1, 2)).toBe(1);
@@ -285,5 +306,247 @@ describe('the MSAA decision (3D-20)', () => {
     // The plan's numbers: ~58 MB without MSAA, ~232 MB with it at the cap.
     expect(Math.round(off.total / 1e6)).toBe(58);
     expect(Math.round(on.total / 1e6)).toBe(232);
+  });
+});
+
+describe('per-tier DPR/area cap (3D-11 acceptance)', () => {
+  const viewports: readonly [number, number][] = [
+    [320, 640],
+    [375, 667],
+    [768, 1024],
+    [1280, 720],
+    [1920, 1080],
+    [2560, 1440],
+    [3840, 2160],
+    [5120, 2880],
+  ];
+  const ratios = [1, 1.5, 2, 3] as const;
+  const tiers = ['high', 'balanced', 'compat'] as const;
+
+  it('never exceeds the tier budget across the viewport/DPR matrix', () => {
+    for (const tier of tiers) {
+      const budget = TIER_BACKING_STORE[tier];
+      for (const [width, height] of viewports) {
+        for (const dpr of ratios) {
+          const pixels = backingStorePixels(width, height, dpr, tier);
+          const label = `${tier} ${width}x${height}@${dpr}`;
+          expect(pixels, label).toBeLessThanOrEqual(budget.maxPixels + 5000);
+          expect(pixels, label).toBeLessThanOrEqual(
+            BACKING_STORE_MAX_PIXELS + 5000,
+          );
+        }
+      }
+    }
+  });
+
+  it('states the plan table’s three tier budgets', () => {
+    expect(TIER_BACKING_STORE.high).toEqual({
+      maxDevicePixelRatio: MAX_DEVICE_PIXEL_RATIO,
+      maxPixels: BACKING_STORE_MAX_PIXELS,
+    });
+    expect(TIER_BACKING_STORE.balanced).toEqual({
+      maxDevicePixelRatio: 1.5,
+      maxPixels: 4_665_600,
+    });
+    expect(TIER_BACKING_STORE.compat).toEqual({
+      maxDevicePixelRatio: 1,
+      maxPixels: 2_073_600,
+    });
+    expect(MIN_DEVICE_PIXEL_RATIO).toBeGreaterThan(0);
+  });
+
+  it('applies the tier DPR ceiling before the area rule', () => {
+    expect(effectiveDevicePixelRatio(800, 600, 3, 'high')).toBe(2);
+    expect(effectiveDevicePixelRatio(800, 600, 3, 'balanced')).toBe(1.5);
+    expect(effectiveDevicePixelRatio(800, 600, 3, 'compat')).toBe(1);
+  });
+
+  it('reports 0 pixels for a nonsensical viewport rather than NaN', () => {
+    expect(backingStorePixels(0, 600, 2, 'high')).toBe(0);
+    expect(backingStorePixels(Number.NaN, 600, 2, 'high')).toBe(0);
+  });
+});
+
+function environment(overrides: Partial<TierEnvironment> = {}): TierEnvironment {
+  return {
+    viewport: { width: 1440, height: 900 },
+    touchPrimary: false,
+    deviceMemoryGb: 8,
+    hardwareConcurrency: 8,
+    ...overrides,
+  };
+}
+
+describe('tier resolution, URL > stored > auto (3D-11)', () => {
+  it('lets an explicit ?quality= always win', () => {
+    expect(
+      resolveQualityTier({
+        queryTier: 'compat',
+        storedTier: 'high',
+        environment: environment(),
+      }),
+    ).toEqual({ tier: 'compat', source: 'url' });
+  });
+
+  it('prefers the stored tier over automatic tiering', () => {
+    expect(
+      resolveQualityTier({
+        queryTier: null,
+        storedTier: 'balanced',
+        environment: environment({ touchPrimary: true }),
+      }),
+    ).toEqual({ tier: 'balanced', source: 'stored' });
+  });
+
+  it('starts a touch-primary device at compat', () => {
+    expect(
+      resolveQualityTier({
+        queryTier: null,
+        storedTier: null,
+        environment: environment({ touchPrimary: true }),
+      }),
+    ).toEqual({ tier: 'compat', source: 'auto' });
+  });
+
+  it('starts a small viewport at compat even with a mouse', () => {
+    expect(
+      autoQualityTier(
+        environment({ viewport: { width: 768, height: 1024 } }),
+      ),
+    ).toBe('compat');
+    expect(isSmallViewport({ width: 899, height: 1200 })).toBe(true);
+    expect(isSmallViewport({ width: 1200, height: 599 })).toBe(true);
+    expect(isSmallViewport({ width: 900, height: 600 })).toBe(false);
+  });
+
+  it('starts a large high-performance device at high', () => {
+    expect(
+      autoQualityTier(
+        environment({ viewport: { width: 1920, height: 1080 } }),
+      ),
+    ).toBe('high');
+    expect(isLargeViewport({ width: 1280, height: 720 })).toBe(true);
+    expect(highPerformanceHint(environment())).toBe(true);
+  });
+
+  it('uses balanced for a large viewport without the hardware hint', () => {
+    expect(
+      autoQualityTier(
+        environment({
+          viewport: { width: 1920, height: 1080 },
+          deviceMemoryGb: 4,
+          hardwareConcurrency: 4,
+        }),
+      ),
+    ).toBe('balanced');
+    expect(
+      autoQualityTier(
+        environment({
+          viewport: { width: 1920, height: 1080 },
+          deviceMemoryGb: null,
+          hardwareConcurrency: null,
+        }),
+      ),
+    ).toBe('balanced');
+  });
+
+  it('reads a coarse pointer, memory and cores from the environment', () => {
+    const read = readTierEnvironment({
+      innerWidth: 390,
+      innerHeight: 844,
+      navigator: { maxTouchPoints: 5, deviceMemory: 4, hardwareConcurrency: 6 },
+      matchMedia: (query) => ({ matches: query === '(pointer: coarse)' }),
+    });
+    expect(read).toEqual({
+      viewport: { width: 390, height: 844 },
+      touchPrimary: true,
+      deviceMemoryGb: 4,
+      hardwareConcurrency: 6,
+    });
+  });
+
+  it('does not call a touch laptop touch-primary when it has a fine pointer', () => {
+    const read = readTierEnvironment({
+      innerWidth: 1440,
+      innerHeight: 900,
+      navigator: { maxTouchPoints: 10 },
+      matchMedia: (query) => ({ matches: query === '(pointer: fine)' }),
+    });
+    expect(read.touchPrimary).toBe(false);
+  });
+
+  it('survives a missing or throwing matchMedia', () => {
+    expect(
+      readTierEnvironment({ innerWidth: 1000, innerHeight: 800, navigator: {} })
+        .touchPrimary,
+    ).toBe(false);
+    expect(
+      readTierEnvironment({
+        matchMedia: () => {
+          throw new Error('no media');
+        },
+      }).touchPrimary,
+    ).toBe(false);
+  });
+});
+
+describe('stored tier preference and the session fallback memo (3D-11)', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+
+  it('round-trips a stored tier and ignores corrupt values', () => {
+    expect(readStoredQualityTier()).toBeNull();
+    storeQualityTier('balanced');
+    expect(readStoredQualityTier()).toBe('balanced');
+    storeQualityTier(null);
+    expect(readStoredQualityTier()).toBeNull();
+    window.localStorage.setItem('riichiprac.3d.quality', JSON.stringify({ tier: 'high' }));
+    expect(readStoredQualityTier()).toBeNull();
+  });
+
+  it('round-trips the session fallback and validates its reason', () => {
+    expect(readThreeFallback()).toBeNull();
+    rememberThreeFallback('context-lost', window.sessionStorage, 1234);
+    expect(readThreeFallback()).toEqual({ reason: 'context-lost', at: 1234 });
+    rememberThreeFallback('degraded', window.sessionStorage, 5678);
+    expect(readThreeFallback()).toEqual({ reason: 'degraded', at: 5678 });
+    clearThreeFallback();
+    expect(readThreeFallback()).toBeNull();
+    window.sessionStorage.setItem(
+      'riichiprac.3d.fallback',
+      JSON.stringify({ reason: 'bored', at: 1 }),
+    );
+    expect(readThreeFallback()).toBeNull();
+  });
+});
+
+describe('the unavailable explanation (3D-11)', () => {
+  it('is null when WebGL2 exists and a full sentence when it does not', () => {
+    expect(
+      threeViewUnavailableReason({
+        webgl2: true,
+        maxTextureSize: 8192,
+        devicePixelRatio: 1,
+        unavailable: null,
+      }),
+    ).toBeNull();
+    expect(
+      threeViewUnavailableReason({
+        webgl2: false,
+        maxTextureSize: 0,
+        devicePixelRatio: 1,
+        unavailable: 'WebGL2 is not available in this browser',
+      }),
+    ).toBe('3D view unavailable: WebGL2 is not available in this browser.');
+    expect(
+      threeViewUnavailableReason({
+        webgl2: false,
+        maxTextureSize: 0,
+        devicePixelRatio: 1,
+        unavailable: null,
+      }),
+    ).toMatch(/not supported in this browser/);
   });
 });

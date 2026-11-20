@@ -23,7 +23,7 @@ import type { DebugMode, QualityTier, RendererCapabilities } from './contract';
  */
 export const RENDERED3D_EXPOSED = false;
 
-/** The device-pixel-ratio ceiling before the area cap applies. */
+/** The device-pixel-ratio ceiling before the area cap applies (the `high` cap). */
 export const MAX_DEVICE_PIXEL_RATIO = 2;
 
 /**
@@ -32,6 +32,46 @@ export const MAX_DEVICE_PIXEL_RATIO = 2;
  * `devicePixelRatio` would ask for.
  */
 export const BACKING_STORE_MAX_PIXELS = 8_290_000;
+
+/**
+ * Per-tier DPR and backing-store budgets (§2.8's tier table).
+ *
+ * The table states three targets, and the live renderer must honour the tier it
+ * is actually running: `balanced` and `compat` are the downgrade destinations,
+ * so a downgrade that kept a 8.29 MP backing store would save shader work but
+ * not the fill/buffer cost that made the tier slow in the first place.
+ *
+ * `maxPixels` is the plan's rounded MP target expressed as a real pixel count:
+ * 2880 x 1620 = 4.67 MP and 1920 x 1080 = 2.07 MP. The `high` figure stays
+ * {@link BACKING_STORE_MAX_PIXELS} because 3D-20's MSAA numbers and the seam
+ * gate are stated against that exact cap.
+ *
+ * A CSS viewport larger than a tier's budget (a 5K monitor, 14.75 MP) cannot be
+ * covered at DPR 1, so {@link effectiveDevicePixelRatio} may return a ratio
+ * **below 1**. That is deliberate: the acceptance criterion is the cap, and a
+ * 0.75 DPR frame is a better answer than a 14.75 MP one. The old `clamp(..., 1,
+ * ...)` wording in §2.8 could not satisfy the cap for such a viewport; the
+ * as-built note records the correction.
+ */
+export interface TierBackingStoreBudget {
+  readonly maxDevicePixelRatio: number;
+  readonly maxPixels: number;
+}
+
+/** The DPR/area budget each quality tier may use. */
+export const TIER_BACKING_STORE: Readonly<Record<QualityTier, TierBackingStoreBudget>> = {
+  high: { maxDevicePixelRatio: MAX_DEVICE_PIXEL_RATIO, maxPixels: BACKING_STORE_MAX_PIXELS },
+  balanced: { maxDevicePixelRatio: 1.5, maxPixels: 4_665_600 },
+  compat: { maxDevicePixelRatio: 1, maxPixels: 2_073_600 },
+};
+
+/**
+ * The lowest ratio the area rule may choose. It only binds on absurdly large
+ * CSS viewports (a 30 MP wall display at `compat`); keeping a floor prevents a
+ * zero/negative pixel ratio while still honouring the 8.29 MP cap everywhere
+ * the acceptance matrix reaches (up to 5120 x 2880).
+ */
+export const MIN_DEVICE_PIXEL_RATIO = 0.1;
 
 /**
  * The multisample count the context asks for (3D-20), and what it costs.
@@ -162,9 +202,15 @@ function readDevicePixelRatio(): number {
 }
 
 /**
- * The effective device pixel ratio for a CSS viewport, per §2.8:
+ * The effective device pixel ratio for a CSS viewport and a tier, per §2.8:
  *
- * `dpr_eff = clamp(min(dpr, 2), 1, sqrt(8.29e6 / (cssW * cssH)))`
+ * `dpr_eff = min(tierMaxDpr, sqrt(tierMaxPixels / (cssW * cssH)))`
+ *
+ * The cap is an *area* rule, so a ratio below 1 is legitimate for a CSS
+ * viewport larger than the tier's budget (see {@link TIER_BACKING_STORE}). The
+ * `high` tier is the 8.29 MP acceptance case: 3840 x 2160 lands at 1, a 4K
+ * display with DPR 2 lands at 1, and 5120 x 2880 lands near 0.75 rather than
+ * 14.75 MP.
  *
  * A nonsensical viewport (zero, negative or non-finite) falls back to 1 rather
  * than producing `Infinity` or `NaN` for the renderer.
@@ -173,6 +219,7 @@ export function effectiveDevicePixelRatio(
   cssWidth: number,
   cssHeight: number,
   devicePixelRatio: number,
+  tier: QualityTier = 'high',
 ): number {
   if (
     !Number.isFinite(cssWidth) ||
@@ -182,12 +229,40 @@ export function effectiveDevicePixelRatio(
   ) {
     return 1;
   }
+  const budget = TIER_BACKING_STORE[tier] ?? TIER_BACKING_STORE.high;
   const dpr =
     Number.isFinite(devicePixelRatio) && devicePixelRatio > 0
       ? devicePixelRatio
       : 1;
-  const areaCap = Math.sqrt(BACKING_STORE_MAX_PIXELS / (cssWidth * cssHeight));
-  return Math.max(1, Math.min(Math.min(dpr, MAX_DEVICE_PIXEL_RATIO), areaCap));
+  const areaCap = Math.sqrt(budget.maxPixels / (cssWidth * cssHeight));
+  return Math.max(
+    MIN_DEVICE_PIXEL_RATIO,
+    Math.min(Math.min(dpr, budget.maxDevicePixelRatio), areaCap),
+  );
+}
+
+/** The backing-store pixel count a CSS viewport and DPR resolve to. */
+export function backingStorePixels(
+  cssWidth: number,
+  cssHeight: number,
+  devicePixelRatio: number,
+  tier: QualityTier = 'high',
+): number {
+  if (
+    !Number.isFinite(cssWidth) ||
+    !Number.isFinite(cssHeight) ||
+    cssWidth <= 0 ||
+    cssHeight <= 0
+  ) {
+    return 0;
+  }
+  const ratio = effectiveDevicePixelRatio(
+    cssWidth,
+    cssHeight,
+    devicePixelRatio,
+    tier,
+  );
+  return cssWidth * cssHeight * ratio * ratio;
 }
 
 /**
@@ -242,4 +317,303 @@ export function probeCapabilities(
   }
 
   return { webgl2: true, maxTextureSize, devicePixelRatio, unavailable: null };
+}
+
+/**
+ * A CSS viewport, in pixels.
+ *
+ * Kept as a plain pair rather than a `DOMRect`/`Window` so the tier rules are
+ * testable without a browser.
+ */
+export interface ViewportSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The browser/environment facts automatic tiering reads. */
+export interface TierEnvironment {
+  readonly viewport: ViewportSize;
+  /** The primary pointer is coarse (a phone/tablet), per `(pointer: coarse)`. */
+  readonly touchPrimary: boolean;
+  /** `navigator.deviceMemory`, in GB, when the browser exposes it. */
+  readonly deviceMemoryGb: number | null;
+  /** `navigator.hardwareConcurrency`, when the browser exposes it. */
+  readonly hardwareConcurrency: number | null;
+}
+
+/** The structural subset of `globalThis` {@link readTierEnvironment} needs. */
+export interface TierEnvironmentSource {
+  readonly innerWidth?: number;
+  readonly innerHeight?: number;
+  readonly navigator?: {
+    readonly maxTouchPoints?: number;
+    readonly deviceMemory?: number;
+    readonly hardwareConcurrency?: number;
+  };
+  readonly matchMedia?: (query: string) => { readonly matches: boolean };
+}
+
+function finiteOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function mediaMatches(
+  source: TierEnvironmentSource,
+  query: string,
+): boolean {
+  try {
+    return source.matchMedia?.(query).matches === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Read the viewport, pointer type and two hardware hints.
+ *
+ * There is no reliable browser query for "discrete GPU": `WEBGL_debug_renderer_info`
+ * is privacy-gated and spoofable, and `powerPreference` is a request, not a
+ * fact. The hint is therefore the conservative pair `deviceMemory >= 8` **and**
+ * `hardwareConcurrency >= 8`, which phones and low-end laptops do not report.
+ * A device that hides either value simply resolves to `balanced`, never `high`.
+ */
+export function readTierEnvironment(
+  source: TierEnvironmentSource = globalThis as unknown as TierEnvironmentSource,
+): TierEnvironment {
+  const navigator = source.navigator;
+  const width = finiteOrNull(source.innerWidth) ?? 0;
+  const height = finiteOrNull(source.innerHeight) ?? 0;
+  const coarse = mediaMatches(source, '(pointer: coarse)');
+  const fine = mediaMatches(source, '(pointer: fine)');
+  const touchPoints = finiteOrNull(navigator?.maxTouchPoints) ?? 0;
+  // A touch-capable laptop with a mouse reports `(pointer: fine)` and must not
+  // be pushed to compat, so a coarse pointer wins and a fine pointer vetoes the
+  // touch-point fallback.
+  const touchPrimary = coarse || (touchPoints > 0 && !fine);
+  return {
+    viewport: { width, height },
+    touchPrimary,
+    deviceMemoryGb: finiteOrNull(navigator?.deviceMemory),
+    hardwareConcurrency: finiteOrNull(navigator?.hardwareConcurrency),
+  };
+}
+
+/** A viewport narrower than this (or shorter than the height below) is "small". */
+export const SMALL_VIEWPORT_MAX_WIDTH = 900;
+/** A viewport shorter than this (or narrower than the width above) is "small". */
+export const SMALL_VIEWPORT_MAX_HEIGHT = 600;
+/** A viewport at least this wide (and the height below) can start at `high`. */
+export const LARGE_VIEWPORT_MIN_WIDTH = 1280;
+/** A viewport at least this tall (and the width above) can start at `high`. */
+export const LARGE_VIEWPORT_MIN_HEIGHT = 720;
+/** The memory (GB) a high-performance hint needs. */
+export const HIGH_PERFORMANCE_MIN_MEMORY_GB = 8;
+/** The core count a high-performance hint needs. */
+export const HIGH_PERFORMANCE_MIN_CORES = 8;
+
+/** True for a phone-sized or short viewport. */
+export function isSmallViewport(viewport: ViewportSize): boolean {
+  return (
+    !(viewport.width >= SMALL_VIEWPORT_MAX_WIDTH) ||
+    !(viewport.height >= SMALL_VIEWPORT_MAX_HEIGHT)
+  );
+}
+
+/** True for a viewport large enough that `high` is worth starting on. */
+export function isLargeViewport(viewport: ViewportSize): boolean {
+  return (
+    viewport.width >= LARGE_VIEWPORT_MIN_WIDTH &&
+    viewport.height >= LARGE_VIEWPORT_MIN_HEIGHT
+  );
+}
+
+/** True when both exposed hardware hints mark a high-performance device. */
+export function highPerformanceHint(environment: TierEnvironment): boolean {
+  return (
+    environment.deviceMemoryGb !== null &&
+    environment.deviceMemoryGb >= HIGH_PERFORMANCE_MIN_MEMORY_GB &&
+    environment.hardwareConcurrency !== null &&
+    environment.hardwareConcurrency >= HIGH_PERFORMANCE_MIN_CORES
+  );
+}
+
+/**
+ * The automatic tier: a phone-class device starts at `compat`, a large
+ * high-performance device at `high`, and everything else at `balanced`.
+ *
+ * This is only the fallback when neither the URL nor a stored preference names
+ * a tier; {@link resolveQualityTier} owns that precedence.
+ */
+export function autoQualityTier(environment: TierEnvironment): QualityTier {
+  if (environment.touchPrimary || isSmallViewport(environment.viewport)) {
+    return 'compat';
+  }
+  if (highPerformanceHint(environment) && isLargeViewport(environment.viewport)) {
+    return 'high';
+  }
+  return 'balanced';
+}
+
+/** Where the resolved tier came from. */
+export type QualityTierSource = 'url' | 'stored' | 'auto';
+
+/** The resolved tier and the rule that chose it. */
+export interface QualityTierResolution {
+  readonly tier: QualityTier;
+  readonly source: QualityTierSource;
+}
+
+/** Inputs to {@link resolveQualityTier}. */
+export interface TierResolutionInput {
+  /** The `?quality=` value, or null when the link did not pin one. */
+  readonly queryTier: QualityTier | null;
+  /** The stored preference, or null when the browser has none. */
+  readonly storedTier: QualityTier | null;
+  readonly environment: TierEnvironment;
+}
+
+/**
+ * Resolve the render tier: **URL > stored > auto** (3D-11).
+ *
+ * Explicit `?quality=` always wins so a link can force a tier for a review; a
+ * stored preference survives a reload; otherwise the environment decides.
+ */
+export function resolveQualityTier(
+  input: TierResolutionInput,
+): QualityTierResolution {
+  if (isQualityTier(input.queryTier)) {
+    return { tier: input.queryTier, source: 'url' };
+  }
+  if (isQualityTier(input.storedTier)) {
+    return { tier: input.storedTier, source: 'stored' };
+  }
+  return { tier: autoQualityTier(input.environment), source: 'auto' };
+}
+
+/** `localStorage` key holding a user-pinned 3D tier. */
+export const QUALITY_TIER_STORAGE_KEY = 'riichiprac.3d.quality';
+
+function defaultStorage(kind: 'localStorage' | 'sessionStorage'): Storage | null {
+  try {
+    return globalThis[kind] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Read a stored tier preference; a corrupt or absent value is null. */
+export function readStoredQualityTier(
+  storage: Storage | null = defaultStorage('localStorage'),
+): QualityTier | null {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(QUALITY_TIER_STORAGE_KEY);
+    return isQualityTier(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist (or clear, with null) a user-pinned tier. */
+export function storeQualityTier(
+  tier: QualityTier | null,
+  storage: Storage | null = defaultStorage('localStorage'),
+): void {
+  if (!storage) return;
+  try {
+    if (tier === null) storage.removeItem(QUALITY_TIER_STORAGE_KEY);
+    else storage.setItem(QUALITY_TIER_STORAGE_KEY, tier);
+  } catch {
+    // Storage disabled or full: the session still runs on the resolved tier.
+  }
+}
+
+/**
+ * Why the 3D view was closed for the rest of this browser session.
+ *
+ * `context-lost` is terminal: two WebGL context losses in one session mean the
+ * driver is not going to be a good host. `degraded` is only remembered so an
+ * **automatic** mount does not immediately try the same failing tier again; an
+ * explicit `?quality=` or a stored preference may still ask for the view.
+ */
+export type ThreeFallbackReason = 'context-lost' | 'degraded';
+
+/** The session record written when the 3D view is closed. */
+export interface ThreeFallbackRecord {
+  readonly reason: ThreeFallbackReason;
+  /** `Date.now()` when the record was written (diagnostics only). */
+  readonly at: number;
+}
+
+/** `sessionStorage` key holding the per-session 3D fallback record. */
+export const THREE_FALLBACK_STORAGE_KEY = 'riichiprac.3d.fallback';
+
+function isThreeFallbackReason(value: unknown): value is ThreeFallbackReason {
+  return value === 'context-lost' || value === 'degraded';
+}
+
+/** Read the session's 3D fallback record, or null when there is none. */
+export function readThreeFallback(
+  storage: Storage | null = defaultStorage('sessionStorage'),
+): ThreeFallbackRecord | null {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(THREE_FALLBACK_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const record = parsed as Record<string, unknown>;
+    if (!isThreeFallbackReason(record.reason)) return null;
+    return {
+      reason: record.reason,
+      at: typeof record.at === 'number' && Number.isFinite(record.at) ? record.at : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Remember why the 3D view was closed, for the rest of this session. */
+export function rememberThreeFallback(
+  reason: ThreeFallbackReason,
+  storage: Storage | null = defaultStorage('sessionStorage'),
+  now: number = Date.now(),
+): void {
+  if (!storage) return;
+  try {
+    storage.setItem(
+      THREE_FALLBACK_STORAGE_KEY,
+      JSON.stringify({ reason, at: now } satisfies ThreeFallbackRecord),
+    );
+  } catch {
+    // Storage disabled: the current mount still falls back; only the next
+    // mount's memo is lost.
+  }
+}
+
+/** Forget the session's 3D fallback record (tests, or an explicit retry). */
+export function clearThreeFallback(
+  storage: Storage | null = defaultStorage('sessionStorage'),
+): void {
+  if (!storage) return;
+  try {
+    storage.removeItem(THREE_FALLBACK_STORAGE_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
+/**
+ * The reason text the View control disables the 3D option with (3D-14 reads
+ * this; the host also prints it when a link asks for 3D on an unsupported
+ * browser). Null means the view is supported.
+ */
+export function threeViewUnavailableReason(
+  capabilities: RendererCapabilities,
+): string | null {
+  if (capabilities.webgl2) return null;
+  const detail = capabilities.unavailable?.trim();
+  return detail
+    ? `3D view unavailable: ${detail.replace(/\.$/, '')}.`
+    : '3D view unavailable: WebGL2 is not supported in this browser.';
 }

@@ -533,6 +533,9 @@ with devicePixelRatio up to 2.0" means a 7680 × 4320 backing store — 33.2 MP,
 four times the pixels — with no legibility gain on a 4K display. The cap is
 expressed as `min(devicePixelRatio, 2)` **and** an area limit:
 `dpr_eff = clamp(min(dpr, 2), 1, sqrt(8.29e6 / (cssW · cssH)))`.
+(The lower clamp was corrected in 3D-11: a CSS viewport larger than the budget
+cannot be covered at DPR 1, so the ratio may fall below 1 — see 3D-11's as-built
+note and `capabilities.TIER_BACKING_STORE`.)
 
 | Tier | Backing store | POM steps | Shadow march | DPR cap | Target |
 | --- | --- | --- | --- | --- | --- |
@@ -1936,6 +1939,92 @@ decision for a later unit, not a drive-by edit.
   never persisted.
 
 **Gate:** frontend gate.
+
+**As built (3D-11, 2026-11-19).** Files: `frontend/src/renderers/capabilities.ts`
+(tier resolution, per-tier DPR/area budgets, the stored-tier and session-fallback
+records, the unavailable reason), `frontend/src/renderers/three/perf.ts` (new,
+pure: the frame-time EMA and decisions), `frontend/src/renderers/motionPreference.ts`
+(new: the `prefers-reduced-motion` read/watch pair and hook),
+`frontend/src/renderers/{RendererHost.tsx,RendererHost.css}` (resolution, events,
+session memo, notice), `frontend/src/renderers/three/{Scene.ts,tileMaterial.ts}`
+(per-tier backing store, atlas reload, sampling window, `measure()` percentiles),
+`frontend/src/renderers/contract.ts` (the two quality events and their detail),
+`frontend/src/App.tsx` / `App.css` (return to the stored view with the dismissible
+notice). Tests: `capabilities.test.ts`, `three/perf.test.ts` (new),
+`motionPreference.test.ts` (new), `RendererHost.test.tsx`,
+`App.renderer3d.degrade.test.tsx` (new). No 2.5D file, no committed asset, no
+Rust change.
+
+*Tier resolution.* `resolveQualityTier({ queryTier, storedTier, environment })`
+implements **URL > stored > auto** and returns the source as well as the tier. A
+stored preference lives under `riichiprac.3d.quality` (localStorage; written by
+`storeQualityTier`, ready for the 3D-14 control). Auto is: `compat` when the
+primary pointer is coarse or the viewport is under 900 × 600 CSS px; `high` when
+the viewport is at least 1280 × 720 **and** both hardware hints say 8 GB and 8
+cores; `balanced` otherwise. There is no reliable discrete-GPU query
+(`WEBGL_debug_renderer_info` is gated/spoofable and `powerPreference` is a
+request), so the hint is deliberately conservative: a device that hides either
+value never resolves to `high`. `readTierEnvironment` reads `innerWidth/Height`,
+`matchMedia('(pointer: coarse)')` (a fine pointer vetoes the `maxTouchPoints`
+fallback so a touch laptop stays balanced) and the two navigator hints; every
+read is guarded.
+
+*DPR and area.* `effectiveDevicePixelRatio(w, h, dpr, tier = 'high')` applies the
+tier's DPR ceiling (2 / 1.5 / 1) and area budget (8.29 / 4.6656 / 2.0736 MP;
+`TIER_BACKING_STORE`). The acceptance matrix (320 × 640 … 5120 × 2880 × DPR
+1/1.5/2/3 × three tiers) is a unit test asserting `backingStorePixels` never
+exceeds the tier budget. One correction to §2.8 is recorded rather than hidden:
+its `clamp(..., 1, …)` could not honour the cap for a CSS viewport larger than
+8.29 MP, so a ratio **below 1** is now allowed (floor
+`MIN_DEVICE_PIXEL_RATIO = 0.1`); 5120 × 2880 lands near 0.75 at `high` instead of
+14.75 MP. The budget owns one place (`Scene.applyBackingStore`) that both a
+resize and a tier change call. A tier change also re-applies the material step
+counts, and a change that alters the atlas upload scale (`compat` halves it)
+reloads the relief set and rebinds the textures (`TileMaterialHandle.setTextures`)
+so the half-size cell is sampled from a half-size atlas.
+
+*Frame-time EMA.* `FrameTimeMonitor` takes `(nowMs, frameMs)` samples and is pure
+except for one log line per decision. Thresholds are **25 ms** for a downgrade,
+**33 ms** at `compat` for the terminal degrade, sustained **2000 ms**, with an
+EMA weight of 0.2. It drops exactly one tier per sustained window, never
+upgrades, ignores zero/invalid samples, and ignores deltas (or gaps between
+samples) above 250 ms so a hidden tab or a debugger pause cannot degrade a fast
+device. `measure()` now reports the recent window's p50/p95. The scene runs one
+5 s sampling window after the first board/hero draw — the only continuous
+rendering in the view — and then returns to on-demand frames; a downgrade
+dispatches `tile3d:quality-changed` with `{tier, frameMsEma, kind, reason}`.
+
+*Context loss and degrade.* The host keeps the existing policy (prevent default,
+restore once, second loss closes the view) and now writes
+`riichiprac.3d.fallback` to sessionStorage. A `context-lost` record blocks every
+later mount for the session; a `degraded` record blocks only an **automatic**
+mount, so an explicit `?quality=` or stored tier may still try. A terminal
+degrade disposes the scene, writes the record, shows the host's dismissible
+notice and calls the new `onDegraded(message)` prop. App uses that to delete
+`renderer=3d` from the URL, re-render the stored view and keep the same message
+as a dismissible banner, so the switch is real rather than a notice over a dead
+stage; a session-local override also keeps the standard view if a browser
+refuses `history.replaceState`. (3D-14's View control consumes
+`threeViewUnavailableReason(capabilities)` for its disabled option; the host
+prints the same sentence when a link asks for 3D on an unsupported browser, and
+no 3D value is written to the settings store.)
+
+*Reduced motion.* `usePrefersReducedMotion` follows
+`prefers-reduced-motion: reduce`, including live changes; the host uses it when
+the prop is not supplied and passes the resolved flag to `RendererOptions` and
+the DOM overlay (which already suppresses the hover report). 3D-12 consumes the
+same flag for the deal-in; neither POM nor the layout reads it.
+
+*Acceptance evidence.* `capabilities.test.ts` prints and asserts the viewport/DPR
+matrix, the three tier budgets, URL > stored > auto, the pointer/hardware rules,
+the storage round-trips and the unavailable sentence. `perf.test.ts` asserts one
+downgrade per sustained window with one log line, high → balanced → compat, the
+terminal degrade at 33 ms, no upgrade, the hidden-tab gap and the p50/p95
+statistics. `RendererHost.test.tsx` asserts auto resolution, stored precedence,
+`prefers-reduced-motion`, the session memo after a double context loss, the
+terminal-degrade notice/dismiss/memo and the no-auto-retry rule.
+`App.renderer3d.degrade.test.tsx` asserts App removes the query flag, restores
+the standard shell and keeps the notice dismissible.
 
 ---
 

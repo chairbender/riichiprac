@@ -26,7 +26,7 @@ import type {
   TableRenderer,
   TableSnapshot,
 } from './contract';
-import { HERO_FAILED_EVENT, HERO_READY_EVENT } from './contract';
+import { DEGRADED_EVENT, HERO_FAILED_EVENT, HERO_READY_EVENT } from './contract';
 import { RendererHost } from './RendererHost';
 
 const probe = vi.hoisted(() => ({
@@ -189,6 +189,9 @@ beforeEach(() => {
     devicePixelRatio: 1,
     unavailable: null,
   };
+  // 3D-11 keeps a per-session fallback memo; each test is a fresh session.
+  window.sessionStorage.clear();
+  window.localStorage.clear();
   Object.assign(hostMock.state, {
     created: 0,
     disposed: 0,
@@ -337,7 +340,9 @@ describe('RendererHost fallbacks', () => {
 
     expect(hostMock.createRenderer).not.toHaveBeenCalled();
     expect(screen.getByText('fallback table')).toBeTruthy();
-    expect(screen.getByText('WebGL2 is not available in this browser')).toBeTruthy();
+    expect(
+      screen.getByText('3D view unavailable: WebGL2 is not available in this browser.'),
+    ).toBeTruthy();
   });
 
   it('keeps the fallback and reports a lazy-chunk failure', async () => {
@@ -809,5 +814,133 @@ describe('RendererHost carve debug view (3D-10)', () => {
     render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
     await waitFor(() => expect(hostMock.state.live).toBe(1));
     expect(screen.queryByText(/Carve debug/)).toBeNull();
+  });
+});
+
+describe('RendererHost quality tiers and fallback (3D-11)', () => {
+  it('resolves the automatic tier when neither the URL nor storage pins one', async () => {
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    await waitFor(() => expect(hostMock.state.created).toBe(1));
+    // jsdom reports a 1024 x 768 viewport with no memory hint: the plan's
+    // "everything else" tier is balanced.
+    expect(hostMock.state.options[0].tier).toBe('balanced');
+    expect(hostMock.state.options[0].antialias).toBe(true);
+  });
+
+  it('lets a stored tier beat automatic resolution', async () => {
+    window.localStorage.setItem('riichiprac.3d.quality', 'compat');
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    await waitFor(() => expect(hostMock.state.created).toBe(1));
+    expect(hostMock.state.options[0].tier).toBe('compat');
+    expect(hostMock.state.options[0].antialias).toBe(false);
+  });
+
+  it('follows prefers-reduced-motion when the prop is not supplied', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)' }),
+    );
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    await waitFor(() => expect(hostMock.state.created).toBe(1));
+    expect(hostMock.state.options[0].reducedMotion).toBe(true);
+  });
+
+  it('remembers the second context loss for the session and does not retry', async () => {
+    const first = render(
+      <RendererHost snapshot={snapshot()} fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    const canvas = first.container.querySelector('canvas');
+    if (!canvas) throw new Error('expected a canvas');
+    act(() => {
+      canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    });
+    act(() => {
+      canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    });
+    await waitFor(() =>
+      expect(screen.getByText(/lost its WebGL context twice/)).toBeTruthy(),
+    );
+    expect(JSON.parse(window.sessionStorage.getItem('riichiprac.3d.fallback') ?? '{}')).toMatchObject({
+      reason: 'context-lost',
+    });
+
+    cleanup();
+    hostMock.createRenderer.mockClear();
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    expect(hostMock.createRenderer).not.toHaveBeenCalled();
+    expect(screen.getByText(/Close and reopen the tab/)).toBeTruthy();
+  });
+
+  it('closes the view and shows a dismissible notice on a terminal degrade', async () => {
+    const onDegraded = vi.fn();
+    const { container } = render(
+      <RendererHost
+        snapshot={snapshot()}
+        tier="compat"
+        onDegraded={onDegraded}
+        fallback={fallbackTable()}
+      />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    const canvas = container.querySelector('canvas');
+    if (!canvas) throw new Error('expected a canvas');
+
+    act(() => {
+      canvas.dispatchEvent(
+        new CustomEvent(DEGRADED_EVENT, {
+          detail: {
+            tier: 'compat',
+            frameMsEma: 41.2,
+            kind: 'degrade',
+            reason: 'Frame time held above 33 ms for 2 s at the lowest quality tier.',
+          },
+        }),
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/closed for this session: Frame time held above 33 ms/)).toBeTruthy(),
+    );
+    expect(hostMock.state.live).toBe(0);
+    expect(onDegraded).toHaveBeenCalledWith(
+      expect.stringContaining('Frame time held above 33 ms'),
+    );
+    expect(JSON.parse(window.sessionStorage.getItem('riichiprac.3d.fallback') ?? '{}')).toMatchObject({
+      reason: 'degraded',
+    });
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy();
+    act(() => {
+      screen.getByRole('button', { name: 'Dismiss' }).click();
+    });
+    expect(screen.queryByText(/Frame time held above 33 ms/)).toBeNull();
+    expect(screen.getByText('The 3D view is closed for this session.')).toBeTruthy();
+  });
+
+  it('does not auto-retry after a degrade, but an explicit tier may', async () => {
+    window.sessionStorage.setItem(
+      'riichiprac.3d.fallback',
+      JSON.stringify({ reason: 'degraded', at: 1 }),
+    );
+    const first = render(
+      <RendererHost snapshot={snapshot()} fallback={fallbackTable()} />,
+    );
+    expect(hostMock.createRenderer).not.toHaveBeenCalled();
+    expect(screen.getByText(/turned off for this session/)).toBeTruthy();
+    first.unmount();
+
+    render(
+      <RendererHost snapshot={snapshot()} tier="compat" fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.created).toBe(1));
+    expect(hostMock.state.options[0].tier).toBe('compat');
+  });
+
+  it('never persists the 3D view as a table view', async () => {
+    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    await waitFor(() => expect(hostMock.state.created).toBe(1));
+    // The settings store only knows the 2D views; the query flag is the only
+    // way in while RENDERED3D_EXPOSED is false, so nothing writes a 3D value.
+    expect(window.localStorage.getItem('riichiprac.settings')).toBeNull();
   });
 });
