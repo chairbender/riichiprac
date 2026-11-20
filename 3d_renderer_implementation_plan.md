@@ -2676,7 +2676,8 @@ which files it touched.
 | R10 | Both renderers load the relief atlases at once (double GPU memory) if a view ever mounts both | low / medium | only one table is mounted at a time (structural test in 3D-14); dispose drops textures | 3D-14 |
 
 **Decisions recorded with the user (2026-11-18)** — all seven are settled; they
-are binding on the units, not open questions.
+are binding on the units, not open questions. Items 8 and 9 were added later,
+in 3D-08 and 3D-S1 respectively, and are equally binding.
 
 1. **Exposure: behind the flag.** The 3D view stays reachable only by
    `?renderer=3d` until 3D-15 signs it off; `RENDERED3D_EXPOSED` flips only then,
