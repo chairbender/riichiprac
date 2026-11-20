@@ -1030,6 +1030,51 @@ The playing state is in the floating panel. This is what the next units build on
   the red five staying on its copy. Nothing else in the HUD or the 2D layouts
   changed.
 
+### As built (3D-H5, 2026-11-20)
+
+The result and its full verdict are in. This is what remains for 3D-15/16.
+
+- **Files.** `renderers/hud/{ResultCard.tsx, VerdictSheet.tsx}`, plus the
+  shared wording module `src/verdictText.ts` (the 2D `AnswerSummary` and
+  `VerdictPanel` now call the same functions, so the card cannot drift).
+  `AnswerSummary` gained a `live` prop (default `true`; the 3D card passes
+  `false`), `HandRail`'s Mortal chip became the pre-answer sheet trigger, and
+  `HudLayer` gained one persistent `role="status"` announcer. `App.tsx` gained
+  `verdictOpen` and the slot wiring at the 3D mount seam.
+- **The card.** It is the 2D answer summary (mark, headline, detail,
+  Book/Mortal chips, Details) inside one fixed 104 px tone surface plus one
+  clamped line: `Book: <pick> · Mortal: <pick>`. It replaces both panel rows and
+  never expands on its own; Details is the only way into the sheet.
+- **The sheet.** `VerdictSheet` is the 2D `VerdictPanel` unchanged: grade
+  columns, `ActionRanking`, `CallReport`, `ScenarioExplanation`, the outcome
+  band, the peek card and Retry. Pre-answer the same sheet opens from the hand
+  rail's Mortal chip, which is where Peek/Retry live now. Opening or closing it
+  changes no `GameState` and re-runs neither the deal nor the grade; a new hand
+  closes it. The chip keeps the hint row's 24 px height (its minimum target) so
+  the hint-only panel stays 40 px; the sheet it opens holds the full-size Peek
+  and Retry controls.
+- **Announcement and focus.** `HudLayer`'s announcer is mounted for the life of
+  the HUD and only its text changes, so one answer is announced once even
+  though the card unmounts while the sheet is open; post-answer the hint row
+  stops being a live region. When the control that had focus went away with the
+  answer (a projected tile or a rail action), the card focuses its Details
+  button; otherwise focus is left alone. The card's only motion is a plain
+  `120 ms` opacity fade, suppressed by reduced motion.
+- **Layout.** `hudLayout()` now returns the result card's content box and its
+  Details trigger (`hudPanelRows`), and `hudAtRestRects()` lists them as
+  `result card` and `sheet trigger`. The collision matrix runs the seven gate
+  aspects and two phone rows × six hand states × answered/unanswered ×
+  `none`/`hint`/`actions ×1`/`actions ×2`/`result`, including the individual
+  projected targets; every row is at least `8 px` clear, and the worst
+  result-card clearance remains the `12 px` published in §7.4.
+- **Not done here.** The setup sheet (H4). 3D-15 runs the stress-fixture matrix
+  and the handoff screenshots, and 3D-16 records the chain.
+- **Composition handoff (AGENTS.md §6): pending the user's verdict.** Run the
+  dev server (`cd frontend && npm run dev`) and open
+  `http://localhost:5173/?renderer=3d`, answer a hand, and look at the card and
+  the Verdict sheet on the board. The numbers above are the scripted checks;
+  the look is the user's call.
+
 ---
 
 ## 10. Non-goals

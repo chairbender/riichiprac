@@ -25,7 +25,9 @@ import { actionRailVisible } from './renderers/hud/actionRail';
 import type { ActionRailModel } from './renderers/hud/actionRail';
 import { HandRail } from './renderers/hud/HandRail';
 import { HudLayer } from './renderers/hud/HudLayer';
+import { ResultCard } from './renderers/hud/ResultCard';
 import { HudToastStack } from './renderers/hud/ToastStack';
+import { VerdictSheet } from './renderers/hud/VerdictSheet';
 import { buildHudToasts } from './renderers/hud/toastModel';
 import {
   RENDERED3D_EXPOSED,
@@ -78,6 +80,7 @@ import { stackOrder } from './seatOrder';
 import { pickUnseen } from './session';
 import { useGameStore } from './store/useGameStore';
 import { isTableView, useSettingsStore } from './store/useSettingsStore';
+import { answerAnnouncement } from './verdictText';
 import { ensureWasmReady } from './wasm';
 import './App.css';
 
@@ -240,6 +243,12 @@ export const App = () => {
    * reports 1 or 2; `hudLayout()` turns that into the panel's 84/128 px.
    */
   const [actionRows, setActionRows] = useState<1 | 2>(1);
+  /**
+   * 3D-H5: the verdict sheet's open state in the HUD. It is a view state, not
+   * game state: opening or closing it never re-deals and never re-grades, and
+   * a new hand closes it.
+   */
+  const [verdictOpen, setVerdictOpen] = useState(false);
   /**
    * 3D-H2: the shell (the full-screen element, so the HUD travels with the
    * scene) and the fixed stage (made `inert` while a HUD sheet is open). Both
@@ -827,6 +836,12 @@ export const App = () => {
     panel.focus({ preventScroll: true });
   }, []);
 
+  // The 2D panel and the 3D verdict sheet share one Retry: the model load and
+  // the evaluation request, never a re-grade of the submitted answer.
+  const retryMortalEvaluation = useCallback(() => {
+    void initializeAi().then(() => evaluateWithAi());
+  }, [initializeAi, evaluateWithAi]);
+
   const handleExport = () => {
     if (!gameState) return;
 
@@ -960,6 +975,18 @@ export const App = () => {
   }, [showingThree]);
 
   /*
+   * 3D-H5: the verdict sheet describes the hand it was opened on, so a new deal
+   * closes it, and so does leaving the 3D view. This is presentation state only:
+   * neither transition touches the deal or the grade.
+   */
+  useEffect(() => {
+    setVerdictOpen(false);
+  }, [gameState]);
+  useEffect(() => {
+    if (!showingThree) setVerdictOpen(false);
+  }, [showingThree]);
+
+  /*
    * 3D-11: the scene closed itself because even `compat` could not hold 30 fps.
    * The host has already stored the session memo; App's job is to return to the
    * previously selected view and keep the explanation visible (a notice the
@@ -1067,6 +1094,11 @@ export const App = () => {
       hasEvaluation={evaluation !== null}
       peeked={peekedBeforeAnswer}
       answered={answered}
+      // H5: the pre-answer chip is the verdict sheet's trigger (Peek lives
+      // there); post-answer the result card's Details is the only way in, so
+      // the hint no longer needs to announce "Answer submitted".
+      onOpenVerdict={() => setVerdictOpen(true)}
+      announceHint={!answered}
     />
   ) : undefined;
 
@@ -1090,6 +1122,54 @@ export const App = () => {
   const hudActionRail = actionRailVisible(actionRailModel) ? (
     <ActionRail model={actionRailModel} onRowsChange={setActionRows} />
   ) : undefined;
+
+  /*
+   * 3D-H5: after an answer the panel becomes the fixed 104 px result card. It
+   * replaces both rows (the rail is already gone) and never expands on its own;
+   * Details opens the verdict sheet, and nothing else in the 3D view does.
+   */
+  const hudResultCard =
+    answered && dualGrade && gameState ? (
+      <ResultCard
+        grade={dualGrade}
+        state={gameState}
+        onDetails={() => setVerdictOpen(true)}
+      />
+    ) : undefined;
+
+  /*
+   * The one HUD sheet (H2's primitive): the full 2D verdict panel, pre-answer
+   * (status + Peek + Retry) and post-answer (grade columns, ranking, call
+   * report, explanation). It reads the store's existing state, so opening it is
+   * not a deal and not a re-evaluation.
+   */
+  const hudVerdictSheet =
+    verdictOpen && gameState
+      ? {
+          title: 'Verdict',
+          body: (
+            <VerdictSheet
+              state={gameState}
+              grade={dualGrade}
+              evaluation={evaluation}
+              aiStatus={aiStatus}
+              aiError={aiError}
+              isEvaluating={isEvaluating}
+              peeked={peekedBeforeAnswer}
+              redFives={humanPlayer?.red_fives ?? []}
+              onPeek={peekMortal}
+              onRetry={retryMortalEvaluation}
+            />
+          ),
+        }
+      : null;
+
+  /*
+   * The result's announcement. `HudLayer` owns the one persistent live region,
+   * so this string changes once when the answer lands; the card coming and
+   * going with the sheet does not re-announce it.
+   */
+  const hudAnnouncement = answered && dualGrade ? answerAnnouncement(dualGrade) : '';
 
   const hudToasts = buildHudToasts({
     statusMessage,
@@ -1181,9 +1261,7 @@ export const App = () => {
       peeked={peekedBeforeAnswer}
       redFives={humanPlayer?.red_fives ?? []}
       onPeek={peekMortal}
-      onRetry={() => {
-        void initializeAi().then(() => evaluateWithAi());
-      }}
+      onRetry={retryMortalEvaluation}
     />
   ) : null;
 
@@ -1240,6 +1318,10 @@ export const App = () => {
           actionRows={actionRows}
           hintRow={hudHintRow}
           actionRail={hudActionRail}
+          resultCard={hudResultCard}
+          sheet={hudVerdictSheet}
+          onCloseSheet={() => setVerdictOpen(false)}
+          announcement={hudAnnouncement}
           toasts={
             hudToasts.length > 0 ? <HudToastStack toasts={hudToasts} /> : undefined
           }

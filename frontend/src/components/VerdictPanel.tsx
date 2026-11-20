@@ -1,19 +1,18 @@
 import { callDecisionFor } from '../callDecision';
-import { formatTileForDisplay } from '../display';
 import type { AiEvaluation, AiStatus } from '../types/ai';
 import { actionLabel, formatProbability } from '../types/ai';
 import type { GameState } from '../types/game';
-import type { BookGrade, DualGrade, MortalGrade } from '../types/verdict';
+import type { DualGrade, MortalGrade } from '../types/verdict';
 import { citationLabel } from '../types/game';
 import {
   acceptedAlternativeNote,
-  formatAcceptedTiles,
   mortalRecommendationLabel,
   mortalRecommendedRiichi,
   mortalRecommendedTile,
   outcomeChip,
   outcomeTone,
 } from '../types/verdict';
+import { describeBookAnswer } from '../verdictText';
 import { ActionRanking } from './ActionRanking';
 import { CallReport } from './CallReport';
 import { RiichiStick } from './RiichiStick';
@@ -333,50 +332,6 @@ function PeekedMortal({
       </details>
     </>
   );
-}
-
-/**
- * The book's answer as one line of text, naming every accepted tile.
- *
- * A shape lesson accepts two interchangeable discards ("discard 5p or 3p"), so
- * the response never hides the half the player did not pick; a one-tile answer
- * reads exactly as before.
- */
-function describeBookAnswer(state: GameState, book: BookGrade | null): string {
-  const accepted = formatAcceptedTiles(book);
-  switch (state.correct_action.type) {
-    case 'riichi':
-      return `Riichi · discard ${accepted}`;
-    case 'dama':
-      // The ryanmen lesson asks which tile to discard; calling it "Dama" would
-      // mislabel a tile-efficiency drill as a Riichi-vs-dama decision. The
-      // push/fold lesson uses the dama carrier for a hand that is not ready at
-      // all, so it names the decision instead.
-      if (state.target_action === 'NaniKiru') {
-        return `Discard ${accepted}`;
-      }
-      if (state.target_action === 'Push') {
-        return `Push · discard ${accepted}`;
-      }
-      return `Dama · discard ${accepted}`;
-    case 'fold':
-      return `Fold · discard ${accepted}`;
-    case 'kan':
-      // Covers both Kan lessons: an Added Kan on a Pon and a concealed quad.
-      return `Kan on ${accepted}`;
-    case 'discard':
-      return `No Kan · discard ${accepted}`;
-    case 'pass': {
-      const offer = state.call_offer;
-      // The open-quad lesson declines a Kan, not a Pon/Chi: name what is kept.
-      if (offer?.action === 'Kan') {
-        return `Pass · keep the three ${formatTileForDisplay(offer.tile)}`;
-      }
-      return `Pass on ${offer?.label ?? 'the call'}`;
-    }
-    case 'best':
-      return state.correct_action.label;
-  }
 }
 
 function preAnswerState({

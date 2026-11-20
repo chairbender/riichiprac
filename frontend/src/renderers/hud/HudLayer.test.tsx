@@ -105,6 +105,7 @@ describe('HudLayer: the shell and the top bar', () => {
     );
     expect(roles).toEqual([
       'inset-probe',
+      'announcer hud-visually-hidden',
       'top-bar',
       'panel',
       'sheet-root',
@@ -262,6 +263,48 @@ describe('HudLayer: the hand panel slot', () => {
   });
 });
 
+describe('HudLayer: the result live region (3D-H5)', () => {
+  it('keeps one persistent status node and only changes its text', () => {
+    const { container, rerender } = render(
+      <Harness hintRow={<span>hint</span>} />,
+    );
+    const announcer = container.querySelector(
+      '.hud-announcer',
+    ) as HTMLElement;
+    expect(announcer).not.toBeNull();
+    expect(announcer.getAttribute('role')).toBe('status');
+    expect(announcer.getAttribute('aria-live')).toBe('polite');
+    expect(announcer.textContent).toBe('');
+
+    rerender(
+      <Harness
+        hintRow={<span>hint</span>}
+        announcement="Result: Correct. The book and Mortal agree."
+      />,
+    );
+    const afterAnswer = container.querySelector('.hud-announcer') as HTMLElement;
+    // Same node: a new deal is not a re-announcement of the old answer simply
+    // because the card re-rendered.
+    expect(afterAnswer).toBe(announcer);
+    expect(afterAnswer.textContent).toBe(
+      'Result: Correct. The book and Mortal agree.',
+    );
+
+    // Opening the sheet unmounts the result card but not the announcement.
+    rerender(
+      <Harness
+        hintRow={<span>hint</span>}
+        announcement="Result: Correct. The book and Mortal agree."
+        sheet={{ title: 'Verdict', body: <p>Book says 9m</p> }}
+      />,
+    );
+    expect(container.querySelector('.hud-announcer')).toBe(announcer);
+    expect(announcer.textContent).toBe(
+      'Result: Correct. The book and Mortal agree.',
+    );
+  });
+});
+
 describe('HudLayer: the sheet seam', () => {
   it('opens a caller-owned sheet over the scene and closes it through the caller', () => {
     const onCloseSheet = vi.fn();
@@ -345,6 +388,7 @@ describe('HudLayer: what the layer may never cover', () => {
     const root = document.querySelector('.hud-root') as HTMLElement;
     const allowed = new Set([
       'hud-inset-probe',
+      'hud-announcer hud-visually-hidden',
       'hud-top-bar',
       'hud-panel',
       'hud-toast-root',

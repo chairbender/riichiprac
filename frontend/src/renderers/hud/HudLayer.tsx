@@ -75,6 +75,15 @@ export interface HudLayerProps {
   readonly sheet?: HudSheetContent | null;
   /** Close the sheet (Escape, scrim tap, Close button). */
   readonly onCloseSheet?: () => void;
+  /**
+   * H5: the result's text for the layer's one persistent live region.
+   *
+   * It is mounted for the life of the HUD and only its text changes, so a
+   * result is announced once when the answer lands. Opening or closing the
+   * verdict sheet remounts the result card but not this node, so the same
+   * answer is never announced twice (`3d_hud.md` §6.5.10).
+   */
+  readonly announcement?: string;
 }
 
 interface HudMetrics {
@@ -128,6 +137,7 @@ export function HudLayer({
   toastCount,
   sheet = null,
   onCloseSheet,
+  announcement = '',
 }: HudLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
@@ -234,6 +244,20 @@ export function HudLayer({
     >
       {/* The only element that reads env(safe-area-inset-*); it never paints. */}
       <span ref={probeRef} className="hud-inset-probe" aria-hidden="true" />
+
+      {/*
+       * H5: the HUD's one result live region. It stays mounted while the card
+       * comes and goes with the verdict sheet, so its text changes exactly once
+       * per answer (§6.5.10).
+       */}
+      <p
+        className="hud-announcer hud-visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {announcement}
+      </p>
 
       {layout && (
         <div

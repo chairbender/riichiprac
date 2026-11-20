@@ -179,6 +179,32 @@
   color: var(--hud-text-muted);
 }
 
+/*
+ * H5: the chip is the verdict sheet's pre-answer trigger. The hint row is 24 px
+ * by contract (§5), so the chip keeps that height rather than growing the panel
+ * to a tap-sized row; it meets the 24 px minimum target and the sheet it opens
+ * is where the full-size controls (Peek, Retry) live.
+ */
+.hud-mortal-chip--trigger {
+  box-sizing: border-box;
+  min-height: 24px;
+  padding: 2px 12px;
+  font: inherit;
+  font-size: var(--hud-text-xs);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hud-mortal-chip--trigger:hover {
+  background-color: rgba(26, 42, 60, 0.94);
+}
+
+.hud-mortal-chip--trigger:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
+}
+
 .hud-action-rail {
   display: flex;
   flex-wrap: wrap;
@@ -238,11 +264,143 @@
   outline-offset: 2px;
 }
 
+/* The result card (H5) ---------------------------------------------------- */
+
+/*
+ * One fixed-shape card in the panel's 104 px result slot (3d_hud.md §5, §7.4):
+ * the answer summary's outcome row (a 44 px Details target) and one clamped
+ * picks line. It replaces both panel rows, never grows with its text, and keeps
+ * the tone surfaces `AnswerSummary` already gave the learner.
+ */
 .hud-result-card {
   display: flex;
-  align-items: center;
-  gap: var(--hud-space);
+  align-items: stretch;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   color: var(--hud-text);
+}
+
+.hud-result-card-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  padding: 4px 10px;
+  background-color: var(--hud-surface-solid);
+  border: var(--hud-border);
+  border-radius: var(--hud-radius-control);
+}
+
+.hud-result-card-content[data-tone='correct'] {
+  background-color: var(--hud-tone-ok);
+  border-color: var(--hud-ok);
+}
+
+.hud-result-card-content[data-tone='contested'] {
+  background-color: var(--hud-tone-warn);
+  border-color: var(--hud-warn);
+}
+
+.hud-result-card-content[data-tone='incorrect'] {
+  background-color: var(--hud-tone-bad);
+  border-color: var(--hud-bad);
+}
+
+/*
+ * The summary is the card's outcome row, not its own surface: the tone is on
+ * the card, and the row is a fixed 44 px so the Details control keeps its tap
+ * height without the text pushing the card past 104 px.
+ */
+.hud-result-card .answer-summary {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  animation: none;
+}
+
+.hud-result-card .answer-summary-mark {
+  flex: 0 0 auto;
+  font-size: 1rem;
+}
+
+.hud-result-card .answer-summary-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hud-result-card .answer-summary-headline,
+.hud-result-card .answer-summary-detail {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hud-result-card .answer-summary-marks {
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.hud-result-card .answer-summary-chip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-result-card .answer-summary-details {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-height: var(--hud-tap);
+  margin-left: 0;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: var(--hud-text-sm);
+  border-radius: var(--hud-radius-control);
+  touch-action: manipulation;
+}
+
+.hud-result-card .answer-summary-details:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
+}
+
+/* The book answer against Mortal's pick: one line, clamped, secondary text. */
+.hud-result-card__picks {
+  margin: 0;
+  overflow: hidden;
+  color: var(--hud-text-muted);
+  font-size: var(--hud-text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A plain opacity fade, and only when motion is allowed (§6.4). */
+.hud-root[data-reduced-motion='false'] .hud-result-card-content {
+  animation: hud-fade-in 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-result-card-content {
+    animation: none;
+  }
+}
+
+/* The verdict sheet body re-hosts the 2D panel without its page margins. */
+.hud-verdict-sheet .verdict-panel {
+  margin: 0;
+  border: 0;
+  background-color: transparent;
 }
 
 /*
