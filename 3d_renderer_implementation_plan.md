@@ -181,16 +181,18 @@ outside it.
 **Interim state (as of 3D-02's landing).** While there is no floating layer yet,
 the 3D mount renders **the scene alone**: no header, no cards, no action bar and
 no hand dock are mounted, so nothing occupies Y space around the canvas. The
-2D views keep their existing layout. 3D-14 re-mounts the chrome as the floating
-layer and must remove the shell modifier (and leave full screen) when the user
-switches away.
+2D views keep their existing layout. (Revised 2026-11-19: the chrome re-mount
+moved from 3D-14 to the HUD chain, H2–H5 — §11 and
+[`3d_hud.md`](3d_hud.md) — so 3D-14 keeps the view switch, removes the shell
+modifier and leaves full screen when the user switches away.)
 
 A full-screen toggle uses the Fullscreen API on the **shell**, not on the
 canvas, so the floating layer travels with the scene; it is rendered only where
 `requestFullscreen` exists, and it reports the browser's own state rather than
 guessing. Browsers that do not support the API simply get the full-window view.
 The component is built and tested in 3D-02 but stays unmounted until the
-floating layer exists (3D-14), because offering a header control is UI.
+floating layer exists (H2 mounts it in the top bar), because offering a header
+control is UI.
 
 ### 2.2 Repository and build boundaries
 
@@ -221,6 +223,11 @@ frontend/src/renderers/
 │   ├── materials/tile.vert.ts, tile.frag.ts   # GLSL as TS template strings
 │   ├── perf.ts           # frame-time EMA, tier downgrade, stats
 │   └── debug.ts          # ?debug= modes + ?perf= HUD
+├── hud/                  # the floating layer over the 3D stage (H2–H5)
+│   ├── HudLayer.tsx      # layer root, top bar, sheet mount, toast root
+│   ├── hudLayout.ts      # pure stage -> HUD rects + the collision helper
+│   ├── Sheet.tsx         # modal primitive: scrim, focus trap, Escape, inert
+│   └── …                 # ActionRail, HandRail, ResultCard, SetupSheet, VerdictSheet
 └── *.test.ts
 ```
 
@@ -521,6 +528,9 @@ The canvas is an image. Everything a user can do or must hear is DOM:
   the app chrome — header controls, status cards, the action bar and the hand
   dock — is positioned *over* the canvas in Z order, never in the document flow
   above or below it. Until then the 3D view deliberately shows no chrome at all.
+  (2026-11-19: the chrome re-mount is now the HUD chain, H2–H5 — §11 and
+  [`3d_hud.md`](3d_hud.md), which owns the composition and the collision
+  contract.)
   No overlay may capture pointer events outside its own controls: clicking the
   felt (once anything is bound to it) and every chrome control must keep
   working. Floating panels keep their own backgrounds so they stay readable
@@ -2255,6 +2265,11 @@ does not wait for the 2.5D rendered view.
 
 **Goal.** Make the 3D view a first-class, reversible choice.
 
+**Chrome re-mount moved (2026-11-19).** The floating chrome re-mount is no
+longer this unit's deliverable: it is the HUD chain (H1–H5, §11 and
+[`3d_hud.md`](3d_hud.md)). This unit is the view-switch mechanics only and
+keeps the scene-only mount until H2 lands.
+
 **Deliverables**
 
 - `TableView` gains `'rendered3d'`; `AppControls` lists it with an unsupported
@@ -2272,6 +2287,9 @@ does not wait for the 2.5D rendered view.
   over the scene in Z order instead of in the document flow above/below it, and
   mount the full-screen toggle (`components/FullscreenButton.tsx`, built in
   3D-02) in that layer. The scene-only interim (§2.1) ends with this unit.
+  **Moved 2026-11-19 to the HUD chain (H2–H5, §11 and `3d_hud.md`, whose
+  composition replaces this sketch). The text is kept as H2's source material;
+  it is not a deliverable of this unit.**
 
 **Acceptance criteria**
 
@@ -2705,6 +2723,11 @@ at once). Titles are the proposed task titles.
 | 3D-14 | 3D R14: view switch integration | 3D-08 |
 | 3D-15 | 3D R15: full-board verification and sign-off | 3D-08, 3D-09, 3D-11, 3D-12, 3D-13, 3D-14 |
 | 3D-16 | 3D R16: architecture record and docs | 3D-15 |
+| 3D-H1 | 3D H1: HUD composition spec and overlay contract | 3D-09 |
+| 3D-H2 | 3D H2: HUD shell, safe areas and full-screen layer | 3D-H1, 3D-14 |
+| 3D-H3 | 3D H3: practice HUD - action rail, call toggles, tile-less hand dock | 3D-H2 |
+| 3D-H4 | 3D H4: setup sheet - scenarios, hotseat and settings | 3D-H2 |
+| 3D-H5 | 3D H5: result card and post-answer verdict sheet | 3D-H2, 3D-H3 |
 
 Creation pattern (one wave at a time):
 
@@ -2812,6 +2835,10 @@ in 3D-08 and 3D-S1 respectively, and are equally binding.
    promoting the shell so the layer travels with the scene) and restores the 2D
    layout — including leaving full screen — when the user switches away. The
    stacked and top-down views keep their existing layout throughout.
+   *Revised 2026-11-19:* the chrome re-mount moved from 3D-14 to the HUD chain
+   (H2–H5, §11 and [`3d_hud.md`](3d_hud.md)); the full-window, no-Y-flow,
+   floating-layer core of this decision is unchanged, and 3D-14 keeps only the
+   view switch and leaving full screen.
 8. **Hover lift: half a tile height, on top of the tint** (added 2026-11-19, in
    3D-08). A hovered or focused hand/draw tile rises by
    `TILE.heightUnits / 2` = 14 mm along world +Y; the DOM button keeps its
@@ -2849,8 +2876,60 @@ CI gate, so a 2.5D edit cannot turn the 3D gate red.
   `tools/render/*` specs and the reference renders are in git history.
 - [`replay-implementation-plan.md`](replay-implementation-plan.md) — the
   document skeleton, unit table and gate conventions.
+- [`3d_hud.md`](3d_hud.md) — the floating HUD's composition, overlay contract
+  and collision gate (H1); §11 lists the units that implement it.
 - [`hosting-plan.md`](hosting-plan.md) — the Pages / R2 / Hugging Face pattern
   the 3D path deliberately does not extend.
+
+---
+
+## 11. HUD units (3D-H1 – 3D-H5)
+
+The floating layer over the 3D stage is its own small chain, sequenced after
+3D-14's view switch. The composition and the overlay contract are
+[`3d_hud.md`](3d_hud.md) (H1); this section is the unit and gate record, so the
+two must be read together. H1 is binding on H2–H5: a unit that needs a
+different composition edits `3d_hud.md` first.
+
+| Unit | Title | Depends on | Gate | Result |
+| --- | --- | --- | --- | --- |
+| 3D-H1 | HUD composition spec and overlay contract | 3D-09 (landed); soft 3D-14 | docs-only: stage, commit, push | `3d_hud.md` + this section; no app code |
+| 3D-H2 | HUD shell, safe areas and full-screen layer | H1, 3D-14 | frontend gate + `node frontend/scripts/check-3d-layout.mjs` | `HudLayer` mounted only for the 3D view; top bar, hand-panel slot, sheet/toast primitives, tokens, `hudLayout` collision helper, `handBandRect()` contract addition, full-screen toggle mounted |
+| 3D-H3 | Practice HUD: action rail, call toggles, tile-less hand dock | H2 | frontend gate + layout script | the hand panel's hint row and action row: `ActionBar`, the Riichi/Kan toggles, the Mortal chip; toasts; one hand only; collision matrix extended |
+| 3D-H4 | Setup sheet: scenarios, hotseat and settings | H2 | frontend gate + layout script | one setup sheet: scenario pool (incl. replay packs), AI Hotseat body, settings (agreement/view/export-import), table info and notes; no re-deal |
+| 3D-H5 | Result card and post-answer verdict sheet | H2, H3 | frontend gate + layout script + user verdict | result card after an answer; full verdict sheet on Details; never auto-expands |
+
+```text
+3D-H1 (contract)
+ └─ 3D-H2 (shell, tokens, layout, sheets)
+     ├─ 3D-H3 (panel rows, toasts)
+     │   └─ 3D-H5 (result card, verdict sheet)
+     └─ 3D-H4 (setup sheet)
+3D-15 runs the joint matrix after H5; 3D-16 records the HUD as built.
+```
+
+**Rules binding all five units.**
+
+- **One hand.** The projected DOM buttons from 3D-08 are the only hand controls;
+  no HUD unit renders tiles. A count test enforces it.
+- **No Y-flow.** The HUD is one `position: fixed` layer: `pointer-events: none`
+  at the root, `auto` on each control; the canvas keeps the whole window and is
+  never resized by chrome.
+- **Z ladder.** `canvas < scene overlay < HUD < sheet < toast`, from the token
+  block only (`3d_hud.md` §6.1).
+- **Collision.** `hudLayout()` is pure and is the gate: no at-rest rect may come
+  within 8 px of the hand/draw band or the compass at any supported aspect.
+  H2 lands it; H3–H5 extend its state and the same matrix; 3D-15 runs the whole
+  thing on the stress fixture.
+- **Sheets.** Modal, one at a time, focus-trapped, Escape closes, focus returns
+  to the trigger, the scene is `inert`, the page does not scroll, the renderer
+  is never unmounted.
+- **Composition handoffs.** Each visual unit ends with the artifact, the
+  numbers already checked and the user's verdict (AGENTS.md §6); H1's §12
+  questions are the first of them.
+- **Scope.** HUD files live under `frontend/src/renderers/hud/`; `App.tsx` is
+  touched only at the 3D mount seam. No Rust, no `GameState`, no 2D layout, no
+  new camera framing or assets, and nothing from the retired 2.5D pipeline.
 
 ---
 
@@ -2981,3 +3060,8 @@ it was right and corrected where the repository or the browser facts disagree.
 | 3D-14 | `frontend/src/store/useSettingsStore.ts`, `frontend/src/components/AppControls.tsx`, `frontend/src/App.tsx`, `AGENTS.md` §4 |
 | 3D-15 | tests + this plan's verification report |
 | 3D-16 | `3d_renderer_architecture.md`, `THIRD_PARTY_NOTICES.md`, `README.md`, `AGENTS.md` §4 |
+| 3D-H1 | `3d_hud.md`, this plan (§11, §3D-14, §9 decision 7) |
+| 3D-H2 | `frontend/src/renderers/hud/*` (new), `renderers/{contract,RendererHost}.*`, `renderers/three/{hitTest,Scene}.ts`, `frontend/src/App.tsx` (3D mount seam) |
+| 3D-H3 | `frontend/src/renderers/hud/*`, `frontend/src/components/HandDock.tsx` |
+| 3D-H4 | `frontend/src/renderers/hud/*` (reusing `ScenarioPicker`, `HotseatCard`, `ExportImportControls`, `TableInfo`) |
+| 3D-H5 | `frontend/src/renderers/hud/*` (reusing `VerdictPanel`, `AnswerSummary`) |
