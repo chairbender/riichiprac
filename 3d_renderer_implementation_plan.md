@@ -2117,6 +2117,9 @@ current hand, so the motion can be watched repeatedly before 3D-14 mounts the
 Next Scenario chrome over the scene; the game state, the answer and the 2D views
 never see it. It is the same review-only shape as 3D-09's `?preview=sticks`, and
 a test asserts the revision moves while the seats and locked flag do not.
+**User verdict (2026-11-19):** the deal-in and the replay control "look fine for
+now"; the remaining full-board motion judgement stays with 3D-14's chrome and
+3D-15's sign-off.
 
 *Evidence.* `motion.test.ts` asserts the cut rule (including the
 same-revision/locked no-op over the full fixture), the 400 ms bound, the
