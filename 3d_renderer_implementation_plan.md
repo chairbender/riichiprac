@@ -647,6 +647,14 @@ Deferred-with-a-reason: MSAA (fill rate), shadow maps (a ~280-caster map pass at
 this size costs more than the contact quads and looks worse on a mat), and
 post-processing / tone mapping (adds a full-screen pass and changes the ivory).
 
+*Correction after 3D-S1 (2026-11-19).* Item 1 above ranks the depth march first
+on a fetch-count estimate; the measurement does not support it. Going 0 → 12
+steps changed the GPU frame by +0.1 to +1.2 ms at 8.29 MP while the 0-step frame
+was already ~15 ms, so the cost is in the *base* shading every tile pixel pays
+(the three anisotropic relief samples, the self-shadow march and the MSAA
+resolve), not in the number of depth steps. Items 2–5 keep their ranking as
+hypotheses; item 1's rank is superseded by the section above.
+
 ### 2.9 Licensing and hosting
 
 - **Three.js is MIT** (`three/MIT`), acceptable for an MIT app. Add its notice
