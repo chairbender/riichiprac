@@ -2176,6 +2176,75 @@ the standard shell and keeps the notice dismissible.
 
 **Gate:** frontend gate.
 
+**As built (3D-12, 2026-11-19).** Files:
+`frontend/src/renderers/three/motion.ts` (new: the cut rule, the deal-in and
+the event-flight seam, all pure), `frontend/src/renderers/three/Scene.ts` (the
+deal-in loop, hover composition, reduced-motion gate, the reserved
+`playEvents()`), `frontend/src/renderers/three/index.ts` (an optional injected
+`MotionClock`), `frontend/src/renderers/{contract,RendererHost}.tsx` (docs).
+Tests: `three/motion.test.ts` (new), `RendererHost.test.tsx`. No 2.5D file, no
+committed asset, no Rust change.
+
+*The cut rule.* `shouldDealIn(previous, next)` is the whole diff rule: a
+different revision is a cut, a repeated one is the same position with new flags
+and starts nothing, and the first snapshot (the mount, whose atlases are still
+loading) starts nothing either. `DealInMotion.cut()` is the only way a deal-in
+can start, so a non-revision update is a position no-op by construction; the
+scene still rebuilds the buffer, but every pose is identical (a test asserts the
+layouts and matrices match byte-for-byte across a `locked` change).
+
+*The deal-in.* One uniform lift from `TILE.heightUnits / 2` (14 mm, the same
+amount as the hover lift) settling to zero over `DEAL_IN_MS = 400` with a cubic
+ease-out. It is upward-only (never through the felt), monotone, exactly zero at
+and past the bound, and `withVerticalLift(instances, 0)` returns the input array,
+so the settled frame **is** the layout's matrices rather than a tolerance match.
+The scene runs its own `requestAnimationFrame` loop only while a deal-in is
+active and stops as soon as the sample reports `done`; a missing
+`requestAnimationFrame` cancels the lift instead of leaving the board raised.
+
+*Reduced motion.* `DealInMotion` is constructed with the resolved flag: `cut()`
+returns false and `sample()` is a zero-lift no-op, so no frame loop ever starts.
+The scene also ignores a hover ref under the same flag (belt and braces: the
+overlay already suppresses the report while still delivering the `null` clear).
+
+*The clock.* `MotionClock` is `{ now(): number }`; the default reads
+`performance.now` (falling back to `Date.now`). `TableScene` takes one and
+`createRenderer` forwards an optional one, so a future renderer test can drive
+the deal-in by hand. The pure tests never install a timer: they pass a fake
+clock.
+
+*The event seam.* `flightWaypoints(layout, event)` resolves `draw` (the seat's
+wall draw end → its draw slot), `discard` (the hand tile of that face, or the
+draw → the newest pond cell), `meld` (the caller's newest pond cell → the meld,
+no travel for a closed kan) and `flip` (in place, half a turn).
+`sampleFlight()` interpolates with the critically damped step response
+`1 - (1 + kt)e^{-kt}` (`k = 9`, strictly increasing, never above 1) plus a
+vertical arc, so the path is deterministic, monotonic in time and never crosses
+the felt plane; the end sample is exactly the target transform. Nothing calls
+it in v1: `Scene.playEvents()` stays a no-op and a `RendererHost` test asserts
+the host never invokes it across a deal, a hover and an answer.
+
+*Answers during motion.* The overlay's buttons are never gated on the scene's
+animation; a test submits an answer immediately after a revision cut and asserts
+the handler runs synchronously with the same `(tile, index, draw)` arguments the
+stacked view sends.
+
+*Review aid.* `?renderer=3d&preview=deal` adds one floating "Replay deal-in
+(preview)" button to the bare 3D stage. It bumps the snapshot revision on the
+current hand, so the motion can be watched repeatedly before 3D-14 mounts the
+Next Scenario chrome over the scene; the game state, the answer and the 2D views
+never see it. It is the same review-only shape as 3D-09's `?preview=sticks`, and
+a test asserts the revision moves while the seats and locked flag do not.
+**User verdict (2026-11-19):** the deal-in and the replay control "look fine for
+now"; the remaining full-board motion judgement stays with 3D-14's chrome and
+3D-15's sign-off.
+
+*Evidence.* `motion.test.ts` asserts the cut rule (including the
+same-revision/locked no-op over the full fixture), the 400 ms bound, the
+monotone lift to exactly zero, the exact settle, reduced motion, and every event
+kind's start/end/monotonic/no-overshoot invariants. `RendererHost.test.tsx`
+asserts the never-called seam and the immediate mid-motion answer.
+
 ---
 
 ### 3D-13 — Performance budget and measurement harness

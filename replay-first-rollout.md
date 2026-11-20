@@ -39,7 +39,8 @@ This is a product-level inversion of the current picker, not a flag:
   - `replay.ch8-defense-multi-threat.2026-11` — 764 bases, `defense_multi_threat`.
 - The picker merges one opt-in row per pack/lesson (`replay:<pack>:<lesson>`);
   `ALL_SCENARIOS` excludes pack rows; replay bodies are fetched lazily and
-  verified/cached in IndexedDB.
+  verified/cached in IndexedDB. (After RF2 a covered lesson's replay row is the
+  default pool entry instead; uncovered rows stay opt-in.)
 - The miner/selector can already scope by `--section` and `--lesson`, and the
   classifier covers most lesson families.
 - **Four lessons have no classifier at all** and therefore no mining path today:
@@ -118,6 +119,23 @@ classifier-ready but thin/zero lessons are corpus-growth targets (`C9`).
   source filter: **Replay (default) · Generated · Both**.
 - For a covered lesson, both rows exist; the generated row is labelled
   "generated" and sits after the replay row, or behind the filter.
+
+**Status (RF2, 2026-11-19).** The source model is implemented in
+`frontend/src/scenarios.ts`: `lessonReplayCoverage()` reads the manifest's
+`lesson_counts` without a body, and `allScenarioIds()` / `selectionPool()` swap
+a covered lesson's generated id for its replay row (`replay:<pack>:<lesson>`)
+when `preferReplay` is on and the count reaches `MIN_REPLAY_BASES` (40, with a
+per-call override). `preferReplay` is in the settings store, default on and
+persisted under `riichiprac.settings`. Everything else is unchanged: an
+uncovered lesson, a missing/empty manifest, or `preferReplay: false` produces
+the generated pool exactly as before, and generated rows stay pickable by name.
+The pool is defined over the generated catalogue, so a pack-only lesson (no
+generated sibling) is not dealt from `all` — it has no generated fallback. A
+deal snapshots the manifest when it starts, so a launch's first hand is still
+generated until RF4 fetches a section body. A replay body that fails (offline,
+stale cache, integrity) falls back to the same lesson's generated drill for that
+hand and leaves the reason in the picker's pack note; RF3 replaces that note
+with the source filter.
 
 ### Per-lesson counts in the manifest
 
@@ -227,6 +245,8 @@ includes its recogniser tests and a label-yield pass.
   (default on); generated rows remain selectable.
 - Accept: unit tests for covered/uncovered/forced-generated/offline; no change
   to the generated-only behaviour when no manifest exists.
+- Landed 2026-11-19: see "Status (RF2)" under *Source tiers*; the picker note
+  still describes the pre-filter behaviour until RF3.
 
 **Q3 — ch7 riichi/dama pack** (`riichiprac`, worktree)
 - Lessons: `riichi_judgement`, **`chiitoitsu_riichi_vs_dama` (from B4.1)**,

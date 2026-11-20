@@ -128,11 +128,13 @@ describe('3D feature gate', () => {
     expect(parseRendererQuery('?renderer=3d&renderer=25d').renderer).toBe('3d');
   });
 
-  it('reads the sticks preview flag, and nothing else, as a preview', () => {
+  it('reads the sticks and deal preview flags, and nothing else, as a preview', () => {
     expect(parseRendererQuery('?renderer=3d&preview=sticks').preview).toBe(
       'sticks',
     );
     expect(parseRendererQuery('?preview=sticks').preview).toBe('sticks');
+    expect(parseRendererQuery('?renderer=3d&preview=deal').preview).toBe('deal');
+    expect(parseRendererQuery('?preview=deal').preview).toBe('deal');
     expect(parseRendererQuery('?preview=all').preview).toBeNull();
     expect(parseRendererQuery('?preview=').preview).toBeNull();
     expect(parseRendererQuery('').preview).toBeNull();

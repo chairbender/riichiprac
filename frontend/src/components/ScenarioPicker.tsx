@@ -123,6 +123,19 @@ export const ScenarioPicker = ({
             draft.ids.length === 1 ? '' : 's'
           } · ${draftGroupCount} section${draftGroupCount === 1 ? '' : 's'}`;
 
+  /**
+   * Pack status line.
+   *
+   * Replay is the default source for a lesson its pack covers (RF2), so this
+   * note must not call pack rows opt-in; a failure note from a body that could
+   * not be delivered is appended. RF3 replaces this with the Replay/Generated
+   * source filter's own description.
+   */
+  const knownPackNote =
+    packCount === 1
+      ? 'Replay pack: PACK lessons deal a real audited hand. A covered lesson is dealt by default; its generated row drills that lesson instead.'
+      : `${packCount} replay packs: PACK lessons deal a real audited hand. A covered lesson is dealt by default; its generated row drills that lesson instead.`;
+
   const packNote =
     packStatus === 'loading'
       ? 'Loading replay packs…'
@@ -130,9 +143,9 @@ export const ScenarioPicker = ({
         ? `Replay packs unavailable: ${packError ?? 'unknown error'}`
         : packStatus === 'empty'
           ? 'No replay packs are published yet.'
-          : packCount === 1
-            ? 'Replay pack: PACK lessons deal a real audited hand and are opt-in, so they are not in All.'
-            : `${packCount} replay packs: PACK lessons deal a real audited hand and are opt-in, so they are not in All.`;
+          : packError
+            ? `${knownPackNote} ${packError}`
+            : knownPackNote;
 
   return (
     <div className="scenario-picker" ref={containerRef}>
