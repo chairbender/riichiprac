@@ -961,8 +961,9 @@ H2 landed the shell exactly as specified above. The facts H3–H5 build on:
 - **Nested layers.** A native document-level Escape listener cannot be stopped
   by a descendant's `stopPropagation` (both run on `document`), so the sheet
   consumes the first Escape when its body contains
-  `[data-hud-popover="open"]` (exported as `NESTED_LAYER_ATTRIBUTE`). H4 must set
-  that attribute on its open scenario picker / hotseat card.
+  `[data-hud-popover="open"]` (exported as `NESTED_LAYER_ATTRIBUTE`). H4 sets
+  that attribute on its open scenario picker; its hotseat form is a block of
+  the sheet, not a nested layer, so it needs no marker.
 - **Retired.** The `?preview=deal` review aid (3D-12) is gone: the top bar's
   Next Scenario control is the real one, so the deal-in is one tap away. The
   `preview` query value is `sticks | null` only.
@@ -1083,6 +1084,68 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   `http://localhost:5173/?renderer=3d`, answer a hand, and look at the card and
   the Verdict sheet on the board. The numbers above are the scripted checks;
   the look is the user's call.
+
+### As built (3D-H4, 2026-11-20)
+
+Everything that is not the live hand now lives in one setup sheet behind one
+trigger. This is what remains for 3D-15/16 and what the chain may build on.
+
+- **Files.** `renderers/hud/{SetupSheet.tsx, SetupSheet.test.tsx}`, plus
+  `hudLayout.ts` (the trigger's rect and its name in the at-rest set),
+  `HudLayer.tsx` (`setupTrigger`), the shared extractions
+  `components/{AgreementToggle,ViewPicker}.tsx` (both shells render them, so the
+  label and the disabled state cannot drift), `components/HotseatCard.tsx`
+  (`HotseatCardBody` + the 2D modal host), `components/ScenarioPicker.tsx`
+  (`nestedLayerAttribute`), `hud/toastModel.ts` + `ToastStack.tsx` (a toast's
+  Details action), and `App.tsx` at the 3D mount seam.
+- **One front door.** The top bar's start now holds the setup trigger ("Setup",
+  `aria-haspopup="dialog"`), and nothing else: no scenario name, no label of
+  what is loaded. Its box is a layout number, `96 × 44` at
+  `topBarPadding.left/top` (`HUD_SETUP_TRIGGER_WIDTH`/`HEIGHT`), and `Hud.css`
+  pins the same `min-width`, so `hudAtRestRects()` names and checks the painted
+  button rather than trusting the bar's rect. The collision matrix therefore
+  covers the trigger at every aspect and hand state.
+- **One sheet, one state.** App keeps `hudSheet: 'setup' | 'verdict' | null`
+  (replacing H5's `verdictOpen`), so at most one exists (§6.5.8). Opening or
+  closing it changes no `GameState`, re-runs neither the deal nor the grade, and
+  never remounts the scene. A deal started from the sheet closes it first; so
+  does a new hand from any other route and leaving the 3D view.
+- **The body.** Four sections in one scrolling column: **Scenario** (the 2D
+  `ScenarioPicker` unchanged, staged draft and all; its "Setup" row on the AI
+  Hotseat lesson opens the shared `HotseatCardBody` in place, so there is no
+  second scrim and no second `dialog`); **Settings** (`AgreementToggle` with its
+  tooltip text repeated inline and disabled until Mortal is `ready`,
+  `ViewPicker` with the unsupported reason on its option); **Position**
+  (`ExportImportControls` from the same props object the 2D header mounts); and
+  **Table info** (`TableInfo`, the agreement/scenario notes, and the imported
+  position's full `PositionDescriptionCard`). The description's toast now
+  carries a **Details** action that opens this sheet; the first line stays in
+  the toast.
+- **R14 still holds from the sheet.** The View picker calls App's existing
+  handler, so switching away from 3D exits full screen exactly as the header
+  does; `App.viewSwitch.test.tsx` drives it from the sheet.
+- **Nested Escape.** `ScenarioPicker`'s open panel sets
+  `NESTED_LAYER_ATTRIBUTE="open"` (only when a host asks, so the 2D header is
+  unchanged), which is what the sheet checks: the first Escape closes the panel,
+  the second the sheet. The hotseat form needs no marker — it is a block of the
+  sheet, not a layer.
+- **Layout departs from the draft task text, per §3.** The picker's panel is in
+  flow inside the sheet (`position: static`, the sheet body is the only scroll
+  container), not an absolutely positioned popover clipped by it. The
+  sheet's own sections are exempt from the collision set (§7.6); their bottom is
+  still bounded by the collapsed 40 px panel, which the matrix asserts at every
+  aspect. The top bar keeps its labels at every aspect: §5's portrait icon-only
+  collapse is not implemented in H2–H4, so the trigger's 96 px is its box at
+  every size.
+- **Not done here.** 3D-15 runs the stress-fixture matrix and the handoff
+  screenshots; 3D-16 records the chain.
+- **Composition handoff (AGENTS.md §6): pending the user's verdict.** Run the
+  dev server (`cd frontend && npm run dev`) and open
+  `http://localhost:5173/?renderer=3d`, tap **Setup** in the top-left, walk the
+  pool (open it, tick a lesson, deal), the AI Hotseat form, both settings, the
+  import/export block and **Table info**, then close it with Escape and with the
+  Close button. The numbers above are the scripted checks; the look is the
+  user's call.
 
 ---
 

@@ -38,6 +38,11 @@ import {
   HUD_RESULT_PICKS_HEIGHT,
   HUD_RESULT_TRIGGER_HEIGHT,
   HUD_RESULT_TRIGGER_WIDTH,
+  HUD_SETUP_TRIGGER_HEIGHT,
+  HUD_SETUP_TRIGGER_WIDTH,
+  HUD_SHEET_MAX_HEIGHT,
+  HUD_SHEET_MAX_WIDTH,
+  HUD_TOP_BAR_CONTROL,
   NO_INSETS,
   hudAtRestRects,
   hudCollisions,
@@ -444,6 +449,7 @@ describe('HUD layout: the panel rows (3d_hud.md §5, 3D-H3)', () => {
     const names = hudAtRestRects(actions).map((entry) => entry.name);
     expect(names).toEqual([
       'top bar',
+      'setup trigger',
       'hand panel',
       'hand rail',
       'action rail 1',
@@ -636,6 +642,7 @@ describe('HUD layout: the result card and its sheet trigger (3D-H5)', () => {
     const names = hudAtRestRects(result).map((entry) => entry.name);
     expect(names).toEqual([
       'top bar',
+      'setup trigger',
       'hand panel',
       'result card',
       'sheet trigger',
@@ -702,6 +709,99 @@ describe('HUD layout: the result card and its sheet trigger (3D-H5)', () => {
     expect(hudAtRestRects(open).map((entry) => entry.name)).not.toContain(
       'sheet trigger',
     );
+  });
+});
+
+describe('HUD layout: the setup trigger and the open sheet (3D-H4)', () => {
+  it('reserves the setup trigger at the bar’s start, at tap height', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const layout = layoutFor(stage, scene, {
+      slot: 'hint',
+      sheet: false,
+      toasts: 0,
+    });
+    expect(layout.setupTrigger).toEqual({
+      left: layout.topBarPadding.left,
+      top: layout.topBarPadding.top,
+      width: HUD_SETUP_TRIGGER_WIDTH,
+      height: HUD_SETUP_TRIGGER_HEIGHT,
+    });
+    expect(HUD_SETUP_TRIGGER_HEIGHT).toBe(HUD_TOP_BAR_CONTROL);
+    // Inside the bar it belongs to, on its leading edge.
+    expect(layout.setupTrigger.top).toBeGreaterThanOrEqual(layout.topBar.top);
+    expect(
+      layout.setupTrigger.top + layout.setupTrigger.height,
+    ).toBeLessThanOrEqual(layout.topBar.top + layout.topBar.height + 0.01);
+    expect(layout.setupTrigger.left).toBeGreaterThanOrEqual(layout.topBar.left);
+  });
+
+  it('moves the trigger with the safe-area inset, like the bar it sits in', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const notched = hudLayout(
+      stage,
+      scene.anchors,
+      { slot: 'none', sheet: false, toasts: 0 },
+      { top: 44, right: 20, bottom: 34, left: 12 },
+    );
+    expect(notched.setupTrigger.left).toBe(12);
+    expect(notched.setupTrigger.top).toBe(44);
+    expect(notched.setupTrigger.height).toBe(HUD_TOP_BAR_CONTROL);
+  });
+
+  it('names the trigger in the at-rest set and keeps it clear of the board', () => {
+    for (const stage of GATE_STAGES) {
+      for (const hand of HAND_STATES) {
+        const scene = sceneFor(stage, hand.options);
+        const layout = layoutFor(stage, scene, {
+          slot: 'actions',
+          sheet: false,
+          toasts: 2,
+        });
+        expect(hudAtRestRects(layout).map((entry) => entry.name)).toContain(
+          'setup trigger',
+        );
+        const violations = hudCollisions(hudAtRestRects(layout), {
+          handBand: scene.anchors.handBand,
+          compassBox: scene.compassBox,
+          hitRects: scene.targets,
+        });
+        expect(
+          violations,
+          `${stage.label} · ${hand.label}: ${describeViolations(violations)}`,
+        ).toEqual([]);
+      }
+    }
+  });
+
+  it('bounds the open sheet by the collapsed panel at every aspect', () => {
+    for (const stage of GATE_STAGES) {
+      for (const hand of HAND_STATES) {
+        const scene = sceneFor(stage, hand.options);
+        const open = layoutFor(stage, scene, {
+          slot: 'result',
+          sheet: true,
+          toasts: 0,
+        });
+        const collapsed = layoutFor(stage, scene, {
+          slot: 'hint',
+          sheet: false,
+          toasts: 0,
+        });
+        // The sheet is a modal over the board but never over the hand panel's
+        // reserved hint band: its bottom is 8 px above the collapsed panel.
+        const bottom = (open.sheet?.top ?? 0) + (open.sheet?.height ?? 0);
+        expect(bottom, stage.label).toBeLessThanOrEqual(
+          (collapsed.panel?.top ?? 0) - HUD_GAP + 0.01,
+        );
+        // And inside the stage, within the committed width and height caps.
+        expect(open.sheet?.width ?? 0).toBeLessThanOrEqual(HUD_SHEET_MAX_WIDTH);
+        expect(open.sheet?.height ?? 0).toBeLessThanOrEqual(HUD_SHEET_MAX_HEIGHT);
+        expect(open.sheet?.left ?? -1).toBeGreaterThanOrEqual(0);
+        expect(bottom).toBeLessThanOrEqual(stage.height + 0.01);
+      }
+    }
   });
 });
 

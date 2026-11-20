@@ -36,6 +36,12 @@ interface ScenarioPickerProps {
   preferReplay: boolean;
   /** Apply the source filter's default-pool choice. */
   onPreferReplayChange: (preferReplay: boolean) => void;
+  /**
+   * The attribute the open panel sets (value `"open"`), for a host that must
+   * know a layer is nested inside its own modal (3D-H4's setup sheet). The 2D
+   * header passes nothing, so its output is unchanged.
+   */
+  nestedLayerAttribute?: string;
 }
 
 const PANEL_ID = 'scenario-pool-panel';
@@ -94,6 +100,7 @@ export const ScenarioPicker = ({
   packError,
   preferReplay,
   onPreferReplayChange,
+  nestedLayerAttribute,
 }: ScenarioPickerProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ScenarioSelection>(selection);
@@ -263,6 +270,9 @@ export const ScenarioPicker = ({
           id={PANEL_ID}
           role="dialog"
           aria-label="Scenario pool"
+          // A host modal (the 3D setup sheet) consumes Escape only when no
+          // nested layer is open; this marks that state.
+          {...(nestedLayerAttribute ? { [nestedLayerAttribute]: 'open' } : {})}
         >
           <div className="scenario-picker-panel-head">
             <div className="scenario-picker-heading">Scenario pool</div>

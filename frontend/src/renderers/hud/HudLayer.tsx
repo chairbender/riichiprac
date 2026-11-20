@@ -9,8 +9,10 @@
  *
  * What it owns in H2:
  *
- * - the top bar: **Next Scenario and full screen only** — no scenario name, no
- *   `riichiprac` title, no setup trigger (user decision 2026-11-19, §1.1);
+ * - the top bar: next hand and full screen, and — from 3D-H4 — the setup
+ *   trigger at the bar's start. No scenario name and no `riichiprac` title
+ *   (user decision 2026-11-19, §1.1); the setup trigger is the one front door
+ *   to the setup sheet and the only app chrome the bar may grow (§3);
  * - the one hand panel's slot (H3/H5 fill it), the toast root (H3) and the
  *   sheet root + `Sheet` primitive (H4/H5);
  * - the layout: `hudLayout()` from the live `handBandRect()`/`compassRect()`
@@ -58,6 +60,11 @@ export interface HudLayerProps {
   readonly onNextScenario: () => void;
   /** True while the next hand is being generated; the control stays visible. */
   readonly nextDisabled?: boolean;
+  /**
+   * H4: the setup trigger, mounted at the bar's start. It is the one front door
+   * to the setup sheet; the top bar holds no other app chrome (§1.1).
+   */
+  readonly setupTrigger?: ReactNode;
   /** The action row's real height: two when it wraps (H3). */
   readonly actionRows?: 1 | 2;
   /** H3: the hand panel's hint row (the live-region hint + Mortal chip). */
@@ -137,6 +144,7 @@ export function HudLayer({
   stageRef = null,
   onNextScenario,
   nextDisabled = false,
+  setupTrigger,
   actionRows = 1,
   hintRow,
   actionRail,
@@ -280,8 +288,8 @@ export function HudLayer({
             paddingLeft: `${layout.topBarPadding.left}px`,
           }}
         >
-          {/* H4 mounts the setup trigger here; H2's top bar holds no name. */}
-          <div className="hud-top-bar__start" />
+          {/* H4 mounts the setup trigger here; nothing else sits at the start. */}
+          <div className="hud-top-bar__start">{setupTrigger}</div>
           <div className="hud-top-bar__end">
             <NextScenarioButton onClick={onNextScenario} disabled={nextDisabled} />
             <FullscreenButton target={shellRef} />

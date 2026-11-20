@@ -3013,6 +3013,24 @@ again never requires the top bar; the top bar's stays as it was. `3d_hud.md` §9
 records the as-built facts. The composition handoff awaits the user's verdict;
 3D-15/16 remain.
 
+**Landed: 3D-H4 (2026-11-20).** The setup sheet is in:
+`hud/{SetupSheet.tsx, SetupSheet.test.tsx}` behind one top-bar trigger, with
+sections for the scenario pool (the 2D `ScenarioPicker`, staged draft intact,
+nested-layer marker for Escape), the AI Hotseat form (the extracted
+`HotseatCardBody`, inline in the sheet — no second scrim or dialog), the
+settings (the extracted `AgreementToggle` and `ViewPicker`, so the 2D header and
+the sheet cannot drift), the export/import block and the table information plus
+notes. `hudLayout()` learned the trigger's reserved `96 × 44` box and names it in
+the at-rest set; `App.tsx` keeps one `hudSheet` state (replacing H5's
+`verdictOpen`), so at most one sheet exists, a deal closes it and leaving 3D
+closes it, and nothing re-deals or remounts the scene. The position-description
+toast gained a Details action into the sheet's full text. `3d_hud.md` §9 records
+the as-built facts, including the two deliberate deltas: the picker's panel is in
+flow inside the sheet instead of an absolutely positioned popover, and §5's
+portrait icon-only top bar is not implemented, so the trigger keeps its label
+and its reserved width at every aspect. The composition handoff awaits the
+user's verdict; 3D-15/16 remain.
+
 **Rules binding all five units.**
 
 - **One hand.** The projected DOM buttons from 3D-08 are the only hand controls;

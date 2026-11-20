@@ -3,8 +3,10 @@ import type { ScenarioOption, ScenarioSelection } from '../scenarios';
 import type { PackManifestStatus } from '../services/packLoader';
 import type { TableView } from '../store/useSettingsStore';
 import type { AiStatus } from '../types/ai';
+import { AgreementToggle } from './AgreementToggle';
 import { NextScenarioButton } from './NextScenarioButton';
 import { ScenarioPicker } from './ScenarioPicker';
+import { ViewPicker } from './ViewPicker';
 
 interface AppControlsProps {
   scenarios: ScenarioOption[];
@@ -45,7 +47,10 @@ interface AppControlsProps {
  * The scenario-pool, agreement, view, and next-hand controls.
  *
  * Kept in one component so every shell offers exactly the same controls: a
- * setting added here can never be missing from another layout.
+ * setting added here can never be missing from another layout. The agreement
+ * toggle and the view picker are their own components because the 3D setup
+ * sheet (3D-H4) hosts the same two settings: one component per control keeps
+ * the two shells' labels and disabled states from drifting.
  */
 export function AppControls({
   scenarios,
@@ -69,15 +74,6 @@ export function AppControls({
   onNextScenario,
   nextDisabled,
 }: AppControlsProps) {
-  /*
-   * The 3D option is offered only once 3D-15 exposes it. A value some build
-   * already stored still gets a matching option: a `<select>` whose value has
-   * no option renders blank and would misreport the saved choice. When the
-   * browser cannot run the view the option is disabled and says why.
-   */
-  const offerRendered3d = rendered3dExposed || tableView === 'rendered3d';
-  const rendered3dDisabled = threeUnavailableReason !== null;
-
   return (
     <>
       <ScenarioPicker
@@ -92,36 +88,20 @@ export function AppControls({
         onPreferReplayChange={onPreferReplayChange}
       />
 
-      <label className="app-toggle" title={agreementHint}>
-        <input
-          type="checkbox"
-          checked={requireAgreement}
-          disabled={aiStatus !== 'ready'}
-          onChange={onAgreementChange}
-        />
-        <span>Mortal must agree</span>
-      </label>
+      <AgreementToggle
+        requireAgreement={requireAgreement}
+        aiStatus={aiStatus}
+        hint={agreementHint}
+        onChange={onAgreementChange}
+      />
 
-      <label className="app-toggle app-view-picker" title={viewHint}>
-        <span>View</span>
-        <select
-          className="app-view-select"
-          value={tableView}
-          onChange={onViewChange}
-        >
-          <option value="stacked">Stacked</option>
-          <option value="topdown">Top-down</option>
-          {offerRendered3d && (
-            <option
-              value="rendered3d"
-              disabled={rendered3dDisabled}
-              title={threeUnavailableReason ?? undefined}
-            >
-              {rendered3dDisabled ? '3D (unavailable)' : '3D'}
-            </option>
-          )}
-        </select>
-      </label>
+      <ViewPicker
+        tableView={tableView}
+        hint={viewHint}
+        onViewChange={onViewChange}
+        rendered3dExposed={rendered3dExposed}
+        threeUnavailableReason={threeUnavailableReason}
+      />
 
       <NextScenarioButton onClick={onNextScenario} disabled={nextDisabled} />
     </>

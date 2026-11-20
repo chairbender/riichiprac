@@ -27,6 +27,9 @@ export interface HudToast {
   readonly id: string;
   readonly tone: HudToastTone;
   readonly text: string;
+  /** An optional action (3D-H4: "Details" opens the setup sheet's full note). */
+  readonly actionLabel?: string;
+  readonly onAction?: () => void;
   /** The dismiss control's accessible name, when it has one. */
   readonly dismissLabel?: string;
   readonly onDismiss?: () => void;
@@ -52,6 +55,11 @@ export interface HudToastInput {
   readonly positionDescription?: string | null;
   readonly onDismissNotice?: () => void;
   readonly onDismissDescription?: () => void;
+  /**
+   * Opens the setup sheet where the position's full text is shown (3D-H4). The
+   * toast carries only the first line, so this is its "Details" affordance.
+   */
+  readonly onOpenPositionDescription?: () => void;
 }
 
 /** The first line of a possibly multi-line note, trimmed. */
@@ -80,6 +88,8 @@ export function buildHudToasts(input: HudToastInput): HudToast[] {
       id: 'position-description',
       tone: 'notice',
       text: firstLine(input.positionDescription),
+      actionLabel: 'Details',
+      onAction: input.onOpenPositionDescription,
       dismissLabel: 'Dismiss position description',
       onDismiss: input.onDismissDescription,
     });

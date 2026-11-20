@@ -18,6 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { HUD_SETUP_TRIGGER_WIDTH } from './hudLayout';
 
 const TOKENS = readFileSync(
   fileURLToPath(new URL('./tokens.css', import.meta.url)),
@@ -223,8 +224,18 @@ describe('HUD stylesheet: the committed visual tokens (3d_hud.md §8)', () => {
     expect(HUD).not.toMatch(/\.hud-result-card-content\[data-tone/);
   });
 
-  it('reads the safe-area insets in exactly one probe, with no layout impact', () => {
-    const [probe] = blocksFor(HUD, '.hud-inset-probe');
+  it('pins the setup trigger to the layout’s reserved box (3D-H4)', () => {
+    const [setup] = blocksFor(HUD, '.hud-top-bar__setup');
+    expect(setup).toBeDefined();
+    const decls = declarations(setup.body);
+    // The collision gate checks `HUD_SETUP_TRIGGER_WIDTH`; the button must be
+    // exactly that box, or the gate would be checking a rect nobody paints.
+    expect(decls.get('min-width')).toBe(`${HUD_SETUP_TRIGGER_WIDTH}px`);
+    expect(decls.get('min-height')).toBe('var(--hud-tap)');
+    expect(decls.get('box-sizing')).toBe('border-box');
+  });
+
+  it('reads the safe-area insets in exactly one probe, with no layout impact', () => {    const [probe] = blocksFor(HUD, '.hud-inset-probe');
     expect(probe).toBeDefined();
     const decls = declarations(probe.body);
     expect(decls.get('padding')).toMatch(/env\(safe-area-inset-top\)/);

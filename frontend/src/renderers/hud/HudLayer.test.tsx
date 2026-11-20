@@ -115,7 +115,7 @@ describe('HudLayer: the shell and the top bar', () => {
     expect(container.querySelector('.app-shell > main.table-3d')).not.toBeNull();
   });
 
-  it('shows Next Scenario and full screen only, with no title or scenario name', () => {
+  it('shows no title or scenario name, and no trigger when none is passed', () => {
     render(<Harness />);
     const bar = document.querySelector('.hud-top-bar');
     expect(bar).not.toBeNull();
@@ -127,6 +127,20 @@ describe('HudLayer: the shell and the top bar', () => {
     expect(bar?.textContent).toBe('Next ScenarioFull screen');
     expect(bar?.querySelector('h1')).toBeNull();
     expect(bar?.textContent).not.toMatch(/riichiprac/);
+  });
+
+  it('mounts the setup trigger at the bar’s start, before Next (3D-H4)', () => {
+    render(<Harness setupTrigger={<button type="button">Setup</button>} />);
+    const bar = document.querySelector('.hud-top-bar') as HTMLElement;
+    const start = bar.querySelector('.hud-top-bar__start') as HTMLElement;
+    const end = bar.querySelector('.hud-top-bar__end') as HTMLElement;
+    expect(start.textContent).toBe('Setup');
+    expect(end.textContent).toBe('Next ScenarioFull screen');
+    // The start cluster precedes the end cluster in DOM (and tab) order.
+    expect(
+      start.compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(bar.textContent).not.toMatch(/riichiprac/);
   });
 
   it('wires Next Scenario to the caller and honours its disabled state', () => {

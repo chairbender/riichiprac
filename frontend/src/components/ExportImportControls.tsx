@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { MAX_DESCRIPTION_CHARS } from '../stateFile';
 
-interface ExportImportControlsProps {
+export interface ExportImportControlsProps {
   /** True once a table is loaded and can be downloaded. */
   canExport: boolean;
   /** Current export description text (optional). */

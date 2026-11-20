@@ -28,6 +28,16 @@ export const HUD_TOP_BAR_CONTROL = 44;
 /** The bar's padding above and below the control; §5's `6 px`. */
 export const HUD_TOP_BAR_PAD = 6;
 
+/**
+ * The setup trigger's reserved box (3D-H4): the bar's start control. One
+ * tap-height button at the bar's leading padding, reserved at `96 px` — the
+ * width its label ("Setup") and the shared button padding need — and pinned in
+ * `Hud.css` as the control's `min-width`, so the rect the collision gate checks
+ * and the button the browser paints are the same box.
+ */
+export const HUD_SETUP_TRIGGER_WIDTH = 96;
+export const HUD_SETUP_TRIGGER_HEIGHT = HUD_TOP_BAR_CONTROL;
+
 /** The hand panel's heights: §5's table, in CSS px. */
 export const HUD_PANEL_HINT_ONLY = 40;
 export const HUD_PANEL_ACTIONS_ONE_ROW = 84;
@@ -145,6 +155,12 @@ export interface HudLayout {
   readonly topBar: HudRect;
   /** The bar's padding, after the safe insets: `top = max(6, safeTop)`. */
   readonly topBarPadding: HudInsets;
+  /**
+   * The setup trigger's rect (3D-H4): the bar's start control. It is always
+   * mounted with the bar and is the front door to the one setup sheet, which is
+   * why the collision gate names it (`hudAtRestRects`).
+   */
+  readonly setupTrigger: HudRect;
   /** The one hand panel, or null when there is nothing to show (§7.3). */
   readonly panel: HudRect | null;
   /** What the panel should mount: hint only, both rows, or the result card. */
@@ -355,6 +371,20 @@ export function hudLayout(
     bottom: HUD_TOP_BAR_PAD,
     left: round(Math.max(HUD_TOP_BAR_PAD, insets.left)),
   };
+  /*
+   * The setup trigger is the bar's first control, so it starts at the bar's
+   * leading padding and keeps the control row's height. It is clamped to the
+   * stage so a degenerate viewport cannot produce a rect wider than the bar.
+   */
+  const setupTrigger = rect(
+    topBarPadding.left,
+    topBarPadding.top,
+    Math.min(
+      HUD_SETUP_TRIGGER_WIDTH,
+      Math.max(0, width - topBarPadding.left - topBarPadding.right),
+    ),
+    HUD_SETUP_TRIGGER_HEIGHT,
+  );
 
   const band =
     anchors.handBand && anchors.handBand.width > 0 && anchors.handBand.height > 0
@@ -451,6 +481,7 @@ export function hudLayout(
   return {
     topBar,
     topBarPadding,
+    setupTrigger,
     panel,
     panelSlot,
     panelAnchor,
@@ -476,7 +507,12 @@ export function hudLayout(
  * that ever reaches the hand or the compass fails with the control's own name.
  */
 export function hudAtRestRects(layout: HudLayout): HudNamedRect[] {
-  const rects: HudNamedRect[] = [{ name: 'top bar', rect: layout.topBar }];
+  const rects: HudNamedRect[] = [
+    { name: 'top bar', rect: layout.topBar },
+    // H4: the setup trigger is always in the bar and is the sheet's front door,
+    // so the gate checks it by name rather than trusting the bar's rect alone.
+    { name: 'setup trigger', rect: layout.setupTrigger },
+  ];
   if (layout.panel) rects.push({ name: 'hand panel', rect: layout.panel });
   if (layout.handRail) rects.push({ name: 'hand rail', rect: layout.handRail });
   layout.actionRail.forEach((row, index) => {

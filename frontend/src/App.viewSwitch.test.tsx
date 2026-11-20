@@ -14,7 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const wasmMock = vi.hoisted(() => ({ generatedJson: '{}' }));
@@ -401,5 +401,37 @@ describe('App view switch (3D-14)', () => {
       'stacked',
       'topdown',
     ]);
+  });
+
+  it('changes the view from the setup sheet, leaving full screen (3D-H4, R14)', async () => {
+    // The setup sheet's View picker calls the same App handler as the header's:
+    // switching away from 3D leaves full screen, and the hand is untouched.
+    wasmMock.generatedJson = JSON.stringify(hand.state);
+    stubWebgl2Context(true);
+    stubFullscreen();
+    act(() => {
+      useSettingsStore.setState({ view: 'rendered3d' });
+    });
+    await renderApp();
+    await screen.findByTestId('three-host');
+    fullscreenElement = document.querySelector('.app-shell--3d');
+    const dealt = useGameStore.getState().gameState;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Setup' }));
+    const dialog = screen.getByRole('dialog', { name: 'Setup' });
+    const view = within(dialog).getByRole('combobox') as HTMLSelectElement;
+    // A stored 3D choice keeps its matching option even while unexposed.
+    expect(view.value).toBe('rendered3d');
+
+    fireEvent.change(view, { target: { value: 'stacked' } });
+
+    await waitFor(() => expect(exitFullscreen).toHaveBeenCalled());
+    expect(document.fullscreenElement).toBeNull();
+    expect(document.querySelector('.app-shell--3d')).toBeNull();
+    expect(document.querySelector('.app-header')).not.toBeNull();
+    expect(document.querySelector('.table-stack')).not.toBeNull();
+    // The view change is a redraw: same hand, one deal for the session.
+    expect(useGameStore.getState().gameState).toBe(dealt);
+    expect(generate_puzzle).toHaveBeenCalledTimes(1);
   });
 });
