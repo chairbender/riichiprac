@@ -26,14 +26,19 @@ import type { FixtureOptions } from '../three/boardFixture';
 import { frameForAspect, layoutBoard } from '../three/boardLayout';
 import { compassPlateRect, handBandRect, hitRects } from '../three/hitTest';
 import {
+  HUD_ACTION_RAIL_HEIGHT,
   HUD_GAP,
+  HUD_HAND_RAIL_HEIGHT,
   HUD_PANEL_ACTIONS_ONE_ROW,
+  HUD_PANEL_ACTIONS_TWO_ROWS,
   HUD_PANEL_HINT_ONLY,
   HUD_PANEL_RESULT,
+  HUD_RAIL_GAP,
   NO_INSETS,
   hudAtRestRects,
   hudCollisions,
   hudLayout,
+  hudPanelRows,
   rectsIntersect,
 } from './hudLayout';
 import type {
@@ -128,20 +133,29 @@ function describeViolations(
     .join('; ');
 }
 
-const SLOTS: readonly HudSlot[] = ['none', 'actions', 'result'];
+const SLOTS: readonly { readonly slot: HudSlot; readonly actionRows: 1 | 2 }[] = [
+  { slot: 'none', actionRows: 1 },
+  // H3: a plain discard lesson shows the hint row alone (40 px).
+  { slot: 'hint', actionRows: 1 },
+  { slot: 'actions', actionRows: 1 },
+  // H3: the rail wrapped to two rows, which is the 128 px panel.
+  { slot: 'actions', actionRows: 2 },
+  { slot: 'result', actionRows: 1 },
+];
 
 describe('HUD layout: the collision matrix (3d_hud.md §7.5)', () => {
   for (const stage of GATE_STAGES) {
     for (const hand of HAND_STATES) {
       for (const locked of [false, true]) {
-        for (const slot of SLOTS) {
-          const label = `${stage.label} · ${hand.label} · ${slot} · ${
-            locked ? 'answered' : 'unanswered'
-          }`;
+        for (const { slot, actionRows } of SLOTS) {
+          const label = `${stage.label} · ${hand.label} · ${slot}${
+            slot === 'actions' ? ` x${actionRows}` : ''
+          } · ${locked ? 'answered' : 'unanswered'}`;
           it(label, () => {
             const scene = sceneFor(stage, hand.options);
             const layout = layoutFor(stage, scene, {
               slot,
+              actionRows,
               sheet: false,
               toasts: 2,
             });
@@ -324,6 +338,166 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
     const layout = layoutFor(stage, scene, { slot: 'actions', sheet: true, toasts: 0 });
     // 0.78 x 1600 = 1248, capped at 832: the cap is what binds, not the panel.
     expect(layout.sheet?.height).toBeCloseTo(832, 1);
+  });
+});
+
+describe('HUD layout: the panel rows (3d_hud.md §5, 3D-H3)', () => {
+  it('places the hint row and one action row inside the 84 px panel', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const layout = layoutFor(stage, scene, {
+      slot: 'actions',
+      actionRows: 1,
+      sheet: false,
+      toasts: 0,
+    });
+    const panel = layout.panel;
+    if (!panel) throw new Error('no panel');
+    expect(layout.panelSlot).toBe('actions');
+    expect(layout.handRail).not.toBeNull();
+    expect(layout.actionRail).toHaveLength(1);
+    // The rows are the panel's own arithmetic: inside it, in order, and with
+    // the committed 24/4/44 heights.
+    expect(layout.handRail!.height).toBe(HUD_HAND_RAIL_HEIGHT);
+    expect(layout.actionRail[0].height).toBe(HUD_ACTION_RAIL_HEIGHT);
+    expect(layout.actionRail[0].top).toBe(
+      layout.handRail!.top + HUD_HAND_RAIL_HEIGHT + HUD_RAIL_GAP,
+    );
+    for (const row of [layout.handRail!, ...layout.actionRail]) {
+      expect(row.left).toBeGreaterThanOrEqual(panel.left);
+      expect(row.left + row.width).toBeLessThanOrEqual(
+        panel.left + panel.width + 0.01,
+      );
+      expect(row.top).toBeGreaterThanOrEqual(panel.top);
+      expect(row.top + row.height).toBeLessThanOrEqual(
+        panel.top + panel.height + 0.01,
+      );
+    }
+  });
+
+  it('fits the wrapped rail inside the 128 px panel and leaves the hint alone', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const layout = layoutFor(stage, scene, {
+      slot: 'actions',
+      actionRows: 2,
+      sheet: false,
+      toasts: 0,
+    });
+    expect(layout.panel?.height).toBe(HUD_PANEL_ACTIONS_TWO_ROWS);
+    expect(layout.actionRail).toHaveLength(2);
+    const [first, second] = layout.actionRail;
+    expect(second.top).toBe(first.top + HUD_ACTION_RAIL_HEIGHT + HUD_RAIL_GAP);
+    expect(
+      second.top + second.height,
+    ).toBeLessThanOrEqual((layout.panel?.top ?? 0) + HUD_PANEL_ACTIONS_TWO_ROWS + 0.01);
+    // The one-row panel keeps the same hint row position within the panel:
+    // only the rail's row count and the panel's height change.
+    const one = layoutFor(stage, scene, {
+      slot: 'actions',
+      actionRows: 1,
+      sheet: false,
+      toasts: 0,
+    });
+    expect((one.handRail?.top ?? 0) - (one.panel?.top ?? 0)).toBe(
+      (layout.handRail?.top ?? 0) - (layout.panel?.top ?? 0),
+    );
+    expect(one.handRail?.width).toBe(layout.handRail?.width);
+  });
+
+  it('gives the hint-only slot no action rail at all', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const layout = layoutFor(stage, scene, {
+      slot: 'hint',
+      sheet: false,
+      toasts: 0,
+    });
+    expect(layout.panel?.height).toBe(HUD_PANEL_HINT_ONLY);
+    expect(layout.panelSlot).toBe('hint');
+    expect(layout.handRail).not.toBeNull();
+    expect(layout.actionRail).toEqual([]);
+  });
+
+  it('has no rows for a result card, and names each row in the at-rest set', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const result = layoutFor(stage, scene, {
+      slot: 'result',
+      sheet: false,
+      toasts: 0,
+    });
+    expect(result.panel?.height).toBe(HUD_PANEL_RESULT);
+    expect(result.handRail).toBeNull();
+    expect(result.actionRail).toEqual([]);
+
+    const actions = layoutFor(stage, scene, {
+      slot: 'actions',
+      actionRows: 2,
+      sheet: false,
+      toasts: 0,
+    });
+    const names = hudAtRestRects(actions).map((entry) => entry.name);
+    expect(names).toEqual([
+      'top bar',
+      'hand panel',
+      'hand rail',
+      'action rail 1',
+      'action rail 2',
+    ]);
+    // The single-row panel uses the unnumbered name.
+    expect(
+      hudAtRestRects(
+        layoutFor(stage, scene, {
+          slot: 'actions',
+          actionRows: 1,
+          sheet: false,
+          toasts: 0,
+        }),
+      ).map((entry) => entry.name),
+    ).toContain('action rail');
+  });
+
+  it('derives the same rows from any panel rect, with no side effects', () => {
+    const panel = { left: 100, top: 200, width: 576, height: 128 };
+    expect(hudPanelRows(panel, 'actions', 2)).toEqual({
+      handRail: {
+        left: 112,
+        top: 208,
+        width: 552,
+        height: HUD_HAND_RAIL_HEIGHT,
+      },
+      actionRail: [
+        { left: 112, top: 236, width: 552, height: HUD_ACTION_RAIL_HEIGHT },
+        { left: 112, top: 284, width: 552, height: HUD_ACTION_RAIL_HEIGHT },
+      ],
+    });
+    expect(hudPanelRows(panel, 'result', 1)).toEqual({
+      handRail: null,
+      actionRail: [],
+    });
+  });
+
+  it('keeps the hint-only panel’s compass clearance unchanged at the worst aspect', () => {
+    // H2 measured 32 px for the one-row rail at 9:16 with a four-meld kan hand;
+    // the 40 px hint-only panel is shorter, so it cannot be worse.
+    const stage = GATE_STAGES[6];
+    const scene = sceneFor(stage, HAND_STATES[5].options);
+    const hint = layoutFor(stage, scene, {
+      slot: 'hint',
+      sheet: false,
+      toasts: 0,
+    });
+    const actions = layoutFor(stage, scene, {
+      slot: 'actions',
+      actionRows: 1,
+      sheet: false,
+      toasts: 0,
+    });
+    expect(hint.panelCompassClearance ?? 0).toBeGreaterThan(
+      actions.panelCompassClearance ?? 0,
+    );
+    expect(hint.panelCompassClearance ?? 0).toBeGreaterThanOrEqual(HUD_GAP);
   });
 });
 

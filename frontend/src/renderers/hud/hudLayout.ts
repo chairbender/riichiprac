@@ -36,6 +36,24 @@ export const HUD_PANEL_RESULT = 104;
 /** The panel's width cap: `36rem`. */
 export const HUD_PANEL_MAX_WIDTH = 576;
 
+/**
+ * The panel's inner geometry (§5, §8): the surface's padding, the hint row and
+ * the action row(s). These are the numbers the rows are positioned by, and they
+ * are what makes the panel's heights add up:
+ *
+ *   hint-only        8 + 24        (≤ 40)
+ *   one action row   8 + 24 + 4 + 44 (80 ≤ 84)
+ *   two action rows  8 + 24 + 4 + 44 + 4 + 44  (128 exactly)
+ *
+ * The row rects are the HUD's own (the collision gate checks them
+ * individually), so they live here rather than only in CSS.
+ */
+export const HUD_PANEL_PAD = 8;
+export const HUD_PANEL_SIDE_PAD = 12;
+export const HUD_HAND_RAIL_HEIGHT = 24;
+export const HUD_RAIL_GAP = 4;
+export const HUD_ACTION_RAIL_HEIGHT = 44;
+
 /** The toast stack's width cap: `32rem`, and the height H2 reserves per toast. */
 export const HUD_TOAST_MAX_WIDTH = 512;
 export const HUD_TOAST_HEIGHT = 56;
@@ -84,8 +102,15 @@ export interface HudAnchors {
   readonly compass: CompassRect | null;
 }
 
-/** What the HUD is showing above the hand: nothing, both rows, or the result. */
-export type HudSlot = 'none' | 'actions' | 'result';
+/**
+ * What the HUD is showing above the hand: nothing, the hint row alone, both
+ * rows, or the result card.
+ *
+ * `hint` is H3's addition: a plain discard lesson with no Riichi, Kan or call
+ * shows the hint alone, and the panel keeps the 40 px hint-only shape (§5)
+ * instead of reserving an empty action row.
+ */
+export type HudSlot = 'none' | 'hint' | 'actions' | 'result';
 
 /** The panel content actually mounted this frame. */
 export type HudPanelSlot = 'none' | 'hint' | 'actions' | 'result';
@@ -115,6 +140,16 @@ export interface HudLayout {
   /** What the panel should mount: hint only, both rows, or the result card. */
   readonly panelSlot: HudPanelSlot;
   readonly panelAnchor: HudPanelAnchor;
+  /**
+   * The hand rail (the hint row) inside the panel, or null with no panel or a
+   * result card. H3's rect: the live region's own box, checked by the gate.
+   */
+  readonly handRail: HudRect | null;
+  /**
+   * The action rail's rows inside the panel (one, or two when it wraps), and
+   * empty whenever the panel is the hint row alone or the result card.
+   */
+  readonly actionRail: readonly HudRect[];
   /** The toast stack under the top bar, or null when empty. */
   readonly toasts: HudRect | null;
   /** The open sheet's panel, or null when closed (or the stage is too short). */
@@ -210,6 +245,43 @@ function anchorPanel(
 }
 
 /**
+ * The panel's inner rows (H3), in stage coordinates.
+ *
+ * The row heights and gaps are the committed §5 table; the horizontal inset is
+ * the surface's own padding, so a row's box is exactly where its text and
+ * controls are drawn. A result card has no rows, and a hint-only panel has no
+ * action rail — that is the "unmounted, not reserved" rule.
+ */
+export function hudPanelRows(
+  panel: HudRect,
+  slot: HudPanelSlot,
+  actionRows: 1 | 2,
+): { handRail: HudRect | null; actionRail: HudRect[] } {
+  if (slot === 'none' || slot === 'result') {
+    return { handRail: null, actionRail: [] };
+  }
+
+  const left = panel.left + HUD_PANEL_SIDE_PAD;
+  const width = Math.max(0, panel.width - 2 * HUD_PANEL_SIDE_PAD);
+  const handRail = rect(left, panel.top + HUD_PANEL_PAD, width, HUD_HAND_RAIL_HEIGHT);
+  if (slot !== 'actions') return { handRail, actionRail: [] };
+
+  const first = panel.top + HUD_PANEL_PAD + HUD_HAND_RAIL_HEIGHT + HUD_RAIL_GAP;
+  const actionRail: HudRect[] = [];
+  for (let row = 0; row < actionRows; row += 1) {
+    actionRail.push(
+      rect(
+        left,
+        first + row * (HUD_ACTION_RAIL_HEIGHT + HUD_RAIL_GAP),
+        width,
+        HUD_ACTION_RAIL_HEIGHT,
+      ),
+    );
+  }
+  return { handRail, actionRail };
+}
+
+/**
  * Every rect the HUD draws for one stage, one projection and one state.
  *
  * Nothing here reads the DOM, the renderer or the clock, and nothing is cached:
@@ -250,6 +322,8 @@ export function hudLayout(
   let panel: HudRect | null = null;
   let panelAnchor: HudPanelAnchor = 'none';
   let sheet: HudRect | null = null;
+  let handRail: HudRect | null = null;
+  let actionRail: HudRect[] = [];
   let panelCompassClearance: number | null = null;
   let panelHandClearance: number | null = null;
 
@@ -271,6 +345,7 @@ export function hudLayout(
       const left = anchored.anchor === 'above' ? (width - panelWidth) / 2 : HUD_GAP;
       panel = rect(left, top, panelWidth, panelHeightPx);
       panelAnchor = anchored.anchor;
+      ({ handRail, actionRail } = hudPanelRows(panel, panelSlot, actionRows));
       panelHandClearance =
         anchored.anchor === 'above'
           ? band.top - (top + panelHeightPx)
@@ -323,6 +398,8 @@ export function hudLayout(
     panel,
     panelSlot,
     panelAnchor,
+    handRail,
+    actionRail,
     toasts,
     sheet,
     panelCompassClearance,
@@ -330,10 +407,26 @@ export function hudLayout(
   };
 }
 
-/** Every at-rest rect the HUD can cover with: the top bar, panel and toasts. */
+/**
+ * Every at-rest rect the HUD can cover with: the top bar, the panel **and each
+ * of its rows**, and the toasts.
+ *
+ * The rows are listed individually as well as the panel that contains them
+ * (H3): the hint row and each action row are the boxes the controls are drawn
+ * in, so a violation names the row — "action rail 2" — rather than only the
+ * surface around it.
+ */
 export function hudAtRestRects(layout: HudLayout): HudNamedRect[] {
   const rects: HudNamedRect[] = [{ name: 'top bar', rect: layout.topBar }];
   if (layout.panel) rects.push({ name: 'hand panel', rect: layout.panel });
+  if (layout.handRail) rects.push({ name: 'hand rail', rect: layout.handRail });
+  layout.actionRail.forEach((row, index) => {
+    rects.push({
+      name:
+        layout.actionRail.length > 1 ? `action rail ${index + 1}` : 'action rail',
+      rect: row,
+    });
+  });
   if (layout.toasts) rects.push({ name: 'toast stack', rect: layout.toasts });
   return rects;
 }

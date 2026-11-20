@@ -1,10 +1,12 @@
 /**
  * The hand's display order for the 3D overlay (3D-08).
  *
- * The snapshot's concealed hand is in engine order; `HandDock` sorts it for
- * display (suits, then ranks, then the draw) and the overlay must present the
- * same order to the keyboard and the screen reader. This module is the one place
- * that derivation lives, so the two views cannot disagree about it.
+ * The snapshot already carries the concealed hand in display order (the adapter
+ * sorts it once, so the canvas and the buttons agree). `HandDock` sorts the
+ * engine's hand itself; this module derives the same order — suits, then ranks,
+ * then the draw — and the same `index` the dock passes to `onSelectTile`. The
+ * sort here is therefore the tab-order guarantee for a hand-edited snapshot as
+ * well, and it keeps the draw in its rank position exactly as the dock does.
  *
  * Pure data: no React, no DOM, no camera. `overlay.tsx` renders the result.
  */

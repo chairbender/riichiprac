@@ -60,7 +60,10 @@ export interface HudLayerProps {
   readonly actionRows?: 1 | 2;
   /** H3: the hand panel's hint row (the live-region hint + Mortal chip). */
   readonly hintRow?: ReactNode;
-  /** H3: the action rail row; absent, the panel is the hint alone. */
+  /**
+   * H3: the action rail row; absent (or null) and the panel is the hint alone,
+   * which is the 40 px shape rather than an empty 84 px surface.
+   */
   readonly actionRail?: ReactNode;
   /** H5: the result card; replaces both rows and keeps the panel's fixed shape. */
   readonly resultCard?: ReactNode;
@@ -171,12 +174,21 @@ export function HudLayer({
   }, [measure]);
 
   const sheetOpen = sheet !== null;
+  /*
+   * `hint` is H3's slot: the hint row alone. The action rail (a plain discard
+   * lesson with no Riichi, Kan or call) is unmounted rather than reserved, so
+   * the panel keeps its 40 px shape and never paints an empty box over the board
+   * (`3d_hud.md` §7.1). A null rail is absent, not a control.
+   */
+  const hasActionRail = actionRail !== undefined && actionRail !== null;
   const slot: HudSlot =
     resultCard !== undefined
       ? 'result'
-      : actionRail !== undefined || hintRow !== undefined
+      : hasActionRail
         ? 'actions'
-        : 'none';
+        : hintRow !== undefined
+          ? 'hint'
+          : 'none';
   const layout: HudLayout | null =
     metrics.stage.width > 0 && metrics.stage.height > 0
       ? hudLayout(
@@ -257,7 +269,7 @@ export function HudLayer({
           ) : (
             <>
               {hintRow !== undefined && <div className="hud-hand-rail">{hintRow}</div>}
-              {panelSlot === 'actions' && actionRail !== undefined && (
+              {panelSlot === 'actions' && hasActionRail && (
                 <div className="hud-action-rail">{actionRail}</div>
               )}
             </>

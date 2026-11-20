@@ -76,7 +76,11 @@ export interface SnapshotSeat {
   readonly seat: Seat;
   readonly wind: 'East' | 'South' | 'West' | 'North';
   readonly score: number;
-  /** 13 - 3 * open melds tiles, in the engine's hand order (not sorted). */
+  /**
+   * 13 - 3 * open melds tiles, in display order: manzu, pinzu, souzu, then
+   * honors by rank (the order the dock and the projected buttons show). The
+   * engine's own order is not carried, so every view of the hand agrees.
+   */
   readonly concealed: readonly SnapshotTile[];
   /** The active draw, occupying hand slot `concealed.length`, or null. */
   readonly draw: SnapshotTile | null;

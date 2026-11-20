@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
-import { callOfferActions, canDeclareRiichi, isCallDecision } from './actions';
+import {
+  callOfferActions,
+  canDeclareRiichi,
+  isCallDecision,
+  kanToggleTile,
+} from './actions';
 import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { AppControls } from './components/AppControls';
@@ -13,8 +18,15 @@ import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
+import { handHintFor } from './handHint';
 import { RendererHost } from './renderers/RendererHost';
+import { ActionRail } from './renderers/hud/ActionRail';
+import { actionRailVisible } from './renderers/hud/actionRail';
+import type { ActionRailModel } from './renderers/hud/actionRail';
+import { HandRail } from './renderers/hud/HandRail';
 import { HudLayer } from './renderers/hud/HudLayer';
+import { HudToastStack } from './renderers/hud/ToastStack';
+import { buildHudToasts } from './renderers/hud/toastModel';
 import {
   RENDERED3D_EXPOSED,
   probeCapabilities,
@@ -222,6 +234,12 @@ export const App = () => {
    * state is the belt to that braces.)
    */
   const [threeClosed, setThreeClosed] = useState(false);
+  /**
+   * 3D-H3: how many rows the HUD's action rail wrapped to. The rail measures
+   * itself (its height depends on the stage width and the control count) and
+   * reports 1 or 2; `hudLayout()` turns that into the panel's 84/128 px.
+   */
+  const [actionRows, setActionRows] = useState<1 | 2>(1);
   /**
    * 3D-H2: the shell (the full-screen element, so the HUD travels with the
    * scene) and the fixed stage (made `inert` while a HUD sheet is open). Both
@@ -867,6 +885,36 @@ export const App = () => {
     decision?.kind === 'react_to_discard' ? decision.from : null;
 
   /*
+   * 3D-H3: the hand's decision state, derived once for both shells.
+   *
+   * The 2D dock reads these inside `HandDock`; the HUD's hand rail and action
+   * rail need exactly the same values, so they are computed here from the same
+   * helpers (`kanToggleTile`, `handHintFor`) the dock uses. `availableActions` is
+   * only an AI drill's list — passing it is what makes a drill answer through its
+   * actions instead of a call toggle, in both views.
+   */
+  const answered = dualGrade !== null;
+  const revealMortal = answered || peekedBeforeAnswer;
+  const drillActions = isDrill ? availableActions : undefined;
+  const kanTile = humanPlayer
+    ? kanToggleTile(humanPlayer, {
+        availableActions: drillActions,
+        targetAction: gameState?.target_action,
+      })
+    : null;
+  const handHintText = humanPlayer
+    ? handHintFor({
+        player: humanPlayer,
+        isAnswered: answered,
+        canDiscard,
+        callRiichi,
+        callKan,
+        availableActions: drillActions,
+        targetAction: gameState?.target_action,
+      })
+    : '';
+
+  /*
    * 3D-14: whether this browser can run the 3D table. The probe runs only when
    * its answer can change what is drawn or offered — a stored 3D choice, or the
    * View control once 3D-15 exposes the option — so the standard 2D views never
@@ -1004,6 +1052,55 @@ export const App = () => {
               ? 'Loading table…'
               : null;
 
+  /*
+   * 3D-H3: the floating HUD's practice content. Each piece is built here and
+   * handed to `HudLayer`'s slot, so the 3D mount is a composition of elements
+   * rather than a second copy of the 2D shell. Handlers are the store's own
+   * (`selectTile` reaches the scene through 3D-08), so the answer path has no
+   * renderer dependency.
+   */
+  const hudHintRow = humanPlayer ? (
+    <HandRail
+      hint={handHintText}
+      aiStatus={aiStatus}
+      isEvaluating={isEvaluating}
+      hasEvaluation={evaluation !== null}
+      peeked={peekedBeforeAnswer}
+      answered={answered}
+    />
+  ) : undefined;
+
+  const actionRailModel: ActionRailModel = {
+    actions: actionBarActions,
+    canRiichi,
+    kanTile,
+    answered,
+    isAiScenario: isDrill,
+    callRiichi,
+    callKan,
+    evaluation,
+    revealMortal,
+    onToggleRiichi: toggleRiichi,
+    onToggleKan: toggleKan,
+    onAction: submitAction,
+  };
+
+  // An empty rail is unmounted, not reserved: a plain discard lesson shows the
+  // 40 px hint-only panel until its answer (3d_hud.md §7.1).
+  const hudActionRail = actionRailVisible(actionRailModel) ? (
+    <ActionRail model={actionRailModel} onRowsChange={setActionRows} />
+  ) : undefined;
+
+  const hudToasts = buildHudToasts({
+    statusMessage,
+    error,
+    fileError,
+    fileNotice,
+    positionDescription,
+    onDismissNotice: clearFileNotice,
+    onDismissDescription: clearPositionDescription,
+  });
+
   // The header controls, built once so the stacked and top-down layouts cannot
   // drift apart.
   const controls = (
@@ -1140,20 +1237,22 @@ export const App = () => {
           stageRef={threeStageRef}
           onNextScenario={handleNextScenario}
           nextDisabled={isLoading}
+          actionRows={actionRows}
+          hintRow={hudHintRow}
+          actionRail={hudActionRail}
+          toasts={
+            hudToasts.length > 0 ? <HudToastStack toasts={hudToasts} /> : undefined
+          }
+          toastCount={hudToasts.length}
         />
         <main className="table-3d" ref={threeStageRef}>
-          {statusMessage && (
-            <div className="status-msg" role="status">
-              {statusMessage}
-            </div>
-          )}
-          {error && (
-            <div className="error-msg" role="alert">
-              {error}
-            </div>
-          )}
-
-          {threeSnapshot ? (
+          {/*
+           * The scene owns the window and its own status line (the host's
+           * first-mount notice). App's deal status and errors are HUD toasts
+           * (3D-H3), so nothing in the flow can push the canvas down or sit
+           * between the player and the hand.
+           */}
+          {threeSnapshot && (
             <RendererHost
               snapshot={threeSnapshot}
               tier={tableMount.query.quality}
@@ -1164,10 +1263,6 @@ export const App = () => {
               onSelectTile={selectTile}
               onDegraded={handleThreeDegraded}
             />
-          ) : (
-            <p className="status-msg" role="status">
-              Loading table…
-            </p>
           )}
         </main>
       </div>
@@ -1251,7 +1346,7 @@ export const App = () => {
           disabled={false}
           riichiArmed={callRiichi}
           evaluation={evaluation}
-          revealMortal={dualGrade !== null || peekedBeforeAnswer}
+          revealMortal={revealMortal}
           onToggleRiichi={toggleRiichi}
           onAction={submitAction}
         />

@@ -131,16 +131,111 @@
 
 /* The hint row: always visible, and the only row left under an open sheet. */
 .hud-hand-rail {
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
   min-height: 24px;
   font-size: var(--hud-text-sm);
   color: var(--hud-text);
+}
+
+/*
+ * H3: the live-region instruction and the pre-answer Mortal chip. The hint keeps
+ * primary text because it is read through the sheet's scrim (§8); the chip is
+ * secondary and may collapse to its two-word state.
+ */
+.hud-hand-rail__hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-mortal-chip {
+  flex: 0 0 auto;
+  max-width: 45%;
+  padding: 2px 8px;
+  overflow: hidden;
+  color: var(--hud-text-muted);
+  font-size: var(--hud-text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid var(--hud-border-color);
+  border-radius: var(--hud-radius-chip);
+}
+
+.hud-mortal-chip[data-tone='ready'] {
+  color: var(--hud-ok);
+  border-color: var(--hud-ok);
+}
+
+.hud-mortal-chip[data-tone='bad'] {
+  color: var(--hud-bad);
+  border-color: var(--hud-bad);
+}
+
+.hud-mortal-chip[data-tone='loading'] {
+  color: var(--hud-text-muted);
 }
 
 .hud-action-rail {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* 4 px between wrapped rows: the panel's own row gap, so 128 px fits. */
+  gap: 4px;
+  min-height: var(--hud-tap);
+}
+
+/*
+ * `ActionRail`'s own flow: the call's buttons and the Riichi/Kan toggles are
+ * siblings in one wrapping row, so a narrow stage wraps between controls rather
+ * than stacking two bars. `min-width: 0` lets a group shrink instead of pushing
+ * the panel wider than its rect.
+ */
+.hud-action-rail-controls {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: var(--hud-tap);
+}
+
+/* The hand rail's single row: the instruction, then the Mortal chip. */
+.hud-hand-rail-row {
+  display: flex;
+  align-items: center;
   gap: var(--hud-space);
+  width: 100%;
+  min-width: 0;
+}
+
+/* The 2D strips' own surfaces are already dark; the panel supplies the room. */
+.hud-action-rail .action-bar,
+.hud-action-rail .call-toggles {
+  min-width: 0;
+}
+
+.hud-action-rail .action-bar {
+  border: 1px solid var(--hud-border-color);
+  border-radius: var(--hud-radius-control);
+  background-color: var(--hud-surface-solid);
+}
+
+.hud-action-rail .action-button,
+.hud-action-rail .riichi-toggle,
+.hud-action-rail .kan-toggle {
+  min-height: var(--hud-tap);
+}
+
+.hud-action-rail .action-button:focus-visible,
+.hud-action-rail .riichi-toggle:focus-visible,
+.hud-action-rail .kan-toggle:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
 }
 
 .hud-result-card {
@@ -174,6 +269,64 @@
 
 .hud-toast-root > * {
   pointer-events: auto;
+}
+
+/*
+ * One toast (H3): a two-line-maximum message on the standard surface. Errors use
+ * the result card's alarm surface, notices carry a Dismiss control. The text is
+ * clamped so a long error cannot grow the stack into the board; the full message
+ * stays in the DOM for screen readers and `title`.
+ */
+.hud-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
+  box-sizing: border-box;
+  padding: var(--hud-space) 12px;
+  color: var(--hud-text);
+  font-size: var(--hud-text-sm);
+  background-color: var(--hud-surface);
+  border: var(--hud-border);
+  border-radius: var(--hud-radius-control);
+}
+
+.hud-toast--error {
+  color: var(--hud-bad);
+  background-color: var(--hud-tone-bad);
+  border-color: var(--hud-bad);
+}
+
+.hud-toast--notice {
+  border-color: var(--hud-border-accent);
+}
+
+.hud-toast-text {
+  display: -webkit-box;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.hud-toast-dismiss {
+  flex: 0 0 auto;
+  min-height: var(--hud-tap);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: var(--hud-text-xs);
+  color: var(--hud-accent);
+  background-color: transparent;
+  border: 1px solid var(--hud-border-accent);
+  border-radius: var(--hud-radius-control);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hud-toast-dismiss:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
 }
 
 /* Sheets (§6.5) ----------------------------------------------------------- */
