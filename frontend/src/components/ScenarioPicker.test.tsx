@@ -284,12 +284,28 @@ describe('pack manifest states', () => {
     );
   });
 
-  it('explains the opt-in rule when a pack is ready', async () => {
+  it('explains that replay is the default for a covered lesson', async () => {
     const user = userEvent.setup();
     renderPicker({ packStatus: 'ready', packCount: 1 });
     const panel = await openPanel(user);
     expect(within(panel).getByRole('status').textContent).toContain(
-      'PACK lessons deal a real audited hand and are opt-in',
+      'PACK lessons deal a real audited hand',
+    );
+    expect(within(panel).getByRole('status').textContent).toContain(
+      'A covered lesson is dealt by default',
+    );
+  });
+
+  it('appends a body failure after the ready note', async () => {
+    const user = userEvent.setup();
+    renderPicker({
+      packStatus: 'ready',
+      packCount: 1,
+      packError: 'dealing the generated lesson instead.',
+    });
+    const panel = await openPanel(user);
+    expect(within(panel).getByRole('status').textContent).toContain(
+      'dealing the generated lesson instead.',
     );
   });
 });

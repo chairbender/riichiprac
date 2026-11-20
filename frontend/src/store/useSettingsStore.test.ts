@@ -65,10 +65,57 @@ describe('useSettingsStore', () => {
       useSettingsStore.getState().setView(view);
       expect(
         JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
-      ).toEqual({ version: 1, view });
+      ).toEqual({ version: 1, view, preferReplay: true });
 
       const reloaded = await loadSettingsStore();
       expect(reloaded.useSettingsStore.getState().view).toBe(view);
+    }
+  });
+
+  it('prefers replay hands for covered lessons by default', async () => {
+    setLocalStorage(memoryStorage());
+
+    const { DEFAULT_PREFER_REPLAY, useSettingsStore } =
+      await loadSettingsStore();
+
+    expect(DEFAULT_PREFER_REPLAY).toBe(true);
+    expect(useSettingsStore.getState().preferReplay).toBe(true);
+  });
+
+  it('persists preferReplay and keeps it across a reload', async () => {
+    const storage = memoryStorage();
+    setLocalStorage(storage);
+
+    const { useSettingsStore, SETTINGS_STORAGE_KEY } =
+      await loadSettingsStore();
+
+    useSettingsStore.getState().setPreferReplay(false);
+    expect(
+      JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
+    ).toEqual({ version: 1, view: 'stacked', preferReplay: false });
+
+    const reloaded = await loadSettingsStore();
+    expect(reloaded.useSettingsStore.getState().preferReplay).toBe(false);
+    // The view setting is untouched by a source-only change.
+    expect(reloaded.useSettingsStore.getState().view).toBe('stacked');
+
+    useSettingsStore.getState().setPreferReplay(true);
+    const again = await loadSettingsStore();
+    expect(again.useSettingsStore.getState().preferReplay).toBe(true);
+  });
+
+  it('keeps the default when the stored preferReplay is not a boolean', async () => {
+    const storage = memoryStorage();
+    setLocalStorage(storage);
+
+    for (const raw of [
+      JSON.stringify({ version: 1, preferReplay: 'yes' }),
+      JSON.stringify({ version: 1, preferReplay: 1 }),
+      JSON.stringify({ version: 1, preferReplay: null }),
+    ]) {
+      storage.setItem('riichiprac.settings', raw);
+      const { useSettingsStore } = await loadSettingsStore();
+      expect(useSettingsStore.getState().preferReplay).toBe(true);
     }
   });
 
