@@ -1,0 +1,292 @@
+/*
+ * The floating 3D HUD shell (3D-H2). Composition and contract: 3d_hud.md.
+ *
+ * Three rules this file must keep, and the tests assert from the text:
+ *
+ * 1. The layer is `position: fixed; inset: 0` and `pointer-events: none`, so it
+ *    is never in the document flow (no Y-flow sibling of the canvas) and never
+ *    takes a tap meant for the felt or a projected hand button. Only controls
+ *    and panel surfaces re-enable pointer events.
+ * 2. No rule here writes a bare `z-index`: the rungs come from `tokens.css`
+ *    (§6.1).
+ * 3. Rect geometry (top bar height, panel, sheet, toasts) is inline from
+ *    `hudLayout()`, because it depends on the live projection and the safe
+ *    insets. This file positions nothing with magic numbers except the
+ *    constants `hudLayout()` also owns.
+ */
+
+/* The layer --------------------------------------------------------------- */
+
+.hud-root {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  z-index: var(--hud-z-hud);
+
+  box-sizing: border-box;
+  color: var(--hud-text);
+  font-size: var(--hud-text-sm);
+  line-height: var(--hud-line-body);
+  font-variant-numeric: tabular-nums;
+
+  /* The one rule that keeps the board usable: only controls take taps. */
+  pointer-events: none;
+}
+
+/*
+ * Safe-area probe: invisible, zero-sized, and the only element that reads
+ * `env(safe-area-inset-*)`. `HudLayer` reads its computed padding once per
+ * resize and passes the numbers into `hudLayout()` (§6.3).
+ */
+.hud-inset-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Top bar (§2, §5) --------------------------------------------------------- */
+
+.hud-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
+  box-sizing: border-box;
+  padding: 6px;
+  /* The bar is a transparent band; its empty stretches stay click-through so a
+     tap above the table still reaches the felt. */
+  pointer-events: none;
+}
+
+.hud-top-bar__start {
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
+  margin-right: auto;
+}
+
+.hud-top-bar__end {
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
+}
+
+.hud-top-bar button {
+  min-height: var(--hud-tap);
+  padding: 6px 12px;
+  pointer-events: auto;
+  font: inherit;
+  font-size: var(--hud-text-sm);
+  color: var(--hud-accent);
+  background-color: var(--hud-surface);
+  border: 1px solid var(--hud-border-accent);
+  border-radius: var(--hud-radius-control);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hud-top-bar button:hover {
+  background-color: rgba(26, 42, 60, 0.94);
+}
+
+.hud-top-bar button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.hud-top-bar button:focus-visible,
+.hud-sheet button:focus-visible,
+.hud-sheet a:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
+}
+
+/* The one hand panel (§2, §5) --------------------------------------------- */
+
+.hud-panel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+  padding: var(--hud-space) 12px;
+  overflow: hidden;
+  background-color: var(--hud-surface);
+  border: var(--hud-border);
+  border-radius: var(--hud-radius-panel);
+  box-shadow: var(--hud-shadow);
+  pointer-events: auto;
+}
+
+/* The hint row: always visible, and the only row left under an open sheet. */
+.hud-hand-rail {
+  min-height: 24px;
+  font-size: var(--hud-text-sm);
+  color: var(--hud-text);
+}
+
+.hud-action-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--hud-space);
+}
+
+.hud-result-card {
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
+  color: var(--hud-text);
+}
+
+/*
+ * With a sheet open the scrim dims the panel; the hint stays legible at about
+ * 5:1 because it uses primary text, not `--hud-text-muted` (§8).
+ */
+.hud-panel[data-dimmed='true'] .hud-hand-rail {
+  color: var(--hud-text);
+}
+
+/* Toast stack (§2) -------------------------------------------------------- */
+
+.hud-toast-root {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hud-space);
+  box-sizing: border-box;
+  z-index: var(--hud-z-toast);
+  /* The root is transparent and click-through; a toast with an affordance sets
+     `pointer-events: auto` on its own box. */
+  pointer-events: none;
+}
+
+.hud-toast-root > * {
+  pointer-events: auto;
+}
+
+/* Sheets (§6.5) ----------------------------------------------------------- */
+
+.hud-sheet-root {
+  /* The sheet's children position themselves on the fixed layer; the root exists
+     so H4/H5 have one named seam and the scene is never remounted. */
+  display: contents;
+}
+
+.hud-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--hud-z-sheet-scrim);
+  background-color: var(--hud-scrim);
+  pointer-events: auto;
+}
+
+.hud-sheet {
+  position: fixed;
+  z-index: var(--hud-z-sheet);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: var(--hud-text);
+  background-color: var(--hud-sheet-surface);
+  border: var(--hud-border);
+  border-radius: var(--hud-radius-panel);
+  box-shadow: var(--hud-shadow);
+  pointer-events: auto;
+}
+
+/* No transform, no slide: at most a plain opacity change (§6.4). */
+.hud-sheet,
+.hud-sheet-scrim {
+  animation: hud-fade-in 120ms ease-out;
+}
+
+.hud-sheet[data-reduced-motion='true'],
+.hud-sheet-scrim[data-reduced-motion='true'],
+.hud-root[data-reduced-motion='true'] .hud-sheet,
+.hud-root[data-reduced-motion='true'] .hud-sheet-scrim {
+  animation: none;
+}
+
+@keyframes hud-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-sheet,
+  .hud-sheet-scrim {
+    animation: none;
+  }
+}
+
+.hud-sheet-header {
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hud-border-color);
+}
+
+.hud-sheet-heading {
+  flex: 1;
+  margin: 0;
+  font-size: 1rem;
+  line-height: var(--hud-line-tight);
+  color: var(--hud-text);
+}
+
+.hud-sheet-heading:focus {
+  outline: none;
+}
+
+.hud-sheet-close {
+  min-height: var(--hud-tap);
+  min-width: var(--hud-tap);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: var(--hud-text-sm);
+  color: var(--hud-accent);
+  background-color: transparent;
+  border: 1px solid var(--hud-border-accent);
+  border-radius: var(--hud-radius-control);
+  cursor: pointer;
+}
+
+.hud-sheet-body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* Utilities -------------------------------------------------------------- */
+
+.hud-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

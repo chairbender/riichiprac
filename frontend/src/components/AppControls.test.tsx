@@ -32,6 +32,8 @@ function renderControls(
       packStatus="empty"
       packCount={0}
       packError={null}
+      preferReplay={false}
+      onPreferReplayChange={vi.fn()}
       requireAgreement={false}
       aiStatus="idle"
       agreementHint=""

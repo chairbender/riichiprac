@@ -24,9 +24,11 @@
  * - Only the human seat's concealed hand and draw are interactive. The same
  *   rule as the top-down view, where the river, melds and walls are pictures and
  *   only `HandDock` holds buttons.
+ * - {@link handBandRect} is the same projection with the answered-hand lock gate
+ *   removed (3D-H2): the HUD anchors to the band after the buttons are gone.
  */
 
-import type { CompassRect, HitRect } from '../contract';
+import type { BandRect, CompassRect, HitRect } from '../contract';
 import { COMPASS_PLATE, HAND, TILE } from '../layoutConstants';
 import {
   orientedBox,
@@ -222,6 +224,10 @@ function separateNeighbours(
  * Returned in the hand's slot order (concealed, then the draw). An answered hand
  * returns an empty list: the top-down view disables its buttons at that point,
  * and the 3D overlay removes them so no stale target can submit twice.
+ *
+ * The lock gate lives in this wrapper only; {@link handBandRect} is the same
+ * projection with the gate removed, so the HUD's anchor (3D-H2) can never
+ * diverge from the buttons it bounds.
  */
 export function hitRects(
   layout: BoardLayout,
@@ -230,6 +236,54 @@ export function hitRects(
   options: HitTestOptions = {},
 ): readonly HitRect[] {
   if (options.locked === true) return [];
+  return projectHandTargets(layout, frame, viewport, options);
+}
+
+/**
+ * The human hand + draw interaction union, with the same 44 px expansion,
+ * computed **even when the hand is answered** (3D-H2).
+ *
+ * This is the HUD's hand anchor: the answer removes the buttons but not the
+ * band they occupy, and the result card must stay clear of it. Null when there
+ * is no hand to project (no stage size, no concealed tiles, or corners behind
+ * the camera). `handBandRect` is asserted to equal the union of {@link hitRects}
+ * while unanswered, which is what keeps the anchor honest.
+ */
+export function handBandRect(
+  layout: BoardLayout,
+  frame: CameraFrame,
+  viewport: HitTestViewport,
+  options: HitTestOptions = {},
+): BandRect | null {
+  const rects = projectHandTargets(layout, frame, viewport, options);
+  if (rects.length === 0) return null;
+
+  let left = Number.POSITIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const rect of rects) {
+    left = Math.min(left, rect.left);
+    top = Math.min(top, rect.top);
+    right = Math.max(right, rect.left + rect.width);
+    bottom = Math.max(bottom, rect.top + rect.height);
+  }
+  if (!(right > left) || !(bottom > top)) return null;
+  return {
+    left: round(left),
+    top: round(top),
+    width: round(right) - round(left),
+    height: round(bottom) - round(top),
+  };
+}
+
+/** The lock-independent projection both `hitRects` and `handBandRect` use. */
+function projectHandTargets(
+  layout: BoardLayout,
+  frame: CameraFrame,
+  viewport: HitTestViewport,
+  options: HitTestOptions = {},
+): HitRect[] {
   if (!(viewport.widthPx > 0) || !(viewport.heightPx > 0)) return [];
 
   const minTargetPx = options.minTargetPx ?? MIN_HIT_TARGET_PX;

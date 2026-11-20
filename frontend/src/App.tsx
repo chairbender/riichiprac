@@ -14,6 +14,7 @@ import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
 import { RendererHost } from './renderers/RendererHost';
+import { HudLayer } from './renderers/hud/HudLayer';
 import {
   RENDERED3D_EXPOSED,
   probeCapabilities,
@@ -197,6 +198,13 @@ export const App = () => {
    * state is the belt to that braces.)
    */
   const [threeClosed, setThreeClosed] = useState(false);
+  /**
+   * 3D-H2: the shell (the full-screen element, so the HUD travels with the
+   * scene) and the fixed stage (made `inert` while a HUD sheet is open). Both
+   * are refs on the 3D branch's own elements; the 2D views never see them.
+   */
+  const threeShellRef = useRef<HTMLDivElement>(null);
+  const threeStageRef = useRef<HTMLElement>(null);
   /** The parsed WASM catalogue, so a repeat deal does not re-parse it. */
   const wasmCatalogRef = useRef<ScenarioOption[] | null>(null);
   /**
@@ -844,19 +852,14 @@ export const App = () => {
    * every seat riichi on the 3D table's copy only, so the per-seat felt sticks
    * and compass markers can be inspected on any hand. The store, the 2D views
    * and the answer never see it.
+   *
+   * `?preview=deal` (3D-12) was the deal-in's review aid. It is retired here
+   * (3D-H2): the HUD's top bar now mounts the real Next Scenario control over
+   * the scene, so a new deal — and therefore the bounded deal-in — is one tap
+   * away without a query flag (task note 2026-11-19T21:29).
    */
   const previewSticks =
     tableMount.kind === 'three' && tableMount.query.preview === 'sticks';
-
-  /*
-   * `?preview=deal` (3D-12) is the deal-in's review aid, in the same spirit as
-   * `?preview=sticks`: it adds a control that re-cuts the *current* hand so the
-   * bounded deal-in can be watched repeatedly before 3D-14 mounts the Next
-   * Scenario chrome over the scene. Only the revision moves; the game state,
-   * the answer and the 2D views never see it.
-   */
-  const previewDeal =
-    tableMount.kind === 'three' && tableMount.query.preview === 'deal';
 
   const threeSnapshot = useMemo(() => {
     if (!gameState || tableMount.kind !== 'three') return null;
@@ -1017,16 +1020,23 @@ export const App = () => {
       : null;
 
   /*
-   * The opt-in 3D view is the scene alone (user guidance 2026-11-18): no
-   * header, cards, action bar or hand dock are mounted, so the canvas owns the
-   * full window with no UI above or below it. The floating HUD that replaces
-   * the scene-only mount is the 3D HUD chain (3D-H1…H5), not this unit; 3D-14
-   * only makes the view a reversible member of the View control.
+   * The opt-in 3D view: the stage is the window and the UI floats over it
+   * (user guidance 2026-11-18, plan §2.1/§9 decision 7). The stage holds the
+   * scene and nothing in flow; `HudLayer` (3D-H2) is its fixed sibling and the
+   * only chrome mounted over the canvas — the top bar's next-hand and
+   * full-screen controls, plus the slots the HUD chain fills (3D-H3…H5). No
+   * header, cards, action bar or hand dock are rendered around the scene.
    */
   if (tableMount.kind === 'three') {
     return (
-      <div className="app-shell app-shell--3d">
-        <main className="table-3d">
+      <div className="app-shell app-shell--3d" ref={threeShellRef}>
+        <HudLayer
+          shellRef={threeShellRef}
+          stageRef={threeStageRef}
+          onNextScenario={handleNextScenario}
+          nextDisabled={isLoading}
+        />
+        <main className="table-3d" ref={threeStageRef}>
           {statusMessage && (
             <div className="status-msg" role="status">
               {statusMessage}
@@ -1053,18 +1063,6 @@ export const App = () => {
             <p className="status-msg" role="status">
               Loading table…
             </p>
-          )}
-
-          {/* 3D-12's review aid: `?renderer=3d&preview=deal` only. */}
-          {previewDeal && threeSnapshot && (
-            <button
-              type="button"
-              className="deal-preview"
-              onClick={bumpThreeRevision}
-              title="Review aid: re-cut the current hand to watch the bounded deal-in. The game state does not change."
-            >
-              Replay deal-in (preview)
-            </button>
           )}
         </main>
       </div>
