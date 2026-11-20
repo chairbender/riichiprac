@@ -1,0 +1,20 @@
+mine_replays review: 2250 item(s) from /home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense.2026-11/review-queue.jsonl
+  valid: 2250; invalid: 0; pending: 0; accepted: 2250; rejected: 0
+  progress: 2250/2250 dispositioned (100.0%); shown: 17 of 17 filtered
+  replay.ch8-defense.2026-11-039 accepted  kabe_one_chance          ch8.2  early   `2577m14p124599s67z` fold 9s          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-113 accepted  kabe_one_chance          ch8.2  early   `588m24679p399s126z` fold 9s          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-1178 accepted  kabe_one_chance          ch8.2  early   `4477788m288p3448s` fold 8m          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-1190 accepted  kabe_one_chance          ch8.2  mid     `37m1234557778p4s5z` fold 8p          mortal_mirror
+  replay.ch8-defense.2026-11-1527 accepted  kabe_one_chance          ch8.2  early   `3488m45678p4666s7z` fold 4s          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-163 accepted  kabe_one_chance          ch8.2  early   `13669m233358p448s` fold 2p          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-170 accepted  kabe_one_chance          ch8.2  mid     `78889m12266p2345s` fold 9m          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-1728 accepted  kabe_one_chance          ch8.2  early   `114445789m34446p` fold 3p          mortal_mirror
+  replay.ch8-defense.2026-11-190 accepted  kabe_one_chance          ch8.2  mid     `1457789m3477p5s56z` fold 1m          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-193 accepted  kabe_one_chance          ch8.2  early   `1227m4488p133678s` fold 1s          mortal_mirror
+  replay.ch8-defense.2026-11-200 accepted  kabe_one_chance          ch8.2  early   `2889m578p1445889s` fold 9s          mortal_mirror
+  replay.ch8-defense.2026-11-252 accepted  kabe_one_chance          ch8.2  early   `13367788m247p447s` fold 2p          mortal_mirror
+  replay.ch8-defense.2026-11-300 accepted  kabe_one_chance          ch8.2  early   `1356m123579p4667s` fold 1m          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-557 accepted  kabe_one_chance          ch8.2  mid     `1245679m2256p25s6z` fold 1m          mortal_mirror
+  replay.ch8-defense.2026-11-628 accepted  kabe_one_chance          ch8.2  early   `3668m2349p246788s` fold 9p          mortal_mirror
+  replay.ch8-defense.2026-11-783 accepted  kabe_one_chance          ch8.2  early   `135679m5p2456688s` fold 8s          mortal_mirror
+  replay.ch8-defense.2026-11-942 accepted  kabe_one_chance          ch8.2  mid     `33446779m2488p56s` fold 9m          mortal_sampling_sweep

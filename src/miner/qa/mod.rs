@@ -483,6 +483,7 @@ pub fn run_fixture_pipeline(root: &DataRoot, options: &QaOptions) -> Result<QaRe
         verdicts: None,
         note: Some("Q1 fixture auto-accept".to_string()),
         dry_run: false,
+        ..ReviewOptions::default()
     })?;
     let accepted = review.accepted;
     let mut held_out_accepted = 0_usize;
@@ -502,6 +503,7 @@ pub fn run_fixture_pipeline(root: &DataRoot, options: &QaOptions) -> Result<QaRe
             verdicts: None,
             note: Some("Q1 held-out QA auto-accept".to_string()),
             dry_run: false,
+            ..ReviewOptions::default()
         })?;
         held_out_accepted += held.accepted;
         rejected += held.rejected;

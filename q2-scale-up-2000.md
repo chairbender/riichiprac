@@ -105,6 +105,14 @@ pack used the new bulk/sampled flow:
 
 The human sample review and sign-off are recorded below when received.
 
+The Q2r2 review surface (CLI filters/progress/`--sample` plus the static browser
+view at `frontend/tools/review-queue/`) is documented in
+[`reviewing-scenario-packs.md`](reviewing-scenario-packs.md): it lists and
+narrows the queue by lesson/section/source/turn/status, shows the embedded
+report one row at a time, records append-only dispositions, and exports the same
+`riichiprac.review-verdicts` document that `mine_replays review --verdicts`
+applies. It does not replace the mechanical pass or the stratified sheet above.
+
 ## Pack
 
 `pack assemble --no-variants --unique-hands --min-bases-per-lesson 4

@@ -109,8 +109,8 @@ pub use select::quota::{QuotaCaps, QuotaConfig};
 pub use select::report::{DedupeStats, GateStats, HeldOutStats, SelectionReport};
 pub use select::review::{
     DISPOSITION_SCHEMA, DispositionVerdict, REVIEW_SCHEMA, REVIEW_VERSION, ReviewDisposition,
-    ReviewItem, ReviewOptions, ReviewQueue, ReviewReport, read_queue, review_queue,
-    write_dispositions,
+    ReviewFilter, ReviewItem, ReviewOptions, ReviewQueue, ReviewReport, ReviewStatus,
+    deterministic_sample, read_queue, review_queue, write_dispositions,
 };
 pub use select::run::{
     SelectionOptions, SelectionOutcome, SelectionPaths, latest_pack, run_selection, selection_paths,
