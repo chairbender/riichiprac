@@ -493,18 +493,22 @@ the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
 Scenario packs are separate from the app bundle and from the weights. The
 browser loads a small **same-origin** manifest
 (`/scenarios/manifest.json`) and then only the content-addressed pack body it
-needs; the miner never ships its corpus, databases or model weights. Two
-curated ch. 8 packs ship in `frontend/public/scenarios/`:
-`replay.ch8-defense.2026-11` (2,211 reviewed single-threat bases, 2.26 MB) and
+needs; the miner never ships its corpus, databases or model weights. Three
+curated packs ship in `frontend/public/scenarios/`:
+`replay.ch8-defense.2026-11` (2,211 reviewed single-threat bases, 2.26 MB),
 `replay.ch8-defense-multi-threat.2026-11` (764 reviewed 2+ opponent bases,
-591 KB), both with no variants. The Pages build therefore exercises the whole
-path, and the deploy workflow verifies every body's bytes/SHA-256 before upload
-(`scripts/check-pack-hosting.mjs`); the content gate
-`scripts/check-ch8-pack.mjs --allow-no-variants` proves every scenario is a
-ch. 8 lesson and the source/licence envelope is complete. Variants are disabled
-for both packs by product decision; variety comes from real reviewed positions,
-and a lesson with fewer than four real bases is left out of the pack rather than
-repeating one scenario. See [`q2-scale-up-2000.md`](q2-scale-up-2000.md) and
+591 KB) and `replay.ch7-riichi-dama.2026-11` (2,846 reviewed ch. 7 riichi/dama
+bases, 2.18 MB), all with no variants. The Pages build therefore exercises the
+whole path, and the deploy workflow verifies every body's bytes/SHA-256 before
+upload (`scripts/check-pack-hosting.mjs`); the content gate
+`scripts/check-ch8-pack.mjs --allow-no-variants` (add `--chapter ch7` for the
+ch. 7 pack) proves every scenario belongs to the chapter's lessons and the
+source/licence envelope is complete. `scripts/replay-coverage-report.mjs` prints
+which lessons the manifest makes replay-default. Variants are disabled for all
+three packs by product decision; variety comes from real reviewed positions,
+and a lesson with fewer than forty real bases is left out of the pack rather
+than repeating one scenario. See [`q3-ch7-riichi-dama-pack.md`](q3-ch7-riichi-dama-pack.md),
+[`q2-scale-up-2000.md`](q2-scale-up-2000.md) and
 [`q2-multi-threat.md`](q2-multi-threat.md).
 
 **Replay-first rollout (in progress).** Packs are not only extra drills. The

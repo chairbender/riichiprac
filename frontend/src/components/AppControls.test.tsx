@@ -41,6 +41,8 @@ function renderControls(
       onViewChange={vi.fn()}
       rendered3dExposed={options.rendered3dExposed ?? false}
       threeUnavailableReason={options.threeUnavailableReason ?? null}
+      preferReplay
+      onPreferReplayChange={vi.fn()}
       onNextScenario={vi.fn()}
       nextDisabled={false}
     />,
