@@ -844,6 +844,21 @@ row, and asserts that a rerun is fully cached.
 - `cargo clippy --all-targets --features miner -- -D warnings`,
   `cargo check --target wasm32-unknown-unknown`, `cargo test --lib` and
   `cargo tree --features miner` (no `libriichi`) stay clean.
+- Re-verified 2026-11-20 against the deployed `mortal_298k` checkpoint
+  (`afb91147…`): `cargo test --features miner --lib miner::label` passed all 56
+  label/cache tests, including `label_parity_with_evaluate_state_on_a_fixed_fixture`
+  ("label parity checked on 26 decisions") and
+  `a_real_checkpoint_labels_a_shard_and_the_rerun_is_cached`;
+  `cargo clippy --all-targets --features miner -- -D warnings`,
+  `cargo check --target wasm32-unknown-unknown` and
+  `cargo tree --features miner` (no `libriichi`) were clean. The full suites
+  were red only on the pre-existing wall-clock budget tests
+  (`test_pair_count_open_constraints_100_runs`,
+  `test_perfect_one_away_constraints_100_runs`,
+  `test_protorun_priority_constraints_100_runs`,
+  `test_chiitoitsu_dama_rejection_sampling_100_hands`); each passes when run
+  alone (2.8–4.6 s against its 5–10 s budget), so that is suite-load timing
+  sensitivity in the generators, not the labeler.
 
 Visual sign-off is not involved in L1.
 

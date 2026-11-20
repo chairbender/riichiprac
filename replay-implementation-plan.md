@@ -1588,6 +1588,39 @@ when they differ; tests.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-16, L1 branch).** Implemented in `src/miner/label/`.
+> `mod.rs` holds the `riichiprac.model-label` v1 document, `state_hash` (the
+> SHA-256 of the v4 observation, i.e. the model-visible position), `Labeler`
+> (checkpoint parsed and bound once per process) and the `label_decision` /
+> `label_state` cache protocol; `cache.rs` is the `model_labels` table
+> (migration 2); `run.rs` is `mine_replays label`.
+> `ActionEvaluation::q_value` is native-only — the browser path leaves it `None`
+> and skips it in JSON, so the shipped payload is byte-compatible.
+> `evaluate_state_with_q_values` runs the same legal mask, masked softmax and
+> Riichi second pass as `evaluate_state_named` and keeps each action's raw
+> logit. A label records `model`/`model_sha256`, optional `gamma`/`pts` (only
+> when supplied; `mortal_298k` carries neither), `q_units`/`value_units` =
+> `model_utility`, `expected_value`, the full `ranking` with per-action
+> `q_value`, the `q_values` map, `q_gap_top2`, `probability_margin`, and
+> `q_gap_safe` measured against the ch. 8 safety chart (`SafetyFacts`, not
+> Mortal's preference) with the `safe_action` recorded. Call mapping is through
+> `legal_actions`; the book half is compared with `compare_action_set`
+> (including `equivalent_tiles` and the Riichi second pass); the replay's
+> generator identity is stored only when it differs from the labeler's. No field
+> claims points. The cache is keyed by
+> `(state_hash, model_sha256, classifier_version, options_hash)`: finished rows
+> are skipped without a forward pass (including duplicate positions within one
+> run) and `failed` rows keep their error/attempt count and are retried. The
+> shard runs on every core by default, loads the weights once, evaluates outside
+> the database lock and merges per-file counters in file order. No `libriichi`
+> link. Tests: weights-gated top-1/ranking/probability/EV/Riichi-discard parity
+> with `evaluate_state`, softmax-over-Q consistency, gap arithmetic, safety-chart
+> source, book agreement/discrepancy, call mapping, cache skip/retry, and a full
+> rerun that evaluates nothing. The contract and acceptance evidence are in
+> `replay-miner-operations.md` ("Mortal labeler contract (L1)", "L1 acceptance
+> evidence"). L2 extends this label with the explicit agreement classification
+> and calibration hooks in its own block below.
+
 ##### L2 — Book agreement, contested states and calibration hooks
 
 **Goal.** Make book/Mortal disagreement explicit and prepare (but do not fake)
