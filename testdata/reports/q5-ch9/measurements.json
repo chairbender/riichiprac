@@ -1,0 +1,251 @@
+{
+  "assembly": {
+    "audit_clean": true,
+    "audited": true,
+    "bases": 629,
+    "bytes": 363061,
+    "drop_counts": {
+      "base_dropped": 129,
+      "duplicate_hand": 259,
+      "lesson_too_small": 27,
+      "variants_disabled": 1256
+    },
+    "max_scenarios": 2000,
+    "review": {
+      "accepted": 691,
+      "checked": true,
+      "items": 691,
+      "rejected": 0
+    },
+    "scenarios": 629,
+    "sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2",
+    "variants": 0
+  },
+  "body": {
+    "bytes": 363061,
+    "gzip_ratio": 0.0801,
+    "sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2"
+  },
+  "corpus": null,
+  "labels": null,
+  "manifest_entry": {
+    "book_sections": [
+      "ch9.3",
+      "ch9.4"
+    ],
+    "bytes": 363061,
+    "data_commercial_use": false,
+    "id": "replay.ch9-seating-calls.2026-11",
+    "lesson_counts": {
+      "ankan_decision": 62,
+      "wind_discard_order": 567
+    },
+    "lesson_ids": [
+      "ankan_decision",
+      "wind_discard_order"
+    ],
+    "licence": "CC-BY-4.0",
+    "path": "replay.ch9-seating-calls.2026-11-3deda6140a90.json.gz",
+    "requires_model": false,
+    "scenario_count": 629,
+    "sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2"
+  },
+  "pack": {
+    "adjacent_same_replay_bases": 0,
+    "agents": [
+      "akochan",
+      "efficiency-safety-v1",
+      "isolated-first-v1",
+      "mortal-298k"
+    ],
+    "book_sections": [
+      "ch9.3",
+      "ch9.4"
+    ],
+    "corpus_id": "c8-smoke-2026-11",
+    "data_commercial_use": false,
+    "duplicate_hand_strings": 0,
+    "largest_hand_share": 0.00159,
+    "lessons": {
+      "ankan_decision": 62,
+      "wind_discard_order": 567
+    },
+    "licence": "CC-BY-4.0",
+    "replays": 524,
+    "scenarios": 629,
+    "unique_hand_strings": 629
+  },
+  "pack_id": "replay.ch9-seating-calls.2026-11",
+  "review": {
+    "accepted": 691,
+    "invalid": 0,
+    "items": 691,
+    "pending": 0,
+    "rejected": 0,
+    "sample_report": "testdata/reports/q5-ch9/review-sample.json",
+    "sampled": 220,
+    "valid": 691
+  },
+  "schema": "riichiprac.pack-measurements",
+  "selection": {
+    "candidates_valid": 798,
+    "cap_relaxed": 0,
+    "decisions_labelled": 113094,
+    "decisions_seen": 787052,
+    "funnel": {
+      "counts": {
+        "book_matches": 113094,
+        "decision_points": 787052,
+        "games_parsed": 1542,
+        "games_requested": 1542,
+        "games_valid": 1542,
+        "gate_passed": 798,
+        "held_out": 60,
+        "mortal_labelled": 113094,
+        "packed": 0,
+        "reconstructed": 787052,
+        "selected": 691,
+        "trigger_hits": 646776
+      },
+      "rejections": {
+        "no_label": 673958,
+        "out_of_scope": 65345,
+        "scope_not_stable_book": 46951
+      }
+    },
+    "held_out": 60,
+    "lesson_counts": [
+      {
+        "candidates": 738,
+        "family": "book",
+        "quota": 900,
+        "selected": 390,
+        "shortfall": "exhausted"
+      },
+      {
+        "candidates": 0,
+        "family": "contested",
+        "quota": 150,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 0,
+        "family": "mortal_best",
+        "quota": 300,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 0,
+        "family": "mistake",
+        "quota": 300,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 50,
+        "family": "close_call",
+        "quota": 300,
+        "selected": 35,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 5,
+        "family": "speed_value",
+        "quota": 240,
+        "selected": 5,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 738,
+        "family": "coverage",
+        "quota": 450,
+        "selected": 195,
+        "shortfall": "exhausted"
+      },
+      {
+        "candidates": 2,
+        "family": "table_read",
+        "quota": 210,
+        "selected": 2,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 505,
+        "family": "placement",
+        "quota": 150,
+        "selected": 64,
+        "shortfall": "exhausted"
+      },
+      {
+        "candidates": 0,
+        "family": "multi_step",
+        "quota": 0,
+        "selected": 0
+      }
+    ],
+    "notes": [
+      "games_generated is 0: selection consumes an existing corpus",
+      "packed is 0: P1a/P1b assemble, audit and ship the pack",
+      "a pack may not ship until every review-queue item has a disposition (P1b enforces it)",
+      "135 selection attempt(s) were skipped because a source replay hit its per-replay cap",
+      "scope: sections=ch9; lessons=wind_discard_order,ankan_decision,shouminkan_decision,daiminkan_decision,meld_or_not; corpus=mortal_mirror,mortal_sampling_sweep,akochan_tactics,akochan_vs_mortal,heterogeneous_table; stable book labels only",
+      "review queue: 691 item(s); held-out QA: 60 item(s)"
+    ],
+    "relaxed_fill": 0,
+    "replay_families": [
+      {
+        "bucket": "akochan_tactics",
+        "candidates": 3,
+        "cap_reached": false,
+        "selected": 3
+      },
+      {
+        "bucket": "akochan_vs_mortal",
+        "candidates": 6,
+        "cap_reached": false,
+        "selected": 5
+      },
+      {
+        "bucket": "heterogeneous_table",
+        "candidates": 5,
+        "cap_reached": false,
+        "selected": 5
+      },
+      {
+        "bucket": "mortal_mirror",
+        "candidates": 373,
+        "cap_reached": false,
+        "selected": 362
+      },
+      {
+        "bucket": "mortal_sampling_sweep",
+        "candidates": 351,
+        "cap_reached": false,
+        "selected": 316
+      }
+    ],
+    "replays_failed": 0,
+    "replays_walked": 1542,
+    "sections": [
+      {
+        "bucket": "ch9.3",
+        "candidates": 94,
+        "cap": 2850,
+        "cap_reached": false,
+        "selected": 91
+      },
+      {
+        "bucket": "ch9.4",
+        "candidates": 644,
+        "cap": 2850,
+        "cap_reached": false,
+        "selected": 600
+      }
+    ],
+    "selected": 691,
+    "size_requested": 3000
+  },
+  "version": 1
+}

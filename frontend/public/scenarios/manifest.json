@@ -110,6 +110,28 @@
       "licence": "CC-BY-4.0",
       "requires_model": false,
       "data_commercial_use": false
+    },
+    {
+      "id": "replay.ch9-seating-calls.2026-11",
+      "path": "replay.ch9-seating-calls.2026-11-3deda6140a90.json.gz",
+      "sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2",
+      "bytes": 363061,
+      "scenario_count": 629,
+      "lesson_ids": [
+        "ankan_decision",
+        "wind_discard_order"
+      ],
+      "lesson_counts": {
+        "ankan_decision": 62,
+        "wind_discard_order": 567
+      },
+      "book_sections": [
+        "ch9.3",
+        "ch9.4"
+      ],
+      "licence": "CC-BY-4.0",
+      "requires_model": false,
+      "data_commercial_use": false
     }
   ]
 }

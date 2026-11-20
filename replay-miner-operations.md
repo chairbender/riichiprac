@@ -1118,8 +1118,9 @@ additions make a ~2,000-candidate queue reviewable:
 
 - **Bulk verdicts.** `scripts/review-q2-queue.py --verdicts-out FILE` applies the
   mechanical chapter rules (`--chapter ch8` by default, `ch7` for the
-  riichi/dama queue, where the ready-hand rejection does not apply, or `ch5` for
-  the value lessons, whose shipped shapes are 1-away or slower) to the whole
+  riichi/dama queue, where the ready-hand rejection does not apply, `ch5` for
+  the value lessons, whose shipped shapes are 1-away or slower, or `ch9` for the
+  seating/kan pack, where the ready-hand rule is lesson-scoped) to the whole
   queue and writes one
   `riichiprac.review-verdicts` v1 document:
   `{"schema": "riichiprac.review-verdicts", "version": 1, "note": "...",
@@ -1144,8 +1145,14 @@ keeps it, because a riichi/dama decision is tenpai by definition. The ch. 5
 scope rejects it too: `honitsu_decision` needs 1-2 shanten and refuses a discard
 into tenpai, `chiitoi_vs_toitoi` is exactly 1-away, `pinfu_head` needs two or
 more shanten, and the only tenpai ch. 5 lesson (`sanshoku_pursuit`) is below the
-floor and out of the pack's scope. The human sample is the evidence that the
-remaining positions teach.
+floor and out of the pack's scope. The ch. 9 scope is **lesson-scoped**: only
+`wind_discard_order` rejects a ready hand (its shipped shape is a closed hand at
+1-shanten or worse), because the kan/call lessons are not offense drills —
+`daiminkan_decision`'s book situations are explicitly "ready on a good wait" or
+"ready but outside the three situations", `shouminkan_decision` (kakan) applies
+at 1-away or better, and `ankan_decision`/`meld_or_not` argue from the hand's
+block shape and cheapness rather than its distance from tenpai. The human
+sample is the evidence that the remaining positions teach.
 
 #### Filtering, progress and the review surface (Q2r2)
 
@@ -2065,6 +2072,25 @@ hand is out of shape for all three shipped lessons), 1,745/1,745 were accepted,
 and a 248-row stratified sample includes all 97 `chiitoi_vs_toitoi` bases.
 Details: [`q4-ch5-value-pack.md`](q4-ch5-value-pack.md), evidence:
 [`testdata/reports/q4-ch5/`](testdata/reports/q4-ch5/); coverage:
+`node scripts/replay-coverage-report.mjs`.
+
+**Ch. 9 seating/call pack (Q5, 2026-11-20).** The same classifier-v3 corpus
+produced `replay.ch9-seating-calls.2026-11`: `select --section ch9 --lesson
+wind_discard_order,ankan_decision,shouminkan_decision,daiminkan_decision,meld_or_not`
+returned 691 reviewed bases from 798 gate passes (629 shipped after
+`--unique-hands`), 363,061 bytes, 524 source replays, 629 unique hands. Two
+lessons clear the 40-base floor (`wind_discard_order` 567,
+`ankan_decision` 62); the thin kan/call lessons were measured, reviewed and then
+dropped by `--min-bases-per-lesson 40` (`shouminkan_decision` 19,
+`daiminkan_decision` 8, `meld_or_not` 0 stable labels; all corpus growth C9).
+The selection ran 56 min on 14 workers; it uses `--held-out-share 0.02` because
+a 5 % split of this small chapter would have withheld a fifth of the supply.
+The mechanical review takes `--chapter ch9`, whose ready-hand rule is
+lesson-scoped to `wind_discard_order` (the kan/call lessons are reactions where
+tenpai is intrinsic); 691/691 were accepted, and a 220-row stratified sample
+includes all 91 kan/call bases. Details:
+[`q5-ch9-seating-calls-pack.md`](q5-ch9-seating-calls-pack.md), evidence:
+[`testdata/reports/q5-ch9/`](testdata/reports/q5-ch9/); coverage:
 `node scripts/replay-coverage-report.mjs`.
 
 **Replay-first rollout.** The next product phase extends packs to the remaining

@@ -21,6 +21,15 @@ The rules are chapter-scoped (`--chapter`):
   shanten), so a ready hand is out of shape and rejected. `sanshoku_pursuit`
   is the one ch. 5 tenpai lesson, but it is far below the coverage floor and is
   not in the pack's lesson scope.
+* `ch9` (Q5) — the seating and kan/call lessons. The ready-hand rule is
+  **lesson-scoped** here, because these are not offense or defense drills:
+  `wind_discard_order` is the only slow-hand shape (its recogniser requires a
+  closed hand at 1-shanten or worse), so a ready hand is out of shape. The four
+  kan/call lessons keep ready hands: `daiminkan_decision`'s book situations are
+  explicitly "ready on a good wait" or "ready but outside the three
+  situations", `shouminkan_decision` (kakan) is 1-away **or better**, and
+  `ankan_decision`/`meld_or_not` are block-shape and cheap-and-slow rules where
+  the hand's distance from tenpai is the argument, not a reason to reject it.
 
 For a large queue (Q2r2), `--verdicts-out FILE` writes one
 `riichiprac.review-verdicts` document that
@@ -58,12 +67,20 @@ CH5_LESSONS = {
     "chiitoi_vs_toitoi",
     "sanshoku_pursuit",
 }
+CH9_LESSONS = {
+    "meld_or_not",
+    "daiminkan_decision",
+    "ankan_decision",
+    "shouminkan_decision",
+    "wind_discard_order",
+}
 
 SCOPES = {
     "ch5": {
         "prefix": "ch5.",
         "lessons": CH5_LESSONS,
-        "reject_ready_hand": True,
+        # Every shipped ch5 shape is 1-away or slower.
+        "ready_hand_lessons": CH5_LESSONS,
         "note": (
             "q4 mechanical review: stable ch5 book label, legal answer, "
             "unique visible state, clean walk; ready hands are out of shape"
@@ -72,7 +89,8 @@ SCOPES = {
     "ch7": {
         "prefix": "ch7.",
         "lessons": CH7_LESSONS,
-        "reject_ready_hand": False,
+        # A riichi/dama decision is tenpai by definition.
+        "ready_hand_lessons": set(),
         "note": (
             "q3 mechanical review: stable ch7 book label, legal answer, "
             "unique visible state, clean walk"
@@ -81,10 +99,24 @@ SCOPES = {
     "ch8": {
         "prefix": "ch8.",
         "lessons": CH8_LESSONS,
-        "reject_ready_hand": True,
+        "ready_hand_lessons": CH8_LESSONS,
         "note": (
             "q2r2 mechanical review: stable ch8 book label, legal answer, "
             "unique visible state, clean walk"
+        ),
+    },
+    "ch9": {
+        "prefix": "ch9.",
+        "lessons": CH9_LESSONS,
+        # Only the seating lesson is a slow-hand discard. The kan/call lessons
+        # are reactions where tenpai is intrinsic (a daiminkan's book situation
+        # is "ready on a good wait"; kakan is 1-away or better), so their ready
+        # hands are in shape.
+        "ready_hand_lessons": {"wind_discard_order"},
+        "note": (
+            "q5 mechanical review: stable ch9 book label, legal answer, "
+            "unique visible state, clean walk; a ready hand is out of shape "
+            "for wind_discard_order only"
         ),
     },
 }
@@ -94,7 +126,7 @@ def main(path, verdicts_out=None, note=None, chapter="ch8"):
     scope = SCOPES[chapter]
     lessons_allowed = scope["lessons"]
     section_prefix = scope["prefix"]
-    reject_ready_hand = scope["reject_ready_hand"]
+    ready_hand_lessons = scope["ready_hand_lessons"]
 
     items = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
     selected = [item for item in items if not item.get("held_out")]
@@ -132,11 +164,11 @@ def main(path, verdicts_out=None, note=None, chapter="ch8"):
         if not verdict.get("is_correct"):
             problems.append("report_answer_not_legal")
         if (
-            reject_ready_hand
+            lesson in ready_hand_lessons
             and table.get("shanten") is not None
             and table.get("shanten") == 0
         ):
-            # A ready hand is an offense/riichi drill, not a defense drill.
+            # A ready hand is an offense/riichi drill, not this lesson's shape.
             problems.append("ready_hand")
         if item.get("exact_hash") in seen_exact:
             problems.append("duplicate_exact")

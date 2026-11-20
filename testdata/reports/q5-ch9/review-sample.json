@@ -1,0 +1,922 @@
+{
+  "held_out": 0,
+  "ids": [
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-001",
+      "why": "rare_lesson:daiminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-002",
+      "why": "rare_lesson:daiminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-003",
+      "why": "rare_lesson:daiminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-004",
+      "why": "rare_lesson:daiminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-005",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-006",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-007",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-008",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-009",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-010",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-011",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-012",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-013",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-015",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-016",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-018",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-020",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-022",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-026",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-031",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-033",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-034",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-035",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-039",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-044",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-045",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-046",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-047",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-049",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-050",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-052",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-055",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-056",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-057",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-058",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-059",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-062",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-064",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-065",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-068",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-072",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-075",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-077",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-082",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-086",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-087",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-088",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-091",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-100",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-101",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-104",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-105",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-110",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-115",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-118",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-120",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-122",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-123",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-124",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-125",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-130",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-132",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-134",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-139",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-140",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-141",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-143",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-147",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-149",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-151",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-160",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-166",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-180",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-181",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-183",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-187",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-193",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-195",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-200",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-207",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-211",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-218",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-219",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-224",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-230",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-246",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-248",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-249",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-250",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-253",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-256",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-258",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-260",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-263",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-270",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-272",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-278",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-280",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-286",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-287",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-301",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-306",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-307",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-310",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-311",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-313",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-315",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-316",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-317",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-319",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-326",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-328",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-330",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-352",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-353",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-366",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-369",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-376",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-390",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-391",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-392",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-399",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-400",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-402",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-403",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-407",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-411",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-415",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-417",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-418",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-419",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-420",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-424",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-426",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-427",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-428",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-429",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-430",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-431",
+      "why": "rare_lesson:daiminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-432",
+      "why": "rare_lesson:daiminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-433",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-434",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-436",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-437",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-444",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-445",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-446",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-449",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-455",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-458",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-459",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-460",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-466",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-467",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-473",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-485",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-486",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-489",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-490",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-491",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-492",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-497",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-498",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-499",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-503",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-511",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-514",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-519",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-520",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-522",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-524",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-525",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-527",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-528",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-530",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-537",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-538",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-542",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-549",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-552",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-553",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-555",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-556",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-559",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-561",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-566",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-567",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-570",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-575",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-578",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-579",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-580",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-591",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-600",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-608",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-610",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-611",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-615",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-623",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-625",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-626",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-627",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-628",
+      "why": "rare_lesson:daiminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-629",
+      "why": "rare_lesson:daiminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-630",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-635",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-636",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-637",
+      "why": "rare_lesson:ankan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-641",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-646",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-654",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-657",
+      "why": "rare_lesson:shouminkan_decision"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-660",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-661",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-666",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-674",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-676",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-684",
+      "why": "lesson_guarantee:wind_discard_order"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-690",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch9-seating-calls.2026-11-691",
+      "why": "rare_lesson:ankan_decision"
+    }
+  ],
+  "items": 691,
+  "lessons": {
+    "ankan_decision": 64,
+    "daiminkan_decision": 8,
+    "shouminkan_decision": 19,
+    "wind_discard_order": 600
+  },
+  "queue": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch9-seating-calls.2026-11/review-queue.jsonl",
+  "replay_families": {
+    "akochan_tactics": 3,
+    "akochan_vs_mortal": 5,
+    "heterogeneous_table": 5,
+    "mortal_mirror": 362,
+    "mortal_sampling_sweep": 316
+  },
+  "sampled": 220,
+  "sampled_lessons": {
+    "ankan_decision": 64,
+    "daiminkan_decision": 8,
+    "shouminkan_decision": 19,
+    "wind_discard_order": 129
+  },
+  "sampled_replay_families": {
+    "akochan_tactics": 3,
+    "akochan_vs_mortal": 5,
+    "heterogeneous_table": 5,
+    "mortal_mirror": 104,
+    "mortal_sampling_sweep": 103
+  },
+  "schema": "riichiprac.q2r2-review-sample",
+  "sections": {
+    "ch9.3": 91,
+    "ch9.4": 600
+  },
+  "seed": "q5-ch9-2026-11",
+  "selected": 691,
+  "version": 1
+}
