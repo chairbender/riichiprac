@@ -39,7 +39,8 @@ This is a product-level inversion of the current picker, not a flag:
   - `replay.ch8-defense-multi-threat.2026-11` — 764 bases, `defense_multi_threat`.
 - The picker merges one opt-in row per pack/lesson (`replay:<pack>:<lesson>`);
   `ALL_SCENARIOS` excludes pack rows; replay bodies are fetched lazily and
-  verified/cached in IndexedDB.
+  verified/cached in IndexedDB. (After RF2 a covered lesson's replay row is the
+  default pool entry instead; uncovered rows stay opt-in.)
 - The miner/selector can already scope by `--section` and `--lesson`, and the
   classifier covers most lesson families.
 - **Four lessons have no classifier at all** and therefore no mining path today:
@@ -118,6 +119,40 @@ classifier-ready but thin/zero lessons are corpus-growth targets (`C9`).
   source filter: **Replay (default) · Generated · Both**.
 - For a covered lesson, both rows exist; the generated row is labelled
   "generated" and sits after the replay row, or behind the filter.
+
+**Status (RF2, 2026-11-19).** The source model is implemented in
+`frontend/src/scenarios.ts`: `lessonReplayCoverage()` reads the manifest's
+`lesson_counts` without a body, and `allScenarioIds()` / `selectionPool()` swap
+a covered lesson's generated id for its replay row (`replay:<pack>:<lesson>`)
+when `preferReplay` is on and the count reaches `MIN_REPLAY_BASES` (40, with a
+per-call override). `preferReplay` is in the settings store, default on and
+persisted under `riichiprac.settings`. Everything else is unchanged: an
+uncovered lesson, a missing/empty manifest, or `preferReplay: false` produces
+the generated pool exactly as before, and generated rows stay pickable by name.
+The pool is defined over the generated catalogue, so a pack-only lesson (no
+generated sibling) is not dealt from `all` — it has no generated fallback. A
+deal snapshots the manifest when it starts, so a launch's first hand is still
+generated until RF4 fetches a section body. A replay body that fails (offline,
+stale cache, integrity) falls back to the same lesson's generated drill for that
+hand and leaves the reason in the picker's pack note.
+
+**Status (RF3, 2026-11-19).** The picker now carries a **Source** filter with
+three states — Replay, Generated, Both — plus the per-row source labels. A
+lesson at or above the floor lists its replay row first and its generated row
+second, marked **GENERATED** as the opt-in alternative; a lesson below the floor
+keeps the pre-RF2 order (generated, then its opt-in replay row) and a lesson
+with no replay row is always listed as generated, even under the Replay filter,
+so it stays reachable. Filtering changes which rows are listed, not the ticks
+already made. The Generated filter is also the user-facing form of
+`preferReplay`: it persists the setting as off and makes `all` deal generated
+ids, while Replay and Both turn it back on. `mergePackLessons` now copies each
+row's reviewed-base count onto `pack.bases`, and `defaultScenarioIds` expands
+`all` from the merged catalogue so the picker's ticks match what the deal will
+actually draw (a covered lesson stands for its replay row). The picker's pack
+note explains the model instead of calling replay rows opt-in. Tests cover the
+filter's DOM/ARIA, row order and badges, tab order into the filter, the filter
+and ticks surviving a selection change, and both row kinds still dealing their
+own lesson.
 
 ### Per-lesson counts in the manifest
 
@@ -227,6 +262,8 @@ includes its recogniser tests and a label-yield pass.
   (default on); generated rows remain selectable.
 - Accept: unit tests for covered/uncovered/forced-generated/offline; no change
   to the generated-only behaviour when no manifest exists.
+- Landed 2026-11-19: see "Status (RF2)" under *Source tiers*; the picker note
+  still describes the pre-filter behaviour until RF3.
 
 **Q3 — ch7 riichi/dama pack** (`riichiprac`, worktree)
 - Lessons: `riichi_judgement`, **`chiitoitsu_riichi_vs_dama` (from B4.1)**,
@@ -240,6 +277,7 @@ includes its recogniser tests and a label-yield pass.
 - Replay/Generated/Both filter, per-row source labels, help text; generated
   rows secondary for covered lessons.
 - Accept: vitest DOM/ARIA assertions; keyboard/focus order; selection persists.
+- Landed 2026-11-19: see "Status (RF3)" under *Source tiers*.
 
 ### Wave 2 — more packs + first-deal
 

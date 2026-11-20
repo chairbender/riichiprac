@@ -122,13 +122,36 @@ pool never fires a burst of generations or Mortal forward passes.
 
 ### Replay packs
 
-Published replay packs add an opt-in lesson row next to the lesson it teaches,
-marked **PACK** and labelled `(replay)`. Picking one deals a real audited
-position shipped in the pack instead of generating a hand; it is laid out and
-graded through the normal table. Replay entries are deliberately outside **All
-scenarios (random)**, so the first page load only fetches the small same-origin
-pack manifest (`/scenarios/manifest.json`); a pack body downloads when you pick
-one of its lessons and is then cached in IndexedDB, verified against the
+Published replay packs ship real audited positions. The picker merges one
+**PACK** row per pack lesson, labelled `(replay)`, next to the generated lesson
+it teaches. Picking one deals a real audited position shipped in the pack
+instead of generating a hand; it is laid out and graded through the normal
+table.
+
+Replay is the **default source** for a lesson whose packs reach the coverage
+floor (40 reviewed bases, read from the manifest's `lesson_counts`). Such a
+lesson lists its replay row first and keeps its generated drill as a secondary
+**GENERATED** row; **All scenarios (random)** draws the replay row. A lesson
+without enough coverage keeps the generated default, and its replay row, if a
+pack ships one, stays opt-in beside it.
+
+The picker's **Source** filter switches between **Replay**, **Generated** and
+**Both**:
+
+* **Both** lists every row — replay first where covered, generated first
+  elsewhere;
+* **Replay** lists replay rows and keeps a generated row only for a lesson that
+  has no replay row, so nothing becomes unreachable;
+* **Generated** lists generated drills only and makes the default pool generated
+  too. It is the explicit opt-in for generated drills and persists as the
+  `preferReplay` setting; choosing Replay or Both turns the replay default back
+  on.
+
+Filtering changes which rows are listed, not the ticks already made: a selected
+row keeps its place in the pool while another filter hides it. The first page
+load only fetches the small same-origin pack manifest
+(`/scenarios/manifest.json`); a pack body downloads when a covered deal or a
+picked replay row needs it and is then cached in IndexedDB, verified against the
 manifest's SHA-256 first. Within a page session a replay lesson cycles through
 its scenarios without replacement (generated lessons use the same session
 guard): the same hand does not repeat until every unseen sibling for that pool
@@ -487,11 +510,14 @@ repeating one scenario. See [`q2-scale-up-2000.md`](q2-scale-up-2000.md) and
 **Replay-first rollout (in progress).** Packs are not only extra drills. The
 product target is that replay scenarios become the **default and prominent**
 source for every lesson with enough reviewed coverage, while generated lessons
-remain available as the opt-in alternative. A lesson without enough replay bases
-keeps the generated default, so the app never degrades; the picker will gain a
-Replay / Generated / Both source filter. The coverage table, the four lessons
-that still need classifiers, the per-section pack plan and the task sequence are
-in [`replay-first-rollout.md`](replay-first-rollout.md).
+remain available as the explicit alternative. A lesson without enough replay
+bases keeps the generated default, so the app never degrades. The picker's
+Replay / Generated / Both source filter now implements the opt-in: replay rows
+lead where covered, generated rows are still listed and selectable, and the
+**Generated** filter switches the default pool to generated drills. The coverage
+table, the four lessons that still need classifiers, the per-section pack plan
+and the task sequence are in
+[`replay-first-rollout.md`](replay-first-rollout.md).
 Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and

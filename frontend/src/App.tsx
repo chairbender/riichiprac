@@ -14,8 +14,14 @@ import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
 import { RendererHost } from './renderers/RendererHost';
+import {
+  RENDERED3D_EXPOSED,
+  probeCapabilities,
+  threeViewUnavailableReason,
+} from './renderers/capabilities';
 import { resolveTableMount } from './renderers/resolveTableMount';
 import { snapshotFromGameState, withPreviewRiichi } from './renderers/snapshot';
+import { exitFullscreenIfActive } from './fullscreen';
 import {
   DEFAULT_HOTSEAT_OPTIONS,
   HOTSEAT_SCENARIO_ID,
@@ -171,6 +177,13 @@ export const App = () => {
    */
   const tableView = useSettingsStore((state) => state.view);
   const setTableView = useSettingsStore((state) => state.setView);
+  /**
+   * Replay-first source preference (RF2), surfaced by the picker's source
+   * filter (RF3). `loadPuzzle` snapshots it when a deal starts, so a change
+   * applies to the next hand and can never re-run the first-hand effect.
+   */
+  const preferReplay = useSettingsStore((state) => state.preferReplay);
+  const setPreferReplay = useSettingsStore((state) => state.setPreferReplay);
   const [exportDescription, setExportDescription] = useState('');
   /**
    * 3D-11: the notice the 3D host handed back when it degraded. Keeping it in
@@ -292,6 +305,20 @@ export const App = () => {
       let effectiveAgreement = requireMortalAgreement;
 
       /**
+       * Replay-first inputs, snapshotted when the deal starts.
+       *
+       * A pack manifest that arrives mid-deal therefore applies to the next
+       * hand, not this one, and the first deal of a fresh launch stays generated
+       * (RF4 owns fetching a section body for it). Reading the setting here
+       * instead of through a hook keeps `loadPuzzle` stable, so changing it can
+       * never re-run the first-hand effect.
+       */
+      const replayDefaults = {
+        manifest: packManifestRef.current,
+        preferReplay: useSettingsStore.getState().preferReplay,
+      };
+
+      /**
        * Install a freshly generated hand and give it its own history entry. A
        * superseded load must neither replace the table nor touch the history, so
        * both are gated on still being the newest request.
@@ -319,30 +346,38 @@ export const App = () => {
           }
         }
 
+        // The deal sees the same manifest snapshot the pool was built from, so
+        // a manifest that arrives mid-deal cannot add a row the pool never
+        // considered (or vice versa).
         const options = mergePackLessons(
           wasmCatalogRef.current ?? FALLBACK_SCENARIOS,
-          packManifestRef.current,
+          replayDefaults.manifest,
         );
-        const category =
+        // Replay-first: a lesson whose shipped pack covers it is drawn from
+        // replay, every other lesson keeps its generated drill. With no
+        // manifest this is exactly the generated pool as before.
+        let category =
           forced?.category ??
           pickUnseen(
             selectionPool(
               options,
               scenarioSelection,
               useGameStore.getState().aiStatus === 'ready',
+              replayDefaults,
             ),
             (entry) => entry.id,
             seenCategoriesRef.current,
           ).value.id;
-        const option = options.find((entry) => entry.id === category) ?? null;
+        let option = options.find((entry) => entry.id === category) ?? null;
 
         // A replay lesson ships its own complete state, so it is laid out with
         // the same `loadFromJson` path as an imported position: verified bytes
         // only, no generation and no Mortal-agreement sampling.
         if (option?.pack) {
+          const replayPack = option.pack;
           setPackLoading(true);
           try {
-            const seenKey = `${option.pack.packId}:${option.pack.lessonId}`;
+            const seenKey = `${replayPack.packId}:${replayPack.lessonId}`;
             let seen = seenPackScenariosRef.current.get(seenKey);
             if (!seen) {
               seen = new Set<string>();
@@ -350,18 +385,35 @@ export const App = () => {
             }
             const picked = await loadReplayScenario(
               packManifestRef.current,
-              option.pack,
+              replayPack,
               seen,
             );
             if (requestId !== loadRequestId.current) return;
+            setPackError(null);
             finish(() => loadFromJson(JSON.stringify(picked.scenario.state)));
+            return;
+          } catch (err) {
+            if (requestId !== loadRequestId.current) return;
+            // A replay body can fail (offline, a stale cache, an integrity
+            // miss). Replay-first must never strand the deal on it: deal the
+            // same lesson's generated drill for this hand and leave the note in
+            // the picker explaining why. Only a pack-only lesson (no generated
+            // sibling) surfaces the error.
+            const generated = options.find(
+              (entry) => !entry.pack && entry.id === replayPack.lessonId,
+            );
+            if (!generated) throw err;
+            setPackError(
+              `Replay pack "${replayPack.packId}" could not be delivered; dealing the generated lesson instead.`,
+            );
+            category = generated.id;
+            option = generated;
           } finally {
             // A newer deal owns the status line; it set its own flag.
             if (requestId === loadRequestId.current) {
               setPackLoading(false);
             }
           }
-          return;
         }
 
         const requiresAi = option?.requires_ai === true;
@@ -622,9 +674,13 @@ export const App = () => {
   const handleViewChange = (event: ChangeEvent<HTMLSelectElement>) => {
     // Redraw only: the persisted setting changes how the same hand is drawn,
     // nothing about the hand or its grade.
-    if (isTableView(event.target.value)) {
-      setTableView(event.target.value);
-    }
+    const next = event.target.value;
+    if (!isTableView(next)) return;
+    setTableView(next);
+    // 3D-14: an explicit 3D choice is a fresh request, so it clears the
+    // session close a degrade left behind instead of being silently ignored.
+    // The host still refuses to *auto*-retry a degraded tier (3D-11).
+    if (next === 'rendered3d') setThreeClosed(false);
   };
 
   const showVerdict = useCallback(() => {
@@ -700,15 +756,49 @@ export const App = () => {
     decision?.kind === 'react_to_discard' ? decision.from : null;
 
   /*
-   * The 3D table is opt-in through `?renderer=3d`; nothing else selects it
-   * (decision D13, exposure decision 1). The resolver owns the precedence —
-   * explicit query, then stored view, then the store's default — so App only
-   * mounts what it says.
+   * 3D-14: whether this browser can run the 3D table. The probe runs only when
+   * its answer can change what is drawn or offered — a stored 3D choice, or the
+   * View control once 3D-15 exposes the option — so the standard 2D views never
+   * create a WebGL2 context. The probe releases that context immediately
+   * (3D-01). `null` means "can run"; otherwise this is the reason the View
+   * control shows.
+   */
+  const threeUnavailableReason = useMemo(() => {
+    if (!RENDERED3D_EXPOSED && tableView !== 'rendered3d') return null;
+    return threeViewUnavailableReason(probeCapabilities());
+  }, [tableView]);
+
+  /*
+   * The 3D table is opt-in: an explicit `?renderer=3d` link or a stored 3D
+   * choice selects it, never the default (decision D13, exposure decision 1).
+   * The resolver owns the precedence — explicit query, then stored view, then
+   * the store's default — so App only mounts what it says.
+   *
+   * A stored 3D choice mounts only while it can run: after a degrade
+   * (`threeClosed`, 3D-11) or without WebGL2 the resolver returns the default
+   * 2D view, and the store keeps the user's choice untouched (3D-14).
    */
   const tableMount = resolveTableMount(
     threeClosed ? '' : window.location.search,
     tableView,
+    {
+      allowStoredThreeView: !threeClosed && threeUnavailableReason === null,
+    },
   );
+
+  /*
+   * 3D-14: the full-window stage is reversible. The FullscreenButton stays
+   * unmounted until the HUD shell lands (3D-H2), but the stage may already be
+   * in full screen — from that toggle, a future HUD control, or the browser
+   * restoring a session. Leaving the 3D view therefore always leaves full
+   * screen, so the user is never stranded in a full-screen 2D layout.
+   */
+  const showingThree = tableMount.kind === 'three';
+  const wasShowingThree = useRef(false);
+  useEffect(() => {
+    if (wasShowingThree.current && !showingThree) exitFullscreenIfActive();
+    wasShowingThree.current = showingThree;
+  }, [showingThree]);
 
   /*
    * 3D-11: the scene closed itself because even `compat` could not hold 30 fps.
@@ -738,13 +828,16 @@ export const App = () => {
    */
   const threeRevisionRef = useRef(0);
   const [threeRevision, setThreeRevision] = useState(0);
+  const bumpThreeRevision = useCallback(() => {
+    threeRevisionRef.current += 1;
+    setThreeRevision(threeRevisionRef.current);
+  }, []);
   useEffect(() => {
     // Only the opt-in 3D view pays for this: the standard views never read a
     // revision, so they must not re-render because of one.
     if (!gameState || tableMount.kind !== 'three') return;
-    threeRevisionRef.current += 1;
-    setThreeRevision(threeRevisionRef.current);
-  }, [gameState, tableMount.kind]);
+    bumpThreeRevision();
+  }, [gameState, tableMount.kind, bumpThreeRevision]);
 
   /*
    * `?preview=sticks` (3D-09) is a visual-review aid, not game state: it marks
@@ -754,6 +847,16 @@ export const App = () => {
    */
   const previewSticks =
     tableMount.kind === 'three' && tableMount.query.preview === 'sticks';
+
+  /*
+   * `?preview=deal` (3D-12) is the deal-in's review aid, in the same spirit as
+   * `?preview=sticks`: it adds a control that re-cuts the *current* hand so the
+   * bounded deal-in can be watched repeatedly before 3D-14 mounts the Next
+   * Scenario chrome over the scene. Only the revision moves; the game state,
+   * the answer and the 2D views never see it.
+   */
+  const previewDeal =
+    tableMount.kind === 'three' && tableMount.query.preview === 'deal';
 
   const threeSnapshot = useMemo(() => {
     if (!gameState || tableMount.kind !== 'three') return null;
@@ -779,7 +882,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Stays 2D: no 3D or perspective.';
+    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and 3D is the opt-in full-window table. Switching redraws the same hand.';
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)
@@ -804,6 +907,8 @@ export const App = () => {
       packStatus={packStatus}
       packCount={packManifest?.packs.length ?? 0}
       packError={packError}
+      preferReplay={preferReplay}
+      onPreferReplayChange={setPreferReplay}
       requireAgreement={requireAgreement}
       aiStatus={aiStatus}
       agreementHint={agreementHint}
@@ -811,6 +916,8 @@ export const App = () => {
       tableView={tableView}
       viewHint={viewHint}
       onViewChange={handleViewChange}
+      rendered3dExposed={RENDERED3D_EXPOSED}
+      threeUnavailableReason={threeUnavailableReason}
       onNextScenario={handleNextScenario}
       nextDisabled={isLoading}
     />
@@ -877,10 +984,15 @@ export const App = () => {
 
   /*
    * The 2D table: the persisted view picks between the stacked rows and the
-   * top-down plan.
+   * top-down plan. In this branch the resolver has already reduced a stored 3D
+   * choice that cannot run to the default view, so `tableMount.view` is what is
+   * actually drawn (3D-14).
    */
+  const twoDimensionalView =
+    tableMount.kind === '2d' ? tableMount.view : tableView;
+
   const standardTable =
-    tableView === 'topdown' && gameState ? (
+    twoDimensionalView === 'topdown' && gameState ? (
       <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
     ) : (
       orderedPlayers.map((player) => (
@@ -893,11 +1005,23 @@ export const App = () => {
     );
 
   /*
+   * 3D-14: a stored 3D choice this browser cannot run draws the standard table
+   * instead. Say so, and say the choice is kept: the fallback must never look
+   * like the user's setting was thrown away (it is not rewritten).
+   */
+  const rendered3dFallbackNotice =
+    tableView === 'rendered3d' &&
+    tableMount.kind === '2d' &&
+    threeUnavailableReason !== null
+      ? `${threeUnavailableReason} The standard table is shown and your 3D view choice is kept.`
+      : null;
+
+  /*
    * The opt-in 3D view is the scene alone (user guidance 2026-11-18): no
    * header, cards, action bar or hand dock are mounted, so the canvas owns the
-   * full window with no UI above or below it. The floating UI layer — chrome
-   * positioned over the scene, like a game HUD — is planned work (3D-08,
-   * 3D-09, 3D-14), not this mount.
+   * full window with no UI above or below it. The floating HUD that replaces
+   * the scene-only mount is the 3D HUD chain (3D-H1…H5), not this unit; 3D-14
+   * only makes the view a reversible member of the View control.
    */
   if (tableMount.kind === 'three') {
     return (
@@ -930,6 +1054,18 @@ export const App = () => {
               Loading table…
             </p>
           )}
+
+          {/* 3D-12's review aid: `?renderer=3d&preview=deal` only. */}
+          {previewDeal && threeSnapshot && (
+            <button
+              type="button"
+              className="deal-preview"
+              onClick={bumpThreeRevision}
+              title="Review aid: re-cut the current hand to watch the bounded deal-in. The game state does not change."
+            >
+              Replay deal-in (preview)
+            </button>
+          )}
         </main>
       </div>
     );
@@ -955,6 +1091,12 @@ export const App = () => {
         </div>
       )}
 
+      {rendered3dFallbackNotice && (
+        <p className="three-fallback-notice" role="status">
+          {rendered3dFallbackNotice}
+        </p>
+      )}
+
       {hotseatOpen && (
         <HotseatCard
           initialOptions={hotseatOptions}
@@ -977,7 +1119,9 @@ export const App = () => {
       {verdictPanel}
 
       <main
-        className={tableView === 'stacked' ? 'table-stack' : 'table-physical'}
+        className={
+          twoDimensionalView === 'stacked' ? 'table-stack' : 'table-physical'
+        }
       >
         {statusMessage && (
           <div className="status-msg" role="status">

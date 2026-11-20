@@ -6,16 +6,37 @@ import { create } from 'zustand';
  * `stacked` is the mobile-first four-row layout and the default, so a browser
  * that has never saved a setting sees exactly what it saw before. `topdown` is
  * the flat plan view (`PhysicalTable`), with the human anchored at the bottom
- * edge.
+ * edge. `rendered3d` is the opt-in real-time 3D table (3D chain).
+ *
+ * The 3D value is a real member of this union from 3D-14 onwards — it persists
+ * like any other view and `App` mounts it from the same slot — but the View
+ * control only offers it once `RENDERED3D_EXPOSED` flips at 3D-15; until then
+ * only `?renderer=3d` (or a value stored by a later build) selects it. A
+ * browser that cannot run it falls back to the default view **without
+ * rewriting** the stored choice, so a temporarily unsupported device does not
+ * lose it.
  *
  * A stored `isometric` value is intentionally not a member any more: the
  * experimental angled view was removed, and an old blob that still names it
  * falls back to the default through {@link isTableView}.
  */
-export type TableView = 'stacked' | 'topdown';
+export type TableView = 'stacked' | 'topdown' | 'rendered3d';
 
 /** The view a browser with no stored choice gets. */
 export const DEFAULT_TABLE_VIEW: TableView = 'stacked';
+
+/**
+ * Whether replay packs are preferred over generated lessons where they have
+ * coverage, when nothing is stored.
+ *
+ * Default **on**: the replay-first rollout (`replay-first-rollout.md`, RF2)
+ * makes a covered lesson's default deal a real audited hand and keeps the
+ * generated drill one explicit pick away. The setting only ever moves the
+ * default pool — `selectionPool` still deals generated ids for lessons without
+ * enough coverage, and for every lesson when this is off. With no pack manifest
+ * the value changes nothing: the pool is generated-only either way.
+ */
+export const DEFAULT_PREFER_REPLAY = true;
 
 /** `localStorage` key holding every persisted frontend setting. */
 export const SETTINGS_STORAGE_KEY = 'riichiprac.settings';
@@ -24,6 +45,7 @@ export const SETTINGS_STORAGE_KEY = 'riichiprac.settings';
 export interface PersistedSettings {
   version: typeof SETTINGS_VERSION;
   view: TableView;
+  preferReplay: boolean;
 }
 
 /**
@@ -35,11 +57,13 @@ const SETTINGS_VERSION = 1;
 /** The settings the UI reads, with no store actions attached. */
 export interface FrontendSettings {
   view: TableView;
+  /** Deal replay hands for covered lessons instead of generated ones. */
+  preferReplay: boolean;
 }
 
 /** Narrow an arbitrary value (select value, stored blob) to a {@link TableView}. */
 export function isTableView(value: unknown): value is TableView {
-  return value === 'stacked' || value === 'topdown';
+  return value === 'stacked' || value === 'topdown' || value === 'rendered3d';
 }
 
 /**
@@ -57,7 +81,7 @@ function getStorage(): Storage | null {
 
 /** The default settings, used when nothing has been saved. */
 function defaultSettings(): FrontendSettings {
-  return { view: DEFAULT_TABLE_VIEW };
+  return { view: DEFAULT_TABLE_VIEW, preferReplay: DEFAULT_PREFER_REPLAY };
 }
 
 /**
@@ -82,6 +106,9 @@ export function parseSettings(raw: string | null): FrontendSettings {
   const stored = parsed as Record<string, unknown>;
   if (isTableView(stored.view)) {
     settings.view = stored.view;
+  }
+  if (typeof stored.preferReplay === 'boolean') {
+    settings.preferReplay = stored.preferReplay;
   }
   return settings;
 }
@@ -110,6 +137,7 @@ export function writeSettings(settings: FrontendSettings): void {
   const payload: PersistedSettings = {
     version: SETTINGS_VERSION,
     view: settings.view,
+    preferReplay: settings.preferReplay,
   };
   try {
     storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
@@ -121,6 +149,8 @@ export function writeSettings(settings: FrontendSettings): void {
 interface SettingsStore extends FrontendSettings {
   /** Choose how the main area draws the table, and persist it. */
   setView: (view: TableView) => void;
+  /** Choose whether covered lessons deal replay hands instead of generated ones. */
+  setPreferReplay: (preferReplay: boolean) => void;
 }
 
 /**
@@ -135,7 +165,14 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   setView: (view) =>
     set((state) => {
       if (state.view === view) return state;
-      writeSettings({ view });
+      writeSettings({ view, preferReplay: state.preferReplay });
       return { view };
+    }),
+
+  setPreferReplay: (preferReplay) =>
+    set((state) => {
+      if (state.preferReplay === preferReplay) return state;
+      writeSettings({ view: state.view, preferReplay });
+      return { preferReplay };
     }),
 }));

@@ -177,6 +177,53 @@
   line-height: 1.35;
 }
 
+/* Replay / Generated / Both source filter -------------------------------- */
+
+.scenario-picker-source {
+  margin: 8px 12px 0;
+  padding: 6px 8px;
+  border: 1px solid #2c3a4c;
+  border-radius: 8px;
+  background-color: #1a2431;
+}
+
+.scenario-picker-source-legend {
+  padding: 0;
+  color: #8b94a7;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scenario-picker-source-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+}
+
+.scenario-picker-source-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #c6d4e4;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scenario-picker-source-option input {
+  margin: 0;
+  accent-color: #4f8bc9;
+  cursor: pointer;
+}
+
+.scenario-picker-source-option input:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
 .scenario-picker-all {
   display: flex;
   align-items: center;
@@ -284,6 +331,17 @@
   font-size: 0.55rem;
   font-weight: 800;
   letter-spacing: 0.04em;
+}
+
+/* The generated row of a covered lesson is the opt-in alternative: keep it
+   readable but visibly secondary to the replay position above it. */
+.scenario-item-badge-generated {
+  background-color: #33402b;
+  color: #c9dbb4;
+}
+
+.scenario-item-generated-alt .scenario-item-name {
+  color: #a4b3c4;
 }
 
 .scenario-item-only {
@@ -916,6 +974,30 @@
   transform: translateX(-50%);
   border-radius: 8px;
   background-color: rgba(9, 14, 19, 0.86);
+}
+
+/*
+ * 3D-12's deal-in review aid (`?renderer=3d&preview=deal`): a floating control
+ * so the bounded deal-in can be watched before 3D-14 mounts the real chrome
+ * over the scene. It is deliberately the only control in the bare 3D stage and
+ * exists only with that query flag.
+ */
+.app-shell--3d .table-3d > .deal-preview {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 247, 234, 0.35);
+  border-radius: 8px;
+  background-color: rgba(9, 14, 19, 0.86);
+  color: #f2ece2;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.app-shell--3d .table-3d > .deal-preview:hover {
+  background-color: rgba(28, 39, 49, 0.92);
 }
 
 /* Full-screen toggle, shown in the header for the 3D view only. */

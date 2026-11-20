@@ -62,6 +62,7 @@ vi.mock('./components/Tile', () => ({ Tile: () => null }));
 
 import { App } from './App';
 import { useGameStore } from './store/useGameStore';
+import { useSettingsStore } from './store/useSettingsStore';
 
 const scenariosDir = join(process.cwd(), 'public', 'scenarios');
 const manifestText = readFileSync(join(scenariosDir, 'manifest.json'), 'utf8');
@@ -93,7 +94,13 @@ const foldHands = new Set(
     .map((scenario) => scenario.state.hand_string),
 );
 
-function stubFetch(): string[] {
+function stubFetch(
+  bodyResponse: () => Response = () =>
+    new Response(fixtureBytes, {
+      status: 200,
+      headers: { 'content-type': 'application/gzip' },
+    }),
+): string[] {
   const calls: string[] = [];
   const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
@@ -105,10 +112,7 @@ function stubFetch(): string[] {
       });
     }
     if (url === `/scenarios/${fixtureEntry.path}`) {
-      return new Response(fixtureBytes, {
-        status: 200,
-        headers: { 'content-type': 'application/gzip' },
-      });
+      return bodyResponse();
     }
     throw new Error(`unexpected fetch: ${url}`);
   });
@@ -119,6 +123,8 @@ function stubFetch(): string[] {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  // A test that forces the generated pool must not leak into the next one.
+  useSettingsStore.getState().setPreferReplay(true);
 });
 
 describe('App replay-pack loading', () => {
@@ -164,5 +170,177 @@ describe('App replay-pack loading', () => {
     ]);
     expect(useGameStore.getState().error).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows both the replay and generated rows for a covered lesson', async () => {
+    const user = userEvent.setup();
+    wasmMock.generatedJson = JSON.stringify(firstBase.state);
+    stubFetch();
+
+    render(<App />);
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState).not.toBeNull();
+    });
+
+    const trigger = await screen.findByTitle(
+      'Choose one lesson, all scenarios, or a pool to randomise between',
+    );
+    await user.click(trigger);
+
+    // The committed manifest covers fold_to_riichi (731 bases), so the lesson
+    // has a replay default *and* keeps its generated row for drilling it. All
+    // stands for the replay row now, so that is the ticked one; the generated
+    // row is the explicit opt-in and is marked as such.
+    const replayBox = await screen.findByRole('checkbox', {
+      name: /Fold to Riichi \(replay\)/i,
+    });
+    const generatedBox = screen.getByRole('checkbox', {
+      name: /^Fold to Riichi GENERATED$/i,
+    });
+    expect(replayBox).not.toBe(generatedBox);
+    expect((replayBox as HTMLInputElement).checked).toBe(true);
+    expect((generatedBox as HTMLInputElement).checked).toBe(false);
+    expect(
+      within(generatedBox.closest('li') as HTMLElement).getByText('GENERATED'),
+    ).toBeTruthy();
+  });
+
+  it('deals generated hands from All once the Generated filter is chosen', async () => {
+    const user = userEvent.setup();
+    wasmMock.generatedJson = JSON.stringify(firstBase.state);
+    const calls = stubFetch();
+
+    render(<App />);
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        firstBase.state.hand_string,
+      );
+    });
+    await waitFor(() => {
+      expect(calls).toContain('/scenarios/manifest.json');
+    });
+
+    const trigger = await screen.findByTitle(
+      'Choose one lesson, all scenarios, or a pool to randomise between',
+    );
+    await user.click(trigger);
+    const panel = await screen.findByRole('dialog', { name: 'Scenario pool' });
+    await user.click(
+      within(panel).getByRole('radio', { name: 'Generated' }),
+    );
+    // The filter is the visible form of the RF2 setting.
+    expect(useSettingsStore.getState().preferReplay).toBe(false);
+    await user.click(within(panel).getByRole('button', { name: 'Cancel' }));
+
+    // The next hand comes from the generator: no pack body is fetched.
+    wasmMock.generatedJson = JSON.stringify(fold.state);
+    await user.click(screen.getAllByLabelText('Next scenario')[0]);
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        fold.state.hand_string,
+      );
+    });
+    expect(calls.filter((url) => url.endsWith('.json.gz'))).toEqual([]);
+    expect(useGameStore.getState().error).toBeNull();
+  });
+
+  it('deals the covered lesson from its replay row on the next hand', async () => {
+    const user = userEvent.setup();
+    wasmMock.generatedJson = JSON.stringify(firstBase.state);
+    const calls = stubFetch();
+
+    render(<App />);
+    // The first deal happens before the manifest resolves, so it is generated.
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        firstBase.state.hand_string,
+      );
+    });
+    await waitFor(() => {
+      expect(calls).toContain('/scenarios/manifest.json');
+    });
+    expect(calls.filter((url) => url.endsWith('.json.gz'))).toEqual([]);
+
+    // With the manifest in hand, All is replay-first: fold_to_riichi is the
+    // only covered lesson in this catalogue, so the next deal is its pack body.
+    await user.click(screen.getAllByLabelText('Next scenario')[0]);
+    await waitFor(() => {
+      const hand = useGameStore.getState().gameState?.hand_string ?? '';
+      expect(foldHands.has(hand)).toBe(true);
+    });
+    expect(calls.filter((url) => url.endsWith('.json.gz'))).toEqual([
+      `/scenarios/${fixtureEntry.path}`,
+    ]);
+    expect(useGameStore.getState().error).toBeNull();
+  });
+
+  it('deals the generated lesson when preferReplay is off', async () => {
+    const user = userEvent.setup();
+    wasmMock.generatedJson = JSON.stringify(firstBase.state);
+    const calls = stubFetch();
+    useSettingsStore.getState().setPreferReplay(false);
+
+    render(<App />);
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        firstBase.state.hand_string,
+      );
+    });
+    await waitFor(() => {
+      expect(calls).toContain('/scenarios/manifest.json');
+    });
+
+    // The manifest covers fold_to_riichi, but the setting forces the generated
+    // pool: no body is fetched and the generated lesson is dealt.
+    wasmMock.generatedJson = JSON.stringify(fold.state);
+    await user.click(screen.getAllByLabelText('Next scenario')[0]);
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        fold.state.hand_string,
+      );
+    });
+    expect(calls.filter((url) => url.endsWith('.json.gz'))).toEqual([]);
+    expect(useGameStore.getState().error).toBeNull();
+  });
+
+  it('falls back to the generated lesson when a replay body fails', async () => {
+    const user = userEvent.setup();
+    wasmMock.generatedJson = JSON.stringify(firstBase.state);
+    const calls = stubFetch(
+      () => new Response('not found', { status: 404 }),
+    );
+
+    render(<App />);
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        firstBase.state.hand_string,
+      );
+    });
+    await waitFor(() => {
+      expect(calls).toContain('/scenarios/manifest.json');
+    });
+
+    // The next hand would be the replay row; its body is unavailable.
+    wasmMock.generatedJson = JSON.stringify(fold.state);
+    await user.click(screen.getAllByLabelText('Next scenario')[0]);
+
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        fold.state.hand_string,
+      );
+    });
+    // The deal succeeded through the generated path; the failure is a picker
+    // note, not an app error.
+    expect(useGameStore.getState().error).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    const trigger = screen.getByTitle(
+      'Choose one lesson, all scenarios, or a pool to randomise between',
+    );
+    await user.click(trigger);
+    const panel = screen.getByRole('dialog', { name: 'Scenario pool' });
+    expect(within(panel).getByRole('status').textContent).toContain(
+      'could not be delivered',
+    );
   });
 });

@@ -580,7 +580,12 @@ export interface TableRenderer {
    * and the DOM buttons never move for it.
    */
   setHoverTile?(tile: HandTileRef | null): void;
-  /** v1: a no-op, unit-tested ahead of a live/replay source. */
+  /**
+   * Reserved for a future live/replay source: v1 draws no tile motion and the
+   * host never calls it (3D-12 pins that). The seam's tested math —
+   * `draw`/`discard`/`meld`/`flip` waypoints and the damped-spring sample — is
+   * `three/motion.ts`.
+   */
   playEvents(events: readonly RendererEvent[]): void;
   measure(): RendererStats;
   /**

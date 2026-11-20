@@ -35,6 +35,12 @@ export interface PackLessonSource {
   lessonId: string;
   /** Scenarios in the whole pack; the per-lesson count is only known after load. */
   packScenarioCount: number;
+  /**
+   * Reviewed bases this pack ships for the lesson, read from the manifest's
+   * `lesson_counts` without a body. Zero when the manifest predates the field,
+   * which keeps the row opt-in: the replay-first floor is measured in bases.
+   */
+  bases: number;
   licence: string;
   requiresModel: boolean;
   /** Book section keys the pack declares, for the merged-book fallback. */
@@ -88,13 +94,158 @@ export function parsePackScenarioId(
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Replay-first coverage                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Reviewed replay bases a lesson needs before replay becomes its default.
+ *
+ * Product decision recorded in `replay-first-rollout.md` ("Proposed coverage
+ * floor"): 40 reviewed bases per lesson. Variants derive from a base and add no
+ * review coverage, so `lesson_counts` counts bases only. The floor is a default,
+ * not a constant to hard-code at call sites: `ReplayDefaultOptions.minReplayBases`
+ * lets a caller (or a test) apply a different one.
+ */
+export const MIN_REPLAY_BASES = 40;
+
+/**
+ * Per-lesson replay coverage read from a pack manifest.
+ *
+ * Coverage is metadata only: it comes from the manifest's `lesson_counts`
+ * (RF1), so the app can decide a lesson's default source **without downloading
+ * a body**. A manifest published before the field existed has no counts; that
+ * lesson is then treated as uncovered, which keeps the generated default.
+ */
+export interface LessonReplayCoverage {
+  /** Reviewed bases across every published pack (variants add none). */
+  bases: number;
+  /** Whether {@link bases} reaches the floor that was applied. */
+  covered: boolean;
+  /** Pack supplying the default row: the one with the most counted bases. */
+  packId: string;
+  /** The lesson id the pack body uses (`PackScenario.lesson_id`). */
+  lessonId: string;
+  /** The namespaced picker id that pack's row uses (`replay:<pack>:<lesson>`). */
+  scenarioId: ScenarioId;
+}
+
+/** Inputs that decide which lessons are dealt from replay instead of WASM. */
+export interface ReplayDefaultOptions {
+  /** The loaded pack manifest; null/absent means generated-only. */
+  manifest?: PackManifest | null;
+  /** The `preferReplay` setting; false forces the generated pool. */
+  preferReplay?: boolean;
+  /** Coverage floor override; defaults to {@link MIN_REPLAY_BASES}. */
+  minReplayBases?: number;
+}
+
+/**
+ * Read per-lesson coverage out of a manifest, keyed by the generated lesson id.
+ *
+ * Counts are summed across packs because a later section pack can add bases to
+ * an earlier lesson; the row that supplies the replay default is the pack with
+ * the largest count for that lesson (manifest order breaks ties). A missing
+ * manifest or an empty `packs` array yields an empty map, never a throw.
+ */
+export function lessonReplayCoverage(
+  manifest: PackManifest | null | undefined,
+  minReplayBases: number = MIN_REPLAY_BASES,
+): Map<ScenarioId, LessonReplayCoverage> {
+  const coverage = new Map<ScenarioId, LessonReplayCoverage>();
+  if (!manifest || manifest.packs.length === 0) return coverage;
+
+  const floor =
+    Number.isFinite(minReplayBases) && minReplayBases >= 0
+      ? minReplayBases
+      : MIN_REPLAY_BASES;
+
+  /** Per lesson: the running base total and the pack with the most bases. */
+  const best = new Map<string, { bases: number; packId: string; packBases: number }>();
+
+  for (const entry of manifest.packs) {
+    for (const lessonId of entry.lesson_ids) {
+      const bases = entry.lesson_counts?.[lessonId] ?? 0;
+      const record = best.get(lessonId);
+      if (!record) {
+        best.set(lessonId, { bases, packId: entry.id, packBases: bases });
+        continue;
+      }
+      record.bases += bases;
+      // A tie keeps the earlier pack, so manifest order decides.
+      if (bases > record.packBases) {
+        record.packId = entry.id;
+        record.packBases = bases;
+      }
+    }
+  }
+
+  for (const [lessonId, record] of best) {
+    coverage.set(lessonId, {
+      bases: record.bases,
+      covered: record.bases >= floor,
+      packId: record.packId,
+      lessonId,
+      scenarioId: packScenarioId(record.packId, lessonId),
+    });
+  }
+  return coverage;
+}
+
+/**
+ * The default (`all`) pool's ids under replay-first.
+ *
+ * For each generated lesson:
+ * - covered by the manifest's `lesson_counts` **and** `preferReplay` → the
+ *   replay row's namespaced id;
+ * - otherwise → the generated lesson id, exactly as before the rollout.
+ *
+ * The pool is defined over the generated catalogue, so a pack-only lesson (a
+ * pack lesson the WASM catalogue does not publish) stays out of `all` as it did
+ * before the rollout: it has no generated sibling to fall back to, and the
+ * picker can still deal it by name. The generated lesson is never removed from
+ * the catalogue, so an explicit `selected` pool can always drill it.
+ */
+function replayDefaultIds(
+  catalogue: ScenarioOption[],
+  replay: ReplayDefaultOptions,
+): ScenarioId[] {
+  const generated = catalogue.filter((scenario) => !scenario.pack);
+  const coverage = replayCoverageFor(replay);
+
+  return generated.map((scenario) => {
+    const covered = coverage?.get(scenario.id);
+    return covered ? covered.scenarioId : scenario.id;
+  });
+}
+
+/**
+ * Covered lessons only, or null when replay cannot be the default at all (the
+ * setting is off, or there is no manifest to read coverage from).
+ */
+function replayCoverageFor(
+  replay: ReplayDefaultOptions,
+): Map<ScenarioId, LessonReplayCoverage> | null {
+  if (replay.preferReplay === false) return null;
+  const manifest = replay.manifest;
+  if (!manifest || manifest.packs.length === 0) return null;
+
+  const coverage = lessonReplayCoverage(manifest, replay.minReplayBases);
+  const covered = new Map<ScenarioId, LessonReplayCoverage>();
+  for (const [lessonId, value] of coverage) {
+    if (value.covered) covered.set(lessonId, value);
+  }
+  return covered;
+}
+
 /**
  * What the next hand is drawn from.
  *
  * `all` keeps the catalogue-wide behaviour: the generated manifest, minus AI
- * drills until the model is ready and minus replay-pack lessons (those are
- * opt-in so startup fetches only the pack manifest). `selected` is taken
- * literally because the user picked those lessons by name, replay packs
+ * drills until the model is ready. With replay coverage (`ReplayDefaultOptions`)
+ * a covered lesson's entry is its replay id instead of the generated one; with
+ * no manifest it stays generated-only, byte-for-byte as before. `selected` is
+ * taken literally because the user picked those lessons by name, replay packs
  * included.
  */
 export type ScenarioSelection =
@@ -249,11 +400,19 @@ export function groupScenarios(
   return ordered;
 }
 
-/** Every id the "All scenarios" pool covers, in manifest order. */
+/**
+ * Every id the default "All scenarios" pool covers, in manifest order.
+ *
+ * With `ReplayDefaultOptions` a lesson whose shipped pack covers it is drawn
+ * from replay (the namespaced id); every other lesson keeps its generated id.
+ * With no manifest, no coverage, or `preferReplay: false`, this is exactly the
+ * generated catalogue as before the rollout.
+ */
 export function allScenarioIds(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
+  replay: ReplayDefaultOptions = {},
 ): ScenarioId[] {
-  return scenarios.filter((scenario) => !scenario.pack).map((scenario) => scenario.id);
+  return replayDefaultIds(scenarios, replay);
 }
 
 /**
@@ -334,6 +493,7 @@ function replayOption(
       packId: entry.id,
       lessonId,
       packScenarioCount: entry.scenario_count,
+      bases: entry.lesson_counts?.[lessonId] ?? 0,
       licence: entry.licence,
       requiresModel: entry.requires_model,
       bookSections: entry.book_sections,
@@ -355,12 +515,208 @@ function humanizeLessonId(lessonId: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/** The ids a selection currently holds, expanded for the `all` mode. */
+/* -------------------------------------------------------------------------- */
+/* Picker source filter (RF3)                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Which source a picker row would deal from. */
+export type ScenarioSource = 'replay' | 'generated';
+
+/**
+ * The picker's source filter.
+ *
+ * `both` lists every row; `replay` hides a covered lesson's generated row
+ * (generated rows still appear for a lesson with no replay row, so nothing
+ * disappears); `generated` hides every replay row. The filter changes the rows
+ * listed and, through `preferReplay`, what the default pool deals for a covered
+ * lesson — it never changes the generated catalogue or a lesson's drill.
+ */
+export type ScenarioSourceFilter = 'replay' | 'generated' | 'both';
+
+/** The filter a session starts on: every row, replay first where covered. */
+export const DEFAULT_SOURCE_FILTER: ScenarioSourceFilter = 'both';
+
+/** The source a row deals from. A namespaced pack id is always replay. */
+export function scenarioSource(option: ScenarioOption): ScenarioSource {
+  return option.pack ? 'replay' : 'generated';
+}
+
+/**
+ * Replay rows grouped by the lesson they teach, biggest pack first so the row
+ * that supplies the replay default also leads its section.
+ */
+function replayRowsByLesson(
+  scenarios: ScenarioOption[],
+): Map<string, ScenarioOption[]> {
+  const byLesson = new Map<string, ScenarioOption[]>();
+  for (const option of scenarios) {
+    if (!option.pack) continue;
+    const list = byLesson.get(option.pack.lessonId);
+    if (list) {
+      list.push(option);
+    } else {
+      byLesson.set(option.pack.lessonId, [option]);
+    }
+  }
+  for (const list of byLesson.values()) {
+    // A stable sort keeps manifest order for equal counts.
+    list.sort((a, b) => (b.pack?.bases ?? 0) - (a.pack?.bases ?? 0));
+  }
+  return byLesson;
+}
+
+/** Reviewed bases a lesson's replay rows add up to (0 with no row). */
+function replayBasesOf(siblings: ScenarioOption[]): number {
+  return siblings.reduce((sum, sibling) => sum + (sibling.pack?.bases ?? 0), 0);
+}
+
+function coverageFloor(minReplayBases: number): number {
+  return Number.isFinite(minReplayBases) && minReplayBases >= 0
+    ? minReplayBases
+    : MIN_REPLAY_BASES;
+}
+
+/**
+ * The ids "All scenarios" stands for, derived from the merged picker catalogue.
+ *
+ * This is the picker's view of RF2's default pool: a covered lesson stands for
+ * its replay row (the biggest pack), every other lesson for its generated id;
+ * `preferReplay: false` makes it the generated catalogue. It exists because the
+ * picker has no manifest of its own — `mergePackLessons` already copied each
+ * row's reviewed-base count onto `pack.bases` — and the checkboxes must agree
+ * with what a deal from "All" will actually draw.
+ */
+export function defaultScenarioIds(
+  scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
+  preferReplay = true,
+  minReplayBases: number = MIN_REPLAY_BASES,
+): ScenarioId[] {
+  const floor = coverageFloor(minReplayBases);
+  const replayByLesson = replayRowsByLesson(scenarios);
+
+  return scenarios
+    .filter((option) => !option.pack)
+    .map((option) => {
+      if (!preferReplay) return option.id;
+      const siblings = replayByLesson.get(option.id) ?? [];
+      if (siblings.length === 0 || replayBasesOf(siblings) < floor) return option.id;
+      return siblings[0].id;
+    });
+}
+
+/** One row the picker lists, with its lesson's replay coverage attached. */
+export interface PickerScenarioRow {
+  option: ScenarioOption;
+  /** Which source this row deals from. */
+  source: ScenarioSource;
+  /** Reviewed bases for the lesson across every merged pack (0 when none). */
+  replayBases: number;
+  /** Whether the lesson has any replay row at all. */
+  hasReplay: boolean;
+  /** Whether the lesson's replay coverage reaches the applied floor. */
+  covered: boolean;
+  /**
+   * True for the generated row of a covered lesson: it is the opt-in
+   * alternative to the replay position, not the lesson's default source.
+   */
+  generatedAlternative: boolean;
+}
+
+/**
+ * The rows a picker section lists, ordered and filtered by source.
+ *
+ * A covered lesson's replay row comes first and its generated row second, so
+ * the default source leads and the opt-in drill trails it. A lesson below the
+ * floor keeps the pre-RF2 order (generated, then its opt-in replay row), and a
+ * lesson with no replay row is always listed as generated — even under the
+ * `replay` filter, because hiding it would leave the lesson unreachable.
+ *
+ * The filter is presentational apart from the default pool's source, which the
+ * picker switches with the generated filter. Ticked ids are untouched, so a row
+ * hidden by a filter is still dealt by a pool that already holds it.
+ */
+export function pickerScenarioRows(
+  scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
+  filter: ScenarioSourceFilter = DEFAULT_SOURCE_FILTER,
+  minReplayBases: number = MIN_REPLAY_BASES,
+): PickerScenarioRow[] {
+  const floor = coverageFloor(minReplayBases);
+  const replayByLesson = replayRowsByLesson(scenarios);
+
+  const generatedIds = new Set(
+    scenarios.filter((option) => !option.pack).map((option) => option.id),
+  );
+  const rows: PickerScenarioRow[] = [];
+  const emitted = new Set<string>();
+
+  const push = (
+    option: ScenarioOption,
+    siblings: ScenarioOption[],
+    covered: boolean,
+    generatedAlternative: boolean,
+  ) => {
+    rows.push({
+      option,
+      source: scenarioSource(option),
+      replayBases: replayBasesOf(siblings),
+      hasReplay: siblings.length > 0,
+      covered,
+      generatedAlternative,
+    });
+    emitted.add(option.id);
+  };
+
+  for (const option of scenarios) {
+    if (option.pack) continue;
+    const siblings = replayByLesson.get(option.id) ?? [];
+    const covered = siblings.length > 0 && replayBasesOf(siblings) >= floor;
+
+    if (filter === 'generated') {
+      // The badge still marks the generated row of a covered lesson: it is the
+      // opt-in alternative even when the filter has hidden the replay row.
+      push(option, siblings, covered, covered);
+    } else if (filter === 'replay' && siblings.length > 0) {
+      for (const sibling of siblings) push(sibling, siblings, covered, false);
+    } else if (covered) {
+      for (const sibling of siblings) push(sibling, siblings, covered, false);
+      push(option, siblings, covered, true);
+    } else {
+      // Uncovered: the generated lesson stays the default and its replay row
+      // (if a pack ships below the floor) remains the opt-in that follows it.
+      push(option, siblings, covered, false);
+      for (const sibling of siblings) push(sibling, siblings, covered, false);
+    }
+  }
+
+  // A pack lesson with no generated sibling is still reachable by name; the
+  // generated filter is the one case where it is deliberately not listed.
+  if (filter !== 'generated') {
+    for (const option of scenarios) {
+      if (!option.pack || emitted.has(option.id)) continue;
+      if (generatedIds.has(option.pack.lessonId)) continue;
+      const siblings = replayByLesson.get(option.pack.lessonId) ?? [option];
+      push(option, siblings, replayBasesOf(siblings) >= floor, false);
+    }
+  }
+
+  return rows;
+}
+
+/**
+ * The ids a selection currently holds, expanded for the `all` mode.
+ *
+ * `all` is the replay-first default pool (see {@link defaultScenarioIds}):
+ * a covered lesson stands for its replay row while `preferReplay` is on and its
+ * generated id otherwise. An explicit selection is returned as-is.
+ */
 export function selectedScenarioIds(
   selection: ScenarioSelection,
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
+  preferReplay = true,
 ): ScenarioId[] {
-  return selection.kind === 'all' ? allScenarioIds(scenarios) : selection.ids;
+  return selection.kind === 'all'
+    ? defaultScenarioIds(scenarios, preferReplay)
+    : selection.ids;
 }
 
 /**
@@ -374,15 +730,18 @@ export function selectionPool(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
   selection: ScenarioSelection = ALL_SCENARIOS,
   includeRequiresAi = true,
+  replay: ReplayDefaultOptions = {},
 ): ScenarioOption[] {
   const catalogue = scenarios.length > 0 ? scenarios : FALLBACK_SCENARIOS;
 
   if (selection.kind === 'all') {
-    // Replay-pack lessons are opt-in: the `all` pool is the generated
+    // The default pool. Replay coverage replaces a covered lesson's generated
+    // entry with its replay row; with no manifest it stays the generated
     // catalogue, so a first launch never downloads a pack body.
+    const ids = new Set(allScenarioIds(catalogue, replay));
     const pool = catalogue.filter(
       (scenario) =>
-        !scenario.pack && (includeRequiresAi || !scenario.requires_ai),
+        ids.has(scenario.id) && (includeRequiresAi || !scenario.requires_ai),
     );
     return pool.length > 0 ? pool : FALLBACK_SCENARIOS;
   }
@@ -391,7 +750,7 @@ export function selectionPool(
   const pool = catalogue.filter((scenario) => chosen.has(scenario.id));
   return pool.length > 0
     ? pool
-    : selectionPool(catalogue, ALL_SCENARIOS, includeRequiresAi);
+    : selectionPool(catalogue, ALL_SCENARIOS, includeRequiresAi, replay);
 }
 
 /** One-line description of the committed pool for the picker trigger. */
@@ -412,8 +771,9 @@ export function toggleScenario(
   scenarios: ScenarioOption[],
   selection: ScenarioSelection,
   id: ScenarioId,
+  preferReplay = true,
 ): ScenarioSelection {
-  const ids = new Set(selectedScenarioIds(selection, scenarios));
+  const ids = new Set(selectedScenarioIds(selection, scenarios, preferReplay));
   if (ids.has(id)) {
     ids.delete(id);
   } else {
@@ -431,8 +791,9 @@ export function setScenariosSelected(
   selection: ScenarioSelection,
   ids: ScenarioId[],
   selected: boolean,
+  preferReplay = true,
 ): ScenarioSelection {
-  const chosen = new Set(selectedScenarioIds(selection, scenarios));
+  const chosen = new Set(selectedScenarioIds(selection, scenarios, preferReplay));
   for (const id of ids) {
     if (selected) {
       chosen.add(id);
@@ -477,15 +838,17 @@ export function pickRandomScenarioFrom(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
   selection: ScenarioSelection = ALL_SCENARIOS,
   includeRequiresAi = true,
+  replay: ReplayDefaultOptions = {},
 ): ScenarioId {
-  const pool = selectionPool(scenarios, selection, includeRequiresAi);
+  const pool = selectionPool(scenarios, selection, includeRequiresAi, replay);
   return pool[Math.floor(Math.random() * pool.length)].id;
 }
 
-/** Pick one scenario at random from the whole catalogue. */
+/** Pick one scenario at random from the whole catalogue (replay-first aware). */
 export function pickRandomScenario(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
   includeRequiresAi = true,
+  replay: ReplayDefaultOptions = {},
 ): ScenarioId {
-  return pickRandomScenarioFrom(scenarios, ALL_SCENARIOS, includeRequiresAi);
+  return pickRandomScenarioFrom(scenarios, ALL_SCENARIOS, includeRequiresAi, replay);
 }

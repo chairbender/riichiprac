@@ -84,7 +84,7 @@ export interface RendererHostProps {
   readonly debug?: DebugMode | null;
   /** `?perf=1`: the live measurement HUD (3D-13). */
   readonly perfHud?: boolean;
-  /** `prefers-reduced-motion`; consumed from 3D-12 onwards. */
+  /** `prefers-reduced-motion`: suppresses the hover lift and the deal-in (3D-12). */
   readonly reducedMotion?: boolean;
   /**
    * The view to keep showing while the 3D scene loads, is unsupported or has
@@ -110,8 +110,8 @@ export interface RendererHostProps {
    * 3D-11: the scene reported the terminal degrade (compat stayed above 33 ms
    * for two seconds). The host has already disposed the scene, written the
    * session memo and shown its own notice; this lets App return to the previous
-   * view and put the dismissible notice in the standard shell (3D-14's View
-   * switch does the same wiring when it lands).
+   * view and put the dismissible notice in the standard shell — the same
+   * return-to-stored-view path 3D-14's View switch takes.
    */
   readonly onDegraded?: (message: string) => void;
 }

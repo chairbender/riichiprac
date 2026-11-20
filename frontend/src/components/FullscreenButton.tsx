@@ -10,10 +10,15 @@
  * Where the Fullscreen API is unavailable (jsdom, older browsers, a
  * document without the API) the button renders nothing, so the view never
  * offers a control that cannot work.
+ *
+ * The button is built and tested here but stays **unmounted** until the 3D HUD
+ * shell lands (3D-H2). Leaving full screen on a view switch does not wait for
+ * it: `fullscreen.ts` owns that, and App calls it (3D-14).
  */
 
 import { useEffect, useState } from 'react';
 import type { RefObject } from 'react';
+import { exitFullscreenIfActive } from '../fullscreen';
 
 export interface FullscreenButtonProps {
   /** The element to full-screen, normally the app shell. */
@@ -46,9 +51,7 @@ export function FullscreenButton({ target }: FullscreenButtonProps) {
 
   const toggle = () => {
     if (document.fullscreenElement) {
-      // A refusal (not user-activated, or the document left fullscreen
-      // already) is not an error the table should report.
-      void document.exitFullscreen().catch(() => undefined);
+      exitFullscreenIfActive();
       return;
     }
     const element = target.current;
