@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ALL_SCENARIOS,
   FALLBACK_SCENARIOS,
+  MIN_REPLAY_BASES,
+  allScenarioIds,
   groupScenarios,
   isPackScenarioId,
+  lessonReplayCoverage,
   mergePackLessons,
   packScenarioId,
   parseScenarioManifest,
@@ -489,7 +492,7 @@ describe('replay entries and the all pool', () => {
   const merged = mergePackLessons(replayCatalogue, manifest());
   const replayFold = packScenarioId('replay.fixture.2026-11', 'fold_to_riichi');
 
-  it('keeps replay lessons out of All so launch stays manifest-only', () => {
+  it('keeps replay lessons out of All when the manifest carries no coverage', () => {
     expect(selectedScenarioIds(ALL_SCENARIOS, merged)).toEqual([
       'open_hand_defense',
       'ai_hotseat',
@@ -535,5 +538,203 @@ describe('replay entries and the all pool', () => {
         replayFold,
       );
     }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Replay-first default pool (RF2)                                            */
+/* -------------------------------------------------------------------------- */
+
+/** One manifest entry with reviewed-base counts, with lesson_ids derived. */
+function countedEntry(
+  counts: Record<string, number>,
+  overrides: Partial<PackManifestEntry> = {},
+): PackManifestEntry {
+  return packEntry({
+    lesson_ids: Object.keys(counts),
+    lesson_counts: counts,
+    scenario_count: Object.values(counts).reduce((sum, count) => sum + count, 0),
+    ...overrides,
+  });
+}
+
+describe('lessonReplayCoverage', () => {
+  it('reads reviewed bases per lesson without a pack body', () => {
+    const coverage = lessonReplayCoverage(
+      manifest(countedEntry({ fold_to_riichi: 731, push_or_fold: 12 })),
+    );
+
+    expect(coverage.get('fold_to_riichi')).toMatchObject({
+      bases: 731,
+      covered: true,
+      packId: 'replay.fixture.2026-11',
+      lessonId: 'fold_to_riichi',
+      scenarioId: packScenarioId('replay.fixture.2026-11', 'fold_to_riichi'),
+    });
+    expect(coverage.get('push_or_fold')?.bases).toBe(12);
+    expect(coverage.get('push_or_fold')?.covered).toBe(false);
+  });
+
+  it('treats a manifest without lesson_counts as uncovered', () => {
+    const coverage = lessonReplayCoverage(manifest());
+    expect(coverage.get('fold_to_riichi')).toMatchObject({ bases: 0, covered: false });
+  });
+
+  it('counts a lesson across packs and defaults to the biggest row', () => {
+    const coverage = lessonReplayCoverage({
+      schema: 'riichiprac.scenario-pack-manifest',
+      version: 1,
+      updated_at: '2026-11-19T00:00:00Z',
+      packs: [
+        countedEntry({ fold_to_riichi: 30 }, { id: 'replay.small.2026-11' }),
+        countedEntry({ fold_to_riichi: 35 }, { id: 'replay.big.2026-11' }),
+      ],
+    });
+
+    expect(coverage.get('fold_to_riichi')).toMatchObject({
+      bases: 65,
+      covered: true,
+      packId: 'replay.big.2026-11',
+      scenarioId: packScenarioId('replay.big.2026-11', 'fold_to_riichi'),
+    });
+  });
+
+  it('applies the configured floor instead of the 40-base default', () => {
+    const counts = countedEntry({ fold_to_riichi: 20 });
+
+    expect(MIN_REPLAY_BASES).toBe(40);
+    expect(lessonReplayCoverage(manifest(counts)).get('fold_to_riichi')?.covered).toBe(
+      false,
+    );
+    expect(
+      lessonReplayCoverage(manifest(counts), 10).get('fold_to_riichi')?.covered,
+    ).toBe(true);
+  });
+
+  it('returns nothing for a missing or empty manifest', () => {
+    expect(lessonReplayCoverage(null).size).toBe(0);
+    expect(lessonReplayCoverage(undefined).size).toBe(0);
+    expect(
+      lessonReplayCoverage({
+        schema: 'riichiprac.scenario-pack-manifest',
+        version: 1,
+        updated_at: '2026-11-19T00:00:00Z',
+        packs: [],
+      }).size,
+    ).toBe(0);
+  });
+});
+
+describe('replay-first default pool', () => {
+  const replayFold = packScenarioId('replay.fixture.2026-11', 'fold_to_riichi');
+  const covered = manifest(countedEntry({ fold_to_riichi: MIN_REPLAY_BASES }));
+  const merged = mergePackLessons(replayCatalogue, covered);
+
+  it('deals a covered lesson from its replay row', () => {
+    expect(allScenarioIds(merged, { manifest: covered })).toEqual([
+      'open_hand_defense',
+      'ai_hotseat',
+      'proturun_priority',
+      'push_or_fold',
+      replayFold,
+    ]);
+
+    const pool = selectionPool(merged, ALL_SCENARIOS, true, { manifest: covered });
+    expect(pool.map((option) => option.id)).toContain(replayFold);
+    expect(pool.map((option) => option.id)).not.toContain('fold_to_riichi');
+  });
+
+  it('keeps an uncovered lesson on its generated row', () => {
+    const thin = manifest(countedEntry({ fold_to_riichi: MIN_REPLAY_BASES - 1 }));
+    const thinMerged = mergePackLessons(replayCatalogue, thin);
+
+    // The replay row still exists in the picker; only the default pool ignores
+    // it until coverage reaches the floor.
+    expect(thinMerged.map((option) => option.id)).toContain(replayFold);
+    expect(allScenarioIds(thinMerged, { manifest: thin })).toEqual([
+      'open_hand_defense',
+      'ai_hotseat',
+      'proturun_priority',
+      'push_or_fold',
+      'fold_to_riichi',
+    ]);
+  });
+
+  it('returns the generated ids when preferReplay is off', () => {
+    expect(
+      allScenarioIds(merged, { manifest: covered, preferReplay: false }),
+    ).toEqual(selectedScenarioIds(ALL_SCENARIOS, merged));
+    // Omitting the flag keeps replay as the default: the settings store owns
+    // the on-by-default value, so an unset option must not mean "off".
+    expect(allScenarioIds(merged, { manifest: covered })).toContain(replayFold);
+  });
+
+  it('leaves the pool untouched when there is no manifest or no pack', () => {
+    const generated = selectedScenarioIds(ALL_SCENARIOS, merged);
+    expect(allScenarioIds(merged, { manifest: null })).toEqual(generated);
+    expect(allScenarioIds(merged, { manifest: undefined })).toEqual(generated);
+    expect(
+      allScenarioIds(merged, {
+        manifest: {
+          schema: 'riichiprac.scenario-pack-manifest',
+          version: 1,
+          updated_at: '2026-11-19T00:00:00Z',
+          packs: [],
+        },
+      }),
+    ).toEqual(generated);
+    // No options at all is the pre-RF2 call shape and must not change either.
+    expect(allScenarioIds(merged)).toEqual(generated);
+  });
+
+  it('honours a floor override on the pool', () => {
+    const thin = manifest(countedEntry({ fold_to_riichi: 10 }));
+    const thinMerged = mergePackLessons(replayCatalogue, thin);
+
+    expect(
+      allScenarioIds(thinMerged, { manifest: thin, minReplayBases: 10 }),
+    ).toContain(replayFold);
+    expect(allScenarioIds(thinMerged, { manifest: thin })).not.toContain(replayFold);
+  });
+
+  it('keeps the generated row selectable for a covered lesson', () => {
+    const pool = selectionPool(merged, {
+      kind: 'selected',
+      ids: ['fold_to_riichi'],
+    });
+    expect(pool.map((option) => option.id)).toEqual(['fold_to_riichi']);
+  });
+
+  it('keeps a pack-only lesson out of the default pool', () => {
+    // ryanmen_protorun has no generated sibling in this catalogue. It stays
+    // reachable by name from the picker, but `all` cannot deal it: there is no
+    // generated lesson to fall back to when its body fails.
+    const onlyPack = manifest(
+      countedEntry(
+        { ryanmen_protorun: MIN_REPLAY_BASES },
+        { lesson_ids: ['ryanmen_protorun'] },
+      ),
+    );
+    const replayRyanmen = packScenarioId('replay.fixture.2026-11', 'ryanmen_protorun');
+    const packOnly = mergePackLessons(replayCatalogue, onlyPack);
+
+    expect(allScenarioIds(packOnly, { manifest: onlyPack })).toEqual(
+      selectedScenarioIds(ALL_SCENARIOS, packOnly),
+    );
+    expect(allScenarioIds(packOnly, { manifest: onlyPack })).not.toContain(
+      replayRyanmen,
+    );
+    expect(
+      selectionPool(packOnly, { kind: 'selected', ids: [replayRyanmen] }).map(
+        (option) => option.id,
+      ),
+    ).toEqual([replayRyanmen]);
+  });
+
+  it('draws the replay row from All once covered', () => {
+    pickLast();
+    expect(
+      pickRandomScenarioFrom(merged, ALL_SCENARIOS, true, { manifest: covered }),
+    ).toBe(replayFold);
   });
 });

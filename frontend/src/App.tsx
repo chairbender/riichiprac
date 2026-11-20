@@ -292,6 +292,20 @@ export const App = () => {
       let effectiveAgreement = requireMortalAgreement;
 
       /**
+       * Replay-first inputs, snapshotted when the deal starts.
+       *
+       * A pack manifest that arrives mid-deal therefore applies to the next
+       * hand, not this one, and the first deal of a fresh launch stays generated
+       * (RF4 owns fetching a section body for it). Reading the setting here
+       * instead of through a hook keeps `loadPuzzle` stable, so changing it can
+       * never re-run the first-hand effect.
+       */
+      const replayDefaults = {
+        manifest: packManifestRef.current,
+        preferReplay: useSettingsStore.getState().preferReplay,
+      };
+
+      /**
        * Install a freshly generated hand and give it its own history entry. A
        * superseded load must neither replace the table nor touch the history, so
        * both are gated on still being the newest request.
@@ -319,30 +333,38 @@ export const App = () => {
           }
         }
 
+        // The deal sees the same manifest snapshot the pool was built from, so
+        // a manifest that arrives mid-deal cannot add a row the pool never
+        // considered (or vice versa).
         const options = mergePackLessons(
           wasmCatalogRef.current ?? FALLBACK_SCENARIOS,
-          packManifestRef.current,
+          replayDefaults.manifest,
         );
-        const category =
+        // Replay-first: a lesson whose shipped pack covers it is drawn from
+        // replay, every other lesson keeps its generated drill. With no
+        // manifest this is exactly the generated pool as before.
+        let category =
           forced?.category ??
           pickUnseen(
             selectionPool(
               options,
               scenarioSelection,
               useGameStore.getState().aiStatus === 'ready',
+              replayDefaults,
             ),
             (entry) => entry.id,
             seenCategoriesRef.current,
           ).value.id;
-        const option = options.find((entry) => entry.id === category) ?? null;
+        let option = options.find((entry) => entry.id === category) ?? null;
 
         // A replay lesson ships its own complete state, so it is laid out with
         // the same `loadFromJson` path as an imported position: verified bytes
         // only, no generation and no Mortal-agreement sampling.
         if (option?.pack) {
+          const replayPack = option.pack;
           setPackLoading(true);
           try {
-            const seenKey = `${option.pack.packId}:${option.pack.lessonId}`;
+            const seenKey = `${replayPack.packId}:${replayPack.lessonId}`;
             let seen = seenPackScenariosRef.current.get(seenKey);
             if (!seen) {
               seen = new Set<string>();
@@ -350,18 +372,35 @@ export const App = () => {
             }
             const picked = await loadReplayScenario(
               packManifestRef.current,
-              option.pack,
+              replayPack,
               seen,
             );
             if (requestId !== loadRequestId.current) return;
+            setPackError(null);
             finish(() => loadFromJson(JSON.stringify(picked.scenario.state)));
+            return;
+          } catch (err) {
+            if (requestId !== loadRequestId.current) return;
+            // A replay body can fail (offline, a stale cache, an integrity
+            // miss). Replay-first must never strand the deal on it: deal the
+            // same lesson's generated drill for this hand and leave the note in
+            // the picker explaining why. Only a pack-only lesson (no generated
+            // sibling) surfaces the error.
+            const generated = options.find(
+              (entry) => !entry.pack && entry.id === replayPack.lessonId,
+            );
+            if (!generated) throw err;
+            setPackError(
+              `Replay pack "${replayPack.packId}" could not be delivered; dealing the generated lesson instead.`,
+            );
+            category = generated.id;
+            option = generated;
           } finally {
             // A newer deal owns the status line; it set its own flag.
             if (requestId === loadRequestId.current) {
               setPackLoading(false);
             }
           }
-          return;
         }
 
         const requiresAi = option?.requires_ai === true;
