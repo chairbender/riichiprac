@@ -123,10 +123,14 @@ classifier-ready but thin/zero lessons are corpus-growth targets (`C9`).
 
 The app must decide coverage **without downloading bodies**. Today the manifest
 lists `lesson_ids` but not counts. Extend the manifest entry with
-`lesson_counts` (lesson id → shipped bases) at publish time, validated against
-the body in `pack publish`/the pack checks. This is backward-compatible within
-manifest v1 as an optional field (bump the schema only if the parser requires
-it).
+`lesson_counts` (lesson id → shipped reviewed bases) at publish time, validated
+against the body in `pack publish`/the pack checks. A **base** is a scenario
+selected from the corpus; a variant derives from one base and adds no review
+coverage, so it is not counted. A recorded count that disagrees with the body is
+an audit error; an absent map is accepted (and warned about under `--strict`),
+so a manifest published before the field still loads. This is
+backward-compatible within manifest v1 as an optional field (bump the schema
+only if the parser requires it).
 
 ### Pack granularity
 

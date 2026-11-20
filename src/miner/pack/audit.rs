@@ -21,7 +21,7 @@ use super::gate::{
     FindingSeverity, PackAudit, PackAuditContext, PackFinding, PackFindingCode, PublishProfile,
     audit_pack_encoded,
 };
-use super::model::{ManifestEntry, Pack};
+use super::model::{ManifestEntry, Pack, render_lesson_counts};
 use super::write::{
     GAMES_FILE_NAME, MANIFEST_FILE_NAME, PackBytes, decode_pack, load_games, load_manifest,
     validate_entry,
@@ -319,8 +319,13 @@ fn audit_entry(
     Ok((audit, findings))
 }
 
-/// Metadata a loader can recompute. It is a warning (strict-only failure), not
-/// an integrity failure.
+/// Metadata a loader can recompute. Drift is a warning (strict-only failure),
+/// not an integrity failure.
+///
+/// The exception is `lesson_counts`: it is the per-lesson coverage decision the
+/// app makes before downloading a body, so a recorded count that disagrees with
+/// the body is an **error**. A manifest that records no counts at all is only a
+/// warning, which keeps a manifest published before the field existed auditable.
 fn manifest_drift(entry: &ManifestEntry, pack: &Pack) -> Vec<PackFinding> {
     let mut drifted = Vec::new();
     let mut check = |field: &str, manifest: String, body: String| {
@@ -359,5 +364,26 @@ fn manifest_drift(entry: &ManifestEntry, pack: &Pack) -> Vec<PackFinding> {
         entry.data_commercial_use.to_string(),
         pack.source.data_commercial_use.to_string(),
     );
+
+    let body_counts = pack.lesson_counts();
+    if entry.lesson_counts.is_empty() {
+        drifted.push(PackFinding::warning(
+            PackFindingCode::LessonCountsMissing,
+            format!(
+                "pack `{}` records no lesson_counts; republish with `pack publish` so coverage needs no body download",
+                entry.id
+            ),
+        ));
+    } else if entry.lesson_counts != body_counts {
+        drifted.push(PackFinding::error(
+            PackFindingCode::LessonCountMismatch,
+            format!(
+                "pack `{}` lesson_counts are `{}` in the manifest but `{}` in the body",
+                entry.id,
+                render_lesson_counts(&entry.lesson_counts),
+                render_lesson_counts(&body_counts)
+            ),
+        ));
+    }
     drifted
 }

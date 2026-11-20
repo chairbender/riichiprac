@@ -105,6 +105,12 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+function renderCounts(counts) {
+  const keys = Object.keys(counts ?? {}).sort();
+  if (keys.length === 0) return 'none';
+  return keys.map((key) => `${key}=${counts[key]}`).join(',');
+}
+
 const manifest = JSON.parse(readFileSync(join(args.dir, 'manifest.json'), 'utf8'));
 const entry = (manifest.packs ?? []).find((candidate) => candidate.id === args.pack);
 if (!entry) {
@@ -133,6 +139,7 @@ check(
 
 let variants = 0;
 let bases = 0;
+const baseCountsByLesson = {};
 const transformFamilies = new Set();
 const scenarioIds = new Set();
 const duplicateIds = [];
@@ -169,6 +176,7 @@ for (const [index, scenario] of scenarios.entries()) {
     );
   } else {
     bases += 1;
+    baseCountsByLesson[scenario.lesson_id] = (baseCountsByLesson[scenario.lesson_id] ?? 0) + 1;
   }
 }
 
@@ -221,6 +229,30 @@ check(
   'every scenario names its source replay',
 );
 
+// Per-lesson coverage is what the app reads without a body download; this pack
+// must record it and it must match the reviewed (non-variant) bases.
+const declaredCounts = entry.lesson_counts;
+const declaredCountsOk = check(
+  declaredCounts !== null && typeof declaredCounts === 'object' && !Array.isArray(declaredCounts),
+  'manifest records lesson_counts',
+);
+if (declaredCountsOk) {
+  const declaredKeys = Object.keys(declaredCounts).sort();
+  check(
+    declaredKeys.every((lesson) => Number.isInteger(declaredCounts[lesson]) && declaredCounts[lesson] > 0),
+    'lesson_counts are positive integers per lesson',
+  );
+  check(
+    declaredKeys.join(',') === Object.keys(baseCountsByLesson).sort().join(','),
+    `lesson_counts name the pack's lessons (${declaredKeys.join(', ') || 'none'})`,
+  );
+  check(
+    declaredKeys.every((lesson) => declaredCounts[lesson] === baseCountsByLesson[lesson]),
+    `lesson_counts agree with the reviewed bases ` +
+      `(manifest ${renderCounts(declaredCounts)}, body ${renderCounts(baseCountsByLesson)})`,
+  );
+}
+
 const source = pack.source ?? {};
 check(source.kind === 'ai_selfplay', 'source.kind is ai_selfplay');
 check(Boolean(source.licence), 'pack declares a data licence');
@@ -256,6 +288,7 @@ function report() {
     variant_share: variants + bases === 0 ? 0 : variants / (variants + bases),
     transform_families: [...transformFamilies].sort(),
     lessons: [...new Set((scenarios ?? []).map((scenario) => scenario.lesson_id))].sort(),
+    lesson_counts: baseCountsByLesson,
     book_sections: [
       ...new Set((scenarios ?? []).map((scenario) => scenario.book?.key).filter(Boolean)),
     ].sort(),

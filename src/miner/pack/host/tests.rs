@@ -120,6 +120,11 @@ fn publish_stages_only_the_manifest_and_content_addressed_bodies() {
         .expect("manifest loads");
     assert_eq!(manifest.updated_at, "2026-11-17T01:00:00Z");
     assert_eq!(manifest.packs.len(), 1);
+    assert_eq!(
+        manifest.packs[0].lesson_counts,
+        fixture.pack.lesson_counts(),
+        "publish writes per-lesson coverage into the hosting manifest"
+    );
     assert!(
         super::super::write::validate_entry(&manifest.packs[0]).is_ok(),
         "hosted entries keep the content-addressed filename and relative path"
@@ -292,6 +297,25 @@ fn subset_publish_replaces_the_hosted_set_and_prunes_the_rest() {
     assert_eq!(names(&fixture.dest).len(), 2);
     let verified = verify_hosted_dir(&fixture.dest, &HostBudget::default()).expect("verifies");
     assert_eq!(verified.entries[0].id, "replay.fixture.two");
+}
+
+#[test]
+fn verify_requires_per_lesson_coverage_in_the_hosted_manifest() {
+    let fixture = setup();
+    publish_hosted(&options(&fixture)).expect("publish");
+    let manifest_path = fixture.dest.join(MANIFEST_FILE_NAME);
+    let mut manifest = super::super::load_manifest(&manifest_path).expect("manifest");
+    manifest.packs[0].lesson_counts.clear();
+    fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).expect("json"),
+    )
+    .expect("write manifest");
+
+    let error = verify_hosted_dir(&fixture.dest, &HostBudget::default())
+        .expect_err("a manifest without coverage is refused");
+    assert!(matches!(error, PackError::HostInvalid { .. }), "{error}");
+    assert!(error.to_string().contains("lesson_counts"), "{error}");
 }
 
 #[test]

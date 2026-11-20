@@ -126,6 +126,10 @@ pub enum PackFindingCode {
     ManifestBudgetExceeded,
     /// A manifest entry's convenience metadata drifted from the body.
     ManifestMetadataDrift,
+    /// A manifest entry records no per-lesson coverage.
+    LessonCountsMissing,
+    /// A manifest entry's per-lesson coverage disagrees with the body.
+    LessonCountMismatch,
     /// A manifest entry points at a missing file.
     PackFileMissing,
     /// The pack file length disagrees with the manifest.
