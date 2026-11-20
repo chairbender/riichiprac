@@ -487,8 +487,9 @@ Create the current wave only:
 | `Replay-first RF3: picker source filter and generated opt-in` | `261119-171926` | worktree `riichiprac` | RF2 |
 | `Replay Q3: ch7 riichi/dama pack` | `261119-171935` | worktree `riichiprac` | B4 |
 
-Later waves: Q4, Q5, C9, Q6, Q7, RF5, D1 as above (RF4 landed
-2026-11-19).
+Later waves, as captured on 2026-11-19: RF4 `261119-2159` (landed), Q4
+`261119-2335`, Q5 `261119-2336`, C9 `261119-233553`, RF5 `261119-2340`. Q6, Q7
+and D1 are not captured yet; create them when the current coverage lands.
 
 ## Expected end state
 
