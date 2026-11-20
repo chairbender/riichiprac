@@ -2,9 +2,12 @@
  * Capability probe, backing-store cap and the 3D feature gate (3D-01).
  *
  * Everything here is a pure input to the host's decision, not the decision
- * itself: `RendererHost` (3D-02) mounts the view, and the View control gains a
- * fourth value only in 3D-14. This module exists so the gate is testable
- * without a GPU, a browser or three.js.
+ * itself: `RendererHost` (3D-02) mounts the view. 3D-14 makes the 3D table a
+ * real `TableView` value, but this module still owns the gate: the View control
+ * offers the value only once {@link RENDERED3D_EXPOSED} flips at 3D-15, and
+ * {@link threeViewUnavailableReason} is the disabled-option reason until then.
+ * This module exists so the gate is testable without a GPU, a browser or
+ * three.js.
  *
  * The probe never keeps a live WebGL2 context: it creates one, reads the two
  * facts it needs, asks the `WEBGL_lose_context` extension to release it, and
@@ -17,9 +20,11 @@ import type { DebugMode, QualityTier, RendererCapabilities } from './contract';
 /**
  * Whether the 3D view may be offered from the persistent View control.
  *
- * Decision 1 (2026-11-18): the view stays reachable only by `?renderer=3d`
- * until 3D-15 signs it off. Nothing may flip this except that sign-off, and the
- * view is never the default even then.
+ * Decision 1 (2026-11-18): the view stays out of that control until 3D-15 signs
+ * it off. Nothing may flip this except that sign-off, and the view is never the
+ * default even then. From 3D-14 a stored `rendered3d` value (written by a build
+ * that had the flag on) and an explicit `?renderer=3d` still select the view;
+ * this flag is exposure in the picker, not persistence.
  */
 export const RENDERED3D_EXPOSED = false;
 

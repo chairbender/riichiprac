@@ -178,19 +178,21 @@ status cards, the action bar, the hand dock, the projected hand/draw buttons and
 the compass — is positioned *over* the scene, the way a game HUD is, never
 outside it.
 
-**Interim state (as of 3D-02's landing).** While there is no floating layer yet,
+**Interim state (as of 3D-14's landing).** While there is no floating layer yet,
 the 3D mount renders **the scene alone**: no header, no cards, no action bar and
 no hand dock are mounted, so nothing occupies Y space around the canvas. The
-2D views keep their existing layout. 3D-14 re-mounts the chrome as the floating
-layer and must remove the shell modifier (and leave full screen) when the user
-switches away.
+2D views keep their existing layout. 3D-14 makes the view a reversible
+`TableView` value and guarantees that switching away removes the shell modifier
+and leaves full screen; the floating chrome is the 3D HUD chain's work (3D-H1…H5),
+and 3D-H2 owns the shell that hosts it.
 
 A full-screen toggle uses the Fullscreen API on the **shell**, not on the
 canvas, so the floating layer travels with the scene; it is rendered only where
 `requestFullscreen` exists, and it reports the browser's own state rather than
 guessing. Browsers that do not support the API simply get the full-window view.
-The component is built and tested in 3D-02 but stays unmounted until the
-floating layer exists (3D-14), because offering a header control is UI.
+The component is built and tested in 3D-02 but stays unmounted until the HUD
+shell exists (3D-H2), because offering a header control is UI; leaving full screen
+on a view switch is 3D-14's, through `fullscreen.ts`.
 
 ### 2.2 Repository and build boundaries
 
@@ -516,14 +518,15 @@ The canvas is an image. Everything a user can do or must hear is DOM:
   interactive. A hidden heading names the view for screen readers.
 - The interaction layer is a pure function of `TableSnapshot` + camera matrices
   (`hitTest.ts`), so it is unit-testable in Node without WebGL.
-- **Chrome over the scene.** The stage is the whole window (§2.1). Once the
-  floating layer lands (3D-14; hand/draw buttons in 3D-08, compass in 3D-09),
-  the app chrome — header controls, status cards, the action bar and the hand
-  dock — is positioned *over* the canvas in Z order, never in the document flow
-  above or below it. Until then the 3D view deliberately shows no chrome at all.
-  No overlay may capture pointer events outside its own controls: clicking the
-  felt (once anything is bound to it) and every chrome control must keep
-  working. Floating panels keep their own backgrounds so they stay readable
+- **Chrome over the scene.** The stage is the whole window (§2.1). The floating
+  HUD is the 3D HUD chain (3D-H1…H5), not a renderer unit; once it lands (the
+  hand/draw buttons came in 3D-08, the compass in 3D-09), the app chrome —
+  header controls, status cards, the action bar and the hand dock — is
+  positioned *over* the canvas in Z order, never in the document flow above or
+  below it. 3D-14 deliberately keeps the scene-only mount: no chrome at all
+  until 3D-H2. No overlay may capture pointer events outside its own controls:
+  clicking the felt (once anything is bound to it) and every chrome control must
+  keep working. Floating panels keep their own backgrounds so they stay readable
   over the felt.
 
 ### 2.8 Performance budget, stated and justified
@@ -1059,7 +1062,8 @@ who does not ask for it.
 - **Full-screen toggle** (`components/FullscreenButton.tsx`): promotes the
   shell, not the canvas, follows `fullscreenchange`, and renders nothing where
   the Fullscreen API is absent. Built and tested here, but kept **unmounted**
-  until the floating UI layer exists (3D-14), because a header control is UI.
+  until the 3D HUD shell exists (3D-H2), because a header control is UI. Leaving
+  full screen when the view changes lands in 3D-14 (`fullscreen.ts`).
 
 **Acceptance criteria**
 
@@ -1089,7 +1093,7 @@ who does not ask for it.
   `unsupported` and a rendered message over the stage, never a thrown error.
   While the view is scene-only there is no 2D fallback inside it; the standard
   views remain reachable by dropping the query parameter (the persistent View
-  control is 3D-14's).
+  control and the stored-view fallback are 3D-14's).
 - `webglcontextlost` is prevented, one restore is attempted, a second loss
   disposes and reports `failed` with a message over the stage.
 - Precedence is explicit and tested: explicit query param > stored view >
@@ -1112,7 +1116,8 @@ now." Accepted as-is: no app chrome mounted, the camera rig and framing, the
 procedural felt (a square sized to the frame's top and bottom edges, sides
 visible on a wide window), and the status/error placement. Not yet built and
 still owned by later units: the board (3D-07), the floating hand/compass UI
-(3D-08/3D-09), the re-mounted chrome plus the full-screen toggle (3D-14).
+(3D-08/3D-09), the view switch (3D-14), and the floating shell with its chrome
+and the full-screen toggle (the 3D HUD chain, 3D-H1…H5).
 
 ---
 
@@ -1631,9 +1636,9 @@ keyboard and screen reader.
 
 - The overlay is positioned against the **full-window stage** (3D-02, §2.1): the
   buttons sit on the scene, not inside a card. This unit lands the first part of
-  the floating UI; 3D-14 re-mounts the rest of the chrome (header, action bar,
-  hand dock, cards) as the same kind of layer, and the two must not capture each
-  other's pointer events.
+  the floating UI; the 3D HUD chain (3D-H1…H5) mounts the rest of the chrome
+  (header, action bar, hand dock, cards) as the same kind of layer, and the two
+  must not capture each other's pointer events.
 - Exactly one button per hand tile plus the draw when present; zero when the
   hand is locked (answered), matching `HandDock`.
 - Labels and order are identical to the top-down hand's accessible names for the
@@ -2324,23 +2329,30 @@ does not wait for the 2.5D rendered view.
 
 **Goal.** Make the 3D view a first-class, reversible choice.
 
+**Scope note (rescoped 2026-11-19, user decision).** This unit is the view-switch
+mechanics only. The floating chrome re-mount described in the earlier draft of
+this section moved to the **3D HUD chain**: 3D-H1 (composition spec and overlay
+contract), 3D-H2 (shell, safe areas, full-screen), 3D-H3 (action rail and
+tile-less hand dock), 3D-H4 (setup sheet), 3D-H5 (result card and verdict
+sheet). The 3D view keeps its scene-only mount until 3D-H2 lands, and this unit
+must not port the 2D chrome.
+
 **Deliverables**
 
-- `TableView` gains `'rendered3d'`; `AppControls` lists it with an unsupported
-  reason when unavailable; `App.tsx` mounts it in the same table slot; the
-  existing view tests extend; AGENTS.md §4's view list is updated to name the
+- `TableView` gains `'rendered3d'`; `AppControls` lists it (disabled, with the
+  reason, when this browser cannot run it); `App.tsx` mounts it in the same
+  table slot; the existing view tests extend; AGENTS.md §4's view list names the
   fourth view.
 - A single `RENDERED3D_EXPOSED` constant keeps the option out of the picker (the
-  query flag still works) until 3D-15 flips it.
+  query flag still works) until 3D-15 flips it. Exposure is the picker only: a
+  value a later build stored still mounts, so the choice survives a reload.
 - **The full-window stage becomes reversible** (user guidance 2026-11-18): the
   shell modifier that drops the phone-width column and fixes the 3D backdrop is
   applied only for the 3D value, and switching away removes it *and* leaves
   full screen (never leaves the user in a full-screen 2D view).
-- **The floating UI layer** (user guidance, revised 2026-11-18): re-mount the
-  app chrome — header controls, status cards, the action bar and the hand dock —
-  over the scene in Z order instead of in the document flow above/below it, and
-  mount the full-screen toggle (`components/FullscreenButton.tsx`, built in
-  3D-02) in that layer. The scene-only interim (§2.1) ends with this unit.
+- The `FullscreenButton` (`components/FullscreenButton.tsx`, built in 3D-02)
+  stays **unmounted** here; 3D-H2 mounts it in the floating shell. This unit
+  still owns leaving full screen when the view changes, via `fullscreen.ts`.
 
 **Acceptance criteria**
 
@@ -2348,16 +2360,16 @@ does not wait for the 2.5D rendered view.
   `GameState`, the same selection/answer state, and does not re-deal (a test
   asserts the state object is identical across switches).
 - Switching into and out of 3D adds/removes the shell's 3D modifier exactly
-  once; after leaving, the stacked/top-down layout is byte-for-byte the same
-  structure it had before (the stage is no longer fixed, the column width is
-  back), and `document.fullscreenElement` is null.
-- In 3D, the chrome is mounted *over* the fixed stage (DOM/stacking assertions,
-  no Y-flow siblings of the canvas), every chrome control still works, and the
-  full-screen toggle is present exactly when the API is.
+  once; after leaving, the stacked/top-down layout is structurally unchanged
+  (the stage is no longer fixed, the column width is back) and
+  `document.fullscreenElement` is null.
+- **No chrome is mounted in 3D yet** (scene alone): no Y-flow siblings of the
+  canvas, the canvas owns the window, and the full-screen toggle is still
+  absent. The chrome-over-scene assertions belong to 3D-H2/H3's own gates.
 - The 3D view (once `RENDERED3D_EXPOSED`) persists across reload when selected and
-  supported; when it later becomes unavailable the stored value falls back
-  **without** rewriting the user's choice (so a temporarily unsupported device
-  does not lose it).
+  supported; when it is unavailable the stored value falls back **without**
+  rewriting the user's choice (so a temporarily unsupported device does not lose
+  it).
 - `?renderer=3d` still overrides, and `?renderer=25d`/absence does not force
   anything beyond the stored view.
 - Switching away disposes the GPU resources (resource-count test) and switching
@@ -2876,11 +2888,13 @@ in 3D-08 and 3D-S1 respectively, and are equally binding.
    controls, status cards, action bar, hand dock, the hand/draw buttons (3D-08)
    and the compass (3D-09) — is planned as a **floating layer over the scene**
    (Z order, like a typical game HUD), not as elements outside the canvas.
-   Until that layer exists, 3D-02 mounts **the scene alone**; 3D-14 re-mounts the
-   chrome as the floating layer, mounts the full-screen toggle (Fullscreen API,
-   promoting the shell so the layer travels with the scene) and restores the 2D
-   layout — including leaving full screen — when the user switches away. The
-   stacked and top-down views keep their existing layout throughout.
+   Until that layer exists, the 3D view mounts **the scene alone**; 3D-14 makes
+   the view a reversible `TableView` value (the shell modifier applies only for
+   it, switching away removes it and leaves full screen, and the 2D layout comes
+   back), while the chrome re-mount, the safe areas and the full-screen
+   **toggle** are the 3D HUD chain's (3D-H2 owns the shell and mounts the
+   toggle). The stacked and top-down views keep their existing layout
+   throughout.
 8. **Hover lift: half a tile height, on top of the tint** (added 2026-11-19, in
    3D-08). A hovered or focused hand/draw tile rises by
    `TILE.heightUnits / 2` = 14 mm along world +Y; the DOM button keeps its
@@ -3047,6 +3061,6 @@ it was right and corrected where the repository or the browser facts disagree.
 | 3D-S1 | `frontend/scripts/{check-3d-pom.mjs,pom-probe.html,pom-probe.ts}` (measurement only) |
 | 3D-12 | `frontend/src/renderers/three/motion.ts` (new), `RendererHost.tsx` |
 | 3D-13 | `frontend/scripts/check-3d-budget.mjs`, `three/perf.ts` |
-| 3D-14 | `frontend/src/store/useSettingsStore.ts`, `frontend/src/components/AppControls.tsx`, `frontend/src/App.tsx`, `AGENTS.md` §4 |
+| 3D-14 | `frontend/src/store/useSettingsStore.ts`, `frontend/src/renderers/{resolveTableMount.ts,capabilities.ts}`, `frontend/src/components/AppControls.tsx`, `frontend/src/fullscreen.ts`, `frontend/src/App.tsx`, `AGENTS.md` §4 |
 | 3D-15 | tests + this plan's verification report |
 | 3D-16 | `3d_renderer_architecture.md`, `THIRD_PARTY_NOTICES.md`, `README.md`, `AGENTS.md` §4 |

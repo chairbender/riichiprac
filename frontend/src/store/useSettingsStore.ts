@@ -6,13 +6,21 @@ import { create } from 'zustand';
  * `stacked` is the mobile-first four-row layout and the default, so a browser
  * that has never saved a setting sees exactly what it saw before. `topdown` is
  * the flat plan view (`PhysicalTable`), with the human anchored at the bottom
- * edge.
+ * edge. `rendered3d` is the opt-in real-time 3D table (3D chain).
+ *
+ * The 3D value is a real member of this union from 3D-14 onwards — it persists
+ * like any other view and `App` mounts it from the same slot — but the View
+ * control only offers it once `RENDERED3D_EXPOSED` flips at 3D-15; until then
+ * only `?renderer=3d` (or a value stored by a later build) selects it. A
+ * browser that cannot run it falls back to the default view **without
+ * rewriting** the stored choice, so a temporarily unsupported device does not
+ * lose it.
  *
  * A stored `isometric` value is intentionally not a member any more: the
  * experimental angled view was removed, and an old blob that still names it
  * falls back to the default through {@link isTableView}.
  */
-export type TableView = 'stacked' | 'topdown';
+export type TableView = 'stacked' | 'topdown' | 'rendered3d';
 
 /** The view a browser with no stored choice gets. */
 export const DEFAULT_TABLE_VIEW: TableView = 'stacked';
@@ -55,7 +63,7 @@ export interface FrontendSettings {
 
 /** Narrow an arbitrary value (select value, stored blob) to a {@link TableView}. */
 export function isTableView(value: unknown): value is TableView {
-  return value === 'stacked' || value === 'topdown';
+  return value === 'stacked' || value === 'topdown' || value === 'rendered3d';
 }
 
 /**
