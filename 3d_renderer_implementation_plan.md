@@ -2216,6 +2216,25 @@ better, that looks great." The carve reads as physically recessed at the hand's
 and the shell body, blue band and Haku's clean face were accepted earlier in the
 same thread. `POM_HEIGHT_SCALE` stays at 0.25; `1p` is the hero face.
 
+**Plate-edge black seam (fixed 2026-11-19, task 261119-2029).** Some faces drew a
+black hairline along one edge: White dragon (5z), Green dragon (6z), South (2z),
+North (4z), West (3z) along the bottom, Red dragon (7z) along its side. Cause was
+in the **asset**, not the shader: 37 faces fill 37 of the grid's 42 cells and the
+plate's UV maps [0, 1] onto the cell's exact border, so the bilinear tap at a
+plate edge is a 50/50 blend of the cell's last texel and the next cell's first
+one. The five unused cells at the bottom right were left all-zero, and
+`(0, 0, 0, 0)` decodes to a normal lying in the plate plane at the deepest groove
+height with `AO 0` — black, tilted and sunken. Row 5's honours sit directly above
+those cells and Chun sits left of one, which is exactly the reported set. The
+bake now fills every unused cell with the open face (normal 128/128/255, height
+255, AO 255, roughness 115, no paint mask — the same values as
+`buildNeutralCell`), so every boundary blend is open-face-with-open-face. Measured
+by `bake-relief3d.mjs --check` and `reliefAssets.test.ts`: the worst plate-edge
+sample went from `2z bottom ao 127.5, height 127.5, normalZ 0.000` to `9p right
+ao 255, height 255, normalZ 0.993`, and a decoded-pixel diff against the previous
+atlas shows **only** the five unused cells changed — every used cell, and so
+every glyph and carve number, is byte-identical.
+
 ### 3D-19 — Radial cast shadows from standing things
 
 **Goal.** The board should read as lit from a lamp above the compass: every

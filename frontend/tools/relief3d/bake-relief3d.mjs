@@ -44,12 +44,27 @@
  * which is exact for the normal and a stated horizon approximation for the AO.
  * Deterministic: no randomness, no clock; two runs are byte-identical.
  *
+ * **Unused cells carry the open face, not zeros.** The 37 faces fill 37 of the
+ * grid's 42 cells, and the plate's UV maps [0, 1] onto the cell's *exact*
+ * border, so the sampler's bilinear tap at a plate edge is a 50/50 blend of the
+ * cell's last texel and the neighbouring cell's first one (and mip levels blend
+ * across the same border). A zero-filled unused cell is not "nothing": in the
+ * normal/height atlas `(0, 0, 0, 0)` decodes to a degenerate normal at the
+ * deepest groove height, and in the AO atlas to `AO 0` — i.e. black. That is
+ * what drew the black line along the bottom edge of every honour in row 5
+ * (their cells sit directly above the unused row 6) and along 7z's right edge
+ * (its neighbour is the first unused cell). Padding every unused cell with the
+ * open face (`normalDepth` 128/128/255/255, `aoRoughness` 255/115/0/255,
+ * `albedo` 255/255/255/0 — the same values `buildNeutralCell` uses) makes every
+ * boundary blend open-face-with-open-face, which is exactly the uncarved
+ * surface, so no face edge can read as a seam.
+ *
  *   node frontend/tools/relief3d/bake-relief3d.mjs            # bake + publish
  *   node frontend/tools/relief3d/bake-relief3d.mjs --check     # verify pins
  */
 
 import { createHash } from 'node:crypto';
-import { deflateSync } from 'node:zlib';
+import { deflateSync, inflateSync } from 'node:zlib';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,6 +106,25 @@ const WHITE_FILL_THRESHOLD = 0.9;
 /** The committed cell grid and plate, matching `relief.json`. */
 const RASTER = { cellWidth: 256, cellHeight: 340, columns: 6, rows: 7 };
 const PLATE_MM = { width: 0.64 * 28, height: 0.89 * 28 };
+
+/**
+ * The value every **unused** atlas cell carries: the open, uncarved face.
+ *
+ * These are the same numbers as the runtime's procedural neutral cell
+ * (`reliefAssets.buildNeutralCell`): flat tangent normal +Z, height 1 (uncarved),
+ * AO 1, the open resin roughness, and no paint mask. Any boundary blend of two
+ * of them is itself the open face, so a plate edge can never sample a groove, a
+ * tilted normal or a darkened cavity out of an un-baked neighbour.
+ */
+const OPEN_FACE = {
+  /** Tangent normal (0, 0, 1) + height 1. */
+  normalDepth: [128, 128, 255, 255],
+  /** AO 1, resin roughness 0.45, no B channel. */
+  aoRoughness: [255, Math.round(CARVE.roughnessOpen * 255), 0, 255],
+  /** White pigment with a zero paint mask — the shader's mask is alpha, so the
+   * RGB is never read; this mirrors `buildNeutralCell('albedo')`. */
+  albedo: [255, 255, 255, 0],
+};
 
 const FACE_IDS = [
   ...['m', 'p', 's'].flatMap((suit) =>
@@ -541,6 +575,28 @@ async function bake() {
   }
   process.stdout.write('\n');
 
+  // Every cell beyond the 37 faces carries the open face (see OPEN_FACE): the
+  // sampler's bilinear/mip taps at a plate edge reach into the neighbouring cell,
+  // and a zero-filled one would decode to a black cavity and a groove floor.
+  const unusedCells = [];
+  for (let index = FACE_IDS.length; index < RASTER.columns * RASTER.rows; index += 1) {
+    const column = index % RASTER.columns;
+    const row = Math.floor(index / RASTER.columns);
+    const ox = column * RASTER.cellWidth;
+    const oy = row * RASTER.cellHeight;
+    for (let y = 0; y < RASTER.cellHeight; y += 1) {
+      for (let x = 0; x < RASTER.cellWidth; x += 1) {
+        const target = ((oy + y) * atlasWidth + ox + x) * 4;
+        for (let channel = 0; channel < 4; channel += 1) {
+          normalDepth[target + channel] = OPEN_FACE.normalDepth[channel];
+          aoRoughness[target + channel] = OPEN_FACE.aoRoughness[channel];
+          albedo[target + channel] = OPEN_FACE.albedo[channel];
+        }
+      }
+    }
+    unusedCells.push({ index, column, row });
+  }
+
   const normalBytes = encodePng(atlasWidth, atlasHeight, normalDepth);
   const aoBytes = encodePng(atlasWidth, atlasHeight, aoRoughness);
   const albedoBytes = encodePng(atlasWidth, atlasHeight, albedo);
@@ -574,6 +630,13 @@ async function bake() {
       plateUnits: [0.64, 0.89],
       plateMm: [PLATE_MM.width, PLATE_MM.height],
       pxPerMm: { x: Number((RASTER.cellWidth / PLATE_MM.width).toFixed(6)), y: Number((RASTER.cellHeight / PLATE_MM.height).toFixed(6)) },
+      unusedCells: {
+        count: unusedCells.length,
+        cells: unusedCells,
+        value: OPEN_FACE,
+        rule:
+          'Unused cells carry the open face, never zeros: the plate UV maps [0, 1] onto the cell border, so a bilinear or mip tap at a plate edge blends the neighbouring cell in. Zeros there decode to a degenerate normal, the deepest groove height and AO 0 (black); the open face keeps every boundary blend equal to the uncarved surface.',
+      },
     },
     carve: {
       depthMm: CARVE.depthMm,
@@ -626,6 +689,104 @@ async function bake() {
   );
 }
 
+/**
+ * Decode one of this tool's own PNGs (8-bit RGBA, filter 0).
+ *
+ * Straight alpha, no canvas: a canvas premultiplies, and the height channel is 0
+ * across every groove floor, so a canvas read would zero those normals.
+ */
+function decodePng(bytes) {
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  const idat = [];
+  while (offset < bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    const type = bytes.toString('ascii', offset + 4, offset + 8);
+    const data = bytes.subarray(offset + 8, offset + 8 + length);
+    if (type === 'IHDR') {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      if (data[8] !== 8 || data[9] !== 6) throw new Error('expected 8-bit RGBA');
+      if (data[12] !== 0) throw new Error('expected a non-interlaced PNG');
+    }
+    if (type === 'IDAT') idat.push(data);
+    offset += 12 + length;
+  }
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = width * 4 + 1;
+  const out = new Uint8ClampedArray(width * height * 4);
+  const target = Buffer.from(out.buffer);
+  for (let y = 0; y < height; y += 1) {
+    if (raw[y * stride] !== 0) throw new Error('expected filter type 0');
+    raw.copy(target, y * width * 4, y * stride + 1, y * stride + 1 + width * 4);
+  }
+  return { width, height, data: out };
+}
+
+/** The RGBA texel at (x, y), clamped to the atlas exactly as `ClampToEdgeWrapping` does. */
+function texel(atlas, x, y) {
+  const cx = Math.min(atlas.width - 1, Math.max(0, x));
+  const cy = Math.min(atlas.height - 1, Math.max(0, y));
+  const offset = (cy * atlas.width + cx) * 4;
+  return [
+    atlas.data[offset],
+    atlas.data[offset + 1],
+    atlas.data[offset + 2],
+    atlas.data[offset + 3],
+  ];
+}
+
+/**
+ * What the face sampler reads at a plate edge.
+ *
+ * The plate's UV maps [0, 1] onto the cell's exact border, so the bilinear tap
+ * at an edge is a 50/50 blend of the cell's own edge texel and the neighbouring
+ * cell's first one. That blend must read as the open face, which is the property
+ * that makes a dark edge impossible.
+ */
+function edgeSamples(atlas, cell) {
+  const { x: ox, y: oy } = cell;
+  const right = ox + RASTER.cellWidth - 1;
+  const bottom = oy + RASTER.cellHeight - 1;
+  const sides = [];
+  for (let y = oy; y < oy + RASTER.cellHeight; y += 1) {
+    sides.push({ side: 'left', inner: texel(atlas, ox, y), outer: texel(atlas, ox - 1, y) });
+    sides.push({ side: 'right', inner: texel(atlas, right, y), outer: texel(atlas, right + 1, y) });
+  }
+  for (let x = ox; x < ox + RASTER.cellWidth; x += 1) {
+    sides.push({ side: 'top', inner: texel(atlas, x, oy), outer: texel(atlas, x, oy - 1) });
+    sides.push({ side: 'bottom', inner: texel(atlas, x, bottom), outer: texel(atlas, x, bottom + 1) });
+  }
+  return sides;
+}
+
+/** The worst plate-edge reading over every face and side, in the shader's own terms. */
+function plateEdgeReport(manifest, normalDepth, aoRoughness) {
+  let worst = { face: 'none', side: 'none', ao: 255, height: 255, normalZ: 1 };
+  for (const entry of Object.values(manifest.faces)) {
+    const cell = entry.cell;
+    const normalPairs = edgeSamples(normalDepth, cell);
+    const aoPairs = edgeSamples(aoRoughness, cell);
+    for (let index = 0; index < normalPairs.length; index += 1) {
+      const { side, inner, outer } = normalPairs[index];
+      // The 50/50 bilinear tap at the boundary.
+      const height = (inner[3] + outer[3]) / 2;
+      const normalX = (inner[0] + outer[0]) / 2;
+      const normalY = (inner[1] + outer[1]) / 2;
+      const normalZ = (inner[2] + outer[2]) / 2;
+      const length = Math.hypot(normalX / 127.5 - 1, normalY / 127.5 - 1, normalZ / 127.5 - 1);
+      const z = length > 0 ? (normalZ / 127.5 - 1) / length : 1;
+      const aoPair = aoPairs[index];
+      const ao = (aoPair.inner[0] + aoPair.outer[0]) / 2;
+      if (ao < worst.ao || height < worst.height || z < worst.normalZ) {
+        worst = { face: entry.face, side, ao, height, normalZ: z };
+      }
+    }
+  }
+  return worst;
+}
+
 /** Print the carve's signature numbers and verify the committed files. */
 function check() {
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -641,6 +802,47 @@ function check() {
   console.log(`  vs committed relief: depth 0.55 mm, wall run 0.655 mm at 40 deg, floor flat`);
   const deepest = Math.max(...Object.values(manifest.faces).map((face) => face.measured.deepestMm));
   console.log(`  deepest measured ${deepest} mm; atlases match their pins`);
+
+  // The plate-edge seam gate: every cell boundary a face can sample must read as
+  // the open face, and every unused cell must carry it. Both are derived from the
+  // grid and OPEN_FACE rather than from the manifest, so the gate cannot be
+  // satisfied by a manifest that describes the wrong padding.
+  const normalDepth = decodePng(readFileSync(join(tableDir, ATLAS_FILES.normalDepth)));
+  const aoRoughness = decodePng(readFileSync(join(tableDir, ATLAS_FILES.aoRoughness)));
+  const used = new Set(Object.values(manifest.faces).map((entry) => entry.cell.index));
+  const unusedCells = [];
+  for (let index = 0; index < RASTER.columns * RASTER.rows; index += 1) {
+    if (!used.has(index)) {
+      unusedCells.push({ index, column: index % RASTER.columns, row: Math.floor(index / RASTER.columns) });
+    }
+  }
+  let unusedBad = 0;
+  for (const cell of unusedCells) {
+    for (let y = cell.row * RASTER.cellHeight; y < (cell.row + 1) * RASTER.cellHeight; y += 1) {
+      for (let x = cell.column * RASTER.cellWidth; x < (cell.column + 1) * RASTER.cellWidth; x += 1) {
+        const n = texel(normalDepth, x, y);
+        const a = texel(aoRoughness, x, y);
+        if (
+          n.some((value, channel) => value !== OPEN_FACE.normalDepth[channel]) ||
+          a.some((value, channel) => value !== OPEN_FACE.aoRoughness[channel])
+        ) {
+          unusedBad += 1;
+        }
+      }
+    }
+  }
+  if (unusedBad > 0) problems.push(`${unusedBad} texels in ${unusedCells.length} unused cells are not the open face`);
+  const worst = plateEdgeReport(manifest, normalDepth, aoRoughness);
+  console.log(`  unused cells: ${unusedCells.length} at the open face (${unusedBad} texels off it)`);
+  console.log(`  worst plate-edge sample: ${worst.face} ${worst.side} ` +
+    `ao ${worst.ao.toFixed(1)} height ${worst.height.toFixed(1)} normalZ ${worst.normalZ.toFixed(3)}`);
+  if (worst.ao < 250 || worst.height < 250 || worst.normalZ < 0.99) {
+    problems.push(
+      `plate edge ${worst.face} ${worst.side} reads as a carve: ao ${worst.ao.toFixed(1)}, ` +
+        `height ${worst.height.toFixed(1)}, normalZ ${worst.normalZ.toFixed(3)}`,
+    );
+  }
+
   for (const problem of problems) console.log(`FAIL ${problem}`);
   if (problems.length > 0) process.exitCode = 1;
   else console.log('relief3d check: ok');
