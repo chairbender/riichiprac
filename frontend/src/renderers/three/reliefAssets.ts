@@ -87,28 +87,37 @@ export interface ReliefAtlasPin {
  * atlases, and reuses the committed albedo because the paint does not depend on
  * the carve geometry. A mismatch is a hard load error, exactly as for the
  * committed set.
+ *
+ * **Unused cells carry the open face, and they must.** 37 faces fill 37 of the
+ * grid's 42 cells, and the plate's UV maps [0, 1] onto the cell's exact border,
+ * so the bilinear (and mip) tap at a plate edge blends the neighbouring cell in.
+ * The five unused cells used to be all-zero, which decodes to a normal in the
+ * plate plane at the deepest groove height with `AO 0` — the black hairline on
+ * the row-5 honours and on Chun (task 261119-2029). They now carry
+ * {@link buildNeutralCells}'s values, so a boundary blend is open-face-with-
+ * open-face. `bake-relief3d.mjs --check` and this module's tests both gate it.
  */
 export const PINNED_RELIEF3D_ATLASES = {
   face_albedo: {
     file: 'relief3d/face_albedo.png',
     width: 1536,
     height: 2380,
-    bytes: 457226,
-    sha256: 'f7c6e2c6a5c19e9a3bb84bb89db6c69d0b9ddab9acf6af579f68b462206592cd',
+    bytes: 458909,
+    sha256: '9bd5e4f08018c362da39d969a1928b838430ffbe286708e3822a0c72675502d7',
   },
   face_normal_depth: {
     file: 'relief3d/face_normal_depth.png',
     width: 1536,
     height: 2380,
-    bytes: 1568434,
-    sha256: 'b7a31853af12c7871d18b16b9be97ad0a5e36505e475d07bc0d5e6dc4e10ce4e',
+    bytes: 1567000,
+    sha256: '46ce116edd74da3cbc64a93d49e99520f2b632cc414344ff612a7a370e49a154',
   },
   face_ao_roughness: {
     file: 'relief3d/face_ao_roughness.png',
     width: 1536,
     height: 2380,
-    bytes: 973832,
-    sha256: '1a1c9f1c3416130e0759e13f09bb518bcb451b210adc259670d2653296628c17',
+    bytes: 972171,
+    sha256: '43715ae72fb454ae9e0ba48ac29be7c23445bcf549e75511564a37bbae1a60d3',
   },
 } as const;
 

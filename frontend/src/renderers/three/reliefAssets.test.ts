@@ -16,6 +16,7 @@ import {
   RELIEF_TIER_SETTINGS,
   ReliefAssetError,
   buildNeutralCell,
+  buildNeutralCells,
   loadReliefAssets,
   parseReliefManifest,
   reliefGpuBytes,
@@ -299,6 +300,109 @@ describe('relief3d: decoded-pixel evidence', () => {
       }
     }
     expect(flatWithZeroAlpha).toBeGreaterThan(100);
+  });
+
+  /**
+   * The plate-edge seam gate.
+   *
+   * The plate's UV maps [0, 1] onto the cell's **exact** border, so the
+   * bilinear tap at a plate edge is a 50/50 blend of the cell's last texel and
+   * the next cell's first one (and a mip level's footprint is wider still).
+   * That is how the black line appeared: the five unused cells at the atlas's
+   * bottom right were all-zero, which in the normal/height atlas decodes to a
+   * normal lying in the plate plane at the deepest groove height and in the AO
+   * atlas to `AO 0` — a black, tilted, sunken edge. The honours in row 5
+   * (East…Hatsu) sit directly above them, and Chun sits left of one, exactly
+   * the tiles the user reported.
+   *
+   * These tests pin the fix in the committed pixels: unused cells carry the
+   * open face (`buildNeutralCells`, the same values the procedural fallback
+   * uses), so every boundary blend reads as the uncarved surface.
+   */
+  it('pads every unused atlas cell with the open face, never zeros', () => {
+    const normal = decodeStraightPng(PINNED_RELIEF3D_ATLASES.face_normal_depth.file);
+    const ao = decodeStraightPng(PINNED_RELIEF3D_ATLASES.face_ao_roughness.file);
+    const neutral = buildNeutralCells();
+    const used = new Set([...manifest.cells.values()].map((cell) => cell.index));
+    const unused: number[] = [];
+    for (let index = 0; index < RELIEF_RASTER.columns * RELIEF_RASTER.rows; index += 1) {
+      if (!used.has(index)) unused.push(index);
+    }
+    expect(unused.length).toBe(5);
+    for (const index of unused) {
+      const x0 = (index % RELIEF_RASTER.columns) * RELIEF_RASTER.cellWidth;
+      const y0 = Math.floor(index / RELIEF_RASTER.columns) * RELIEF_RASTER.cellHeight;
+      const offNormal: number[] = [];
+      const offAo: number[] = [];
+      for (let y = y0; y < y0 + RELIEF_RASTER.cellHeight; y += 1) {
+        for (let x = x0; x < x0 + RELIEF_RASTER.cellWidth; x += 1) {
+          const offset = (y * normal.width + x) * 4;
+          for (let channel = 0; channel < 4; channel += 1) {
+            if (normal.data[offset + channel] !== neutral.normalDepth.data[channel]) {
+              offNormal.push(offset + channel);
+            }
+            if (ao.data[offset + channel] !== neutral.aoRoughness.data[channel]) {
+              offAo.push(offset + channel);
+            }
+          }
+        }
+      }
+      expect(offNormal, `normalDepth cell ${index}`).toEqual([]);
+      expect(offAo, `aoRoughness cell ${index}`).toEqual([]);
+    }
+  });
+
+  it('leaves no plate-edge sample reading a carve out of the next cell', () => {
+    const normal = decodeStraightPng(PINNED_RELIEF3D_ATLASES.face_normal_depth.file);
+    const ao = decodeStraightPng(PINNED_RELIEF3D_ATLASES.face_ao_roughness.file);
+    const texel = (atlas: typeof normal, x: number, y: number): number[] => {
+      // Clamp-to-edge, exactly as `reliefTextures.applySampling` uploads them.
+      const cx = Math.min(atlas.width - 1, Math.max(0, x));
+      const cy = Math.min(atlas.height - 1, Math.max(0, y));
+      const offset = (cy * atlas.width + cx) * 4;
+      return [
+        atlas.data[offset],
+        atlas.data[offset + 1],
+        atlas.data[offset + 2],
+        atlas.data[offset + 3],
+      ];
+    };
+
+    let worst = { face: 'none', side: 'none', height: 255, ao: 255, normalZ: 1 };
+    for (const face of RELIEF_FACE_IDS) {
+      const { x, y } = cellOffset(face);
+      const right = x + RELIEF_RASTER.cellWidth - 1;
+      const bottom = y + RELIEF_RASTER.cellHeight - 1;
+      const pairs: { side: string; inner: [number, number]; outer: [number, number] }[] = [];
+      for (let row = y; row <= bottom; row += 1) {
+        pairs.push({ side: 'left', inner: [x, row], outer: [x - 1, row] });
+        pairs.push({ side: 'right', inner: [right, row], outer: [right + 1, row] });
+      }
+      for (let column = x; column <= right; column += 1) {
+        pairs.push({ side: 'top', inner: [column, y], outer: [column, y - 1] });
+        pairs.push({ side: 'bottom', inner: [column, bottom], outer: [column, bottom + 1] });
+      }
+      for (const { side, inner, outer } of pairs) {
+        const near = texel(normal, inner[0], inner[1]);
+        const far = texel(normal, outer[0], outer[1]);
+        const nearAo = texel(ao, inner[0], inner[1]);
+        const farAo = texel(ao, outer[0], outer[1]);
+        const height = (near[3] + far[3]) / 2;
+        const nx = (near[0] + far[0]) / 2 / 127.5 - 1;
+        const ny = (near[1] + far[1]) / 2 / 127.5 - 1;
+        const nz = (near[2] + far[2]) / 2 / 127.5 - 1;
+        const length = Math.hypot(nx, ny, nz) || 1;
+        const cavity = (nearAo[0] + farAo[0]) / 2;
+        if (cavity < worst.ao || height < worst.height || nz / length < worst.normalZ) {
+          worst = { face, side, height, ao: cavity, normalZ: nz / length };
+        }
+      }
+    }
+    // The open face, within one 8-bit step: uncarved height, no cavity, and a
+    // normal that still points out of the plate.
+    expect(worst.height, `${worst.face} ${worst.side} height`).toBeGreaterThanOrEqual(250);
+    expect(worst.ao, `${worst.face} ${worst.side} ao`).toBeGreaterThanOrEqual(250);
+    expect(worst.normalZ, `${worst.face} ${worst.side} normalZ`).toBeGreaterThanOrEqual(0.99);
   });
 });
 
