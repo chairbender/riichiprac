@@ -21,6 +21,11 @@
  * decompresses `.gz` responses makes the byte-count/SHA-256 check fail before
  * the loader can parse anything. Publishing/audit contract:
  * `replay-miner-operations.md`.
+ *
+ * First deal (RF4): a launch may open with a replay hand, so the app awaits the
+ * manifest and then one body before drawing anything. Both phases are bounded
+ * by {@link FIRST_DEAL_BUDGET_MS} through {@link withDeadline}, and a phase that
+ * misses its budget deals the generated hand instead of holding the table.
  */
 import { pickUnseen } from '../session';
 import { isCorrectAction } from '../actions';
@@ -51,6 +56,19 @@ export const MANIFEST_FILE_NAME = 'manifest.json';
 
 /** Same-origin directory Vite copies from `frontend/public/scenarios/`. */
 export const PACKS_DIRECTORY = `${import.meta.env.BASE_URL}scenarios/`;
+
+/**
+ * How long the first deal of a launch may spend on **each** of its pack phases
+ * (the manifest, then one body) before falling back to the generated hand.
+ *
+ * RF4 makes the first hand replay-first at the cost of one small manifest and
+ * one section body (measured in `replay-first-rollout.md`, "First deal"). A
+ * slow or captive network must not hold the table hostage, so the deal gives a
+ * phase this budget and then deals generated; the losing request is not
+ * cancelled, so a late body still lands in the IndexedDB cache for the next
+ * hand.
+ */
+export const FIRST_DEAL_BUDGET_MS = 2500;
 
 /** Optional build-time manifest override (`VITE_PACK_MANIFEST_URL`). */
 const OVERRIDE_MANIFEST_URL = import.meta.env.VITE_PACK_MANIFEST_URL;
@@ -182,6 +200,42 @@ export class PackLoadError extends Error {
 /** Where the manifest is fetched from: override, otherwise same-origin. */
 export function packManifestUrl(): string {
   return OVERRIDE_MANIFEST_URL || `${PACKS_DIRECTORY}${MANIFEST_FILE_NAME}`;
+}
+
+/**
+ * Settle with `promise`, or reject with a {@link PackLoadError} once `ms` pass.
+ *
+ * The first deal uses this so a manifest or body that never arrives cannot
+ * leave the table on a loading state: the deal falls back to the generated
+ * hand. The losing promise is deliberately not cancelled — a body that lands
+ * after the deadline still reaches the IndexedDB cache for the next hand — and
+ * its rejection is consumed here so nothing surfaces as an unhandled error.
+ */
+export function withDeadline<T>(
+  promise: Promise<T>,
+  ms: number,
+  description: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(
+        new PackLoadError(
+          'fetch',
+          `Timed out after ${ms} ms waiting for ${description}.`,
+        ),
+      );
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
 }
 
 /**

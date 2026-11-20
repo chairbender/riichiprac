@@ -217,7 +217,7 @@ export const ScenarioPicker = ({
    * A failure note from a body that could not be delivered is appended.
    */
   const sourceNote =
-    'PACK rows deal a real audited replay hand; GENERATED rows drill the same lesson with the generator. Replay is the default where a lesson has enough reviewed bases, and filtering changes the rows listed, not the ticks you already made.';
+    'PACK rows deal a real audited replay hand; GENERATED rows drill the same lesson with the generator. Replay is the default where a lesson has enough reviewed bases, and a launch’s first hand may fetch one replay body before it draws. Filtering changes the rows listed, not the ticks you already made.';
   const knownPackNote =
     packCount === 1
       ? `Replay pack: ${sourceNote}`

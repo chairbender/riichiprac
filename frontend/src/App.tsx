@@ -35,6 +35,7 @@ import { downloadJson, readStateFile, serializeState } from './stateFile';
 import {
   ALL_SCENARIOS,
   FALLBACK_SCENARIOS,
+  firstDealReplayOption,
   mergePackLessons,
   parseScenarioManifest,
   selectionPool,
@@ -45,9 +46,11 @@ import type {
   ScenarioSelection,
 } from './scenarios';
 import {
+  FIRST_DEAL_BUDGET_MS,
   fetchPackManifest,
   loadPack,
   pickUnseenPackScenario,
+  withDeadline,
 } from './services/packLoader';
 import type {
   PackManifest,
@@ -72,6 +75,21 @@ import './App.css';
  * checkbox state, so the two cannot drift.
  */
 const DEFAULT_REQUIRE_AGREEMENT = true;
+
+/**
+ * Options for one deal.
+ *
+ * `forced` pins the lesson an AI Hotseat re-deal must keep. `bootstrap` marks
+ * the first deal of a launch (RF4, strategy C in `replay-first-rollout.md`): it
+ * waits — briefly — for the pack manifest and deals the most prominent covered
+ * lesson's replay hand, so a cold launch opens replay-first instead of staying
+ * generated until the next hand. Offline, slow, errored, uncovered, or with
+ * `preferReplay` off, it deals the generated hand exactly as before.
+ */
+interface LoadPuzzleOptions {
+  forced?: { category: string; hotseat?: HotseatOptions };
+  bootstrap?: boolean;
+}
 
 /**
  * Load the pack a picker entry points at and choose one of its hands for that
@@ -143,6 +161,12 @@ export const App = () => {
     useState<PackManifestStatus>('loading');
   const [packError, setPackError] = useState<string | null>(null);
   const [packLoading, setPackLoading] = useState(false);
+  /**
+   * The first deal's bounded wait for replay (RF4). Separate from
+   * `packLoading` because it starts before a lesson is known: the manifest may
+   * still be arriving, and the deal has not chosen a pack yet.
+   */
+  const [firstDealLoading, setFirstDealLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [agreementLoading, setAgreementLoading] = useState(false);
   const [hotseatLoading, setHotseatLoading] = useState(false);
@@ -213,6 +237,13 @@ export const App = () => {
    * resolves outside React's state updates.
    */
   const packManifestRef = useRef<PackManifest | null>(null);
+  /**
+   * The in-flight manifest fetch, mirrored for the first deal: RF4 awaits it
+   * (bounded) so a cold launch can open with a replay hand. Every later deal
+   * reads {@link packManifestRef} instead, so nothing waits on the network
+   * mid-session.
+   */
+  const packManifestPromiseRef = useRef<Promise<PackManifest | null> | null>(null);
   /**
    * Lesson/scenario ids already dealt this page session. Generated lessons and
    * each pack lesson get their own pool; an exhausted pool starts a new cycle
@@ -299,10 +330,13 @@ export const App = () => {
     async (
       scenarioSelection: ScenarioSelection,
       requireMortalAgreement: boolean,
-      forced?: { category: string; hotseat?: HotseatOptions },
+      dealOptions?: LoadPuzzleOptions,
     ) => {
       const requestId = ++loadRequestId.current;
       reset();
+      // A superseded deal owns the table now; its own status must not keep the
+      // first deal's replay wait on screen (RF4).
+      setFirstDealLoading(false);
       setHotseatProgress(null);
       // A description belongs to the position it was written for.
       updateExportDescription('');
@@ -316,8 +350,8 @@ export const App = () => {
        * Replay-first inputs, snapshotted when the deal starts.
        *
        * A pack manifest that arrives mid-deal therefore applies to the next
-       * hand, not this one, and the first deal of a fresh launch stays generated
-       * (RF4 owns fetching a section body for it). Reading the setting here
+       * hand, not this one — except for the first deal of a launch, which
+       * deliberately waits for the manifest (RF4). Reading the setting here
        * instead of through a hook keeps `loadPuzzle` stable, so changing it can
        * never re-run the first-hand effect.
        */
@@ -354,6 +388,46 @@ export const App = () => {
           }
         }
 
+        // RF4 (strategy C): the first deal of a launch opens replay-first. The
+        // manifest fetch is already in flight — its effect runs before this one
+        // — so awaiting it usually costs one small same-origin request, and the
+        // body that follows is content-addressed and cached. Both phases are
+        // bounded, and every failure falls through to the generated pool below.
+        let bootstrapOption: ScenarioOption | null = null;
+        if (
+          dealOptions?.bootstrap &&
+          scenarioSelection.kind === 'all' &&
+          replayDefaults.preferReplay
+        ) {
+          setFirstDealLoading(true);
+          try {
+            const manifest =
+              replayDefaults.manifest ??
+              (await withDeadline(
+                packManifestPromiseRef.current ?? Promise.resolve(null),
+                FIRST_DEAL_BUDGET_MS,
+                'the replay pack manifest',
+              ));
+            if (requestId !== loadRequestId.current) return;
+            if (manifest) replayDefaults.manifest = manifest;
+            // "Prominent covered section": the covered lesson with the most
+            // reviewed bases, in book order on a tie (scenarios.ts).
+            bootstrapOption = firstDealReplayOption(
+              mergePackLessons(
+                wasmCatalogRef.current ?? FALLBACK_SCENARIOS,
+                replayDefaults.manifest,
+              ),
+              replayDefaults,
+            );
+          } catch {
+            // Offline, slow, or not published: no first replay hand. The
+            // generated pool deals this hand exactly as it did before RF4.
+            bootstrapOption = null;
+          } finally {
+            if (requestId === loadRequestId.current) setFirstDealLoading(false);
+          }
+        }
+
         // The deal sees the same manifest snapshot the pool was built from, so
         // a manifest that arrives mid-deal cannot add a row the pool never
         // considered (or vice versa).
@@ -365,7 +439,8 @@ export const App = () => {
         // replay, every other lesson keeps its generated drill. With no
         // manifest this is exactly the generated pool as before.
         let category =
-          forced?.category ??
+          bootstrapOption?.id ??
+          dealOptions?.forced?.category ??
           pickUnseen(
             selectionPool(
               options,
@@ -377,6 +452,9 @@ export const App = () => {
             seenCategoriesRef.current,
           ).value.id;
         let option = options.find((entry) => entry.id === category) ?? null;
+        // A bootstrap hand is a real pick: keep the session's unseen guard in
+        // step with it, exactly as `pickUnseen` would.
+        if (bootstrapOption) seenCategoriesRef.current.add(category);
 
         // A replay lesson ships its own complete state, so it is laid out with
         // the same `loadFromJson` path as an imported position: verified bytes
@@ -391,11 +469,21 @@ export const App = () => {
               seen = new Set<string>();
               seenPackScenariosRef.current.set(seenKey, seen);
             }
-            const picked = await loadReplayScenario(
-              packManifestRef.current,
+            const replayLoad = loadReplayScenario(
+              replayDefaults.manifest ?? packManifestRef.current,
               replayPack,
               seen,
             );
+            // The first deal's body gets the same budget as its manifest wait:
+            // a body that never arrives deals the generated sibling instead of
+            // holding the launch. The losing load still fills the cache.
+            const picked = dealOptions?.bootstrap
+              ? await withDeadline(
+                  replayLoad,
+                  FIRST_DEAL_BUDGET_MS,
+                  'the first replay hand',
+                )
+              : await replayLoad;
             if (requestId !== loadRequestId.current) return;
             setPackError(null);
             finish(() => loadFromJson(JSON.stringify(picked.scenario.state)));
@@ -453,7 +541,7 @@ export const App = () => {
               // one of that seat's real decisions.
               setHotseatLoading(true);
               const hotseat =
-                forced?.hotseat ?? hotseatOptionsRef.current;
+                dealOptions?.forced?.hotseat ?? hotseatOptionsRef.current;
               generated = await mortal.generateHotseatPuzzle(
                 hotseatOptionsJson(hotseat),
                 (progress) => {
@@ -591,48 +679,64 @@ export const App = () => {
     exportDescription,
   ]);
 
+  /**
+   * Fetch the replay-pack manifest on first paint.
+   *
+   * It is the only pack metadata a launch needs, and it drives coverage in the
+   * picker. The promise is mirrored in a ref because the first deal awaits it
+   * (RF4) instead of racing it: `loadPuzzle`'s `bootstrap` path settles for
+   * whatever arrives within its budget. The content-addressed bodies stay
+   * lazy, fetched by `loadPuzzle` when a replay lesson is actually dealt.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    setPackStatus('loading');
+
+    const manifestLoad = fetchPackManifest()
+      .then((manifest) => {
+        if (!cancelled) {
+          packManifestRef.current = manifest;
+          setPackManifest(manifest);
+          setPackError(null);
+          setPackStatus(manifest.packs.length > 0 ? 'ready' : 'empty');
+        }
+        return manifest;
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          // A missing manifest must not break generated lessons: keep the pool
+          // and tell the picker. A reload retries the fetch.
+          packManifestRef.current = null;
+          setPackManifest(null);
+          setPackError(err instanceof Error ? err.message : String(err));
+          setPackStatus('error');
+        }
+        return null;
+      });
+    packManifestPromiseRef.current = manifestLoad;
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // The filter is on by default, so the first hand is dealt through it too.
   // `loadPuzzle` falls back to a book-only deal when Mortal cannot load.
+  //
+  // RF4: the first deal is also the replay-first deal. It waits (briefly) for
+  // the manifest effect above and deals a covered lesson's replay hand; with no
+  // pack, no coverage, `preferReplay` off or a slow/failed fetch it deals the
+  // generated hand exactly as before.
   useEffect(() => {
-    void loadPuzzle(ALL_SCENARIOS, DEFAULT_REQUIRE_AGREEMENT);
+    void loadPuzzle(ALL_SCENARIOS, DEFAULT_REQUIRE_AGREEMENT, {
+      bootstrap: true,
+    });
   }, [loadPuzzle]);
 
   // Start loading the Mortal weights in the background on first paint.
   useEffect(() => {
     void initializeAi();
   }, [initializeAi]);
-
-  /**
-   * Fetch the replay-pack manifest on first paint. This is the only pack bytes a
-   * launch downloads: the content-addressed bodies are fetched lazily by
-   * `loadPuzzle` when a replay lesson is actually dealt.
-   */
-  useEffect(() => {
-    let cancelled = false;
-    setPackStatus('loading');
-
-    void fetchPackManifest()
-      .then((manifest) => {
-        if (cancelled) return;
-        packManifestRef.current = manifest;
-        setPackManifest(manifest);
-        setPackError(null);
-        setPackStatus(manifest.packs.length > 0 ? 'ready' : 'empty');
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        // A missing manifest must not break generated lessons: keep the pool
-        // and tell the picker. A reload retries the fetch.
-        packManifestRef.current = null;
-        setPackManifest(null);
-        setPackError(err instanceof Error ? err.message : String(err));
-        setPackStatus('error');
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const handleSelectionChange = (next: ScenarioSelection) => {
     setSelection(next);
@@ -648,7 +752,7 @@ export const App = () => {
           hotseat: hotseatOptionsRef.current,
         }
       : undefined;
-    void loadPuzzle(selection, requireAgreement, forced);
+    void loadPuzzle(selection, requireAgreement, { forced });
   };
 
   /** Open the generation card without generating anything yet. */
@@ -667,8 +771,7 @@ export const App = () => {
     };
     setSelection(next);
     void loadPuzzle(next, requireAgreement, {
-      category: HOTSEAT_SCENARIO_ID,
-      hotseat: options,
+      forced: { category: HOTSEAT_SCENARIO_ID, hotseat: options },
     });
   };
 
@@ -889,15 +992,17 @@ export const App = () => {
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)
-    : agreementLoading
-      ? 'Finding a hand Mortal agrees with…'
-      : aiLoading
-        ? 'Asking Mortal…'
-        : packLoading
-          ? 'Loading replay pack…'
-          : isLoading
-            ? 'Loading table…'
-            : null;
+    : firstDealLoading
+      ? 'Loading a replay position…'
+      : agreementLoading
+        ? 'Finding a hand Mortal agrees with…'
+        : aiLoading
+          ? 'Asking Mortal…'
+          : packLoading
+            ? 'Loading replay pack…'
+            : isLoading
+              ? 'Loading table…'
+              : null;
 
   // The header controls, built once so the stacked and top-down layouts cannot
   // drift apart.

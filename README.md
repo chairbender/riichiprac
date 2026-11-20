@@ -148,16 +148,27 @@ The picker's **Source** filter switches between **Replay**, **Generated** and
   on.
 
 Filtering changes which rows are listed, not the ticks already made: a selected
-row keeps its place in the pool while another filter hides it. The first page
-load only fetches the small same-origin pack manifest
-(`/scenarios/manifest.json`); a pack body downloads when a covered deal or a
-picked replay row needs it and is then cached in IndexedDB, verified against the
-manifest's SHA-256 first. Within a page session a replay lesson cycles through
-its scenarios without replacement (generated lessons use the same session
-guard): the same hand does not repeat until every unseen sibling for that pool
-has been dealt, then a new cycle starts. If no pack is published (or its
-manifest is unreachable) the note in the picker says so and generated lessons
-are unaffected.
+row keeps its place in the pool while another filter hides it.
+
+The **first hand of a launch** is replay-first too. The app fetches the small
+same-origin pack manifest (`/scenarios/manifest.json`) and, when replay is the
+default, one section body for the best-covered lesson before it draws: a brief
+"Loading a replay position…" status covers it. The manifest and the body each
+get 2.5 s; offline, slow, errored or with the Generated filter chosen the launch
+deals the generated hand instead, so a pack can never block the table. The body
+is verified against the manifest's SHA-256 and cached in IndexedDB like every
+other replay deal, and is re-used (re-verified, not re-downloaded) on later
+visits. A cold first deal therefore downloads the manifest (1.6 KB) plus one
+body (591 KB–2.26 MB); the cost is measured in
+[`replay-first-rollout.md`](replay-first-rollout.md) ("Status (RF4)").
+
+A pack body downloads when a covered deal or a picked replay row needs it and is
+then cached in IndexedDB, verified against the manifest's SHA-256 first. Within
+a page session a replay lesson cycles through its scenarios without replacement
+(generated lessons use the same session guard): the same hand does not repeat
+until every unseen sibling for that pool has been dealt, then a new cycle
+starts. If no pack is published (or its manifest is unreachable) the note in the
+picker says so and generated lessons are unaffected.
 
 ## Going back to a previous hand
 
@@ -518,10 +529,14 @@ remain available as the explicit alternative. A lesson without enough replay
 bases keeps the generated default, so the app never degrades. The picker's
 Replay / Generated / Both source filter now implements the opt-in: replay rows
 lead where covered, generated rows are still listed and selectable, and the
-**Generated** filter switches the default pool to generated drills. The coverage
-table, the four lessons that still need classifiers, the per-section pack plan
-and the task sequence are in
-[`replay-first-rollout.md`](replay-first-rollout.md).
+**Generated** filter switches the default pool to generated drills. The
+**first deal** is replay-first as well (RF4): the launch fetches the manifest and
+one section body, shows a brief loading status, and falls back to the generated
+hand when offline, slow or errored. The coverage table, the four lessons that
+still need classifiers, the per-section pack plan, the task sequence and the
+measured cold-start cost are in
+[`replay-first-rollout.md`](replay-first-rollout.md); re-measure it with
+`cd frontend && npm run first-deal:measure`.
 Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and

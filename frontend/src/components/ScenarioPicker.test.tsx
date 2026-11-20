@@ -519,6 +519,7 @@ describe('pack manifest states', () => {
     expect(note).toContain('PACK rows deal a real audited replay hand');
     expect(note).toContain('GENERATED rows drill the same lesson');
     expect(note).toContain('Replay is the default where a lesson has enough');
+    expect(note).toContain('a launch’s first hand may fetch one replay body');
     expect(note).toContain('not the ticks you already made');
   });
 
