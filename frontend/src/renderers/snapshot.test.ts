@@ -172,7 +172,9 @@ describe('snapshotFromGameState: seats and hands', () => {
     expect(twoMelds.seats[0].melds).toHaveLength(2);
   });
 
-  it('keeps the engine hand order rather than sorting', () => {
+  it('shows the hand in display order rather than the engine’s order', () => {
+    // User request 2026-11-20: every view of the hand sorts it. The 3D canvas
+    // draws this order, and the projected buttons keep it, so the two agree.
     const snapshot = snapshotFromGameState(
       game({
         players: [
@@ -186,9 +188,13 @@ describe('snapshotFromGameState: seats and hands', () => {
       false,
     );
     expect(snapshot.seats[0].concealed.map((tile) => tile.face)).toEqual([
-      '9p',
       '1m',
+      '9p',
       '5z',
+    ]);
+    // The slots are reassigned in that order: slot n is the nth drawn tile.
+    expect(snapshot.seats[0].concealed.map((tile) => tile.slot)).toEqual([
+      0, 1, 2,
     ]);
   });
 
@@ -287,6 +293,34 @@ describe('snapshotFromGameState: red fives', () => {
       '5m',
       '5p',
       '3s',
+    ]);
+  });
+
+  it('keeps the red five on its own copy through the display sort', () => {
+    // The allocation happens in the engine's order; the sort must not hand the
+    // mark to a different 5m. `9p` sorts after the fives, so the five copies'
+    // relative order is what decides which one is red.
+    const snapshot = snapshotFromGameState(
+      game({
+        players: [
+          player({
+            seat: 0,
+            hand: ['9p', '5m', '1m', '5m'],
+            red_fives: ['5m'],
+          }),
+          player({ seat: 1 }),
+          player({ seat: 2 }),
+          player({ seat: 3 }),
+        ],
+      }),
+      0,
+      false,
+    );
+    expect(snapshot.seats[0].concealed.map((tile) => tile.face)).toEqual([
+      '1m',
+      '5mr',
+      '5m',
+      '9p',
     ]);
   });
 

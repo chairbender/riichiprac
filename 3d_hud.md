@@ -1017,6 +1017,18 @@ The playing state is in the floating panel. This is what the next units build on
 - **Not done here.** The verdict sheet and result card (H5) and the setup sheet
   (H4). The rail's chip has no action until H5; nothing else in the rail is
   inert.
+- **User verdict (2026-11-20):** accepted — "looks fine" on the running dev
+  server, with the rail, the tile-less hint row and the toasts as composed here.
+- **Follow-up landed with the sign-off (2026-11-20, user request):** the snapshot
+  now carries every hand in **display order** (manzu, pinzu, souzu, then honors,
+  by rank) instead of the engine's order, so the painted hand on the 3D canvas
+  and the projected buttons describe the same hand. Red fives are still allocated
+  in the engine's hand order and then the draw, and the flag travels with its
+  copy through the sort; the dock's `sortHandForDisplay` already did both for the
+  2D views. `renderers/snapshot.ts` + `contract.ts`'s `SnapshotSeat.concealed`
+  document it, and `snapshot.test.ts` pins the sort, the slot reassignment and
+  the red five staying on its copy. Nothing else in the HUD or the 2D layouts
+  changed.
 
 ---
 

@@ -8,8 +8,13 @@
  *
  * It mirrors the game semantics the 2.5D views already encode:
  *
- * - red fives are resolved in hand order and then the draw, exactly like the
- *   dock's sorted display (`src/display.ts`);
+ * - the hand is in **display order**, not the engine's: manzu, pinzu, souzu,
+ *   then honors, each by rank — the same order `sortHandForDisplay` gives the
+ *   dock. The 3D canvas and the projected buttons must show the same hand, so
+ *   the sort happens here, once, rather than in one of the two views;
+ * - red fives are resolved in the engine's hand order and then the draw, and
+ *   the flag travels with its copy through the sort, exactly like
+ *   `sortHandForDisplay` (`src/display.ts`);
  * - the called tile of a meld is the sideways one, exactly like `src/meld.ts`
  *   and the plan view's `MeldList`;
  * - a riichi declaration tile is sideways both when the discard says so and
@@ -19,6 +24,7 @@
  */
 
 import { calledTile } from '../meld';
+import { tileSortValue } from '../display';
 import type { GameState, PlayerState } from '../types/game';
 import { faceIdForTile } from './contract';
 import type {
@@ -152,20 +158,40 @@ function buildSeat(
 ): SnapshotSeat {
   const red = redFiveAllocator(player.red_fives);
 
-  const concealed = player.hand.map((code, index) =>
+  /*
+   * The hand in display order (user request 2026-11-20): the 3D canvas and
+   * 3D-08's projected buttons must show the same hand, and the dock has always
+   * sorted its tiles. The allocation of red fives happens in the engine's hand
+   * order and then the draw — the rule `sortHandForDisplay` uses — so the flag
+   * is attached before the sort and travels with its copy. `sort` is stable, so
+   * equal tiles keep the engine's relative order, exactly like the dock's
+   * `sourceIndex` tie-break.
+   */
+  const handEntries = player.hand.map((code) => ({
+    code,
+    isRed: red(code),
+  }));
+  const drawEntry = player.draw
+    ? { code: player.draw, isRed: red(player.draw) }
+    : null;
+  handEntries.sort(
+    (left, right) => tileSortValue(left.code) - tileSortValue(right.code),
+  );
+
+  const concealed = handEntries.map((entry, slot) =>
     tile({
-      face: faceIdForTile(code, red(code)),
+      face: faceIdForTile(entry.code, entry.isRed),
       zone: 'hand',
-      slot: index,
+      slot,
       faceUp: true,
     }),
   );
 
-  const draw = player.draw
+  const draw = drawEntry
     ? tile({
-        face: faceIdForTile(player.draw, red(player.draw)),
+        face: faceIdForTile(drawEntry.code, drawEntry.isRed),
         zone: 'draw',
-        slot: player.hand.length,
+        slot: handEntries.length,
         faceUp: true,
       })
     : null;

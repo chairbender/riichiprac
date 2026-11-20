@@ -2993,7 +2993,11 @@ the rail renders no tile control, and the composition test asserts one button
 per hand tile plus the draw, the armed riichi/kan submit through the store and
 rail-then-hand Tab order. `3d_hud.md` §9 records the as-built facts and the one
 deliberate departure from the draft task text (no `AnswerSummary` or Next in the
-tile-less rail; they are H5's result card and H2's top bar).
+tile-less rail; they are H5's result card and H2's top bar). The user accepted
+the composition on the running dev server on 2026-11-20 ("looks fine") and asked
+for one unrelated change with it: the snapshot adapter now sorts every hand into
+display order, so the 3D canvas draws the same hand the projected buttons and the
+2D dock show (`snapshot.test.ts` pins it).
 
 **Rules binding all five units.**
 
