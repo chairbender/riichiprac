@@ -16,6 +16,20 @@
 //! | manifest | `riichiprac.scenario-pack-manifest` v1 | [`PackManifest`] |
 //! | game provenance source | `riichiprac.corpus-game` v1 | [`GameProvenance`] |
 //!
+//! # Per-lesson coverage
+//!
+//! A manifest entry carries `lesson_counts` (lesson id → shipped reviewed
+//! bases) so the app can decide which lessons are replay-default without
+//! downloading a body. A **base** is a scenario selected from the corpus; a
+//! variant derives from one base and adds no review coverage, so it is not
+//! counted. [`ManifestEntry::new`] records the map from the assembled pack and
+//! the hosting publisher ([`publish_hosted`]) always derives it from the decoded
+//! body, so a republish fills counts into a source manifest that predates the
+//! field. The directory audit, [`verify_hosted_dir`] and
+//! `scripts/check-pack-hosting.mjs` reject a recorded count that disagrees with
+//! the body. An absent map is still accepted (additive within manifest v1); the
+//! audit reports it as a strict-mode warning.
+//!
 //! # The gate (pack-time half of G8)
 //!
 //! [`audit_pack`] is the single implementation of the pack gate. A pack is

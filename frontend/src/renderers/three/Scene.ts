@@ -288,9 +288,18 @@ export class TableScene implements TableRenderer {
   private motionHandle: number | null = null;
   /** 3D-11's frame-time monitor: one tier downgrade per sustained window. */
   private readonly perf: FrameTimeMonitor;
+  /**
+   * 3D-13: the `?perf=1` HUD is open. The scene then keeps drawing and sampling
+   * real frame deltas for as long as the HUD is mounted, because an on-demand
+   * view stops drawing between changes and would report idle time as frame
+   * time. With the HUD off this is false and the 3D-11 bounded window stands.
+   */
+  private readonly perfHud: boolean;
+  /** Reused by `measure()` so a HUD poll allocates no Vector2 per read. */
+  private readonly drawingBufferSize = new Vector2();
   /** The latest devicePixelRatio the host reported (setSize). */
   private requestedDpr = 1;
-  /** The one install-time perf sampling window; null once it has run. */
+  /** The sampling window's start; null once the bounded window has finished. */
   private sampleHandle: number | null = null;
   private sampleStartedMs: number | null = null;
   private sampled = false;
@@ -306,6 +315,7 @@ export class TableScene implements TableRenderer {
   ) {
     this.tier = options.tier;
     this.debugMode = options.debug;
+    this.perfHud = options.perfHud;
     this.canvas = canvas;
     this.reducedMotion = options.reducedMotion;
     this.heroView = options.debug === 'hero';
@@ -589,11 +599,14 @@ export class TableScene implements TableRenderer {
     const info = this.renderer.info.render;
     const view = this.board ?? this.hero;
     const frame = this.perf.stats();
+    const buffer = this.renderer.getDrawingBufferSize(this.drawingBufferSize);
     return {
       tier: this.tier,
       drawCalls: info.calls,
       triangles: info.triangles,
       instances: this.board?.tiles.count ?? this.hero?.mesh.count ?? 0,
+      devicePixelRatio: this.renderer.getPixelRatio(),
+      backingStorePixels: buffer.x * buffer.y,
       atlasBytes: view?.assets.atlasBytes ?? 0,
       relief: view?.assets.status,
       reliefVerification: view?.assets.verification ?? null,
@@ -601,6 +614,7 @@ export class TableScene implements TableRenderer {
       shadowSteps: view?.material.shadowSteps(),
       frameMsP50: frame.p50,
       frameMsP95: frame.p95,
+      frameSamples: frame.samples,
     };
   }
 
@@ -1316,14 +1330,18 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * Run one continuous sampling window and feed real frame deltas to the
-   * monitor (3D-11).
+   * Run the frame-time sampling loop and feed real frame deltas to the monitor
+   * (3D-11; the continuous variant is 3D-13's perf HUD).
    *
    * On-demand drawing means idle gaps are not frame time, so the tier decision
-   * needs a bounded run of genuine frames. It happens once, after the first
-   * board/hero draw, and stops early on a terminal degrade. `FrameTimeMonitor`
-   * ignores deltas above 250 ms, so a hidden tab or a debugger pause cannot
-   * trigger a downgrade.
+   * needs a run of genuine frames. With the HUD off it happens once, for
+   * {@link PERF_SAMPLE_WINDOW_MS}, after the first board/hero draw, and then the
+   * view returns to on-demand frames. With `?perf=1` the same loop keeps
+   * drawing for as long as the HUD is open, so its p50/p95 describe the live
+   * table instead of a five-second snapshot; that is the only cost the HUD adds,
+   * and it exists only while the flag is set. `FrameTimeMonitor` ignores deltas
+   * above 250 ms, so a hidden tab or a debugger pause cannot trigger a
+   * downgrade.
    */
   private startPerfSampling(): void {
     if (this.disposed || this.sampled) return;
@@ -1350,7 +1368,8 @@ export class TableScene implements TableRenderer {
       this.applyFrameSample(this.perf.sample(now, frameMs));
       const elapsed =
         this.sampleStartedMs === null ? Number.POSITIVE_INFINITY : now - this.sampleStartedMs;
-      if (!this.disposed && !this.perf.degraded && elapsed < PERF_SAMPLE_WINDOW_MS) {
+      const keepSampling = this.perfHud || elapsed < PERF_SAMPLE_WINDOW_MS;
+      if (!this.disposed && !this.perf.degraded && keepSampling) {
         this.sampleHandle = schedule(step);
       } else {
         this.sampleStartedMs = null;

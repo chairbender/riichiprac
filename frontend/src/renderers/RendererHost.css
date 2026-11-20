@@ -227,6 +227,18 @@
   max-width: min(560px, calc(100% - 24px));
 }
 
+/* 3D-13's perf HUD (`?perf=1`): the same dense panel, bottom-right, clear of the
+   hero panel (bottom-left) and the carve panel (top-right). Off unless the flag
+   is set. */
+.renderer-3d-perf {
+  top: auto;
+  right: 12px;
+  bottom: 12px;
+  left: auto;
+  min-width: 240px;
+  max-width: min(420px, calc(100% - 24px));
+}
+
 .renderer-3d-hero-note {
   margin: 6px 0 0;
   color: #b8c4d2;

@@ -555,6 +555,61 @@ the numbers and a unit test pins them.
 deliverable, 3D-S1's fallback and the unit's gate all name **4 / 2 / 0**, so the
 table now matches the shipped `SHADOW_STEPS`; see 3D-10's as-built note.
 
+**Measured POM cost (3D-S1, 2026-11-19).** The 12 / 8 / 0 depth counts above
+were an estimate when the table was written; 3D-S1 measured the built shader.
+The harness is `frontend/scripts/check-3d-pom.mjs` (one command, no new
+dependency): it mounts the real `TableScene` on the fixture board through Vite
+and Chrome, ramps the GPU's clocks, then renders 0 / 8 / 12 / 16 depth steps in
+alternating order and reads each six-frame batch's GPU time from
+`EXT_disjoint_timer_query_webgl2`. Tier `high`, MSAA 4×, shadow march 4, DPR 1,
+driver-reported buffer 3838 × 2159 at the 4K setting (the 8.29 MP cap).
+
+| Backing store | 0 steps | 8 steps | 12 steps | 16 steps |
+| --- | --- | --- | --- | --- |
+| 1920 × 1080 (2.07 MP) | 11.3 ms | 13.2 ms | 11.9 ms | 11.0 ms |
+| 3840 × 2160 → 3838 × 2159 (8.29 MP) | 15.4 ms | 15.5 ms | 16.6 ms | 15.3 ms |
+
+Medians of 180 frames per cell, GPU timer query; CPU submission is a separate
+0.07–0.12 ms/frame and is not in these numbers. Three repeats put every cell
+inside ±1.5 ms of the table. The one signal that survives the noise is **+0.1
+to +1.2 ms for 12 steps over 0 steps at 4K**; the other cells are within their
+spread. Recorded per AGENTS.md §6 as numbers, not as a look.
+
+Machine and conditions, because they bound the absolute figures: Intel
+Graphics (MTL) iGPU on Meteor Lake-P, Mesa 26.2.6, Chrome 157.0.8103.78,
+headless `--use-angle=gl` (renderer string
+`ANGLE (Intel, Mesa Intel(R) Graphics (MTL), OpenGL ES 3.2)`); GPU clocks
+observed at 600–1250 MHz against an 1850 MHz RP0 (the machine was on battery,
+74 %, not charging), so these are a *lower bound* on a plugged-in run; load
+average was 7–15 with a `mine_replays label` job and four other agent sessions
+running. The probe ramps for 25 s and alternates the step order per iteration
+so clock drift cannot land on one count; repeat runs move cells by up to
+1.5 ms, which is why only the 4K 0→12 difference is stated as a result.
+
+Consequences, recorded as the unit's decision (Decisions, §9 item 9):
+
+- **Keep `high` 12, `balanced` 8, `compat` 0.** 16 steps is not worth a
+  measured 0–1 ms: it is inside the noise at 4K and cost up to +2.4 ms in one
+  1080p repeat. `compat`'s 0 is confirmed: a 4-step march would add under
+  0.5 ms and does not change the tier's look, which 3D-10 shipped as
+  `shadowSteps 0` too.
+- **POM is not the frame-time driver at these counts.** The 0-step frame is
+  already 9–11 ms at 1080p and ~15 ms at 4K, so the base shading (anisotropic
+  sampling of the three relief maps, the 4-step self-shadow march and the 4×
+  MSAA resolve at 8.29 MP) owns the budget. At 4K the shipped `high` frame sits
+  ~0–2 ms under 16.7 ms on this machine, which is exactly why 3D-11's automatic
+  downgrade is the mechanism that keeps the view usable; more POM steps are not
+  where an optimisation would pay.
+
+Method notes worth keeping for 3D-13's harness (each was measured, not
+assumed): `gl.finish()` **does not wait** in Chrome's command buffer (a 32-frame
+batch "finished" in 0.1 ms), and neither does `fenceSync` +
+`clientWaitSync`; a query around a single presented frame brackets the gap to
+that frame's flush and reports one display interval (16.7 ms at 1080p for 0 and
+12 steps alike); and a timer query read in a spinning main-thread loop never
+becomes available. The working shape is a multi-frame batch, an async
+`QUERY_RESULT_AVAILABLE` poll, and a long clock ramp.
+
 Draw calls: **5 in steady state** (tiles, contact shadows, riichi sticks, the
 physical compass plate, felt) and a hard ceiling of **12** including debug.
 Instances: one tile mesh with capacity **320**. Triangles ≤ 200 k (320 × ≤ 600
@@ -591,6 +646,42 @@ Where the budget is most likely to be missed, in order:
 Deferred-with-a-reason: MSAA (fill rate), shadow maps (a ~280-caster map pass at
 this size costs more than the contact quads and looks worse on a mat), and
 post-processing / tone mapping (adds a full-screen pass and changes the ivory).
+
+*Correction after 3D-S1 (2026-11-19).* Item 1 above ranks the depth march first
+on a fetch-count estimate; the measurement does not support it. Going 0 → 12
+steps changed the GPU frame by +0.1 to +1.2 ms at 8.29 MP while the 0-step frame
+was already ~15 ms, so the cost is in the *base* shading every tile pixel pays
+(the three anisotropic relief samples, the self-shadow march and the MSAA
+resolve), not in the number of depth steps. Items 2–5 keep their ranking as
+hypotheses; item 1's rank is superseded by the section above.
+
+**Measurement protocol (3D-13).** Every performance number quoted for this
+renderer — in unit reports and in 3D-15's verification report — is taken the
+same way, so two runs are comparable:
+
+1. Serve the production build (`npm run build` then preview) and open
+   `?renderer=3d&perf=1`. Record the browser and its version, and the GPU/driver
+   string from `chrome://gpu` (or the platform equivalent).
+2. Three viewports: **1920 × 1080 at DPR 1** (the reference frame the camera was
+   solved against), **1366 × 768 at DPR 1** (a laptop), and **820 × 1180 at
+   DPR 2** (a portrait phone). The HUD prints the *resolved* DPR and backing-store
+   area, which is the number that matters: the tier cap may lower a 4K window's
+   DPR to 1, or a 5K window's below 1.
+3. Record the tier the HUD reports, and that tier's depth/self-shadow step
+   counts. Do not hand-pick a tier for a report unless it is labelled as a
+   pinned-tier run (`?quality=`).
+4. **Warm vs cold.** A *cold* number includes the first frame after the lazy
+   chunk's download, compile and texture upload; quote it only if it is labelled
+   cold. A *warm* number is read after the board reports ready and the HUD shows
+   at least `FRAME_STAT_WINDOW` (240) samples (about 4 s at 60 fps); the first
+   5 s after mount are the cold window and are never quoted as the result.
+5. Report **p50 and p95** frame time together, never a mean or a best frame. The
+   60 fps target is p95 ≤ 16.7 ms; the `compat` floor is p95 ≤ 33 ms. Also
+   record draw calls, instances and triangles from the HUD so a slow result can
+   be attributed (fill vs instance count vs overdraw).
+6. A run that trips the automatic downgrade is a real measurement of the lower
+   tier, not of the one that was pinned: report the tier the HUD ends on, and
+   say that a downgrade happened.
 
 ### 2.9 Licensing and hosting
 
@@ -1306,6 +1397,28 @@ decision log.
   shadow) and says so.
 
 **Gate:** none beyond a recorded table (it changes no shipped code).
+
+**As built (3D-S1, 2026-11-19).** Deliverable: `frontend/scripts/check-3d-pom.mjs`
+(the one-command harness), `frontend/scripts/pom-probe.html` and
+`frontend/scripts/pom-probe.ts` (the page it drives). No app source, no shader,
+no committed asset, no layout constant and no test fixture changed; the probe
+touches `TableScene`'s private `draw()`/`board.material`/`sampleHandle` and
+stops 3D-11's install-time monitor only so the tier cannot downgrade during a
+measurement.
+
+Measurement: 0 / 8 / 12 / 16 = POM_STEPS at 1920 × 1080 (2.07 MP) and
+3840 × 2160 under the 8.29 MP cap (3838 × 2159), tier `high`, MSAA on,
+`SHADOW_STEPS` held at 4, Chrome 157.0.8103.78 with ANGLE/GL on the Mesa Intel
+MTL iGPU, DPR 1. The full table, the repeat spread, the machine caveats and the
+method notes are in §2.8 under "Measured POM cost (3D-S1, 2026-11-19)". Result
+recorded below in the decisions list (item 9): **12 / 8 / 0 stand**, and the
+spike is not skipped.
+
+Acceptance criteria met: eight combinations with browser, GPU, DPR and driver
+buffer recorded; a recommended `high` count (12) and a confirmed `compat` count
+(0). A repeat run is `cd frontend && npm run pom:measure` (or
+`node frontend/scripts/check-3d-pom.mjs`); the JSON reports land in
+`/tmp/opencode/pom-probe/`.
 
 ---
 
@@ -2157,6 +2270,50 @@ asserts the never-called seam and the immediate mid-motion answer.
 **Gate:** `npm run build && node frontend/scripts/check-3d-budget.mjs`, plus the
 frontend gate.
 
+**As built (3D-13, 2026-11-19).** Files: `frontend/scripts/check-3d-budget.mjs`
+(new, dependency-free: Node `fs`/`crypto`/`zlib` over `dist/` plus the app's own
+constants through Vite's SSR loader), `frontend/src/renderers/perfHud.ts` (new:
+the HUD's pure reading and its 250 ms sample interval), `perfHud.test.ts` (new),
+`frontend/src/renderers/RendererHost.tsx` / `RendererHost.css` (the `?perf=1`
+panel and its polling effect), `frontend/src/renderers/three/Scene.ts` (the
+three new `measure()` fields and continuous sampling while the HUD is open),
+`frontend/src/renderers/contract.ts` (`devicePixelRatio`, `backingStorePixels`,
+`frameSamples` on `RendererStats`), `RendererHost.test.tsx`, `frontend/package.json`
+(`budget:check`) and the measurement protocol above. No 2.5D file, no committed
+asset, no Rust change.
+
+*The script.* It loads the app's real constants (`PINNED_RELIEF3D_ATLASES`,
+`reliefGpuBytes`, `RELIEF_RASTER`, `TIER_BACKING_STORE`, `antiAliasFor`,
+`BOARD_TILE_CAPACITY`, `buildTileGeometry`, `SCENE_DRAW_CALLS`,
+`steadyStateDrawCalls`, the fixture/layout builders), then checks the build:
+the three `relief3d/` atlases exist with the pinned byte count and SHA-256 (and
+the manifest agrees with both the pins and the files); the published GPU totals
+are 58,490,880 B at `high`/`balanced` and 14,622,720 B at `compat`; one tile is
+480 triangles (budget 600), the widest legal board is 280 instances of 320, and
+a full-capacity board is 153,600 triangles of the 200 k ceiling; the steady plan
+is five draws of the hard ceiling twelve; and post-build, the entry names one
+lazy chunk that contains three.js, the entry reaches it only through
+`import(…)`, `index.html` neither loads nor preloads it, and three's marker
+strings appear in no other chunk. The chunk's gzip size is printed against the
+200 KB advisory and only warns when over. The exit code is non-zero only for
+atlas drift/missing files, a broken count or draw-call ceiling, or a leaked
+three import (the plan's rule). On this build the chunk was 661,989 B raw /
+178,226 B gzip and the entry 677,962 B raw / 119,796 B gzip.
+
+*The HUD.* `?perf=1` mounts a floating panel that reads `measure()` every 250 ms
+and prints tier, resolved DPR, backing-store MP, depth/shadow steps, draw calls,
+instances, triangles, frame p50/p95, sample count and atlas MB. It is off by
+default: with the flag absent there is no interval, no `measure()` call and no
+extra rendering. With it on, `Scene.startPerfSampling` keeps drawing and sampling
+real animation-frame deltas after the `PERF_SAMPLE_WINDOW_MS` window instead of
+returning to on-demand frames, so p50/p95 describe the live table. The 5 s
+window with the HUD off is unchanged (3D-11), and the monitor's 25 ms/33 ms rules
+still apply while the HUD is open.
+
+*Gate evidence.* `npm test`, `npm run build`, `npm run lint` and
+`node scripts/check-3d-budget.mjs` are green; the gate run's printed table is
+the script's own report, not a transcription.
+
 ---
 
 ### 3D-14 — View switch integration
@@ -2373,6 +2530,25 @@ better, that looks great." The carve reads as physically recessed at the hand's
 16°, the depth sweep remains the review process (it is where the bumps read),
 and the shell body, blue band and Haku's clean face were accepted earlier in the
 same thread. `POM_HEIGHT_SCALE` stays at 0.25; `1p` is the hero face.
+
+**Plate-edge black seam (fixed 2026-11-19, task 261119-2029).** Some faces drew a
+black hairline along one edge: White dragon (5z), Green dragon (6z), South (2z),
+North (4z), West (3z) along the bottom, Red dragon (7z) along its side. Cause was
+in the **asset**, not the shader: 37 faces fill 37 of the grid's 42 cells and the
+plate's UV maps [0, 1] onto the cell's exact border, so the bilinear tap at a
+plate edge is a 50/50 blend of the cell's last texel and the next cell's first
+one. The five unused cells at the bottom right were left all-zero, and
+`(0, 0, 0, 0)` decodes to a normal lying in the plate plane at the deepest groove
+height with `AO 0` — black, tilted and sunken. Row 5's honours sit directly above
+those cells and Chun sits left of one, which is exactly the reported set. The
+bake now fills every unused cell with the open face (normal 128/128/255, height
+255, AO 255, roughness 115, no paint mask — the same values as
+`buildNeutralCell`), so every boundary blend is open-face-with-open-face. Measured
+by `bake-relief3d.mjs --check` and `reliefAssets.test.ts`: the worst plate-edge
+sample went from `2z bottom ao 127.5, height 127.5, normalZ 0.000` to `9p right
+ao 255, height 255, normalZ 0.993`, and a decoded-pixel diff against the previous
+atlas shows **only** the five unused cells changed — every used cell, and so
+every glyph and carve number, is byte-identical.
 
 ### 3D-19 — Radial cast shadows from standing things
 
@@ -2668,7 +2844,8 @@ which files it touched.
 | R10 | Both renderers load the relief atlases at once (double GPU memory) if a view ever mounts both | low / medium | only one table is mounted at a time (structural test in 3D-14); dispose drops textures | 3D-14 |
 
 **Decisions recorded with the user (2026-11-18)** — all seven are settled; they
-are binding on the units, not open questions.
+are binding on the units, not open questions. Items 8 and 9 were added later,
+in 3D-08 and 3D-S1 respectively, and are equally binding.
 
 1. **Exposure: behind the flag.** The 3D view stays reachable only by
    `?renderer=3d` until 3D-15 signs it off; `RENDERED3D_EXPOSED` flips only then,
@@ -2710,6 +2887,16 @@ are binding on the units, not open questions.
    projected rect and its CSS hover/focus tint, so the pointer target never
    moves. This supersedes the ≤ 4 mm figure in §3D-12, which keeps the deal-in
    and the event seam. Reduced motion suppresses the lift (never the clear).
+9. **POM step counts are measurements, not estimates, and they stand**
+   (added 2026-11-19, in 3D-S1). `high` 12 / `balanced` 8 / `compat` 0 are
+   confirmed on the machine described in §2.8: 12 steps costs +0.1 to +1.2 ms
+   at 8.29 MP, 16 steps buys nothing outside the ±1.5 ms repeat spread, and
+   `compat` 0 is confirmed for the same reason. The class of thing this decides
+   is the *tier table*, not the shader: the base shading is ~15 ms at 4K on
+   that GPU, so the automatic downgrade (3D-11) — not the depth count — is what
+   protects the frame budget. A future unit that changes the shader's cost
+   profile re-runs `node frontend/scripts/check-3d-pom.mjs` before touching the
+   counts.
 
 **Chain independence (recorded).** No 3D unit depends on 2.5D work, and no 2.5D
 unit depends on 3D work. The 3D chain reads the *already committed* relief
@@ -2857,6 +3044,7 @@ it was right and corrected where the repository or the browser facts disagree.
 | 3D-09 | `frontend/src/renderers/overlay.tsx` (compass), `three/sticks.ts` |
 | 3D-10 | `frontend/src/renderers/three/materials/tile.frag.ts`, `debug.ts` |
 | 3D-11 | `frontend/src/renderers/{capabilities.ts,three/perf.ts}` |
+| 3D-S1 | `frontend/scripts/{check-3d-pom.mjs,pom-probe.html,pom-probe.ts}` (measurement only) |
 | 3D-12 | `frontend/src/renderers/three/motion.ts` (new), `RendererHost.tsx` |
 | 3D-13 | `frontend/scripts/check-3d-budget.mjs`, `three/perf.ts` |
 | 3D-14 | `frontend/src/store/useSettingsStore.ts`, `frontend/src/components/AppControls.tsx`, `frontend/src/App.tsx`, `AGENTS.md` §4 |

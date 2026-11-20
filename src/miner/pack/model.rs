@@ -543,6 +543,30 @@ impl Pack {
         ids
     }
 
+    /// Shipped reviewed bases per lesson id, sorted by id.
+    ///
+    /// A **base** is a scenario the miner selected from the corpus. A variant
+    /// is derived from one base and therefore adds no review coverage, so it is
+    /// not counted: the replay-first rollout's per-lesson floor
+    /// (`MIN_REPLAY_BASES`) compares bases. The manifest publishes this map so
+    /// the app can decide coverage without downloading a body.
+    ///
+    /// A pack always ships its base block before its variants and never keeps a
+    /// variant whose base was dropped, so every `lesson_ids()` entry has at
+    /// least one base and the map's keys equal the pack's lesson ids.
+    #[must_use]
+    pub fn lesson_counts(&self) -> BTreeMap<String, u32> {
+        let mut counts: BTreeMap<String, u32> = BTreeMap::new();
+        for scenario in &self.scenarios {
+            if scenario.provenance.is_variant() {
+                continue;
+            }
+            let count = counts.entry(scenario.lesson_id.clone()).or_insert(0);
+            *count = count.saturating_add(1);
+        }
+        counts
+    }
+
     /// Every book section key in the pack, sorted and unique.
     #[must_use]
     pub fn book_sections(&self) -> Vec<String> {
@@ -576,6 +600,18 @@ impl Pack {
     }
 }
 
+/// Render a lesson-count map for a finding or error message.
+pub(crate) fn render_lesson_counts(counts: &BTreeMap<String, u32>) -> String {
+    if counts.is_empty() {
+        return "none".to_string();
+    }
+    counts
+        .iter()
+        .map(|(lesson, count)| format!("{lesson}={count}"))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 /// One entry in the runtime manifest.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ManifestEntry {
@@ -591,6 +627,14 @@ pub struct ManifestEntry {
     pub scenario_count: u32,
     /// Lesson ids, sorted and unique.
     pub lesson_ids: Vec<String>,
+    /// Shipped reviewed bases per lesson id, sorted by id.
+    ///
+    /// The replay-first rollout's coverage floor is measured in reviewed bases,
+    /// so variants do not inflate a lesson's count. The field is additive
+    /// within manifest v1: a manifest published before it existed parses with
+    /// an empty map, and `pack publish` writes it for every pack.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub lesson_counts: BTreeMap<String, u32>,
     /// Book section keys, sorted and unique.
     pub book_sections: Vec<String>,
     /// Pack data licence id.
@@ -618,11 +662,24 @@ impl ManifestEntry {
             bytes,
             scenario_count: u32::try_from(pack.scenarios.len()).unwrap_or(u32::MAX),
             lesson_ids: pack.lesson_ids(),
+            lesson_counts: pack.lesson_counts(),
             book_sections: pack.book_sections(),
             licence: pack.source.licence.clone(),
             requires_model: pack.requires_model(),
             data_commercial_use: pack.source.data_commercial_use,
         }
+    }
+
+    /// The same entry, with its per-lesson coverage taken from a decoded body.
+    ///
+    /// The hosting publisher uses this so the manifest always carries counts,
+    /// even when the source manifest predates the field: coverage is derived
+    /// from the audited body, never copied from a stale declaration.
+    #[must_use]
+    pub fn with_lesson_counts(&self, pack: &Pack) -> Self {
+        let mut entry = self.clone();
+        entry.lesson_counts = pack.lesson_counts();
+        entry
     }
 
     /// Whether the entry's hash is a well-formed SHA-256.
@@ -709,6 +766,7 @@ mod tests {
             bytes: 10,
             scenario_count: 1,
             lesson_ids: vec!["lesson".to_string()],
+            lesson_counts: BTreeMap::from([("lesson".to_string(), 1)]),
             book_sections: vec![],
             licence: "CC-BY-4.0".to_string(),
             requires_model: false,

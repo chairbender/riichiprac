@@ -1,6 +1,6 @@
 /**
  * Frame-time measurement, the one-tier downgrade and the terminal degrade
- * (3D-11).
+ * (3D-11), including the frame statistics the `?perf=1` HUD prints (3D-13).
  *
  * The rules are deliberately arithmetic, not heuristic: a rolling frame-time
  * EMA above 25 ms for two seconds downgrades exactly one tier; the same rule at
@@ -18,7 +18,7 @@
  * frames is not frame time and must never be sampled. The scene therefore runs
  * one continuous sampling window shortly after the board mounts, feeding real
  * animation-frame deltas; that is the only continuous rendering in the view
- * until an animation or the 3D-13 perf HUD exists.
+ * unless an animation is playing or the 3D-13 perf HUD is open.
  */
 
 import type { QualityTier } from '../contract';

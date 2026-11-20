@@ -12,6 +12,9 @@
       "lesson_ids": [
         "defense_multi_threat"
       ],
+      "lesson_counts": {
+        "defense_multi_threat": 764
+      },
       "book_sections": [
         "ch8.2"
       ],
@@ -34,6 +37,15 @@
         "push_or_fold",
         "suji_kabe_safety"
       ],
+      "lesson_counts": {
+        "defense_safety_chart": 766,
+        "defense_stuck_heuristic": 32,
+        "fold_to_riichi": 731,
+        "kabe_double_one_chance": 13,
+        "kabe_one_chance": 17,
+        "push_or_fold": 295,
+        "suji_kabe_safety": 357
+      },
       "book_sections": [
         "ch8.1",
         "ch8.2",
