@@ -105,7 +105,7 @@ import { App } from './App';
 import { useGameStore } from './store/useGameStore';
 import {
   DEFAULT_TABLE_VIEW,
-  SETTINGS_STORAGE_KEY,
+  TABLE_VIEW_STORAGE_KEY,
   useSettingsStore,
 } from './store/useSettingsStore';
 
@@ -184,6 +184,10 @@ afterEach(() => {
   hostState.boards = [];
   window.history.replaceState(null, '', '/');
   window.localStorage.clear();
+  // The store deliberately survives a view switch, so a leftover hand from the
+  // previous app instance would mount the scene once with it and then remount
+  // when the first deal replaces it. Reset it, as the other App tests do.
+  useGameStore.getState().reset();
   act(() => {
     useSettingsStore.setState({ view: DEFAULT_TABLE_VIEW });
   });
@@ -205,7 +209,7 @@ async function renderApp(search = '/'): Promise<void> {
 }
 
 describe('App view switch (3D-14)', () => {
-  it('keeps the same hand and answer state across every view, without re-dealing', async () => {
+  it('opens in 3D and keeps the same hand and answer across every view, without re-dealing', async () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     stubWebgl2Context(true);
     await renderApp();
@@ -213,7 +217,8 @@ describe('App view switch (3D-14)', () => {
     const first = useGameStore.getState().gameState;
     expect(first).not.toBeNull();
     expect(generate_puzzle).toHaveBeenCalledTimes(1);
-    expect(document.querySelector('.table-stack')).not.toBeNull();
+    // 3D is the default (2026-11-20): no query flag, no stored choice needed.
+    await screen.findByTestId('three-host');
 
     // An answered hand, so the switch is shown to keep the answer state too.
     const answer = { action: 'discard' as const, tile: '5p' };
@@ -225,29 +230,26 @@ describe('App view switch (3D-14)', () => {
     expect(document.querySelector('.table-physical')).not.toBeNull();
     expect(useGameStore.getState().gameState).toBe(first);
 
-    switchView('rendered3d');
-    await screen.findByTestId('three-host');
+    switchView('stacked');
+    expect(document.querySelector('.table-stack')).not.toBeNull();
     expect(useGameStore.getState().gameState).toBe(first);
     expect(useGameStore.getState().submittedAnswer).toBe(answer);
 
-    switchView('stacked');
-    expect(document.querySelector('.table-stack')).not.toBeNull();
+    switchView('rendered3d');
+    await screen.findByTestId('three-host');
     expect(useGameStore.getState().gameState).toBe(first);
     expect(useGameStore.getState().submittedAnswer).toBe(answer);
     // One deal for the whole round-trip: switching redraws, it never re-deals.
     expect(generate_puzzle).toHaveBeenCalledTimes(1);
   });
 
-  it('adds the 3D shell modifier exactly once and leaves full screen on the way out', async () => {
+  it('opens in the 3D shell and leaves full screen on the way out', async () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     stubWebgl2Context(true);
     stubFullscreen();
     await renderApp();
 
-    expect(document.querySelector('.app-shell--3d')).toBeNull();
-    expect(document.querySelectorAll('.app-shell')).toHaveLength(1);
-
-    switchView('rendered3d');
+    // The 3D shell is what a first launch draws, before any choice.
     await screen.findByTestId('three-host');
     expect(document.querySelectorAll('.app-shell--3d')).toHaveLength(1);
     expect(document.querySelectorAll('.app-shell')).toHaveLength(1);
@@ -272,8 +274,7 @@ describe('App view switch (3D-14)', () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     stubWebgl2Context(true);
     await renderApp();
-
-    switchView('rendered3d');
+    // The default view is the 3D one, so this is the first paint.
     await screen.findByTestId('three-host');
 
     const shell = document.querySelector('.app-shell--3d');
@@ -306,7 +307,6 @@ describe('App view switch (3D-14)', () => {
     stubWebgl2Context(true);
     await renderApp();
 
-    switchView('rendered3d');
     await screen.findByTestId('three-host');
     await waitFor(() => expect(hostState.mounts).toBe(1));
     const firstBoard = hostState.boards[0];
@@ -323,30 +323,31 @@ describe('App view switch (3D-14)', () => {
     expect(hostState.boards[1]).toEqual(firstBoard);
   });
 
-  it('mounts a stored 3D view when the browser supports it (reload persistence)', async () => {
+  it('remembers the view a player picks, and keeps it across a reload', async () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     stubWebgl2Context(true);
-    const stored = JSON.stringify({ version: 1, view: 'rendered3d' });
-    window.localStorage.setItem(SETTINGS_STORAGE_KEY, stored);
-    // What a reload does for this page: the store seeds itself from the blob
-    // before App renders (covered in `useSettingsStore.test.ts`).
+    const stored = JSON.stringify({ version: 1, view: 'stacked' });
+    window.localStorage.setItem(TABLE_VIEW_STORAGE_KEY, stored);
+    // What a reload does for this page: the store seeds itself from its own
+    // key before App renders (covered in `useSettingsStore.test.ts`). The
+    // legacy settings blob is not where a view lives.
     act(() => {
-      useSettingsStore.setState({ view: 'rendered3d' });
+      useSettingsStore.setState({ view: 'stacked' });
     });
 
     await renderApp();
 
-    expect(document.querySelector('.app-shell--3d')).not.toBeNull();
-    await screen.findByTestId('three-host');
+    expect(document.querySelector('.app-shell--3d')).toBeNull();
+    expect(document.querySelector('.table-stack')).not.toBeNull();
     expect(useGameStore.getState().gameState).not.toBeNull();
-    expect(window.localStorage.getItem(SETTINGS_STORAGE_KEY)).toBe(stored);
+    expect(window.localStorage.getItem(TABLE_VIEW_STORAGE_KEY)).toBe(stored);
   });
 
-  it('falls a stored 3D view back to the standard table when WebGL2 is missing, keeping the choice', async () => {
+  it('falls a chosen 3D view back to the standard table when WebGL2 is missing, keeping the choice', async () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     stubWebgl2Context(false);
     const stored = JSON.stringify({ version: 1, view: 'rendered3d' });
-    window.localStorage.setItem(SETTINGS_STORAGE_KEY, stored);
+    window.localStorage.setItem(TABLE_VIEW_STORAGE_KEY, stored);
     act(() => {
       useSettingsStore.setState({ view: 'rendered3d' });
     });
@@ -366,12 +367,17 @@ describe('App view switch (3D-14)', () => {
     ).toBe(true);
     // The fallback is drawing-only: the user's choice is not rewritten.
     expect(useSettingsStore.getState().view).toBe('rendered3d');
-    expect(window.localStorage.getItem(SETTINGS_STORAGE_KEY)).toBe(stored);
+    expect(window.localStorage.getItem(TABLE_VIEW_STORAGE_KEY)).toBe(stored);
   });
 
-  it('keeps ?renderer=3d as an override and leaves ?renderer=25d to the stored view', async () => {
+  it('keeps ?renderer=3d as an override and leaves ?renderer=25d to the chosen view', async () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     stubWebgl2Context(true);
+    // Pin the store to a 2D view so the query's 3D mount is visibly an
+    // override rather than the default.
+    act(() => {
+      useSettingsStore.setState({ view: 'stacked' });
+    });
 
     await renderApp('?renderer=3d');
     expect(document.querySelector('.app-shell--3d')).not.toBeNull();
@@ -389,18 +395,26 @@ describe('App view switch (3D-14)', () => {
     expect(useSettingsStore.getState().view).toBe('topdown');
   });
 
-  it('shows the fourth view in the picker only with RENDERED3D_EXPOSED', async () => {
-    // The exposure constant still gates the picker in this unit (3D-15 flips
-    // it); a browser with WebGL2 does not change that.
+  it('offers all three views in the picker, with 3D selected by default', async () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     stubWebgl2Context(true);
     await renderApp();
 
-    const select = screen.getByRole('combobox') as HTMLSelectElement;
+    // The default is 3D, so the header's picker is not mounted; read the
+    // setup sheet's picker instead.
+    fireEvent.click(screen.getByRole('button', { name: 'Setup' }));
+    const dialog = screen.getByRole('dialog', { name: 'Setup' });
+    const select = within(dialog).getByRole('combobox') as HTMLSelectElement;
     expect([...select.options].map((option) => option.value)).toEqual([
       'stacked',
       'topdown',
+      'rendered3d',
     ]);
+    expect(select.value).toBe('rendered3d');
+    expect(
+      [...select.options].find((option) => option.value === 'rendered3d')
+        ?.disabled,
+    ).toBe(false);
   });
 
   it('changes the view from the setup sheet, leaving full screen (3D-H4, R14)', async () => {

@@ -10,9 +10,8 @@ export interface ViewPickerProps {
   describedBy?: string;
   onViewChange: (event: ChangeEvent<HTMLSelectElement>) => void;
   /**
-   * Whether the View control offers the 3D value. It stays false until
-   * `RENDERED3D_EXPOSED` flips at 3D-15 (decision 1); the query flag is the
-   * only way in until then, and a value a later build stored still shows.
+   * Whether the View control offers the 3D value. True since the 2026-11-20
+   * decision (3D is exposed and the default); a host may still pass false.
    */
   rendered3dExposed: boolean;
   /** Why the 3D value cannot run here, or null when it can. */
@@ -23,12 +22,14 @@ export interface ViewPickerProps {
  * The View control, shared by the 2D header (`AppControls`) and the 3D setup
  * sheet (3D-H4).
  *
- * The 3D option is offered only once 3D-15 exposes it. A value some build
- * already stored still gets a matching option: a `<select>` whose value has no
- * option renders blank and would misreport the saved choice. When the browser
- * cannot run the view the option is disabled and says why. Switching away from
- * 3D leaves full screen — that is App's rule (R14), identical from either
- * shell because both call the same handler.
+ * Since the 2026-11-20 decision the 3D table is the default and the option is
+ * always offered. A value some build already stored still gets a matching
+ * option: a `<select>` whose value has no option renders blank and would
+ * misreport the saved choice. When the browser cannot run the view the option
+ * is disabled and says why, and the table falls back to the stacked layout
+ * without losing the choice. Switching away from 3D leaves full screen — that
+ * is App's rule (R14), identical from either shell because both call the same
+ * handler.
  */
 export function ViewPicker({
   tableView,

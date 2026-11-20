@@ -61,8 +61,8 @@ afterEach(() => {
 });
 
 describe('3D feature gate', () => {
-  it('stays behind the query flag until 3D-15 signs it off', () => {
-    expect(RENDERED3D_EXPOSED).toBe(false);
+  it('offers the 3D view and makes it the default (2026-11-20 decision)', () => {
+    expect(RENDERED3D_EXPOSED).toBe(true);
   });
 
   it('accepts exactly the 3d renderer', () => {

@@ -32,9 +32,9 @@ interface AppControlsProps {
   viewHint: string;
   onViewChange: (event: ChangeEvent<HTMLSelectElement>) => void;
   /**
-   * Whether the View control offers the 3D value. It stays false until
-   * `RENDERED3D_EXPOSED` flips at 3D-15 (decision 1); the query flag is the
-   * only way in until then, and a value a later build stored still shows.
+   * Whether the View control offers the 3D value. True since the 2026-11-20
+   * decision (3D is exposed and the default); a host may still pass false to
+   * render the older two-view control.
    */
   rendered3dExposed: boolean;
   /** Why the 3D value cannot run here, or null when it can. */

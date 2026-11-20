@@ -943,33 +943,36 @@ export const App = () => {
     : '';
 
   /*
-   * 3D-14: whether this browser can run the 3D table. The probe runs only when
-   * its answer can change what is drawn or offered — a stored 3D choice, or the
-   * View control once 3D-15 exposes the option — so the standard 2D views never
-   * create a WebGL2 context. The probe releases that context immediately
-   * (3D-01). `null` means "can run"; otherwise this is the reason the View
-   * control shows.
+   * 3D-14: whether this browser can run the 3D table.
+   *
+   * Since the user's 2026-11-20 decision the 3D table is the default and the
+   * View control always offers it (exposed), so the answer always matters: probe
+   * once per page, not once per 2D visit. The probe releases the WebGL2 context
+   * it creates immediately (3D-01), so this costs one context per load. `null`
+   * means "can run"; otherwise this is the reason the View control shows and
+   * what makes the mount fall back to the stacked table.
    */
-  const threeUnavailableReason = useMemo(() => {
-    if (!RENDERED3D_EXPOSED && tableView !== 'rendered3d') return null;
-    return threeViewUnavailableReason(probeCapabilities());
-  }, [tableView]);
+  const threeUnavailableReason = useMemo(
+    () => threeViewUnavailableReason(probeCapabilities()),
+    [],
+  );
 
   /*
-   * The 3D table is opt-in: an explicit `?renderer=3d` link or a stored 3D
-   * choice selects it, never the default (decision D13, exposure decision 1).
-   * The resolver owns the precedence — explicit query, then stored view, then
-   * the store's default — so App only mounts what it says.
+   * The 3D table is the default (user request 2026-11-20, superseding decision
+   * D13's "opt-in, never default"). The resolver owns the precedence — explicit
+   * query, then the chosen view, then the store's default — so App only mounts
+   * what it says.
    *
-   * A stored 3D choice mounts only while it can run: after a degrade
-   * (`threeClosed`, 3D-11) or without WebGL2 the resolver returns the default
-   * 2D view, and the store keeps the user's choice untouched (3D-14).
+   * A chosen 3D view mounts only while it can run: after a degrade
+   * (`threeClosed`, 3D-11) or without WebGL2 the resolver returns the stacked
+   * table, and the store keeps the player's choice untouched (3D-14), so the
+   * next capable load opens 3D again.
    */
   const tableMount = resolveTableMount(
     threeClosed ? '' : window.location.search,
     tableView,
     {
-      allowStoredThreeView: !threeClosed && threeUnavailableReason === null,
+      allowThreeView: !threeClosed && threeUnavailableReason === null,
     },
   );
 
@@ -1080,7 +1083,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and 3D is the opt-in full-window table. Switching redraws the same hand; leaving the 3D view also leaves full screen.';
+    'How to draw the table. 3D is the full-window table and the default; stacked is the mobile-first four-row layout and top-down is the flat plan view. Switching redraws the same hand; leaving the 3D view also leaves full screen.';
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)

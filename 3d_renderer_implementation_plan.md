@@ -81,9 +81,11 @@ persistent View control is 3D-15's decision**, not 3D-14's.
   `frontend/src/table/*`, and no unit waits on that chain. The 3D chain owns its
   own types and reads already-committed assets as immutable inputs; it never
   writes them.
-- **Replacing the accessible views.** Stacked stays the default. 3D is opt-in,
-  never auto-selected, and the stacked and top-down views remain the documented
-  accessible fallback.
+- **Replacing the accessible views.** The stacked and top-down views remain the
+  documented accessible fallback and are one pick away in the View control. The
+  3D view is the default from the user's 2026-11-20 decision (superseding D13);
+  it is the signed-off camera and carve, not a modelled room, and a browser that
+  cannot run it draws the stacked table.
 - **A live game loop.** The app has no in-hand transitions (see §2.3), so the
   animation system is a hover/lift and a bounded deal-in, plus an unused event
   seam for a future replay/live source.
@@ -119,7 +121,7 @@ made mechanical rather than remembered.
 | D10 | POM ships from the hero-tile unit (user decision 2026-11-18: start with carving, do not bolt it on later). It is still a tiered parameter with a 0-step kill switch so the baseline cannot rot. | hero tile renders with POM; steps=0 renders the baseline in the same build | 3D-05, 3D-10, 3D-11 |
 | D11 | No new committed runtime assets and no new hosting surface. Only new bytes are the lazy JS chunk. | budget script reports the delta | 3D-13 |
 | D12 | Verification is scripted (numbers) or a user handoff. No agent looks at a render and declares it good. | every unit's gate names a command or a handoff | all |
-| D13 | The 3D view is opt-in and never the default; switching views never re-deals. | `TableView` + `RendererHost` tests | 3D-14 |
+| D13 | ~~The 3D view is opt-in and never the default~~ — **superseded 2026-11-20:** 3D is exposed and the default; the 2D views are options, the pick is remembered under its own key, and switching views never re-deals. | `TableView` + `RendererHost` + `resolveTableMount` tests | 3D-14 |
 | D14 | MIT stays clean: Three.js is MIT with a notice; Blender-baked assets are unchanged; no AGPL tool is added or linked. | third-party notice + dependency audit | 3D-16 |
 
 Rejected alternatives are named where they matter (WebGPU in D2, glTF in D6,
@@ -2352,6 +2354,10 @@ must not port the 2D chrome.
 - A single `RENDERED3D_EXPOSED` constant keeps the option out of the picker (the
   query flag still works) until 3D-15 flips it. Exposure is the picker only: a
   value a later build stored still mounts, so the choice survives a reload.
+  *(Update 2026-11-20: the user made 3D the default, so the constant is `true`
+  and the picker offers all three views. The view also moved to its own
+  `localStorage` key so a 2D choice stored while 3D was opt-in cannot keep
+  anyone in 2D. 3D-15 now verifies the exposure instead of flipping it.)*
 - **The full-window stage becomes reversible** (user guidance 2026-11-18): the
   shell modifier that drops the phone-width column and fixes the 3D backdrop is
   applied only for the 3D value, and switching away removes it *and* leaves
@@ -2372,10 +2378,12 @@ must not port the 2D chrome.
 - **No chrome is mounted in 3D yet** (scene alone): no Y-flow siblings of the
   canvas, the canvas owns the window, and the full-screen toggle is still
   absent. The chrome-over-scene assertions belong to 3D-H2/H3's own gates.
-- The 3D view (once `RENDERED3D_EXPOSED`) persists across reload when selected and
-  supported; when it is unavailable the stored value falls back **without**
+- The 3D view persists across reload when selected and supported (its own
+  `riichiprac.table-view` key since 2026-11-20, separate from the older settings
+  blob); when it is unavailable the chosen value falls back **without**
   rewriting the user's choice (so a temporarily unsupported device does not lose
-  it).
+  it). A browser with no choice at all opens on 3D and falls back to the stacked
+  table when it cannot run it.
 - `?renderer=3d` still overrides, and `?renderer=25d`/absence does not force
   anything beyond the stored view.
 - Switching away disposes the GPU resources (resource-count test) and switching
@@ -2400,8 +2408,9 @@ and any conflict is hand-resolved.
 - A deterministic stress state fixture (all zones full, all 37 faces, four
   riichi, a kan, three-row rivers, a claimed discard, answered and unanswered
   variants).
-- Flipping `RENDERED3D_EXPOSED` is part of this unit, and only after the checks
-  below pass.
+- `RENDERED3D_EXPOSED` has already flipped (user decision 2026-11-20, which also
+  made 3D the default); this unit verifies the exposed, default composition
+  rather than flipping the flag.
 - A verification report appended to this plan: counts, framing numbers, budget
   numbers, the five-aspect matrix, the a11y checklist, and the user's verdicts.
 - Screenshots/artifacts for the user under a committed or build-ignored path
@@ -2870,9 +2879,12 @@ which files it touched.
 are binding on the units, not open questions. Items 8 and 9 were added later,
 in 3D-08 and 3D-S1 respectively, and are equally binding.
 
-1. **Exposure: behind the flag.** The 3D view stays reachable only by
-   `?renderer=3d` until 3D-15 signs it off; `RENDERED3D_EXPOSED` flips only then,
-   and it is never the default.
+1. **Exposure: the default (superseded 2026-11-20).** The 2026-11-18 decision
+   was "behind the flag, never the default". The user's 2026-11-20 decision
+   reverses it: 3D is exposed in the View control and is the default for every
+   browser; the stacked and top-down views are options, the player's pick is
+   remembered under its own key, and a browser that cannot run 3D draws stacked
+   with the reason shown.
 2. **Camera: adopt the v13 whole-table rig.** 75 mm on a 36 mm gauge, 50° pitch,
    X = 0, 76 units, with the aspect/portrait solver. No new framing is
    commissioned.
