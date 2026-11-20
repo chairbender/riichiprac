@@ -1,0 +1,12 @@
+dist/index.html                              0.46 kB │ gzip:   0.29 kB
+dist/assets/mortal.worker-DWhnHSoN.js        6.17 kB
+dist/assets/riichiprac_bg-2HMR2D0r.wasm  3,091.37 kB
+dist/assets/index-DHXDEIuS.css              46.63 kB │ gzip:   8.91 kB
+dist/assets/three-DxHojbN-.js              664.30 kB │ gzip: 178.87 kB
+dist/assets/index-CRCEm3bn.js              687.38 kB │ gzip: 122.55 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.46s

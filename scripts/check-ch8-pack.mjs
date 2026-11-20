@@ -6,6 +6,7 @@
  *   node scripts/check-ch8-pack.mjs --dir frontend/public/scenarios \
  *     --pack replay.ch8-defense.2026-11 --json
  *   node scripts/check-ch8-pack.mjs --chapter ch7 --allow-no-variants
+ *   node scripts/check-ch8-pack.mjs --chapter ch5 --allow-no-variants
  *
  * The generic hosting check (`check-pack-hosting.mjs`) proves the manifest,
  * hashes, budgets and provenance envelope. This check proves the pack's
@@ -61,6 +62,18 @@ const CHAPTERS = {
     sectionPattern: /^ch7\.\d+$/,
     defaultPack: 'replay.ch7-riichi-dama.2026-11',
   },
+  ch5: {
+    // `sanshoku_pursuit` is a ch5 lesson but stays below the 40-base floor
+    // (corpus growth C9), so no shipped pack carries it yet.
+    lessons: new Set([
+      'honitsu_decision',
+      'pinfu_head',
+      'chiitoi_vs_toitoi',
+      'sanshoku_pursuit',
+    ]),
+    sectionPattern: /^ch5\.\d+$/,
+    defaultPack: 'replay.ch5-values.2026-11',
+  },
 };
 const DEFAULT_CHAPTER = 'ch8';
 const DEFAULT_MAX_BYTES = 50_000_000;
@@ -102,7 +115,7 @@ function parseArgs(argv) {
     else if (flag === '--json') parsed.json = true;
     else if (flag === '--help' || flag === '-h') {
       console.log(
-        'node scripts/check-ch8-pack.mjs [--chapter ch7|ch8] [--dir DIR] [--pack ID] ' +
+        'node scripts/check-ch8-pack.mjs [--chapter ch5|ch7|ch8] [--dir DIR] [--pack ID] ' +
           '[--max-bytes N] [--min-scenarios N] [--min-variant-share F] ' +
           '[--allow-no-variants] [--json]',
       );

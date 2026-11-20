@@ -1,0 +1,1033 @@
+{
+  "held_out": 0,
+  "ids": [
+    {
+      "queue_id": "replay.ch5-values.2026-11-001",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-005",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-006",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-008",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-015",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-016",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-019",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-024",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-027",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-029",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-049",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-055",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-063",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-072",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-077",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-078",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-092",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-094",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1016",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1024",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1047",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1051",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1084",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1089",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1092",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1102",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1106",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1115",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1147",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1148",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1149",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1155",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1158",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1166",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1169",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1171",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1174",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1177",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1179",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-118",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1192",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1198",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-120",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1206",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1208",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1209",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1217",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1218",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1230",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1236",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1237",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1239",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-124",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1242",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1243",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1246",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1247",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1250",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1252",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1254",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1265",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1270",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1276",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1291",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1294",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1296",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-130",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1301",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1307",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1308",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1309",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1314",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1315",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1319",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-132",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1320",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1324",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1329",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1332",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1337",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-134",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1342",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1352",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1355",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-136",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1371",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1382",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1386",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1389",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-139",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1411",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1414",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1444",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1447",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1454",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1460",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1498",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-150",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1517",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1518",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1519",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1529",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1537",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1539",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1552",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1555",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-158",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-159",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1592",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1596",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1598",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1599",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1602",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1607",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1613",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-162",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1625",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1626",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1637",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1642",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1645",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-165",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1653",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1656",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-166",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1668",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1673",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1683",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1690",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-170",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1704",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-172",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1731",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1732",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1733",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-1737",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-178",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-179",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-188",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-189",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-190",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-202",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-206",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-215",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-220",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-227",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-237",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-238",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-246",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-253",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-259",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-263",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-270",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-281",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-285",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-288",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-300",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-308",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-312",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-315",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-332",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-335",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-338",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-344",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-347",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-356",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-370",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-374",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-380",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-382",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-383",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-385",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-391",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-393",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-400",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-406",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-411",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-423",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-432",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-439",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-441",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-443",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-451",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-452",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-477",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-478",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-482",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-484",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-494",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-495",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-507",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-511",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-513",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-520",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-530",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-537",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-548",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-550",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-552",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-559",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-566",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-571",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-584",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-626",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-627",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-637",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-641",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-649",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-671",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-672",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-677",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-681",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-703",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-706",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-728",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-745",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-769",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-772",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-783",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-787",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-791",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-805",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-813",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-825",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-836",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-841",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-854",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-864",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-880",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-887",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-908",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-911",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-913",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-915",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-917",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-919",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-926",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-931",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-934",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-938",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-939",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-947",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-948",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-949",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-965",
+      "why": "rare_lesson:chiitoi_vs_toitoi"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-968",
+      "why": "lesson_guarantee:honitsu_decision"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-971",
+      "why": "lesson_guarantee:pinfu_head"
+    },
+    {
+      "queue_id": "replay.ch5-values.2026-11-975",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    }
+  ],
+  "items": 1745,
+  "lessons": {
+    "chiitoi_vs_toitoi": 97,
+    "honitsu_decision": 1378,
+    "pinfu_head": 270
+  },
+  "queue": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch5-values.2026-11/review-queue.jsonl",
+  "replay_families": {
+    "akochan_tactics": 23,
+    "akochan_vs_mortal": 20,
+    "heterogeneous_table": 27,
+    "mortal_mirror": 857,
+    "mortal_sampling_sweep": 818
+  },
+  "sampled": 248,
+  "sampled_lessons": {
+    "chiitoi_vs_toitoi": 97,
+    "honitsu_decision": 110,
+    "pinfu_head": 41
+  },
+  "sampled_replay_families": {
+    "akochan_tactics": 21,
+    "akochan_vs_mortal": 20,
+    "heterogeneous_table": 21,
+    "mortal_mirror": 89,
+    "mortal_sampling_sweep": 97
+  },
+  "schema": "riichiprac.q2r2-review-sample",
+  "sections": {
+    "ch5.3": 270,
+    "ch5.4": 1378,
+    "ch5.5": 97
+  },
+  "seed": "q4-ch5-2026-11",
+  "selected": 1745,
+  "version": 1
+}

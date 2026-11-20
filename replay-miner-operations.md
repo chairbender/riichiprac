@@ -1117,8 +1117,9 @@ One-at-a-time review does not scale past roughly a thousand candidates. Two
 additions make a ~2,000-candidate queue reviewable:
 
 - **Bulk verdicts.** `scripts/review-q2-queue.py --verdicts-out FILE` applies the
-  mechanical chapter rules (`--chapter ch8` by default, or `ch7` for the
-  riichi/dama queue, where the ready-hand rejection does not apply) to the whole
+  mechanical chapter rules (`--chapter ch8` by default, `ch7` for the
+  riichi/dama queue, where the ready-hand rejection does not apply, or `ch5` for
+  the value lessons, whose shipped shapes are 1-away or slower) to the whole
   queue and writes one
   `riichiprac.review-verdicts` v1 document:
   `{"schema": "riichiprac.review-verdicts", "version": 1, "note": "...",
@@ -1139,8 +1140,12 @@ The mechanical pass is still a gate, not a judgement: it rejects out-of-scope
 sections/lessons, non-book or contested labels, report/lesson mismatches,
 illegal answers, duplicate exact/visible states and dirty walks. The ch. 8
 scope also rejects a ready hand (that is an offense drill); the ch. 7 scope
-keeps it, because a riichi/dama decision is tenpai by definition. The human
-sample is the evidence that the remaining positions teach.
+keeps it, because a riichi/dama decision is tenpai by definition. The ch. 5
+scope rejects it too: `honitsu_decision` needs 1-2 shanten and refuses a discard
+into tenpai, `chiitoi_vs_toitoi` is exactly 1-away, `pinfu_head` needs two or
+more shanten, and the only tenpai ch. 5 lesson (`sanshoku_pursuit`) is below the
+floor and out of the pack's scope. The human sample is the evidence that the
+remaining positions teach.
 
 #### Filtering, progress and the review surface (Q2r2)
 
@@ -2044,6 +2049,22 @@ riichi/dama decision is tenpai), 2,901/2,901 were accepted, and a 304-row
 stratified sample covers every lesson including all 60 `dama_improving_hand`
 bases. Details: [`q3-ch7-riichi-dama-pack.md`](q3-ch7-riichi-dama-pack.md),
 evidence: [`testdata/reports/q3-ch7/`](testdata/reports/q3-ch7/); coverage:
+`node scripts/replay-coverage-report.mjs`.
+
+**Ch. 5 value pack (Q4, 2026-11-20).** The same classifier-v3 corpus produced
+`replay.ch5-values.2026-11`: `select --section ch5 --lesson
+honitsu_decision,pinfu_head,chiitoi_vs_toitoi` returned 1,745 reviewed bases from
+3,000 gate passes (1,670 shipped after `--unique-hands`), 1,176,300 bytes, 1,041
+source replays, 1,670 unique hands. Three lessons clear the 40-base floor
+(`honitsu_decision` 1,319, `pinfu_head` 257, `chiitoi_vs_toitoi` 94);
+`sanshoku_pursuit` stays out (2 stable labels; corpus growth C9). The selection
+ran 65 min on 14 workers; the ship count is below the 3,000 request because the
+stable-book candidates only populate the book/coverage/placement quota families,
+which cap the mix at 1,745. The mechanical review takes `--chapter ch5` (a ready
+hand is out of shape for all three shipped lessons), 1,745/1,745 were accepted,
+and a 248-row stratified sample includes all 97 `chiitoi_vs_toitoi` bases.
+Details: [`q4-ch5-value-pack.md`](q4-ch5-value-pack.md), evidence:
+[`testdata/reports/q4-ch5/`](testdata/reports/q4-ch5/); coverage:
 `node scripts/replay-coverage-report.mjs`.
 
 **Replay-first rollout.** The next product phase extends packs to the remaining
