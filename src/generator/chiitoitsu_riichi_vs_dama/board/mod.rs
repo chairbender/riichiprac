@@ -54,6 +54,17 @@ pub(super) fn build(category: &str, skeleton: &ChiitoitsuSkeleton) -> Result<Gam
         aka_count,
     )?;
 
+    // ch7:359: a honitsu/chinitsu seven-pairs hand is the book's second dama
+    // case, so the Riichi branch must not build one for any accepted wait.
+    if skeleton.decision == ChiitoitsuDecision::Riichi
+        && skeleton
+            .accepted_waits()
+            .iter()
+            .any(|&wait| super::scoring::is_flush(&skeleton.winning_tiles(wait)))
+    {
+        return Err("A Riichi seven-pairs hand must not be honitsu/chinitsu (ch7:359)".to_string());
+    }
+
     let (mut deck, ura_indicator) = build_deck(
         &prepared.full_tiles,
         &dora_indicators,

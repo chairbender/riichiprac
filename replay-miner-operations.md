@@ -796,10 +796,20 @@ old generations stay available when a reproducer explicitly asks for one.
 
 Adding or changing a recogniser is a **classifier-generation change**: bump
 `CLASSIFIER_VERSION`, then re-label. A full `label --trigger book` pass on the
-current corpus re-evaluates ~110k candidates (about 30-60 minutes on 14
+current corpus re-evaluates ~113k candidates (about 30-60 minutes on 14
 workers), so batch related recognisers into one task and one version bump
 rather than bumping per recogniser. The replay-first rollout's `B4` (four
-missing classifiers) is the first example.
+missing classifiers) is the first example: classifier v3 labelled 112,504
+candidates in 52 min 45 s at 14 workers, and the per-lesson yield is in
+`testdata/reports/b4-classifiers/label-yield-report.md`.
+
+One trap: the stale-label clear is **version**-based, not rule-based. If a
+recogniser changes while the version stays the same (mid-development fix before
+the bump lands), a rerun leaves the retired v3 `decisions` labels in place and
+the version-keyed `model_labels` rows still carry the old book label. Either
+bump the version again, or, while the generation has not shipped, delete the
+`model_labels` rows and reset the `decisions` label columns for that version
+before relabelling.
 
 ### Parity
 

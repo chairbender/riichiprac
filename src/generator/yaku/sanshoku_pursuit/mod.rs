@@ -43,7 +43,7 @@ mod skeleton;
 use crate::generator::support::retry::generate_with_retries;
 use crate::state::GameState;
 
-pub(crate) use facts::{SanshokuFacts, from_state as facts};
+pub(crate) use facts::{SanshokuFacts, candidate_shapes, from_state as facts};
 
 /// Generates one floating sanshoku decision.
 pub fn generate(category: &str) -> Result<GameState, String> {

@@ -100,7 +100,15 @@ pub const VALUE_UNITS: &str = "model_utility";
 /// It is part of the cache key: a classifier change must not reuse a book label
 /// from the previous rule set. The Mortal inference itself is versioned by
 /// `model_sha256`.
-pub const CLASSIFIER_VERSION: &str = "2";
+///
+/// Version history:
+/// - `2` — the v2 recognisers (ch. 3–9 families), the `agari` wait reading and
+///   the Mortal tiebreak.
+/// - `3` — the four ch. 5.1/5.5/7.2/8.4 recognisers added in replay task B4
+///   (`sanshoku_pursuit`, `chiitoi_vs_toitoi`, `chiitoitsu_riichi_vs_dama`,
+///   `open_hand_defense`). Every cached label is invalidated once, because the
+///   new lessons change what `classify_unique` returns on those positions.
+pub const CLASSIFIER_VERSION: &str = "3";
 
 /// The note carried by every label, so a consumer cannot mistake Q for points.
 pub const Q_UNITS_NOTE: &str = "Q values are model utility, not points.";

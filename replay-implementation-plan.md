@@ -2706,10 +2706,12 @@ constraints that matter to this plan are:
   section (ch3, ch4, ch5, ch7, ch8 completion, ch9), not per lesson, so one lazy
   body serves several lessons.
 - **Four classifiers are in scope.** `chiitoitsu_riichi_vs_dama`,
-  `chiitoi_vs_toitoi`, `sanshoku_pursuit` and `open_hand_defense` have no
-  classifier today and therefore no mining path. A single `B4` task lands all
-  four recognisers, one `CLASSIFIER_VERSION` bump and one label pass; splitting
-  them across tasks would invalidate the label cache once per task.
+  `chiitoi_vs_toitoi`, `sanshoku_pursuit` and `open_hand_defense` had no
+  classifier and therefore no mining path. A single `B4` task landed all four
+  recognisers, one `CLASSIFIER_VERSION` bump and one label pass; splitting them
+  across tasks would invalidate the label cache once per task. **Status
+  2026-11-19:** landed at classifier v3; see
+  `testdata/reports/b4-classifiers/label-yield-report.md`.
 - **Generated is never removed.** The picker gets a Replay/Generated/Both source
   filter and a `preferReplay` setting; generated drills remain selectable.
 - **AI self-play is not human replay.** Today's packs are AI self-play. A

@@ -34,16 +34,33 @@
 //! generators now build disjoint cells, so a *generated* state never needs the
 //! Mortal tiebreak; an arbitrary replay state can still hit two sections at
 //! once, and `classify_with_mortal` settles it.
+//!
+//! # The seven-pairs cell and the ch. 5.1 deferral
+//!
+//! [`chiitoitsu_riichi_vs_dama`] is ch. 7.2's seven-pairs rule (ch7:337/345-359).
+//! Its hand is six pairs plus two lone tiles, so none of the standard-hand
+//! recognisers in this module can read it (`Kept::is_standard` refuses a
+//! chiitoitsu wait) and it can never be double-labelled inside the family.
+//!
+//! Every recogniser here also declines a table that ch. 5.1's floating-sanshoku
+//! cell claims: that hand is a *wait-choice* question (an extra tile and two
+//! teaching waits, ch5:62/74) and the app ships it as
+//! [`ScenarioId::SanshokuPursuit`], not as a declaration.
 
+use agari::context::indicator_to_dora;
+use agari::parse::to_counts;
+use agari::scoring::ScoreLevel;
 use agari::tile::Tile;
 
 use crate::generator::ScenarioId;
+use crate::generator::chiitoitsu_riichi_vs_dama::scoring;
 use crate::generator::dama_bad_wait::judgement as bad_wait;
 use crate::generator::dama_expensive_hand::judgement as expensive;
 use crate::generator::dama_genbutsu_wait::judgement as genbutsu;
 use crate::generator::dama_improving_hand::improvement;
+use crate::generator::support::tiles::{is_outside_456, suji_tiles};
 use crate::safety::SafetyFacts;
-use crate::state::{CorrectAction, DamaReason, GameState, RiichiTrigger, TargetAction};
+use crate::state::{CorrectAction, DamaReason, GameState, RiichiTrigger, TargetAction, Wind};
 
 use super::support::{self, Candidate, Kept, Turn};
 use super::{Allowed, Match, TransformPolicy};
@@ -69,6 +86,22 @@ pub(crate) const DAMA_POLICY: TransformPolicy = TransformPolicy {
            han, so normalising it can move a hand across the 7700 and extra-han thresholds.",
 };
 
+/// The seven-pairs cell shares the ch. 7 reasoning, and the red five is even
+/// more load-bearing here: ch7:345-353 makes "one red five, waiting for a
+/// regular five" a Riichi criterion *and* the single-answer variant of the
+/// drill, so normalising it rewrites the question.
+pub(crate) const CHIITOITSU_POLICY: TransformPolicy = TransformPolicy {
+    seat_perm: Allowed::AllowWithRecompute,
+    suit_perm: Allowed::AllowWithRecompute,
+    rank_mirror: Allowed::AllowWithRecompute,
+    wind_relabel: Allowed::AllowWithRecompute,
+    red5_normalize: Allowed::Deny,
+    note: "the seven-pairs cell is a shape, wait and value rule (dealer, tanyao, suji trap, \
+           wait rank, below-mangan), so every relabelling re-runs it; the red-five variant's \
+           whole answer is which lone tile is kept, so normalising a red five rewrites the \
+           question",
+};
+
 /// The general three-condition rule (ch7:55-59), on the cells it owns.
 ///
 /// The chapter's later dama sections refine the general rule, and the shipped
@@ -84,6 +117,12 @@ pub(crate) const DAMA_POLICY: TransformPolicy = TransformPolicy {
 /// always Riichi.
 pub fn riichi_judgement(state: &GameState) -> Option<Match> {
     let turn = support::turn(state)?;
+    // ch. 5.1's floating-sanshoku cell owns a wait-choice table; the
+    // declaration question is not shipped there (see `super::sanshoku`).
+    if super::sanshoku::takes_wait_choice(&turn, state) {
+        return None;
+    }
+
     let candidates = support::candidates(&turn)?;
     let facts =
         support::sole_riichi_threat(state).and_then(|seat| SafetyFacts::from_state(state, seat));
@@ -142,6 +181,12 @@ pub fn riichi_judgement(state: &GameState) -> Option<Match> {
 /// ch7:521's bad-wait box.
 pub fn dama_bad_wait(state: &GameState) -> Option<Match> {
     let turn = support::turn(state)?;
+    // ch. 5.1's floating-sanshoku cell owns a wait-choice table; the
+    // declaration question is not shipped there (see `super::sanshoku`).
+    if super::sanshoku::takes_wait_choice(&turn, state) {
+        return None;
+    }
+
     let candidates = support::candidates(&turn)?;
     // The immediate-suji-trap lesson is a refinement of this box's dama cell:
     // when a trap discard exists, ch7:512 makes the declaration right and the
@@ -205,6 +250,12 @@ pub fn dama_bad_wait(state: &GameState) -> Option<Match> {
 /// ch7:539's genbutsu wait.
 pub fn dama_genbutsu_wait(state: &GameState) -> Option<Match> {
     let turn = support::turn(state)?;
+    // ch. 5.1's floating-sanshoku cell owns a wait-choice table; the
+    // declaration question is not shipped there (see `super::sanshoku`).
+    if super::sanshoku::takes_wait_choice(&turn, state) {
+        return None;
+    }
+
     let candidates = support::candidates(&turn)?;
     let threat = support::sole_riichi_threat(state)?;
     let facts = SafetyFacts::from_state(state, threat)?;
@@ -243,6 +294,12 @@ pub fn dama_genbutsu_wait(state: &GameState) -> Option<Match> {
 /// ch7:569/598/646's high-scoring hand.
 pub fn dama_expensive_hand(state: &GameState) -> Option<Match> {
     let turn = support::turn(state)?;
+    // ch. 5.1's floating-sanshoku cell owns a wait-choice table; the
+    // declaration question is not shipped there (see `super::sanshoku`).
+    if super::sanshoku::takes_wait_choice(&turn, state) {
+        return None;
+    }
+
     let candidates = support::candidates(&turn)?;
 
     let (_, chosen, equivalents) = unanimity_index(&turn, &candidates, |turn, kept| {
@@ -321,6 +378,12 @@ fn expensive_cell(turn: &Turn, kept: &Kept) -> Option<(expensive::Verdict, u32)>
 /// ch7:656-660's many improving kinds.
 pub fn dama_improving_hand(state: &GameState) -> Option<Match> {
     let turn = support::turn(state)?;
+    // ch. 5.1's floating-sanshoku cell owns a wait-choice table; the
+    // declaration question is not shipped there (see `super::sanshoku`).
+    if super::sanshoku::takes_wait_choice(&turn, state) {
+        return None;
+    }
+
     let candidates = support::candidates(&turn)?;
 
     let (_, chosen, equivalents) = unanimity_index(&turn, &candidates, |turn, kept| {
@@ -355,8 +418,328 @@ fn is_book_tenpai(kept: &Kept) -> bool {
     kept.is_standard() && kept.is_live()
 }
 
+// ---------------------------------------------------------------------------
+// ch. 7.2 — the seven-pairs cell.
+// ---------------------------------------------------------------------------
+
+/// One discard that leaves a seven-pairs tenpai.
+struct ChiitoitsuCandidate {
+    /// The lone tile that would be discarded.
+    discard: Tile,
+    /// The thirteen kept tiles: six pairs and the singleton wait.
+    kept: Vec<Tile>,
+    /// The singleton that completes the seventh pair.
+    wait: Tile,
+    /// False when the wait is furiten or has no live copy.
+    live: bool,
+}
+
+/// ch7:337/345-359's seven-pairs Riichi/dama cell.
+///
+/// The hand is 1-away from ready in the book's own shape: six pairs and two lone
+/// tiles, so dropping either lone tile leaves a seven-pairs tenpai on the other.
+/// The book's rule (ch7:337/345-353):
+///
+/// > Riichi any chiitoitsu hand if waiting for dora!
+/// >
+/// > Do insta-riichi with chiitoitsu (not waiting for dora) if one or more of
+/// > the following holds: you are the dealer; you have tanyao; you have one red
+/// > five, waiting for a regular five; the wait is a suji-trap wait; the wait is
+/// > any tile other than 4, 5, 6; the score without riichi is below mangan.
+///
+/// and the two dama cases (ch7:359): a non-dealer waiting 4/5/6, or a
+/// honitsu/chinitsu chiitoitsu.
+///
+/// Both lone tiles usually leave the same question, so both are graded as the
+/// same answer. The exception is the book's red-five line: when the hand holds
+/// exactly one red five and it is one of the two lone tiles, the red five is the
+/// wait the rule names and the only accepted discard is the other lone tile —
+/// the generator's single-answer variant.
+///
+/// A line whose wait is already in the human's own river (furiten) or has no
+/// live copy is dropped rather than the whole state: the drill's other lone
+/// tile can still leave the hand's real wait, and the generator itself allows
+/// the unaccepted twin to sit in the river. When only one line survives, it is
+/// the answer; when both survive they must land in the same cell.
+///
+/// The honitsu/chinitsu dama case is ch7:359(b) and is modelled: the one-suit
+/// hand stays concealed. The all-honours hand is the book's footnote exception
+/// ("I would riichi"), so it is read by the six-condition box instead.
+pub fn chiitoitsu_riichi_vs_dama(state: &GameState) -> Option<Match> {
+    let turn = support::turn(state)?;
+    let all = chiitoitsu_candidates(&turn)?;
+    let red_fives = &state.players[0].red_fives;
+
+    // A furiten line, or a wait with no live copy, is not one the book keeps.
+    let candidates: Vec<&ChiitoitsuCandidate> =
+        all.iter().filter(|candidate| candidate.live).collect();
+    if candidates.is_empty() {
+        return None;
+    }
+
+    // The red-five line is a single answer: keep the red five and throw the
+    // other lone tile (ch7:345-353, "waiting for a regular five").
+    let red: Vec<usize> = candidates
+        .iter()
+        .enumerate()
+        .filter(|(_, candidate)| is_red_five(candidate.wait, red_fives))
+        .map(|(index, _)| index)
+        .collect();
+    if let [only] = red.as_slice() {
+        let candidate = candidates[*only];
+        let declaration = chiitoitsu_cell(&turn, candidate, true)?;
+        if declaration == Declaration::Riichi && !riichi_is_legal(state) {
+            return None;
+        }
+        return Some(chiitoitsu_match(
+            &turn,
+            candidate,
+            true,
+            declaration,
+            Vec::new(),
+        ));
+    }
+
+    // Otherwise every tenpai discard must land in the same cell.
+    let mut verdicts = Vec::with_capacity(candidates.len());
+    for candidate in &candidates {
+        verdicts.push(chiitoitsu_cell(&turn, candidate, false)?);
+    }
+    if verdicts[1..].iter().any(|other| *other != verdicts[0]) {
+        return None;
+    }
+    if verdicts[0] == Declaration::Riichi && !riichi_is_legal(state) {
+        return None;
+    }
+    let equivalents = candidates[1..]
+        .iter()
+        .map(|candidate| candidate.discard.to_string())
+        .collect();
+    Some(chiitoitsu_match(
+        &turn,
+        candidates[0],
+        false,
+        verdicts[0],
+        equivalents,
+    ))
+}
+
+/// The two lone-tile discards of a six-pairs-plus-two-singletons hand.
+fn chiitoitsu_candidates(turn: &Turn) -> Option<Vec<ChiitoitsuCandidate>> {
+    let counts = to_counts(&turn.hand);
+    let mut pairs = 0usize;
+    let mut singles = Vec::new();
+    for (tile, count) in &counts {
+        match *count {
+            2 => pairs += 1,
+            1 => singles.push(*tile),
+            _ => return None,
+        }
+    }
+    if pairs != 6 || singles.len() != 2 {
+        return None;
+    }
+    singles.sort();
+
+    let mut out = Vec::with_capacity(2);
+    for discard in singles.iter().copied() {
+        let mut kept = turn.hand.clone();
+        let index = kept.iter().position(|tile| *tile == discard)?;
+        kept.remove(index);
+        let wait = *singles.iter().find(|tile| **tile != discard)?;
+        // A wait already in the human's river is furiten; the kept hand holds
+        // one copy of the wait, so three visible copies leave none in the wall.
+        let live = !turn.river.contains(&wait) && turn.visible.get(&wait).copied().unwrap_or(0) < 3;
+        out.push(ChiitoitsuCandidate {
+            discard,
+            kept,
+            wait,
+            live,
+        });
+    }
+    Some(out)
+}
+
+/// The ch. 7.2 verdict for one kept seven-pairs tenpai hand.
+fn chiitoitsu_cell(
+    turn: &Turn,
+    candidate: &ChiitoitsuCandidate,
+    red_five_wait: bool,
+) -> Option<Declaration> {
+    let kept = &candidate.kept;
+    let wait = candidate.wait;
+    let mut winning = kept.clone();
+    winning.push(wait);
+
+    // ch7:337: "Riichi any chiitoitsu hand if waiting for dora!"
+    if turn
+        .dora
+        .iter()
+        .any(|&indicator| indicator_to_dora(indicator) == wait)
+    {
+        return Some(Declaration::Riichi);
+    }
+
+    // ch7:359's second dama case: "you have honitsu or chinitsu chiitoitsu".
+    if scoring::is_flush(&winning) {
+        return Some(Declaration::Dama);
+    }
+
+    let mut riichi = false;
+    if turn.human_wind == Wind::East {
+        riichi = true;
+    }
+    if kept
+        .iter()
+        .chain(std::iter::once(&wait))
+        .all(Tile::is_simple)
+    {
+        riichi = true;
+    }
+    if red_five_wait {
+        riichi = true;
+    }
+    // "The wait is a suji-trap wait": a suji of the wait is already in the
+    // human's river, so the winning tile looks safe to the table.
+    if suji_tiles(wait)
+        .iter()
+        .any(|suji| turn.river.contains(suji))
+    {
+        riichi = true;
+    }
+    if is_outside_456(wait) {
+        riichi = true;
+    }
+
+    if scoring::score_level(
+        &winning,
+        wait,
+        turn.round_wind,
+        turn.human_wind,
+        &turn.dora,
+        turn.aka,
+    ) == Some(ScoreLevel::Normal)
+    {
+        riichi = true;
+    }
+
+    Some(if riichi {
+        Declaration::Riichi
+    } else {
+        Declaration::Dama
+    })
+}
+
+/// True when `tile` is one of the human's red fives.
+fn is_red_five(tile: Tile, red_fives: &[String]) -> bool {
+    tile.value() == Some(5) && red_fives.iter().any(|code| code == &tile.to_string())
+}
+
+/// Build the ch. 7.2 [`Match`] with its ch. 7 trigger/reason vocabulary.
+fn chiitoitsu_match(
+    turn: &Turn,
+    candidate: &ChiitoitsuCandidate,
+    red_five_wait: bool,
+    declaration: Declaration,
+    equivalents: Vec<String>,
+) -> Match {
+    let waits_dora = turn
+        .dora
+        .iter()
+        .any(|&indicator| indicator_to_dora(indicator) == candidate.wait);
+
+    let mut triggers = Vec::new();
+    let mut reasons = Vec::new();
+    let mut labels: Vec<&str> = Vec::new();
+    match declaration {
+        Declaration::Riichi => {
+            if turn.human_wind == Wind::East {
+                triggers.push(RiichiTrigger::Dealer);
+                labels.push("dealer");
+            }
+            if candidate
+                .kept
+                .iter()
+                .chain(std::iter::once(&candidate.wait))
+                .all(Tile::is_simple)
+            {
+                triggers.push(RiichiTrigger::Tanyao);
+                labels.push("tanyao");
+            }
+            if red_five_wait {
+                triggers.push(RiichiTrigger::RedFiveWait);
+                labels.push("red-five wait");
+            }
+            if suji_tiles(candidate.wait)
+                .iter()
+                .any(|suji| turn.river.contains(suji))
+            {
+                triggers.push(RiichiTrigger::SujiTrap);
+                labels.push("suji trap");
+            }
+            if is_outside_456(candidate.wait) {
+                triggers.push(RiichiTrigger::WaitOutside456);
+                labels.push("wait outside 4-5-6");
+            }
+            let mut winning = candidate.kept.clone();
+            winning.push(candidate.wait);
+            if scoring::score_level(
+                &winning,
+                candidate.wait,
+                turn.round_wind,
+                turn.human_wind,
+                &turn.dora,
+                turn.aka,
+            ) == Some(ScoreLevel::Normal)
+            {
+                triggers.push(RiichiTrigger::ScoreBelowMangan);
+                labels.push("score below mangan");
+            }
+            if waits_dora {
+                // A dora wait is an extra han, which is the ch. 7 vocabulary
+                // the rationale speaks for this hand.
+                if !triggers.contains(&RiichiTrigger::HasExtraHan) {
+                    triggers.insert(0, RiichiTrigger::HasExtraHan);
+                }
+                labels.insert(0, "waiting on the dora");
+            }
+        }
+        Declaration::Dama => {
+            let mut winning = candidate.kept.clone();
+            winning.push(candidate.wait);
+            if scoring::is_flush(&winning) {
+                // ch7:359(b): the flush hand stays concealed.
+                reasons = vec![DamaReason::Honitsu];
+                labels.push("honitsu/chinitsu");
+            } else {
+                // The six-condition box's dama cell, with the generator's own
+                // reason list for it.
+                reasons = vec![
+                    DamaReason::NotDealer,
+                    DamaReason::NoTanyao,
+                    DamaReason::MiddleWait,
+                    DamaReason::NoRedFiveWait,
+                    DamaReason::NoSujiTrap,
+                    DamaReason::Mangan,
+                ];
+                labels.push("non-dealer waiting 4-5-6");
+            }
+        }
+    }
+    let situation = format!("seven pairs, {}", labels.join(" + "));
+    declaration_match(
+        ScenarioId::ChiitoitsuRiichiVsDama,
+        Some(situation),
+        declaration,
+        candidate.discard,
+        equivalents,
+        Hints { triggers, reasons },
+        None,
+    )
+}
+
 /// True when the table lets the human declare Riichi.
-fn riichi_is_legal(state: &GameState) -> bool {
+pub(super) fn riichi_is_legal(state: &GameState) -> bool {
     let human = &state.players[0];
     human.score >= 1_000
         && state.tiles_remaining >= 4

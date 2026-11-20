@@ -42,9 +42,11 @@ This is a product-level inversion of the current picker, not a flag:
   verified/cached in IndexedDB.
 - The miner/selector can already scope by `--section` and `--lesson`, and the
   classifier covers most lesson families.
-- **Four lessons have no classifier at all** and therefore no mining path today:
+- **Four lessons had no classifier at all** and therefore no mining path:
   `chiitoitsu_riichi_vs_dama` (ch7.2), `chiitoi_vs_toitoi` (ch5.5),
-  `sanshoku_pursuit` (ch5.1), `open_hand_defense` (ch8.4). `B4` closes this.
+  `sanshoku_pursuit` (ch5.1), `open_hand_defense` (ch8.4). `B4` closed this on
+  2026-11-19 (`CLASSIFIER_VERSION = "3"`); the measured yield is in
+  `testdata/reports/b4-classifiers/label-yield-report.md`.
 
 **Gap:** the plan (`replay-implementation-plan.md`) ends at Q2, the first ch8
 defense pack. It does not cover replay alternatives for the other chapters, the
@@ -54,10 +56,13 @@ The queued tasks `261112-1826` (real game database as a source) and
 
 ## Coverage available from the current corpus
 
-Stable book labels from the 1,542-game AI self-play corpus, classifier v2.
-These are raw labels before selection gates and duplicate-hand/lesson floors, so
-shipped bases will be lower (the multi-threat lesson: 1,153 labels → 780
-selected → 764 shipped).
+Stable book labels from the 1,542-game AI self-play corpus, classifier v3 (B4
+landed the four missing recognisers; the v2 → v3 deltas are `honitsu_decision`
+−25 labels moved to `chiitoi_vs_toitoi`, `riichi_judgement` −4 and
+`dama_bad_wait` −4 moved to the new cells / dropped, measured in
+`testdata/reports/b4-classifiers/label-yield-report.md`). These are raw labels
+before selection gates and duplicate-hand/lesson floors, so shipped bases will
+be lower (the multi-threat lesson: 1,153 labels → 780 selected → 764 shipped).
 
 | Section | Lesson | Stable | Contested | Mining dependency |
 | --- | --- | ---: | ---: | --- |
@@ -71,13 +76,13 @@ selected → 764 shipped).
 | ch3.3 | nobetan_keep | 3 | 4 | ready (below floor; corpus C9) |
 | ch3.3 | ryankan_break | 1 | 3 | ready (below floor; corpus C9) |
 | ch4.1 | ryanmen_protorun | 66 | 24 | ready |
-| ch5.1 | sanshoku_pursuit | TBD | — | **B4.3 classifier** |
+| ch5.1 | sanshoku_pursuit | 2 | 1 | **B4.3 done** (far below floor; corpus C9) |
 | ch5.3 | pinfu_head | 353 | 1,656 | ready |
-| ch5.4 | honitsu_decision | 2,540 | 3,535 | ready |
-| ch5.5 | chiitoi_vs_toitoi | TBD | — | **B4.2 classifier** |
-| ch7.1 | riichi_judgement | 3,184 | 6,141 | ready |
-| ch7.2 | chiitoitsu_riichi_vs_dama | TBD | — | **B4.1 classifier** |
-| ch7.3 | dama_bad_wait | 2,664 | 13,071 | ready |
+| ch5.4 | honitsu_decision | 2,527 | 3,523 | ready |
+| ch5.5 | chiitoi_vs_toitoi | 120 | 133 | **B4.2 done** (clears the floor) |
+| ch7.1 | riichi_judgement | 3,182 | 6,139 | ready |
+| ch7.2 | chiitoitsu_riichi_vs_dama | 252 | 2,218 | **B4.1 done** (clears the floor) |
+| ch7.3 | dama_bad_wait | 2,664 | 13,067 | ready |
 | ch7.3 | dama_genbutsu_wait | 494 | 214 | ready |
 | ch7.3 | dama_expensive_hand | 566 | 52 | ready |
 | ch7.3 | dama_improving_hand | 137 | 71 | ready |
@@ -92,7 +97,7 @@ selected → 764 shipped).
 | ch8.2 | kabe_suji_defense | 32 | 28 | ready (below floor; corpus C9) |
 | ch8.3 | fold_to_riichi | 28,694 | 5,182 | ready |
 | ch8.3 | defense_stuck_heuristic | 211 | 217 | ready |
-| ch8.4 | open_hand_defense | TBD | — | **B4.4 classifier** |
+| ch8.4 | open_hand_defense | 4 | 15 | **B4.4 done** (far below floor; corpus C9) |
 | ch9.1 | meld_or_not | 0 | 15 | ready (corpus C9) |
 | ch9.3 | ankan_decision | 69 | 41 | ready |
 | ch9.3 | shouminkan_decision | 20 | 26 | ready (below floor; corpus C9) |
@@ -158,15 +163,19 @@ A starter pack can be added later if cold-start measurements justify it.
 
 ### Classifier gaps are in scope (`B4`)
 
-Four lessons have a generator but no classifier, so nothing can mine them. A
-replay alternative for them requires the recogniser first:
+Four lessons had a generator but no classifier, so nothing could mine them. A
+replay alternative for them requires the recogniser first. **All four landed in
+B4** (2026-11-19); the recognisers are `src/classifier/chiitoi.rs`,
+`sanshoku.rs`, `open_hand.rs` and the seven-pairs branch of
+`src/classifier/riichi.rs`. The notes below record what each had to encode and
+what the measured overlap was:
 
 | Lesson | Section | Task | Notes |
 | --- | --- | --- | --- |
-| `chiitoitsu_riichi_vs_dama` | ch7.2 | B4.1 | Riichi/dama cell; may overlap `riichi_judgement`/`dama_*`; use the existing Mortal tiebreak |
-| `chiitoi_vs_toitoi` | ch5.5 | B4.2 | Yaku-choice cell: keep chiitoitsu when a pair is futile, else build toitoi |
-| `sanshoku_pursuit` | ch5.1 | B4.3 | Floating-tile pursuit: keep the redundant tile only without another yaku/dora |
-| `open_hand_defense` | ch8.4 | B4.4 | Hardest: read the post-chii neighbourhood from an arbitrary table, positive and trap cases |
+| `chiitoitsu_riichi_vs_dama` | ch7.2 | B4.1 | Riichi/dama cell; the red-five wait is the single-answer variant; honitsu/chinitsu is the book's dama case (the generator now refuses to build it for Riichi) |
+| `chiitoi_vs_toitoi` | ch5.5 | B4.2 | Yaku-choice cell: keep chiitoitsu when a pair is futile, else build toitoi; `honitsu_decision` defers this shape |
+| `sanshoku_pursuit` | ch5.1 | B4.3 | Floating-tile pursuit: keep the redundant tile only without another yaku/dora; the ch. 7 family defers this wait-choice shape |
+| `open_hand_defense` | ch8.4 | B4.4 | Hardest: read the post-chii neighbourhood from an arbitrary table, positive and trap cases; one open threat, no Riichi |
 
 **One `B4` task covers all four**, because `CLASSIFIER_VERSION` is part of the
 label cache key: each classifier change bumps the version and invalidates every
@@ -209,6 +218,15 @@ includes its recogniser tests and a label-yield pass.
 - Unlocks ch7.2, ch5.1, ch5.5, ch8.4 for every later pack.
 - Accept: recognisers/tests/registration; labels stable/contested reported;
   existing lesson labels unchanged except documented conflicts.
+- **Landed (2026-11-19, `CLASSIFIER_VERSION = "3"`).** One `label --trigger book`
+  pass over the five families (1,542 replays, 112,504 labels, 52 min 45 s at 14
+  workers, no unresolved conflicts). Yield: `chiitoitsu_riichi_vs_dama` 252
+  stable / 2,218 contested, `chiitoi_vs_toitoi` 120 / 133, `open_hand_defense`
+  4 / 15, `sanshoku_pursuit` 2 / 1. The two thin lessons are ch. 8.4/ch. 5.1
+  corpus-growth targets (`C9`) and stay generated-default. Existing labels moved
+  only where the ch. 5.4 honitsu and ch. 7 declaration recognisers defer to the
+  new cells (−25 honitsu, −4 `riichi_judgement`, −4 `dama_bad_wait`).
+  Evidence: `testdata/reports/b4-classifiers/label-yield-report.md`.
 
 **RF1 — Pack manifest per-lesson coverage** (`riichiprac`, worktree)
 - Add `lesson_counts` to the pack manifest/publish; validate against the body

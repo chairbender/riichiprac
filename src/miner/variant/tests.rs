@@ -671,8 +671,9 @@ fn pinfu_head_rank_mirror_is_only_shipped_when_the_classifier_agrees() {
 
 #[test]
 fn a_lesson_with_no_classifier_denies_every_transform() {
-    // `sanshoku_pursuit` has a generator but no B1/B2 classifier, so it has no
-    // declared policy. The catalogue's default is deny, not a guess.
+    // `ai_hotseat` is the one lesson left without a book recogniser (its answer
+    // is the model's), so it has no declared policy. The catalogue's default is
+    // deny, not a guess.
     let state = crate::generator::generate_puzzle("sanshoku_pursuit").expect("generates");
     let scenario = PackScenario {
         id: ScenarioKey::parse("sanshoku-base").expect("slug"),
@@ -703,7 +704,7 @@ fn a_lesson_with_no_classifier_denies_every_transform() {
     };
     let label = BaseLabel {
         kind: VariantLabelKind::Book,
-        lesson: Some("sanshoku_pursuit".to_string()),
+        lesson: Some("ai_hotseat".to_string()),
         top_action: None,
         probability_margin: None,
         q_gap_top2: None,
@@ -724,7 +725,7 @@ fn ittsu_and_placement_families_are_absent_and_fail_closed() {
     // opt them in; the stage cannot invent one.
     assert!(ScenarioId::from_id("ittsu_pursuit").is_none());
     assert!(ScenarioId::from_id("placement_decision").is_none());
-    assert!(classifier::transform_policy(ScenarioId::SanshokuPursuit).is_none());
+    assert!(classifier::transform_policy(ScenarioId::AiHotseat).is_none());
 }
 
 #[test]

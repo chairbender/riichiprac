@@ -76,7 +76,7 @@
 mod ankan_decision;
 mod block_theory;
 mod chiitoi_vs_toitoi;
-mod chiitoitsu_riichi_vs_dama;
+pub(crate) mod chiitoitsu_riichi_vs_dama;
 mod daiminkan_decision;
 pub(crate) mod dama_bad_wait;
 pub(crate) mod dama_expensive_hand;
@@ -118,7 +118,9 @@ pub use support::completion::{is_perfect_one_away, perfect_one_away_shape};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
 pub use support::state_validation::validate_reachable_state;
-pub(crate) use yaku::sanshoku_pursuit::{SanshokuFacts, facts as sanshoku_facts};
+pub(crate) use yaku::sanshoku_pursuit::{
+    SanshokuFacts, candidate_shapes as sanshoku_candidate_shapes, facts as sanshoku_facts,
+};
 
 /// The ch. 3 skipping-shape counts, shared by the lesson and its rationale.
 pub(crate) use block_theory::skipping_block::{isolated_turns, skipping_turns};
