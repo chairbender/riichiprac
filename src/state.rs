@@ -351,6 +351,10 @@ pub enum DamaReason {
     /// or one three-han step. Riichi Book 1, ch. 7, "Many possibilities of
     /// improving the hand": the box at ch7:656-660.
     ImprovingHand,
+    /// The seven-pairs hand is honitsu or chinitsu. Riichi Book 1, ch. 7.2's
+    /// seven-pairs box (ch7:359): "the only two cases where you should go dama
+    /// are ... you have honitsu or chinitsu chiitoitsu".
+    Honitsu,
 }
 
 /// Discard tile in a player's river.

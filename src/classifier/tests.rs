@@ -54,6 +54,11 @@ const BOOK_LESSONS: &[ScenarioId] = &[
     ScenarioId::SkippingBlock,
     ScenarioId::PairCountOpen,
     ScenarioId::PerfectOneAway,
+    // B4: the four lessons that had no recogniser.
+    ScenarioId::ChiitoitsuRiichiVsDama,
+    ScenarioId::ChiitoiVsToitoi,
+    ScenarioId::SanshokuPursuit,
+    ScenarioId::OpenHandDefense,
 ];
 
 fn generated(lesson: ScenarioId) -> GameState {
@@ -561,15 +566,17 @@ fn mortal_breaks_a_defense_bottom_row_disagreement() {
 
 #[test]
 fn a_lesson_without_a_classifier_is_not_recognised() {
-    assert!(classifier(ScenarioId::SanshokuPursuit).is_none());
+    // `ai_hotseat` is the only remaining lesson without a book recogniser: its
+    // answer is the loaded model's, not a book rule.
+    assert!(classifier(ScenarioId::AiHotseat).is_none());
     assert!(
         classify(
             &generated(ScenarioId::RiichiJudgement),
-            ScenarioId::SanshokuPursuit
+            ScenarioId::AiHotseat
         )
         .is_none()
     );
-    assert!(transform_policy(ScenarioId::ChiitoitsuRiichiVsDama).is_none());
+    assert!(transform_policy(ScenarioId::AiHotseat).is_none());
 }
 
 // ---------------------------------------------------------------------------
@@ -663,6 +670,45 @@ fn classification_is_rotation_invariant_after_seat_normalisation() {
                 "{}: an unnormalised table must not classify",
                 lesson.as_str()
             );
+        }
+    }
+}
+
+/// B4's batch: the four lessons the replay rollout registered, each generated
+/// enough times to catch the rare table (a honitsu-shaped crossroad, a
+/// floating shape that is also a ch. 7 tenpai) where a shared rule would
+/// mislabel.
+#[test]
+fn b4_generated_states_never_disagree_across_lessons() {
+    let b4 = &[
+        ScenarioId::ChiitoitsuRiichiVsDama,
+        ScenarioId::ChiitoiVsToitoi,
+        ScenarioId::SanshokuPursuit,
+        ScenarioId::OpenHandDefense,
+    ];
+    for &lesson in b4 {
+        for run in 0..12 {
+            let state = generated(lesson);
+            let matched = classify(&state, lesson)
+                .unwrap_or_else(|| panic!("{}: run {run} did not classify", lesson.as_str()));
+            matched
+                .validate(&state)
+                .unwrap_or_else(|err| panic!("{}: run {run} illegal: {err}", lesson.as_str()));
+            assert_eq!(
+                matched.answer_set(),
+                state_answer_set(&state),
+                "{}: run {run} accepted tiles",
+                lesson.as_str()
+            );
+            for other in classify_all(&state) {
+                assert!(
+                    other.lesson == lesson || other.same_answer(&matched),
+                    "{}: run {run} also matched {:?} with {:?}",
+                    lesson.as_str(),
+                    other.lesson,
+                    other.answer_set()
+                );
+            }
         }
     }
 }

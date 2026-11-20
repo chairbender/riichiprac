@@ -52,6 +52,14 @@
 //! module rather than beside each constructor. They still call each lesson's
 //! own judgement helpers instead of re-implementing the book rule.
 //!
+//! B4 closed the four generated-only lessons: [`chiitoitsu_riichi_vs_dama`]
+//! ([`riichi`], ch. 7.2), [`chiitoi_vs_toitoi`] ([`chiitoi`], ch. 5.5),
+//! [`sanshoku_pursuit`] ([`sanshoku`], ch. 5.1) and [`open_hand_defense`]
+//! ([`open_hand`], ch. 8.4). Two of them changed a neighbour's reachability, and
+//! both changes are deferrals from the broader lesson to the narrower cell:
+//! [`honitsu_decision`] declines the ch. 5.5 pair shape, and the ch. 7 family
+//! declines a table the ch. 5.1 wait-choice cell claims.
+//!
 //! # Decision shapes
 //!
 //! B1's lessons are all closed self-turn discard decisions, and [`support::turn`]
@@ -105,12 +113,15 @@
 //! both Mortal outcomes, and proves no other pair of recognisers disagrees.
 
 pub mod call;
+pub mod chiitoi;
 pub mod defense;
 pub mod honitsu;
 pub mod kan;
+pub mod open_hand;
 pub mod pinfu;
 pub mod push_fold;
 pub mod riichi;
+pub mod sanshoku;
 pub mod shape;
 pub mod suji;
 pub mod wind;
@@ -353,6 +364,13 @@ pub const CLASSIFIERS: &[LessonClassifier] = &[
         policy: suji::POLICY,
         matches: suji::suji_trap_riichi,
     },
+    // ch. 7.2's seven-pairs cell. It is a chiitoitsu shape, so the standard-hand
+    // riichi/dama recognisers below never read the same board.
+    LessonClassifier {
+        lesson: ScenarioId::ChiitoitsuRiichiVsDama,
+        policy: riichi::CHIITOITSU_POLICY,
+        matches: riichi::chiitoitsu_riichi_vs_dama,
+    },
     // ch. 7 riichi/dama family.
     LessonClassifier {
         lesson: ScenarioId::DamaBadWait,
@@ -433,6 +451,14 @@ pub const CLASSIFIERS: &[LessonClassifier] = &[
         policy: defense::POLICY,
         matches: defense::defense_safety_chart,
     },
+    // ch. 8.4's open-hand chii read. The chart family above needs a Riichi
+    // threat and the multi-threat lesson needs two live threats; this lesson's
+    // board has one open hand and no Riichi, so the three are disjoint.
+    LessonClassifier {
+        lesson: ScenarioId::OpenHandDefense,
+        policy: open_hand::POLICY,
+        matches: open_hand::open_hand_defense,
+    },
     // ch. 5 shape/value family.
     LessonClassifier {
         lesson: ScenarioId::PinfuHead,
@@ -443,6 +469,17 @@ pub const CLASSIFIERS: &[LessonClassifier] = &[
         lesson: ScenarioId::HonitsuDecision,
         policy: honitsu::POLICY,
         matches: honitsu::honitsu_decision,
+    },
+    // ch. 5.1's floating sanshoku and ch. 5.5's chiitoitsu/toitoi crossroad.
+    LessonClassifier {
+        lesson: ScenarioId::SanshokuPursuit,
+        policy: sanshoku::POLICY,
+        matches: sanshoku::sanshoku_pursuit,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::ChiitoiVsToitoi,
+        policy: chiitoi::POLICY,
+        matches: chiitoi::chiitoi_vs_toitoi,
     },
     // ch. 9 call, kan and seating family.
     LessonClassifier {

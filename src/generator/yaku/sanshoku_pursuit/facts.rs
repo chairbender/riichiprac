@@ -114,11 +114,16 @@ fn find_line(lines: &[DiscardLine], discard: Tile) -> Option<&DiscardLine> {
     lines.iter().find(|line| line.discard == discard)
 }
 
-/// Finds the suit whose `x, x+2, x+3` shape is the floating tile, with the
-/// other two suits holding the completed `x, x+1, x+2` run.
-fn find_shape(tiles: &[Tile], answer: Tile) -> Option<(Suit, u8)> {
+/// Every suit/run-value whose floating-sanshoku shape appears in `tiles`.
+///
+/// The shape is the book's own: the floating suit holds `x, x+2, x+3`, and the
+/// other two suits each hold the completed `x, x+1, x+2` run. The generator uses
+/// this list before the answer exists; the classifier uses it without an answer
+/// at all, which is what keeps the construction rule and the recognition rule
+/// from drifting.
+pub(crate) fn candidate_shapes(tiles: &[Tile]) -> Vec<(Suit, u8)> {
     let suits = [Suit::Man, Suit::Pin, Suit::Sou];
-    let mut fallback = None;
+    let mut shapes = Vec::new();
 
     for x in 2..=5u8 {
         for &suit in &suits {
@@ -140,19 +145,24 @@ fn find_shape(tiles: &[Tile], answer: Tile) -> Option<(Suit, u8)> {
                     && count(suited(other, x + 1)) > 0
                     && count(suited(other, x + 2)) > 0
             });
-            if !complete {
-                continue;
+            if complete {
+                shapes.push((suit, x));
             }
-
-            let candidate = (suit, x);
-            if answer == suited(suit, x) || answer == suited(suit, x + 3) {
-                return Some(candidate);
-            }
-            fallback.get_or_insert(candidate);
         }
     }
 
-    fallback
+    shapes
+}
+
+/// Finds the suit whose `x, x+2, x+3` shape is the floating tile, with the
+/// other two suits holding the completed `x, x+1, x+2` run.
+fn find_shape(tiles: &[Tile], answer: Tile) -> Option<(Suit, u8)> {
+    let shapes = candidate_shapes(tiles);
+    shapes
+        .iter()
+        .copied()
+        .find(|(suit, x)| answer == suited(*suit, *x) || answer == suited(*suit, *x + 3))
+        .or_else(|| shapes.first().copied())
 }
 
 fn suited(suit: Suit, value: u8) -> Tile {

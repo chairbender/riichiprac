@@ -35,6 +35,9 @@
 //! A honitsu decision is a mid-hand plan question, not a riichi/dama
 //! declaration. The recogniser refuses an opening hand and a hand with a
 //! discard into tenpai, so the ch. 7 family's cells and this one stay disjoint.
+//! It also refuses the ch. 5.5 chiitoitsu/toitoi shape (four pairs, a completed
+//! set and three lone tiles): that hand's question is the pair-count crossroad
+//! ([`super::chiitoi`]), and the flush plan is not what it asks.
 
 use agari::tile::Tile;
 
@@ -110,6 +113,13 @@ pub fn honitsu_decision(state: &GameState) -> Option<Match> {
         return None;
     }
     if !(1..=2).contains(&turn.shanten) {
+        return None;
+    }
+    // The ch. 5.5 crossroad owns the hands it recognises (four pairs, a
+    // completed set and three lone tiles): that hand's question is the
+    // pair-count rule, not the flush plan, and the two lessons would otherwise
+    // read the same table differently.
+    if super::chiitoi::chiitoi_vs_toitoi(state).is_some() {
         return None;
     }
     // A discard into tenpai is the ch7 riichi/dama question, not this plan

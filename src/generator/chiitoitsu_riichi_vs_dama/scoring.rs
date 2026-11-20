@@ -9,7 +9,7 @@ use crate::generator::support::analysis::wind_to_honor;
 use crate::state::Wind;
 
 /// Scores a completed chiitoitsu hand without Riichi.
-pub(super) fn score_level(
+pub(crate) fn score_level(
     winning_tiles: &[Tile],
     wait_tile: Tile,
     round_wind: Wind,
@@ -41,7 +41,7 @@ pub(super) fn score_level(
 
 /// Scores a completed chiitoitsu hand without Riichi and reports whether it
 /// stays below Mangan.
-pub(super) fn scores_below_mangan(
+pub(crate) fn scores_below_mangan(
     winning_tiles: &[Tile],
     wait_tile: Tile,
     round_wind: Wind,
@@ -57,4 +57,20 @@ pub(super) fn scores_below_mangan(
         &[dora_indicator],
         aka_count,
     ) == Some(ScoreLevel::Normal)
+}
+
+/// True when the complete chiitoitsu hand is a one-suit shape: honitsu (one
+/// suit plus honours) or chinitsu (one suit only).
+///
+/// Riichi Book 1, ch. 7.2 (ch7:359): "the only two cases where you should go
+/// dama are (a) when you are a non-dealer and you are waiting for 4,5,6, and
+/// (b) you have honitsu or chinitsu chiitoitsu." The all-honours hand is the
+/// book's footnote exception — "I would riichi" — so it is **not** flush here.
+pub(crate) fn is_flush(winning_tiles: &[Tile]) -> bool {
+    let mut suits = winning_tiles.iter().filter_map(Tile::suit);
+    let Some(first) = suits.next() else {
+        // No suited tile at all: the all-honours hand, which the book declares.
+        return false;
+    };
+    suits.all(|suit| suit == first)
 }

@@ -21,7 +21,7 @@
 mod board;
 mod dama;
 mod riichi;
-mod scoring;
+pub(crate) mod scoring;
 mod skeleton;
 mod triggers;
 
