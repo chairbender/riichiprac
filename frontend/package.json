@@ -11,6 +11,7 @@
     "seams:check": "node scripts/check-3d-seams.mjs",
     "pom:measure": "node scripts/check-3d-pom.mjs",
     "budget:check": "node scripts/check-3d-budget.mjs",
+    "first-deal:measure": "node scripts/measure-first-deal.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

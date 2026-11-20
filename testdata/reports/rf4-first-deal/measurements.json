@@ -1,0 +1,59 @@
+{
+  "measured_at": "2026-11-20T04:17:25.288Z",
+  "node": "v24.22.3",
+  "platform": "linux x64",
+  "load_average_1m": 6.03,
+  "runs": 9,
+  "manifest": {
+    "path": "/home/kylehipke/workspaces/riichiprac-261119-2159/frontend/public/scenarios/manifest.json",
+    "bytes": 1630,
+    "parse_ms": 0.08,
+    "packs": 2
+  },
+  "first_deal": {
+    "pack_id": "replay.ch8-defense.2026-11",
+    "lesson_id": "defense_safety_chart",
+    "reviewed_bases": 766,
+    "body_path": "replay.ch8-defense.2026-11-6ae2c924e80c.json.gz",
+    "body_bytes": 2260809,
+    "body_scenarios": 2211,
+    "uncompressed_bytes": 21743261,
+    "sha256_matches": true
+  },
+  "phases_ms": {
+    "sha256_verify": {
+      "median_ms": 1.1,
+      "min_ms": 1.08,
+      "cpu_median_ms": 1.12,
+      "cpu_min_ms": 1.08
+    },
+    "gunzip": {
+      "median_ms": 26.92,
+      "min_ms": 24.74,
+      "cpu_median_ms": 35,
+      "cpu_min_ms": 28.84
+    },
+    "json_parse": {
+      "median_ms": 89.33,
+      "min_ms": 58.96,
+      "cpu_median_ms": 140.31,
+      "cpu_min_ms": 71.85
+    },
+    "decode_total": {
+      "median_ms": 117.35,
+      "min_ms": 84.79,
+      "cpu_median_ms": 176.43,
+      "cpu_min_ms": 101.78
+    }
+  },
+  "cache": {
+    "cold": "manifest + body download, then verify/decode",
+    "hit": "no body download; the loader still verifies and decodes cached bytes",
+    "cache_hit_median_ms": 117.35,
+    "cache_hit_min_ms": 84.79,
+    "cache_hit_cpu_median_ms": 176.43,
+    "cache_hit_cpu_min_ms": 101.78
+  },
+  "budget_ms": 2500,
+  "within_budget_cpu": true
+}

@@ -195,6 +195,50 @@ Recommendation: **C**, measured. It makes replay-first true from the first deal
 at the cost of one section body (roughly 0.2–2 MB, cached by content address).
 A starter pack can be added later if cold-start measurements justify it.
 
+**Status (RF4, 2026-11-19).** Strategy C is implemented; the first deal of a
+launch is replay-first. `loadPuzzle`'s launch call runs in `bootstrap` mode: it
+awaits the manifest fetch (already in flight) for up to
+`FIRST_DEAL_BUDGET_MS` (2,500 ms), picks the covered lesson with the most
+reviewed bases in the merged catalogue (`firstDealReplayOption`; book order
+breaks a tie), and deals one of its scenarios. The body is verified, decoded
+and cached exactly like every later replay deal and gets the same budget; a
+body that misses it is not cancelled, so it still fills the IndexedDB cache for
+the next hand. `preferReplay: false` (the Generated filter) skips the whole
+path, so **no body is requested**. Offline, an unparseable manifest, a failed
+or slow body, no coverage, or a manifest with no pack leaves the launch on the
+generated hand; a failed body keeps the existing picker note and deals that
+lesson's generated sibling. The wait is a `role="status"` line ("Loading a
+replay position…"), then the pack line while the body decodes.
+
+Cold-start cost of the shipped set from
+`frontend/scripts/measure-first-deal.mjs` (`cd frontend && npm run
+first-deal:measure`). Numbers are the median of nine runs on the 14-core dev
+box for the committed report
+(`testdata/reports/rf4-first-deal/measurements.json`); a run taken while a
+corpus selection held the box's load average near 19 was 3–6× slower in wall
+time, which is exactly why the deal is budgeted and falls back instead of
+waiting:
+
+| Measurement | Value |
+| --- | ---: |
+| Manifest | 1,630 bytes, 2 packs, parse 0.1 ms |
+| First-deal pack | `replay.ch8-defense.2026-11` |
+| First-deal lesson | `defense_safety_chart`, 766 reviewed bases |
+| Body | 2,260,809 bytes gzipped, 21,743,261 uncompressed, 2,211 scenarios |
+| SHA-256 verify | 1.1 ms |
+| gunzip | 26.9 ms |
+| JSON parse | 89.3 ms |
+| Verify + decode (cold after the download, or a cache hit) | 117.4 ms median, 84.8 ms best |
+| Cache hit | no download; the loader re-verifies a cached body, so it pays the same decode |
+| Budget | 2,500 ms per phase: both phases far inside it |
+
+The body is the 2.26 MB ch8 pack because prominence follows reviewed coverage,
+not pack size. A real cold visit therefore adds one same-origin download
+(591 KB–2.26 MB) to those decode times; a returning visitor pays only the
+verify + decode. A starter pack stays the fallback option if field
+measurements show the first deal regularly timing out on mobile, which these
+numbers do not justify yet.
+
 ### Classifier gaps are in scope (`B4`)
 
 Four lessons have a generator but no classifier, so nothing can mine them. A
@@ -287,6 +331,7 @@ includes its recogniser tests and a label-yield pass.
   docs.
 - Accept: first deal is replay when online and covered; generated fallback when
   offline/error; no pack body when replay is off.
+- Landed 2026-11-19: see "Status (RF4)" under *First deal*.
 
 **Q4 — ch5 value pack** (`riichiprac`, worktree)
 - `honitsu_decision` (2,540), `pinfu_head` (353), **`sanshoku_pursuit` (B4.3)**,
@@ -338,6 +383,9 @@ Q5, Q6 ────────────────────── increm
 C9 ────────────────────────── grows the below-floor lessons
 D1 ────────────────────────── independent research
 ```
+
+RF1–RF4 have landed (RF4 on 2026-11-19); RF5 flips the build's default only
+once coverage is sufficient.
 
 B4 is the first task because three of the later packs depend on it; RF1/RF2 can
 run in parallel because they need no new classifier. Create wave 1 now (B4, RF1,
@@ -400,7 +448,8 @@ Create the current wave only:
 | `Replay-first RF3: picker source filter and generated opt-in` | `261119-171926` | worktree `riichiprac` | RF2 |
 | `Replay Q3: ch7 riichi/dama pack` | `261119-171935` | worktree `riichiprac` | B4 |
 
-Later waves: RF4, Q4, Q5, C9, Q6, Q7, RF5, D1 as above.
+Later waves: Q4, Q5, C9, Q6, Q7, RF5, D1 as above (RF4 landed
+2026-11-19).
 
 ## Expected end state
 
@@ -415,5 +464,5 @@ Later waves: RF4, Q4, Q5, C9, Q6, Q7, RF5, D1 as above.
 - Coverage is explicit and measured; a lesson with insufficient replay data
   quietly keeps the generated default instead of shipping a thin replay pack.
 - The live app serves several small section packs same-origin, with the manifest
-  and lazy bodies as today; the first deal may fetch one section body, measured
-  and documented.
+  and lazy bodies as today; the first deal fetches one section body, measured
+  and documented (RF4).

@@ -61,8 +61,9 @@ export interface ScenarioOption {
   book: BookSection | null;
   /**
    * Present when this picker entry deals a real hand from a published pack
-   * instead of generating one. Pack entries are opt-in: they are not part of
-   * the `all` pool, so the only bytes a first launch fetches are the manifest.
+   * instead of generating one. A covered lesson's row is the default source
+   * (RF2), and the first deal of a launch may fetch its body before anything is
+   * drawn (RF4); an uncovered lesson's row stays opt-in.
    */
   pack?: PackLessonSource | null;
 }
@@ -413,6 +414,54 @@ export function allScenarioIds(
   replay: ReplayDefaultOptions = {},
 ): ScenarioId[] {
   return replayDefaultIds(scenarios, replay);
+}
+
+/**
+ * The replay row a launch opens with (RF4, strategy C in
+ * `replay-first-rollout.md`).
+ *
+ * Strategy C makes the *first* deal replay-first instead of waiting for the
+ * manifest to arrive and dealing generated until the next hand. It picks "a
+ * default lesson among the prominent covered sections"; prominence here is
+ * measured, not aesthetic: the covered lesson with the most reviewed bases
+ * across the published packs (the rollout's coverage table ranks the same way),
+ * with catalogue order — book order — breaking ties.
+ *
+ * Returns null whenever replay cannot be the first deal at all: the
+ * `preferReplay` setting is off, there is no manifest, no lesson reaches the
+ * coverage floor, or the covered lesson has no replay row in the merged
+ * catalogue. The caller then deals the ordinary pool, so the launch always gets
+ * a table.
+ *
+ * The covered lesson always has a generated sibling here, because the choice is
+ * made over the generated catalogue: a pack-only lesson has no generated
+ * fallback and is deliberately not picked for the first deal.
+ */
+export function firstDealReplayOption(
+  scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
+  replay: ReplayDefaultOptions = {},
+): ScenarioOption | null {
+  const covered = replayCoverageFor(replay);
+  if (!covered) return null;
+
+  const byId = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
+  let best: ScenarioOption | null = null;
+  let bestBases = -1;
+
+  for (const generated of scenarios) {
+    if (generated.pack) continue;
+    const coverage = covered.get(generated.id);
+    if (!coverage) continue;
+    const replayOption = byId.get(coverage.scenarioId);
+    if (!replayOption?.pack) continue;
+    // Strictly greater: the first lesson in book order wins a tie.
+    if (coverage.bases > bestBases) {
+      best = replayOption;
+      bestBases = coverage.bases;
+    }
+  }
+
+  return best;
 }
 
 /**

@@ -2715,6 +2715,15 @@ constraints that matter to this plan are:
 - **AI self-play is not human replay.** Today's packs are AI self-play. A
   human-corpus source is a separate evaluation (task D1), so the product does not
   claim human realism before it ships.
+- **The first deal is replay-first (RF4).** A launch no longer deals generated
+  until the manifest arrives: it awaits the manifest and one section body for up
+  to `FIRST_DEAL_BUDGET_MS` (2.5 s per phase), then draws the covered lesson
+  with the most reviewed bases. Offline, slow, errored, uncovered or with
+  `preferReplay` off it deals the generated hand, so the launch is never blocked
+  by a pack. Measured cost on the shipped set: a 1,630-byte manifest and one
+  2.26 MB body, ~0.085–0.12 s to verify and decode after the download (see
+  `replay-first-rollout.md`, "Status (RF4)" and
+  `testdata/reports/rf4-first-deal/measurements.json`).
 
 The rollout does not change this plan's gates: every pack still passes the
 legal/reachable/answer/audit/hosting/serving checks, the review flow, and the

@@ -6,6 +6,7 @@ import {
   MIN_REPLAY_BASES,
   allScenarioIds,
   defaultScenarioIds,
+  firstDealReplayOption,
   groupScenarios,
   isPackScenarioId,
   lessonReplayCoverage,
@@ -740,6 +741,79 @@ describe('replay-first default pool', () => {
     expect(
       pickRandomScenarioFrom(merged, ALL_SCENARIOS, true, { manifest: covered }),
     ).toBe(replayFold);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* First deal of a launch (RF4)                                               */
+/* -------------------------------------------------------------------------- */
+
+describe('firstDealReplayOption', () => {
+  const replayFold = packScenarioId('replay.fixture.2026-11', 'fold_to_riichi');
+  const replayPush = packScenarioId('replay.fixture.2026-11', 'push_or_fold');
+
+  it('opens with the covered lesson that has the most reviewed bases', () => {
+    // Both clear the floor; only fold has the smaller count, so the deal opens
+    // with push_or_fold even though fold comes later in the catalogue.
+    const covered = manifest(
+      countedEntry({ fold_to_riichi: 41, push_or_fold: 300 }),
+    );
+    const merged = mergePackLessons(replayCatalogue, covered);
+
+    const option = firstDealReplayOption(merged, { manifest: covered });
+    expect(option?.id).toBe(replayPush);
+    expect(option?.pack?.lessonId).toBe('push_or_fold');
+  });
+
+  it('breaks a tie by catalogue (book) order', () => {
+    const covered = manifest(
+      countedEntry({ fold_to_riichi: 100, push_or_fold: 100 }),
+    );
+    // push_or_fold is the earlier lesson in this catalogue.
+    expect(
+      firstDealReplayOption(mergePackLessons(replayCatalogue, covered), {
+        manifest: covered,
+      })?.id,
+    ).toBe(replayPush);
+  });
+
+  it('only picks a lesson at or above the coverage floor', () => {
+    const thin = manifest(countedEntry({ fold_to_riichi: 41, push_or_fold: 39 }));
+    expect(
+      firstDealReplayOption(mergePackLessons(replayCatalogue, thin), {
+        manifest: thin,
+      })?.id,
+    ).toBe(replayFold);
+
+    const none = manifest(countedEntry({ fold_to_riichi: 39, push_or_fold: 12 }));
+    expect(firstDealReplayOption(mergePackLessons(replayCatalogue, none), { manifest: none })).toBeNull();
+  });
+
+  it('returns nothing when replay is not the default source', () => {
+    const covered = manifest(countedEntry({ fold_to_riichi: 731 }));
+    const merged = mergePackLessons(replayCatalogue, covered);
+    expect(
+      firstDealReplayOption(merged, { manifest: covered, preferReplay: false }),
+    ).toBeNull();
+  });
+
+  it('returns nothing without a manifest or coverage', () => {
+    const merged = mergePackLessons(replayCatalogue, manifest());
+    expect(firstDealReplayOption(merged, { manifest: null })).toBeNull();
+    expect(firstDealReplayOption(merged, { manifest: manifest() })).toBeNull();
+    expect(firstDealReplayOption(merged)).toBeNull();
+  });
+
+  it('never picks a pack-only lesson, because it has no generated fallback', () => {
+    // ryanmen_protorun is in the pack but not in this catalogue; the covered
+    // lesson that *is* in the catalogue still wins.
+    const covered = manifest(
+      countedEntry({ ryanmen_protorun: 900, fold_to_riichi: 50 }),
+    );
+    const merged = mergePackLessons(replayCatalogue, covered);
+    expect(firstDealReplayOption(merged, { manifest: covered })?.id).toBe(
+      replayFold,
+    );
   });
 });
 

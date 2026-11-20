@@ -20,6 +20,7 @@ import {
   reviewedBasesByLesson,
   sha256FallbackHex,
   sha256Hex,
+  withDeadline,
 } from './packLoader';
 import type {
   PackCache,
@@ -253,7 +254,9 @@ describe('committed pack', () => {
     for (const lesson of fixtureEntry.lesson_ids) {
       expect(again.byLesson.get(lesson)?.length ?? 0).toBeGreaterThan(0);
     }
-  });
+    // The committed body is 2.26 MB and this decodes it twice; on a shared box
+    // the vitest default (5 s) is tight even though the work is right.
+  }, 30_000);
 });
 
 /* -------------------------------------------------------------------------- */
@@ -781,5 +784,47 @@ describe('manifest type', () => {
     const manifest: PackManifest = parsePackManifest(manifestText([okEntry()]));
     expect(manifest.packs[0].id).toBe('replay.fixture.2026-11');
     expect(manifest.packs[0].lesson_ids).toEqual(['fold_to_riichi']);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* First-deal deadline (RF4)                                                  */
+/* -------------------------------------------------------------------------- */
+
+describe('withDeadline', () => {
+  it('settles with the promise when it is faster than the budget', async () => {
+    await expect(
+      withDeadline(Promise.resolve('body'), 50, 'the first replay hand'),
+    ).resolves.toBe('body');
+  });
+
+  it('propagates a rejection unchanged', async () => {
+    await expect(
+      withDeadline(
+        Promise.reject(new PackLoadError('fetch', 'HTTP 404')),
+        50,
+        'the first replay hand',
+      ),
+    ).rejects.toThrow('HTTP 404');
+  });
+
+  it('rejects a promise that misses the budget, naming the phase', async () => {
+    vi.useFakeTimers();
+    try {
+      const slow = withDeadline(
+        new Promise<string>(() => {
+          // Never settles: the launch must not wait for it.
+        }),
+        40,
+        'the replay pack manifest',
+      );
+      const assertion = expect(slow).rejects.toThrow(
+        /Timed out after 40 ms waiting for the replay pack manifest/,
+      );
+      await vi.advanceTimersByTimeAsync(40);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
