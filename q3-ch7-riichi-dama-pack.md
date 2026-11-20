@@ -205,7 +205,8 @@ thin ch. 8 lessons (`defense_stuck_heuristic` 32, `kabe_one_chance` 17,
 ## User sign-off
 
 The 304-row sample and the published pack were presented on 2026-11-19.
-**User sign-off: pending.**
+**User sign-off: approved** ("1") for the 2,846-base, 0-variant pack and the
+sampled content review.
 
 ## Related links
 

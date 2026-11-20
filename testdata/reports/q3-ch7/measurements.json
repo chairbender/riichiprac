@@ -206,5 +206,10 @@
   },
   "source_replays": 1509,
   "adjacent_same_replay": 0,
-  "unique_hands": 2846
+  "unique_hands": 2846,
+  "user_signoff": {
+    "approved": true,
+    "date": "2026-11-19",
+    "scope": "2,846-base, 0-variant pack and the 304-row sampled content review"
+  }
 }
