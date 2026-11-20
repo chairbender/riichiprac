@@ -241,6 +241,23 @@ export interface HitRect {
   readonly height: number;
 }
 
+/**
+ * A lock-independent projection rect, in CSS px, relative to the stage (3D-H2).
+ *
+ * The HUD anchors to the hand without caring whether the hand is still
+ * interactive: after an answer the buttons are gone but the result card still
+ * needs the band they occupied, so this is computed by the same
+ * `frameForAspect` + hit-test code path as {@link HitRect} with the lock gate
+ * removed (`three/hitTest.ts`'s `handBandRect`). A drift test asserts that while
+ * unanswered it is exactly the union of `hitRects()`.
+ */
+export interface BandRect {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 /** The identity of one interactive tile, independent of its projection. */
 export interface HandTileRef {
   readonly seat: Seat;
@@ -567,6 +584,17 @@ export interface TableRenderer {
   setQuality(tier: QualityTier): void;
   /** Pure projection of interactive tiles to CSS rects, for the DOM overlay. */
   hitRects(): readonly HitRect[];
+  /**
+   * Hand + draw interaction union with the same 44 px expansion, computed when
+   * the hand is answered too (3D-H2).
+   *
+   * This is the HUD's hand anchor (3d_hud.md §7.1): after an answer every button
+   * is gone, but the hand still occupies that band on screen and the result
+   * card must sit clear of it. It comes from the same code path as
+   * {@link hitRects}, so the anchor cannot drift from the buttons it describes.
+   * Optional so a renderer without a hand simply has no hand panel.
+   */
+  handBandRect?(): BandRect | null;
   /**
    * The projected compass well, for the DOM compass overlay (3D-09). Like
    * `hitRects()` it is pure and never creates DOM; null before a board is laid

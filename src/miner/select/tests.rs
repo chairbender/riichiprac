@@ -954,6 +954,7 @@ fn dispositions_are_append_only_and_the_latest_wins() {
         verdicts: None,
         note: Some("good drill".to_string()),
         dry_run: false,
+        ..ReviewOptions::default()
     })
     .expect("accept");
     assert_eq!(first.items, 1);
@@ -968,6 +969,7 @@ fn dispositions_are_append_only_and_the_latest_wins() {
         verdicts: None,
         note: Some("ambiguous".to_string()),
         dry_run: false,
+        ..ReviewOptions::default()
     })
     .expect("reject");
     assert_eq!(second.accepted, 0);
@@ -998,6 +1000,7 @@ fn a_dry_run_review_writes_no_dispositions() {
         verdicts: None,
         note: None,
         dry_run: true,
+        ..ReviewOptions::default()
     })
     .expect("dry run");
     assert_eq!(report.accepted, 1);
@@ -1234,6 +1237,7 @@ fn a_shard_run_writes_the_queue_the_report_and_the_latest_pointer() {
         verdicts: None,
         note: None,
         dry_run: true,
+        ..ReviewOptions::default()
     })
     .expect("review");
     assert_eq!(review.items, 3);

@@ -101,6 +101,27 @@ it renders.
 Corollary: when a new unit and these sources disagree, the committed constants
 win; ask the user before inventing a third number.
 
+### 3c. The floating 3D HUD (3D-H2 onwards)
+
+The chrome over the 3D stage lives in `frontend/src/renderers/hud/` and is
+governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
+
+* **One layer.** `HudLayer` is `position: fixed; inset: 0; pointer-events: none`
+  and is mounted by `App` only for the 3D view, as a sibling of the stage. It
+  never sits in the document flow, never shrinks the canvas, and only panels and
+  controls take pointer events.
+* **Geometry is one pure function.** `hud/hudLayout.ts` turns the stage size,
+  the safe insets and the scene's anchors into every HUD rect, and its collision
+  rule (nothing within 8 px of the hand band or the compass) is the gate. Do not
+  add a second layout path or a bare `z-index`: the rungs and the palette are
+  `hud/tokens.css`, and `hudCss.test.ts` checks both.
+* **The anchors come from the renderer, as numbers.** `RendererHost` publishes
+  `{ handBand, compass }` into `hud/hudAnchors.ts`; `TableRenderer.handBandRect()`
+  is the lock-independent hand band. The HUD never reads the DOM past its own
+  safe-area probe and never calls the renderer.
+* **Slots, not new layouts.** H3–H5 mount into `HudLayer`'s props (`hintRow`,
+  `actionRail`, `resultCard`, `toasts`, `sheet`) and the one `Sheet` primitive.
+
 ## 4. UI / UX Design Constraints (React)
 * **Mobile-First, Stacked Layout:** The UI must be optimized for portrait mode on mobile devices.
   The stacked layout is the default view.
@@ -116,15 +137,18 @@ win; ask the user before inventing a third number.
   Riichi sticks live on the compass in the middle, one corner facing each player.
 * **3D view (opt-in, `?renderer=3d` until 3D-15):** a real-time three.js scene with the committed
   tile proportions and carved faces (see §3b). It **takes the whole browser window and the full
-  height of the screen**, and **no UI panel sits above or below the canvas** in the document flow. While
-  the view is being built (as of 3D-02) it mounts the scene alone. The planned UI — header
-  controls, status cards, action bar, hand dock, plus the projected hand buttons and compass —
-  is a **floating layer over the scene** (Z order, like a typical game HUD), landed in 3D-08,
-  3D-09 and 3D-14; a full-screen toggle then promotes the shell so the layer comes along. The
-  stacked and top-down views keep their own layout, and leaving 3D restores it. It is never the
-  default and never auto-selected. See `3d_renderer_implementation_plan.md` (§2.1, §2.7, §9
-  decision 7) and note that the help text for the View control still describes the two 2D views
-  until 3D-14 adds the fourth.
+  height of the screen**, and **no UI panel sits above or below the canvas** in the document flow. The UI —
+  status cards, action bar, hand dock, plus the projected hand buttons and compass — is a
+  **floating layer over the scene** (Z order, like a typical game HUD): the hand/draw buttons
+  landed in 3D-08, the compass in 3D-09, targeting as `position: fixed` in 3D-H2, together with
+  the shell's top bar (**Next Scenario and full screen only — no brand, no scenario name**),
+  its safe-area handling, the sheet primitive and the mounted full-screen toggle. 3D-H3…H5 fill
+  that shell (action rail, toasts, setup sheet, result card and verdict sheet). A full-screen
+  toggle promotes the shell so the layer comes along. The stacked and top-down views keep their
+  own layout, and leaving 3D restores it. It is never the default and never auto-selected. See
+  `3d_hud.md` (the HUD composition and overlay contract), `3d_renderer_implementation_plan.md`
+  (§2.1, §2.7, §11, §9 decision 7) and note that the help text for the View control still
+  describes the two 2D views until 3D-14 adds the fourth.
 * **Layout Structure:**
   * 4 strictly vertical flex/grid rows (one for each player).
   * Each opponent row displays their Wind, Points, Melds, and Discard River.

@@ -27,6 +27,7 @@ import type {
   TableSnapshot,
 } from './contract';
 import { DEGRADED_EVENT, HERO_FAILED_EVENT, HERO_READY_EVENT } from './contract';
+import { NO_HUD_ANCHORS, hudAnchorsSnapshot } from './hud/hudAnchors';
 import { RendererHost } from './RendererHost';
 
 const probe = vi.hoisted(() => ({
@@ -70,6 +71,7 @@ const hostMock = vi.hoisted(() => {
     carveReport: unknown;
     carveCaptures: unknown[];
     rects: HitRect[];
+    band: { left: number; top: number; width: number; height: number } | null;
     compass: CompassRect | null;
     hitRectCalls: number;
     measureCalls: number;
@@ -91,6 +93,7 @@ const hostMock = vi.hoisted(() => {
     carveReport: null,
     carveCaptures: [],
     rects: [],
+    band: null,
     compass: null,
     hitRectCalls: 0,
     measureCalls: 0,
@@ -128,6 +131,7 @@ const hostMock = vi.hoisted(() => {
         state.hitRectCalls += 1;
         return state.rects;
       },
+      handBandRect: () => state.band,
       compassRect: () => state.compass,
       setHoverTile: (tile: unknown) => {
         state.hover.push(tile);
@@ -217,6 +221,7 @@ beforeEach(() => {
     carveReport: null,
     carveCaptures: [],
     rects: [],
+    band: null,
     compass: null,
     hitRectCalls: 0,
     measureCalls: 0,
@@ -1111,5 +1116,57 @@ describe('RendererHost perf HUD (3D-13)', () => {
     // No interval survives the unmount: the next reads never happen.
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(hostMock.state.measureCalls).toBe(calls);
+  });
+});
+
+describe('RendererHost HUD anchors (3D-H2)', () => {
+  const BAND = { left: 600, top: 900, width: 700, height: 100 };
+  const COMPASS: CompassRect = {
+    left: 820,
+    top: 380,
+    width: 280,
+    height: 260,
+    centreX: 960,
+    centreY: 510,
+  };
+
+  it('publishes the hand band and the compass for the floating HUD', async () => {
+    hostMock.state.band = BAND;
+    hostMock.state.compass = COMPASS;
+    const { unmount } = render(
+      <RendererHost snapshot={snapshot()} fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    await waitFor(() =>
+      expect(hudAnchorsSnapshot().handBand).toEqual(BAND),
+    );
+    expect(hudAnchorsSnapshot().compass).toEqual(COMPASS);
+
+    unmount();
+    // The HUD must not keep anchoring to a disposed renderer's projection.
+    expect(hudAnchorsSnapshot()).toEqual(NO_HUD_ANCHORS);
+  });
+
+  it('publishes the band on a locked (answered) hand too', async () => {
+    hostMock.state.band = BAND;
+    const { rerender, unmount } = render(
+      <RendererHost snapshot={snapshot()} fallback={fallbackTable()} />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+
+    // `hitRects()` returns nothing once answered, but the anchor stays: the
+    // result card (H5) needs the band the hand occupied.
+    hostMock.state.rects = [];
+    rerender(
+      <RendererHost
+        snapshot={{ ...snapshot(2), locked: true }}
+        fallback={fallbackTable()}
+      />,
+    );
+    await waitFor(() =>
+      expect(hudAnchorsSnapshot().handBand).toEqual(BAND),
+    );
+    unmount();
   });
 });

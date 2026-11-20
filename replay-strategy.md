@@ -1896,12 +1896,13 @@ scenarios are the alternative a user opts into.
 - **Generated is never removed.** The picker gains a Replay/Generated/Both
   source filter and a `preferReplay` setting. Every generated lesson remains
   selectable; it is demoted, not deleted.
-- **Every lesson is in scope.** Four lessons have no classifier today
+- **Every lesson is in scope.** Four lessons had no classifier
   (`chiitoitsu_riichi_vs_dama`, `chiitoi_vs_toitoi`, `sanshoku_pursuit`,
-  `open_hand_defense`) and therefore no mining path. Adding those recognisers is
-  required work, not a reason to leave them generated-only. Because
-  `CLASSIFIER_VERSION` keys the label cache, the four land in one task with one
-  version bump and one label pass.
+  `open_hand_defense`) and therefore no mining path. Adding those recognisers
+  was required work, not a reason to leave them generated-only; they landed in
+  one task (`B4`) with one `CLASSIFIER_VERSION` bump (v3) and one label pass,
+  because the version keys the label cache. The measured yield is in
+  `testdata/reports/b4-classifiers/label-yield-report.md`.
 - **Coverage is published as section packs.** One pack per book section keeps
   the lazy-load budget small and lets a single body serve several lessons. The
   existing ch8 packs remain the first two.

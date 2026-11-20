@@ -56,6 +56,7 @@ import {
 import type { Object3D } from 'three';
 import { effectiveDevicePixelRatio } from '../capabilities';
 import type {
+  BandRect,
   CarveCapture,
   CarveReport,
   CompassRect,
@@ -101,7 +102,11 @@ import type { FeltSurface } from './felt';
 import { HERO_SLOTS, heroInstances, heroParallaxAt, heroVisibleNormal, probeWorldPoint } from './hero';
 import type { HeroInstance, HeroSlot } from './hero';
 import { withHoverLift } from './hover';
-import { compassPlateRect, hitRects as projectHitRects } from './hitTest';
+import {
+  compassPlateRect,
+  handBandRect as projectHandBandRect,
+  hitRects as projectHitRects,
+} from './hitTest';
 import { DealInMotion, systemMotionClock, withVerticalLift } from './motion';
 import type { DealInSample, MotionClock } from './motion';
 import { sceneLightSpecs } from './lighting';
@@ -539,6 +544,22 @@ export class TableScene implements TableRenderer {
       { widthPx: this.cssWidth, heightPx: this.cssHeight },
       { locked: this.locked },
     );
+  }
+
+  /**
+   * The hand + draw band, answered or not (3D-H2).
+   *
+   * The HUD's anchor: `hitRects()` is empty once the hand is answered, but the
+   * band the hand occupies is not, and the result card has to sit clear of it.
+   * Same solved frame and the same hit-test code path, with the lock gate
+   * removed, so the anchor cannot drift from the buttons it bounds.
+   */
+  handBandRect(): BandRect | null {
+    if (this.disposed || !this.layout) return null;
+    return projectHandBandRect(this.layout, this.frame, {
+      widthPx: this.cssWidth,
+      heightPx: this.cssHeight,
+    });
   }
 
   /**

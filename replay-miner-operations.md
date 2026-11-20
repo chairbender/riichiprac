@@ -796,10 +796,20 @@ old generations stay available when a reproducer explicitly asks for one.
 
 Adding or changing a recogniser is a **classifier-generation change**: bump
 `CLASSIFIER_VERSION`, then re-label. A full `label --trigger book` pass on the
-current corpus re-evaluates ~110k candidates (about 30-60 minutes on 14
+current corpus re-evaluates ~113k candidates (about 30-60 minutes on 14
 workers), so batch related recognisers into one task and one version bump
 rather than bumping per recogniser. The replay-first rollout's `B4` (four
-missing classifiers) is the first example.
+missing classifiers) is the first example: classifier v3 labelled 112,504
+candidates in 52 min 45 s at 14 workers, and the per-lesson yield is in
+`testdata/reports/b4-classifiers/label-yield-report.md`.
+
+One trap: the stale-label clear is **version**-based, not rule-based. If a
+recogniser changes while the version stays the same (mid-development fix before
+the bump lands), a rerun leaves the retired v3 `decisions` labels in place and
+the version-keyed `model_labels` rows still carry the old book label. Either
+bump the version again, or, while the generation has not shipped, delete the
+`model_labels` rows and reset the `decisions` label columns for that version
+before relabelling.
 
 ### Parity
 
@@ -1107,7 +1117,9 @@ One-at-a-time review does not scale past roughly a thousand candidates. Two
 additions make a ~2,000-candidate queue reviewable:
 
 - **Bulk verdicts.** `scripts/review-q2-queue.py --verdicts-out FILE` applies the
-  mechanical ch. 8 rules to the whole queue and writes one
+  mechanical chapter rules (`--chapter ch8` by default, or `ch7` for the
+  riichi/dama queue, where the ready-hand rejection does not apply) to the whole
+  queue and writes one
   `riichiprac.review-verdicts` v1 document:
   `{"schema": "riichiprac.review-verdicts", "version": 1, "note": "...",
   "verdicts": [{"queue_id": "...", "verdict": "accepted"|"rejected",
@@ -1125,8 +1137,44 @@ additions make a ~2,000-candidate queue reviewable:
 
 The mechanical pass is still a gate, not a judgement: it rejects out-of-scope
 sections/lessons, non-book or contested labels, report/lesson mismatches,
-illegal answers, ready hands, duplicate exact/visible states and dirty walks.
-The human sample is the evidence that the remaining positions teach.
+illegal answers, duplicate exact/visible states and dirty walks. The ch. 8
+scope also rejects a ready hand (that is an offense drill); the ch. 7 scope
+keeps it, because a riichi/dama decision is tenpai by definition. The human
+sample is the evidence that the remaining positions teach.
+
+#### Filtering, progress and the review surface (Q2r2)
+
+The same `review` command lists and narrows the queue instead of applying one
+verdict per id. `--lesson`, `--section` (dotted prefix), `--family` (source
+replay family), `--turn` (bucket or exact table turn) and `--status`
+(`pending`/`accepted`/`rejected`, latest disposition wins) compose as an AND
+filter. The run reports session progress over the whole queue — `pending`,
+`accepted`, `rejected`, the dispositioned percentage — plus how many rows the
+filter selected, so `--status pending` resumes exactly where the reviewer
+stopped. `--list` prints the shown rows with hand and answer; `--json` adds the
+per-row `lesson`, `turn`, `hand`, `answer` and `selection_reason`; `--show <id>`
+still prints one embedded report.
+
+`--sample N --seed TEXT` draws a deterministic sample of the filtered rows:
+candidates rank by FNV-1a 64 over `seed\0queue_id` plus a SplitMix64 finalizer
+(so sequential ids do not turn the sample into the first N), the first N are
+taken, and the rows return in queue order. `--limit` caps the printed rows.
+`--bulk-verdict accepted|rejected` applies a verdict to exactly the shown
+selection and refuses to run without at least one filter and a `--note`;
+`--verdicts-out FILE` writes that selection as an editable
+`riichiprac.review-verdicts` document instead. Neither changes the P1b gate: the
+sidecar is still append-only, latest-wins, and assembly still requires zero
+pending items.
+
+`frontend/tools/review-queue/` is a thin static browser view over the same queue
+and sidecar: filters and progress, rows without the answer (the list stays
+spoiler-free), and one embedded report at a time with the table, graded answer,
+Mortal ranking and provenance. Accept/reject entries are kept in a keyed
+`localStorage` session so a reload resumes, then exported as the same bulk
+verdicts document (or as append-only JSONL) and applied with
+`mine_replays review --verdicts`. The page never writes to the data root and is
+not part of the shipped app. `reviewing-scenario-packs.md` documents the 1k–2k
+workflow, what the human is judging, and how to verify the round trip.
 
 
 ### S2 acceptance evidence
@@ -1985,6 +2033,18 @@ dedicated `replay.ch8-defense-multi-threat.2026-11` pack (780 reviewed, 764
 shipped after duplicate hands, 591,096 bytes). The run also fixed the stale-label
 and selection-version contract above. Details:
 [`q2-multi-threat.md`](q2-multi-threat.md).
+
+**Ch. 7 riichi/dama pack (Q3, 2026-11-19).** The same corpus at classifier v3
+(B4's seven-pairs recogniser) produced `replay.ch7-riichi-dama.2026-11`:
+`select --section ch7` returned 2,901 reviewed bases from 7,295 gate passes
+(2,846 shipped after `--unique-hands`), all six ch7 lessons at or above the
+40-base floor, 2,176,750 bytes, 1,509 source replays, 2,846 unique hands. The
+mechanical review now takes `--chapter ch7` (ready hands are not rejected: a
+riichi/dama decision is tenpai), 2,901/2,901 were accepted, and a 304-row
+stratified sample covers every lesson including all 60 `dama_improving_hand`
+bases. Details: [`q3-ch7-riichi-dama-pack.md`](q3-ch7-riichi-dama-pack.md),
+evidence: [`testdata/reports/q3-ch7/`](testdata/reports/q3-ch7/); coverage:
+`node scripts/replay-coverage-report.mjs`.
 
 **Replay-first rollout.** The next product phase extends packs to the remaining
 book sections and makes replay the default source for covered lessons. Per-lesson

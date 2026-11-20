@@ -28,6 +28,7 @@ import type {
   PackManifestEntry,
   PackScenario,
 } from './packLoader';
+import { lessonReplayCoverage } from '../scenarios';
 
 /* -------------------------------------------------------------------------- */
 /* Fixtures                                                                   */
@@ -188,8 +189,9 @@ const fixtureBody = new Uint8Array(
 describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
     expect(packManifestUrl()).toBe('/scenarios/manifest.json');
-    expect(fixtureManifest.packs).toHaveLength(2);
+    expect(fixtureManifest.packs).toHaveLength(3);
     expect(fixtureManifest.packs.map((pack) => pack.id).sort()).toEqual([
+      'replay.ch7-riichi-dama.2026-11',
       'replay.ch8-defense-multi-threat.2026-11',
       'replay.ch8-defense.2026-11',
     ]);
@@ -214,6 +216,26 @@ describe('committed pack', () => {
         0,
       ),
     ).toBeLessThanOrEqual(fixtureEntry.scenario_count);
+  });
+
+  it('makes the shipped ch7 lessons replay-default from the manifest alone', () => {
+    const coverage = lessonReplayCoverage(fixtureManifest);
+    const ch7Lessons = [
+      'riichi_judgement',
+      'chiitoitsu_riichi_vs_dama',
+      'dama_bad_wait',
+      'dama_genbutsu_wait',
+      'dama_expensive_hand',
+      'dama_improving_hand',
+    ];
+    for (const lesson of ch7Lessons) {
+      const record = coverage.get(lesson);
+      expect(record, lesson).toBeDefined();
+      expect(record?.covered, lesson).toBe(true);
+      expect(record?.packId, lesson).toBe('replay.ch7-riichi-dama.2026-11');
+    }
+    expect(coverage.get('chiitoitsu_riichi_vs_dama')?.bases).toBe(151);
+    expect(coverage.get('dama_improving_hand')?.bases).toBe(57);
   });
 
   it('loads, verifies and decodes the real body, then serves it from cache', async () => {

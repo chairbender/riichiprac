@@ -977,30 +977,9 @@
 }
 
 /*
- * 3D-12's deal-in review aid (`?renderer=3d&preview=deal`): a floating control
- * so the bounded deal-in can be watched before 3D-14 mounts the real chrome
- * over the scene. It is deliberately the only control in the bare 3D stage and
- * exists only with that query flag.
+ * Full-screen toggle: the base look, used by the 3D HUD's top bar (3D-H2). It
+ * promotes the app shell, so the floating layer travels with the scene.
  */
-.app-shell--3d .table-3d > .deal-preview {
-  position: fixed;
-  left: 12px;
-  bottom: 12px;
-  z-index: 3;
-  padding: 8px 12px;
-  border: 1px solid rgba(255, 247, 234, 0.35);
-  border-radius: 8px;
-  background-color: rgba(9, 14, 19, 0.86);
-  color: #f2ece2;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.app-shell--3d .table-3d > .deal-preview:hover {
-  background-color: rgba(28, 39, 49, 0.92);
-}
-
-/* Full-screen toggle, shown in the header for the 3D view only. */
 .fullscreen-button {
   flex: 0 0 auto;
   padding: 8px 12px;

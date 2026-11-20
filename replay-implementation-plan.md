@@ -2646,7 +2646,9 @@ The first pack (Q2) is done when all of these are true:
   recorded, and the scale-up decision is explicit.
 
 Q2 (and its Q2s/Q2m follow-ups) are shipped: two ch8 packs, 2,975 bases total.
-The product target after that is the replay-first rollout, which extends replay
+Q3 added the ch7 riichi/dama pack (2,846 bases across six lessons), so the
+hosted set is now 5,821 bases across three packs. The product target after that
+is the replay-first rollout, which extends replay
 coverage to the other chapters and makes replay the default source for covered
 lessons; see §11.
 
@@ -2706,10 +2708,12 @@ constraints that matter to this plan are:
   section (ch3, ch4, ch5, ch7, ch8 completion, ch9), not per lesson, so one lazy
   body serves several lessons.
 - **Four classifiers are in scope.** `chiitoitsu_riichi_vs_dama`,
-  `chiitoi_vs_toitoi`, `sanshoku_pursuit` and `open_hand_defense` have no
-  classifier today and therefore no mining path. A single `B4` task lands all
-  four recognisers, one `CLASSIFIER_VERSION` bump and one label pass; splitting
-  them across tasks would invalidate the label cache once per task.
+  `chiitoi_vs_toitoi`, `sanshoku_pursuit` and `open_hand_defense` had no
+  classifier and therefore no mining path. A single `B4` task landed all four
+  recognisers, one `CLASSIFIER_VERSION` bump and one label pass; splitting them
+  across tasks would invalidate the label cache once per task. **Status
+  2026-11-19:** landed at classifier v3; see
+  `testdata/reports/b4-classifiers/label-yield-report.md`.
 - **Generated is never removed.** The picker gets a Replay/Generated/Both source
   filter and a `preferReplay` setting; generated drills remain selectable.
 - **AI self-play is not human replay.** Today's packs are AI self-play. A

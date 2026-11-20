@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const wasmMock = vi.hoisted(() => ({ generatedJson: '{}' }));
@@ -128,35 +128,5 @@ describe('App 3D overlay wiring (3D-08)', () => {
     });
     expect(useGameStore.getState().submittedAnswer).not.toBeNull();
     expect(useGameStore.getState().error).toBeNull();
-    // The deal-in review aid is opt-in; a plain 3D mount has no extra control.
-    expect(screen.queryByRole('button', { name: /Replay deal-in/ })).toBeNull();
-  });
-
-  it('re-cuts the current hand for the deal-in review aid (?preview=deal)', async () => {
-    wasmMock.generatedJson = JSON.stringify(hand.state);
-    window.history.replaceState(null, '', '?renderer=3d&preview=deal');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new Error('offline in test');
-      }),
-    );
-
-    render(<App />);
-    await waitFor(() => expect(hostMock.props).not.toBeNull());
-
-    const before = hostMock.props?.snapshot as {
-      revision: number;
-      seats: unknown;
-      locked: boolean;
-    };
-    fireEvent.click(screen.getByRole('button', { name: /Replay deal-in/ }));
-
-    const after = hostMock.props?.snapshot as typeof before;
-    // A new revision is a cut for the same position: the renderer plays the
-    // bounded deal-in once and the hand does not change.
-    expect(after.revision).toBe(before.revision + 1);
-    expect(after.seats).toEqual(before.seats);
-    expect(after.locked).toBe(before.locked);
   });
 });

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Riichi scenario review</title>
+    <link rel="stylesheet" href="./review.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>Riichi scenario review</h1>
+      <p class="page-hint">
+        Offline review of a <code>review-queue.jsonl</code>. The queue embeds the answer, so it is
+        never uploaded and never committed. New accept/reject entries stay in this browser until
+        you export them for <code>mine_replays review --verdicts</code>.
+      </p>
+      <div class="load-controls">
+        <label for="queue-file">Review queue</label>
+        <input id="queue-file" type="file" accept=".jsonl,.json,application/jsonl,application/json" />
+        <label for="dispositions-file">Existing dispositions (optional)</label>
+        <input id="dispositions-file" type="file" accept=".jsonl,.json,application/jsonl,application/json" />
+        <button type="button" id="clear-session" disabled>Clear session</button>
+      </div>
+      <p id="load-status" role="status" aria-live="polite"></p>
+    </header>
+    <div id="app"></div>
+    <script type="module" src="./main.mjs"></script>
+  </body>
+</html>

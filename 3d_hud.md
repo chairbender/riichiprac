@@ -1,0 +1,1029 @@
+# 3D HUD: composition spec and overlay contract
+
+**Status: proposed 2026-11-19 — awaiting the user's verdict (AGENTS.md §6).**
+This is implementation unit 3D-H1 of the 3D HUD chain. It changes no app code:
+it is the composition and the overlay contract that 3D-H2 … 3D-H5 implement
+against, and the answers to §12 are the only thing still open. The units'
+dependency and gate table is §11 of
+[`3d_renderer_implementation_plan.md`](3d_renderer_implementation_plan.md).
+
+The board is the interface. The 3D view owns the whole window, so every pixel
+of chrome is borrowed from the table; this document decides exactly which
+pixels are borrowed, what they hold, and what may never be covered.
+
+Numbers in this document are **measurements**, not authored constants. They come
+from the committed projection (`hitRects()`, `compassPlateRect()`,
+`frameForAspect()`) applied to the full board fixture, at CSS pixels. The gate
+re-computes them; if a future layout change moves the table, the numbers here
+and the gate move together and the composition rules below stay the same.
+
+---
+
+## 1. Principles
+
+1. **No identity in the 3D HUD** (user decision 2026-11-19). No scenario name,
+   no lesson label, no `riichiprac` title. What this hand is for lives in the
+   setup sheet, one tap away. A visible lesson name is also an answer hint.
+2. **The board is not resized for chrome.** The camera rig is the committed,
+   signed-off one (plan §2.4, §9 decision 2). The HUD floats over the scene and
+   reserves nothing from the canvas; it positions itself in the gaps the table
+   leaves.
+3. **One hand.** The hand and draw tiles are the projected DOM buttons from
+   3D-08. The HUD never renders a second hand, a tile strip, or a thumbnail of
+   them.
+4. **Always visible:** Next hand and the hand panel — its hint row, its action
+   row while there is something to act on, and the result card after an answer.
+   **Everything else is a sheet or a toast** (user decision 2026-11-19).
+5. **A sheet is a modal, not a column.** It covers the scene while open, the
+   scene is `inert`, and one is open at most.
+6. **The result starts small.** A result card summarises; only a tap opens the
+   full verdict. Nothing auto-expands over the board (user decision).
+7. **Nothing is judged by eye.** Every rule below is a rect, a clearance, a
+   contrast ratio or a token; the gate prints them (AGENTS.md §6).
+
+---
+
+## 2. Region map
+
+Five named HUD regions, plus the scene rung they float over. The hand
+panel's rows keep the user's names — the action rail, the hand rail and the
+result card — but they are one rect.
+
+```
+┌─ stage (fixed, whole window) ─────────────────────────────────────────┐
+│  canvas + scene overlay (3D-08 hand buttons, 3D-09 compass)           │
+│                                                                       │
+│   ┌─ TOP BAR ────────────────────────────────────────────────────┐    │
+│   │  setup ▸                    Next hand ▸   full screen ▸      │    │
+│   └──────────────────────────────────────────────────────────────┘    │
+│                                                                       │
+│                        compass (scene)                                │
+│                                                                       │
+│                   ┌─ HAND PANEL ────────────────┐                     │
+│                   │  hint row (the hand rail)   │                     │
+│                   │  action row / result card   │                     │
+│                   └─────────────────────────────┘                     │
+│                hand + draw (scene, projected buttons)                 │
+│                                                                       │
+│  sheet (modal, on demand)      toast stack (top centre, transient)    │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
+| Region | Contents | Visibility | Owner |
+| --- | --- | --- | --- |
+| **Top bar** | Next hand (the only next-hand control), setup trigger, full-screen toggle | always | H2 |
+| **Hand panel** | one anchored surface above the hand with two rows | always (once the scene publishes anchors) | H3/H5 |
+| — *hand rail* row | the live-region hint (`handHint`) + the pre-answer Mortal chip | always | H3 |
+| — *action rail* row | `ActionBar`'s non-discard actions, Riichi toggle, Kan toggle | while unanswered and non-empty | H3 |
+| — *result card* | the compact result (`AnswerSummary` + one line of verdict) | after an answer; replaces both rows | H5 |
+| **Setup sheet** | scenario pool, AI Hotseat, settings, position, table info, notes | on demand | H4 |
+| **Verdict sheet** | full `VerdictPanel` (book, Mortal, ranking, explanation, peek) | on demand | H5 |
+| **Toast stack** | status, error and file notices | transient/persistent, max 3 | H3 |
+| **Scene rung** (unchanged) | canvas, hand buttons, compass, host notices, debug/perf HUDs | — | 3D-02/08/09/10/13 |
+
+The hand rail and the result card are **rows of one panel**, not three separate
+strips: one rect to anchor, one to place, one to keep off the compass. The
+action row is *unmounted when it would be empty* (a plain discard lesson with no
+riichi/kan), leaving the hint row alone, so the board is never covered by an
+empty box.
+
+Toasts stack under the top bar, newest first, at most three; each is at most two
+lines with an ellipsis and a Details affordance when it has more. Loading
+status persists while it is true (`statusMessage`), an error persists until the
+next deal (`role="alert"`), and a file notice is dismissible. Nothing toasts
+over the hand, the panel or the compass — the stack is measured into the
+collision set like any other rect.
+
+---
+
+## 3. Control inventory
+
+Every element the 2D shell renders today, and where it goes in 3D. "Dropped"
+means the control does not exist in the 3D view; it always comes with the
+reason. No element of `App.tsx`'s 2D return is left unmapped.
+
+Legend for the destination column: **TOP BAR**, **ACTION RAIL**, **RESULT
+CARD** and **HAND RAIL** (the last three are rows of the one hand panel, §2),
+**SETUP SHEET**, **VERDICT SHEET**, **TOAST**, **SCENE** (3D-02/08/09,
+unchanged), **DROPPED**, **2D ONLY**.
+
+| # | Element (source) | Today | In 3D | Unit |
+| --- | --- | --- | --- | --- |
+| 1 | `.app-title` "riichiprac" (`App.tsx`) | header brand | **DROPPED** — no title in the 3D HUD (user decision) | H2 |
+| 2 | Sticky `.app-header` column | 2D shell header | **DROPPED** — replaced by the floating top bar | H2 |
+| 3 | `ScenarioPicker` trigger + caret | header control | **SETUP SHEET** — the pool section; the setup trigger is its front door | H4 |
+| 4 | `selectionLabel` (pool name in the trigger) | header | **SETUP SHEET** only (pool summary); never in the top bar | H4 |
+| 5 | "Scenario pool" heading + hint | panel | **SETUP SHEET** | H4 |
+| 6 | Pack note (`role="status"`, pack loading/error/empty) | panel | **SETUP SHEET** | H4 |
+| 7 | "All scenarios (random)" checkbox | panel | **SETUP SHEET** | H4 |
+| 8 | Section tri-state checkbox + label + count | panel | **SETUP SHEET** | H4 |
+| 9 | Lesson checkbox + label + AI/PACK badges | panel | **SETUP SHEET** | H4 |
+| 10 | Per-lesson "Only" / "Setup" button | panel | **SETUP SHEET** | H4 |
+| 11 | Pool summary (`aria-live`) | panel | **SETUP SHEET** | H4 |
+| 12 | Cancel / "Deal from pool" | panel | **SETUP SHEET**; a deal closes the sheet | H4 |
+| 13 | Panel dismiss (outside click, Escape) | panel | the H2 sheet's own rules (§6.5) | H2/H4 |
+| 14 | "Mortal must agree" checkbox + label + hint tooltip + `disabled` when Mortal is not ready | header | **SETUP SHEET**, settings section, hint inline | H4 |
+| 15 | View label + select (stacked / top-down / rendered3d) + hint | header | **SETUP SHEET**, settings section (adding the 3D value is R14's) | H4 |
+| 16 | `NextScenarioButton` (header variant) | header | **TOP BAR** — always visible, the only next-hand control | H2 |
+| 17 | Export button | header | **SETUP SHEET**, position section | H4 |
+| 18 | Import button + hidden file input + "Importing…" | header | **SETUP SHEET**, position section | H4 |
+| 19 | Description label + textarea + max length | header | **SETUP SHEET**, position section | H4 |
+| 20 | `fileError` (`role="alert"`) | inline | **TOAST** (error tone); the sheet also shows it inline | H3/H4 |
+| 21 | `fileNotice` + Dismiss (`role="status"`) | inline | **TOAST**, dismissible | H3 |
+| 22 | `FullscreenButton` (built, unmounted) | — | **TOP BAR**, right cluster, only when the API exists | H2 |
+| 23 | `HotseatCard` backdrop / dialog / title / hint | modal card | **SETUP SHEET** body — one sheet, so no second scrim | H4 |
+| 24 | Hotseat round / disparity / seat rows (random + select + note) | card | **SETUP SHEET** | H4 |
+| 25 | Hotseat draft summary (`aria-live`) | card | **SETUP SHEET** | H4 |
+| 26 | Hotseat Cancel | card | **SETUP SHEET** (returns to the pool) | H4 |
+| 27 | "Play the round" / "Playing…" | card | **SETUP SHEET**; closes, then deals | H4 |
+| 28 | Hotseat generation progress (`statusMessage`) | inline status | **TOAST** | H3 |
+| 29 | `TableInfo`: round, honba, tiles left, riichi sticks, dora tiles, river-marker legend | above the rows | **SETUP SHEET**, "Table info" | H4 |
+| 30 | Agreement note (`role="status"`) | inline | **SETUP SHEET**, "Table info" | H4 |
+| 31 | Scenario note | inline | **SETUP SHEET**, "Table info" | H4 |
+| 32 | `PositionDescriptionCard` + Dismiss | inline | **TOAST** (first line + Details); full text in **SETUP SHEET**, "Table info" | H3/H4 |
+| 33 | Pre-answer verdict status line (tone + text) | verdict panel | **HAND RAIL** chip with a short state ("Peek", "Mortal unavailable", "Mortal thinking…"); the full line in the **VERDICT SHEET** | H3/H5 |
+| 34 | Peek button | verdict panel | **VERDICT SHEET** (pre-answer) | H5 |
+| 35 | Retry (pre-answer Mortal error) | verdict panel | **VERDICT SHEET** | H5 |
+| 36 | Peeked-Mortal card | verdict panel | **VERDICT SHEET** | H5 |
+| 37 | Book column: header, source citation, recommendation, expected tile, marks | verdict panel | **VERDICT SHEET**; one line on the **RESULT CARD** | H5 |
+| 38 | `ScenarioExplanation`: summary, rules, quotes, citations, "not this hand", caveats | verdict panel | **VERDICT SHEET** | H5 |
+| 39 | Mortal column: header, model, recommendation, probability, confidence | verdict panel | **VERDICT SHEET**; one line on the **RESULT CARD** | H5 |
+| 40 | `CallReport` | verdict panel | **VERDICT SHEET** | H5 |
+| 41 | Your-answer probability + "nearly tied" note | verdict panel | **VERDICT SHEET** | H5 |
+| 42 | Full ranking (`<details>` + `ActionRanking`) | verdict panel | **VERDICT SHEET**, still a disclosure | H5 |
+| 43 | Outcome band (chip + sentence) | verdict panel | **RESULT CARD** headline/detail + **VERDICT SHEET** band | H5 |
+| 44 | `MortalUnavailable` + Retry (post-answer) | verdict panel | **VERDICT SHEET** | H5 |
+| 45 | `#verdict-panel` anchor, `showVerdict` smooth scroll and `focus()` | App | **DROPPED** — Details opens the sheet; no page scroll exists in the stage | H5 |
+| 46 | `AnswerSummary` (mark, headline, detail, book/Mortal chips, Details) | dock | **RESULT CARD** | H5 |
+| 47 | `HandDock` section "Your hand" | dock | **SCENE** — the 3D overlay's group keeps that name; no duplicate group | 3D-08 |
+| 48 | Hand + draw tile buttons (labels, order, disabled, answer marks, AI badges) | dock | **SCENE** — the projected buttons; the HUD renders none | 3D-08 |
+| 49 | `hand` grid + `Tile` SVGs | dock | **SCENE** (canvas) | 3D-07/08 |
+| 50 | Riichi toggle (`aria-pressed`, ON/OFF) | dock | **ACTION RAIL** | H3 |
+| 51 | Kan toggle (tile label, probability, ON/OFF) | dock | **ACTION RAIL** | H3 |
+| 52 | Hint line (`.hand-dock-label`, `aria-live`) | dock | **HAND RAIL** | H3 |
+| 53 | Dock `NextScenarioButton` | dock | **DROPPED** — the top bar's Next is the single control | H3 |
+| 54 | `ActionBar` (non-discard actions, labels, probabilities, `aria-pressed`) | below the table | **ACTION RAIL** | H3 |
+| 55 | `DecisionPopup` (built, never mounted) | — | **DROPPED** — the rail is the only call surface; do not mount a second one | H3 |
+| 56 | `statusMessage` (loading table/pack/agreement/Mortal/hotseat) | `role="status"` | **TOAST**, persistent while loading | H3 |
+| 57 | `error` (`role="alert"`) | inline | **TOAST**, error tone, until the next deal | H3 |
+| 58 | `threeNotice` + Dismiss (3D-11 degrade notice) | 2D shell | **2D ONLY** — it appears only after returning to a 2D view | — |
+| 59 | Host notices (`.renderer-3d-*`: loading, unsupported, failed, degraded) | scene | **SCENE** rung, unchanged, below the HUD | 3D-02/11 |
+| 60 | Debug legends (`?debug=`) and perf HUD (`?perf=1`) | scene | **SCENE** rung, debug-only, exempt from the collision gate (§7.6) | 3D-10/13 |
+| 61 | Scene-loading line (`.status-msg` in the 3D mount) | scene | **TOAST** from H3; the host's first-mount line stays in the scene | 3D-02/H3 |
+| 62 | 2D table (`PlayerRow`s / `PhysicalTable`) | main | **DROPPED in 3D** — the 3D board replaces it; the 2D views are untouched | — |
+| 63 | Browser Back/Forward history entries | App | unchanged (no UI surface) | — |
+
+---
+
+## 4. The `HandDock` split
+
+`HandDock` is one component that does two different jobs: it *is* the hand, and
+it carries the hand's controls. In 3D those jobs go to different rungs, because
+the hand is a projected scene overlay (3D-08) and the controls cannot be a
+second strip of tiles.
+
+| `HandDock` part | Destination | Why |
+| --- | --- | --- |
+| `section.hand-dock` "Your hand" group | **scene group** — the 3D-08 overlay keeps the same accessible name | the group must describe the real buttons, and there is only one set |
+| `AnswerSummary` (mark, headline, detail, chips, Details) | **result card** (H5) | user decision: a compact result; it replaces both panel rows, never the hand |
+| Riichi toggle | **action rail** (H3) | a decision, not hand chrome; it arms the next tile tap |
+| Kan toggle (tile, probability, ON/OFF) | **action rail** (H3) | same |
+| Hint line (`handHint`, `aria-live`) | **hand rail** row of the panel (H3) | one line directly above the hand; it explains the tap |
+| Hand + draw tile buttons | **scene** (3D-08) | the projected buttons; the HUD never renders a second hand |
+| `hand` grid + tile images | **scene** (canvas) | drawn in 3D |
+| Dock `NextScenarioButton` | **dropped** | the top bar's Next hand is always visible and is the single control |
+| Hint row post-answer | **folded into the result card** | "Answer submitted" is redundant beside the result; the outcome is the message |
+
+Consequences the units must honour:
+
+- **Exactly one DOM control per hand tile plus the draw** (3D-08's overlay). A
+  test asserts the count, and that mounting the hand rail adds none.
+- The tile-less dock variant (H3) renders the hint, the pre-answer Mortal chip
+  and any rail content — **never** tile buttons.
+- The 2D `HandDock` is unchanged. It is not split into new components for 3D;
+  H3 either adds an opt-out prop or extracts the controls into a rail that both
+  shells use. The 2D rendering must be structurally unchanged either way.
+- **This document supersedes the draft H3 task text** where it says the
+  tile-less dock renders `AnswerSummary` and `NextScenarioButton`. Here the
+  summary is the result card (H5) and Next is the top bar's single control
+  (H2); the hand rail renders the hint and the Mortal chip only. Two summaries
+  or two Next buttons would be a duplicate control, not a convenience.
+
+---
+
+## 5. Layout by aspect
+
+The 3D stage is the window (plan §2.1). The supported aspects are the gate's
+own list, `CAMERA.supportedAspects`: **21:9, 16:9, 3:2, 4:3, 1:1, 3:4, 9:16**,
+plus the two phone sizes the compass test already pins (390 × 844 and
+320 × 568) as compatibility rows.
+
+The bottom of the composition is **one panel**, not three strips:
+
+| Panel row | Height | When |
+| --- | --- | --- |
+| hint row (the hand rail) | `24 px` | always |
+| action row (the action rail: `ActionBar` + Riichi/Kan toggles) | `44 px` + `4 px` gap | pre-answer, when it has content |
+| result card | `104 px` | after an answer (replaces both rows) |
+
+So the panel is `84 px` with the action row (`128 px` if the row wraps to two),
+`40 px` with the hint alone, and `104 px` with the result card. It is
+`min(36rem, stageW − 16)` wide, centred on the stage, and sits **`8 px` above
+the hand band** — or below it on the two phones, where the gap above the hand is
+too small.
+
+When a sheet opens, the panel **collapses to its hint row** (`40 px`) and the
+action row or result card is hidden, so the sheet can use the freed band and no
+visible control is inert. The sheet's bottom is that collapsed panel's top
+minus `8 px`.
+
+Every aspect below is drawn on the same rule set:
+
+- top bar: full width, `56 px` at inset `0` — a `44 px` control plus `6 px`
+  padding above and below, with the top pad `max(6px, safeTop)`;
+- compass: scene-owned, never touched;
+- hand panel: as above;
+- sheet (when open): centred, `min(78dvh, 52rem)` tall, bottom edge `8 px`
+  above the hand panel's top.
+
+Diagram legend: `-` top bar, `c` compass, `a` hand panel (hint + action rows, or
+the result card), `h` hand band, `s` open sheet. The landscape cells are about
+`w/64 × h/18`; the portrait drawings use finer grids. The `8 px` gap between the
+panel and the hand is under one cell at several sizes, so the boxes can touch in
+a drawing while the numbers below them keep the gap.
+
+**The diagrams are the reference hand**: the board fixture's default one meld
+per seat (10 concealed + the draw). The projected band moves with the hand
+(§7.4): a no-meld 14-tile hand sits lower, a four-meld hand higher, and the
+camera fit moves the compass with it. The panel follows the band, which is why
+the gate runs every state rather than one fixture.
+
+### 21:9 — 2520 × 1080
+
+```text
+[top bar 56px]
+                                                                        
+                                                                        
+                                                                        
+                                                                        
+                                                                        
+                                                                        
+                                cccccccc                                
+                                cccccccc                                
+                                cccccccc                                
+                                cccccccc                                
+                                cccccccc                                
+                                                                        
+                                                                        
+                           aaaaaaaaaaaaaaaaaa                           
+                           aaaaaaaaaaaaaaaaaa                           
+                           hhhhhhhhhhhhhhhhhhhhh                        
+                           hhhhhhhhhhhhhhhhhhhhh                        
+                                                                        
+```
+
+compass `1126,387–1394,654` · hand band `950,918–1654,1010` (`704 px` wide) ·
+panel `826–910` (`171 px` above the compass) · result card `806–910` ·
+sheet `64–862` (`798 px`). Nothing collapses.
+
+### 16:9 — 1920 × 1080 (reference aspect)
+
+```text
+[top bar 56px]
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                           cccccccccc                           
+                           cccccccccc                           
+                           cccccccccc                           
+                           cccccccccc                           
+                           cccccccccc                           
+                                                                
+                                                                
+                      aaaaaaaaaaaaaaaaaaaa                      
+                      aaaaaaaaaaaaaaaaaaaa                      
+                     hhhhhhhhhhhhhhhhhhhhhhhhh                  
+                     hhhhhhhhhhhhhhhhhhhhhhhhh                  
+                                                                
+```
+
+compass `827,376–1093,643` · hand band `643,914–1362,1009` (`719 px`) · panel
+`822–906` (`179 px`) · result card `802–906` · sheet `64–858` (`794 px`).
+
+### 3:2 — 1440 × 960
+
+```text
+[top bar 56px]
+--------------------------------------------------------
+                                                        
+                                                        
+                                                        
+                                                        
+                       cccccccccc                       
+                       cccccccccc                       
+                       cccccccccc                       
+                       cccccccccc                       
+                       cccccccccc                       
+                                                        
+                                                        
+                aaaaaaaaaaaaaaaaaaaaaaaa                
+                aaaaaaaaaaaaaaaaaaaaaaaa                
+                hhhhhhhhhhhhhhhhhhhhhhhhhhh             
+                hhhhhhhhhhhhhhhhhhhhhhhhhhh             
+                                                        
+```
+
+compass `602,328–838,563` · hand band `434,810–1084,896` (`650 px`) · panel
+`718–802` (`154 px`) · result card `698–802` · sheet `64–754` (`690 px`).
+
+### 4:3 — 1280 × 960
+
+```text
+[top bar 56px]
+----------------------------------------------------
+                                                    
+                                                    
+                                                    
+                                                    
+                     cccccccccc                     
+                     cccccccccc                     
+                     cccccccccc                     
+                     cccccccccc                     
+                     cccccccccc                     
+                                                    
+                                                    
+              aaaaaaaaaaaaaaaaaaaaaaaa              
+              aaaaaaaaaaaaaaaaaaaaaaaa              
+               hhhhhhhhhhhhhhhhhhhhhhhhh            
+               hhhhhhhhhhhhhhhhhhhhhhhhh            
+                                                    
+```
+
+compass `533,364–747,579` · hand band `378,805–973,884` (`595 px`) · panel
+`713–797` (`134 px`) · result card `693–797` · sheet `64–749` (`685 px`).
+
+### 1:1 — 1000 × 1000
+
+```text
+[top bar 56px]
+--------------------------------------------
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                  cccccccc                  
+                  cccccccc                  
+                  cccccccc                  
+                  cccccccc                  
+                                            
+         aaaaaaaaaaaaaaaaaaaaaaaaaa         
+         aaaaaaaaaaaaaaaaaaaaaaaaaa         
+            hhhhhhhhhhhhhhhhhhhhhh          
+            hhhhhhhhhhhhhhhhhhhhhh          
+                                            
+                                            
+                                            
+```
+
+compass `416,410–584,577` · hand band `295,754–760,816` (`465 px`) · panel
+`662–746` (`84 px`) · result card `642–746` · sheet `64–698` (`634 px`).
+
+### 3:4 — 900 × 1200
+
+```text
+[top bar 56px]
+----------------------------------------
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                cccccccc                
+                cccccccc                
+                cccccccc                
+                cccccccc                
+                                        
+       aaaaaaaaaaaaaaaaaaaaaaaaaa       
+       aaaaaaaaaaaaaaaaaaaaaaaaaa       
+           hhhhhhhhhhhhhhhhhhhh         
+           hhhhhhhhhhhhhhhhhhhh         
+                                        
+                                        
+                                        
+                                        
+                                        
+```
+
+compass `360,502–540,681` · hand band `264,874–687,931` (`422 px`) · panel
+`782–866` (`100 px`) · result card `762–866` · sheet `64–818` (`754 px`).
+
+### 9:16 — 810 × 1440
+
+```text
+[top bar 56px]
+------------------------------------
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+              cccccccc              
+              cccccccc              
+              cccccccc              
+              cccccccc              
+                                    
+     aaaaaaaaaaaaaaaaaaaaaaaaaa     
+     aaaaaaaaaaaaaaaaaaaaaaaaaa     
+          hhhhhhhhhhhhhhhhhh        
+          hhhhhhhhhhhhhhhhhh        
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+```
+
+compass `324,632–486,793` · hand band `238,966–620,1018` (`382 px`) · panel
+`874–958` (`81 px`) · result card `854–958` · sheet `64–896` (`832 px`, the cap binds). A
+four-meld hand raises the band to `900–938`: the panel moves with it, the rail
+clearance becomes `32 px` and the card's `12 px` — both legal, and the result
+card's fixed `104 px` shape is what keeps them so.
+
+### 9:16 with the sheet open
+
+```text
+[top bar 56px]
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssccccccccssssssssssssss
+ssssssssssssssccccccccssssssssssssss
+ssssssssssssssccccccccssssssssssssss
+ssssssssssssssccccccccssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+ssssssssssssssssssssssssssssssssssss
+     aaaaaaaaaaaaaaaaaaaaaaaaaa     
+          hhhhhhhhhhhhhhhhhh        
+          hhhhhhhhhhhhhhhhhh        
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+```
+
+The sheet is a **centred modal panel**, not a column: `left/right` gutter `8`,
+top `64`, and its bottom edge `8 px` above the hand panel's top, so the panel
+(and its hint row) stays visible under a light scrim. The scrim spans the whole
+window at `45 %` (not the 2D modal's `68 %`) so the panel's hint stays at about
+`5:1` contrast while the board behind it is clearly dimmed. The sheet covers the
+compass and the upper board by design; everything behind the scrim is `inert`.
+Its body scrolls internally; the page does not scroll.
+
+### Phone compatibility rows
+
+| Stage | panel | reason |
+| --- | --- | --- |
+| 390 × 844 | **below** the hand: `574–658` | the gap above the hand is `484 → 541 = 57 px`; the panel needs `92 px` |
+| 320 × 568 | **below** the hand: `410–494` | the gap is `34 px`, and the hand band is only `152 px` wide |
+
+The fallback is one rule, not a second layout: when
+`handBand.top − 8 − panelHeight < compassBox.bottom + 8`, the panel docks
+**below** the hand band at `handBand.bottom + 8`, full width minus the gutters.
+The result card uses the same anchor. The collision gate checks whichever
+anchor was chosen.
+
+### What collapses, and when
+
+| Band | Action row | Hint row | Top bar | Toast |
+| --- | --- | --- | --- | --- |
+| wide (≥ 3:2) | one row; labels, probabilities, ON/OFF | full hint + labelled Mortal chip | Next labelled, setup labelled, full screen | 2 lines, `32rem` |
+| square (4:3 – 1:1) | one row; probability badges hidden (they live in the verdict sheet) | hint one line, chip label shortened | Next labelled, icons | 2 lines |
+| portrait (< 1) | up to two rows; labels only; below the hand on phones | hint one line + "Mortal" chip | Next labelled, setup icon-only | full width minus gutters |
+| 21:9 | as wide; panel capped at `36rem`, centred | unchanged | unchanged | unchanged |
+
+Collapse never removes a control, only its decoration: probabilities, the chip's
+wordmark and the setup label are the only things that disappear. A control that
+would lose its accessible name keeps a visually-hidden one.
+
+### Sheet geometry, stated once
+
+```
+sheetTop    = topBar.height + 8
+panelTop    = handBand.top − 8 − 40      (the collapsed hint-only panel)
+sheetBottom = min(panelTop − 8, sheetTop + min(0.78 · stageH, 832))
+sheetWidth  = min(832, stageW − 16)
+```
+
+On the phone fallback rows the panel is below the hand, so `panelTop` is
+`handBand.bottom + 8` and the same formula holds.
+
+At 21:9 this is `64 → 862` (`798 px`); 16:9 `64 → 858` (`794 px`); 3:2
+`64 → 754` (`690 px`); 4:3 `64 → 749` (`685 px`); 1:1 `64 → 698` (`634 px`);
+3:4 `64 → 818` (`754 px`); 9:16 `64 → 896` (`832 px`, the cap binds); 390 × 844
+`64 → 566` (`502 px`); 320 × 568 `64 → 402` (`338 px`). The hand panel, the hand
+and the felt under it all stay below the sheet at every size.
+
+---
+
+## 6. Overlay contract
+
+### 6.1 Z-index ladder
+
+```
+canvas  <  scene overlay  <  HUD  <  sheet  <  toast
+```
+
+| Rung | Token | Value | Contents | Owner |
+| --- | --- | --- | --- | --- |
+| Canvas | `--hud-z-canvas` | `0` | the fixed `.table-3d` stage and the canvas | 3D-02 |
+| Scene overlay | `--hud-z-scene` | `10` | hand buttons (3D-08), compass (3D-09), host notices, debug/perf panels | 3D-08/09/10/13 |
+| HUD | `--hud-z-hud` | `20` | layer root, top bar and the hand panel | H2–H5 |
+| Sheet scrim | `--hud-z-sheet-scrim` | `30` | the scrim, the whole window at `45 %` | H2 |
+| Sheet | `--hud-z-sheet` | `40` | the sheet panel | H2 |
+| Toast | `--hud-z-toast` | `50` | the toast stack | H3 |
+
+Rules:
+
+- The values live in one token block (`hud/tokens.css`, H2). No HUD rule may
+  write a bare `z-index`; a test greps the HUD stylesheet for numbers.
+- The scene overlay keeps its internal `1/2/3` values inside its own stacking
+  context; the rung is what it sits at relative to the HUD.
+- The 2D shell's values (`header 40`, `hand dock 30`, `hotseat backdrop 80`) are
+  **not** part of this ladder: no 2D chrome is mounted in 3D. H4 must not nest
+  `.hotseat-backdrop` inside the sheet — the sheet provides the only scrim.
+- Debug panels stay on the scene rung on purpose: product chrome outranks
+  diagnostics, and a debug HUD is exempt from the collision gate.
+
+### 6.2 Pointer events
+
+- `.hud-root`: `pointer-events: none`. The felt, the canvas and the projected
+  hand buttons stay reachable through it.
+- Every panel and control: `pointer-events: auto`. A panel's surface swallows a
+  tap inside its own rect; it never extends its hit area beyond its border.
+- The scrim is `auto` across the whole window (a tap outside the panel
+  closes); the sheet panel is `auto` and owns its own focus.
+- Toasts are `none` at the root; a toast with a Dismiss/Details affordance is
+  `auto` on its box only.
+- No rule may set `pointer-events: auto` on a full-window HUD node. That is the
+  single mistake that would make the board inert, and the H2 structural test
+  asserts the root's computed value is `none`.
+
+### 6.3 Safe areas and viewport units
+
+- The stage is `position: fixed; inset: 0` and `height: 100dvh` (with `100vh`
+  as the fallback, as the shell already does).
+- Insets are **inputs to the layout**, not CSS padding on a full-window node:
+  `hudLayout()` takes `{ top, right, bottom, left }` and the HUD reads them
+  from `env(safe-area-inset-*)` once per resize. Tests pass `0`.
+- The panel gutter is `8 px`; a safe inset enters the layout as
+  `max(6px, env(safe-area-inset-*))`, so a device with no notch is unchanged
+  (the panel's `8 px` gap to the hand is a layout gap, not an inset).
+- The hand is the lowest scene element, and in landscape it ends `40–76 px`
+  above the stage bottom (reference hand, 21:9, `1080 − 1010 = 70 px`), which
+  clears a `34 px` home indicator without any HUD involvement. The hand panel is
+  above the hand, so no HUD rect competes for the bottom inset.
+- `dvh` changes when mobile browser chrome shows/hides. The HUD recomputes on
+  `resize` (and `orientationchange`, and `fullscreenchange`) through one
+  `ResizeObserver` on the stage; the renderer already re-fits on resize, so the
+  two stay in step.
+- Full screen: the Fullscreen API element is the **shell**, not the canvas, so
+  the HUD travels with the scene. Entering or leaving full screen changes the
+  safe insets; recompute, do not cache.
+
+### 6.4 Reduced motion
+
+- `prefers-reduced-motion: reduce` is read once through the existing
+  `usePrefersReducedMotion` (3D-08) and passed into the HUD.
+- Sheets, toasts and the result card appear with **no** transform, scale or
+  slide: either instantly or a plain opacity change of at most `120 ms`.
+- No HUD element animates continuously. The only 3D motion the HUD can cause is
+  the 3D-08 hover lift, which reduced motion already suppresses.
+- Nothing auto-scrolls in 3D, so there is no smooth-scroll special case to
+  honour (the 2D `showVerdict` scroll is 2D-only).
+
+### 6.5 Focus, Escape, inert
+
+1. A sheet is `role="dialog"`, `aria-modal="true"`, labelled by its visible
+   heading ("Setup" / "Verdict").
+2. Opening focuses the sheet's **heading** (`tabIndex={-1}`): it announces the
+   dialog and cannot accidentally activate a control.
+3. Tab and Shift+Tab cycle inside the sheet only. Focus never reaches the HUD
+   or the scene behind the scrim.
+4. Escape closes the topmost layer only. A nested popover consumes the first
+   Escape (the `ScenarioPicker` panel and `HotseatCard` already do this with
+   their own handler and `stopPropagation`); the next Escape closes the sheet.
+5. Closing by Escape, scrim tap or a close button returns focus to the element
+   that opened the sheet. If that element no longer exists (the result card
+   vanished because a new hand dealt), focus goes to the top bar's Next hand.
+6. While a sheet is open, the HUD root and the stage are `inert`, and the
+   scrim spans the whole window at `45 %`. The hand panel's **hint row** stays
+   visible (dimmed, informational) and its action row or result card is hidden,
+   so no visible control is dead. The scrim is not focusable and contains no
+   text.
+7. The page does not scroll. The sheet body is the only scroll container
+   (`overflow: auto; overscroll-behavior: contain`).
+8. At most one sheet exists at a time. `sheetRoot` mounts one panel.
+9. Answering never moves focus and never opens anything. The result card is
+   announced by its live region; its Details button is the only way in.
+10. Toasts never take focus. Errors are `role="alert"`; status lines are
+    `role="status"`. A message is announced once, not per render.
+
+---
+
+## 7. The collision contract
+
+### 7.1 What the HUD may never cover
+
+The **exclusion set** `E` for the current state and viewport is:
+
+```
+E = union(handBand, compassBox)
+```
+
+- `handBand` — the human's concealed + draw tile projection as one rectangle.
+  It is the *interaction* union (the same rects 3D-08 publishes, including the
+  44 px minimum target), computed **even when the hand is locked**, so the
+  result card has an anchor after answering. This is one small addition to the
+  renderer contract (H2): `TableRenderer.handBandRect(): BandRect | null`,
+  computed by the same code path as `hitRects()` without the lock gate.
+  `hitRects()` itself stays exactly as 3D-08 landed it and remains the
+  interaction contract.
+- `compassBox` — the DOM compass square from 3D-09 (`compassBox(compassRect())`),
+  which is already inset inside the projected compass plate.
+
+The compass is in the exclusion set because it is the table's readout: covering
+it hides the round, scores and tiles left. The hand/draw buttons are in it
+because covering them would take away the only way to answer.
+
+The screen regions the HUD reserves, and the only things allowed to cross them:
+
+| Reserved region | Rect (from §5/§7.3) | May cross it |
+| --- | --- | --- |
+| Top bar | full width, `56 px` at inset `0` | nothing (it is the top edge) |
+| Hand panel | `min(36rem, stageW − 16)` wide, centred; `84`/`128` px with actions, `40` hint-only, `104` result; `8 px` above the hand (below it on phones) | the open sheet's scrim and panel, debug panels |
+| Toast stack | `32rem` centred, under the top bar | nothing |
+| Sheet (open) | §5's formula | nothing (it is the top layer) |
+
+When the action row would be empty it is **unmounted**, not reserved: a plain
+discard lesson with no Riichi, Kan or call shows the hint row alone until the
+answer, then the result card. The HUD reserves no canvas pixels and changes no
+camera framing.
+
+### 7.2 The rule
+
+A rect `R` is legal iff, for every `e ∈ E`:
+
+```
+R does not intersect expand(e, 8)
+```
+
+`8 px` is the HUD gutter. A panel may sit exactly `8 px` from the hand's top
+edge and still block a hover lift visually — that is expected: the HUD is above
+the scene, and the lift is a 14 mm mesh move behind the panel.
+
+### 7.3 Anchors
+
+`hudLayout(stage, anchors, state)` is a **pure** function in
+`frontend/src/renderers/hud/hudLayout.ts` (H2). It takes the stage size, the
+two anchor rects, the safe insets and a tiny state
+(`{ slot: 'none' | 'actions' | 'result', sheet: boolean, toasts: number }`)
+and returns every HUD rect. No DOM reads, no renderer calls; it is unit-tested
+in Node against the real projection.
+
+- Top bar: `0,0 → stageW, 44 + 6 + max(6px, safeTop)`.
+- Hand panel, primary anchor:
+  `width = min(36rem, stageW − 16)`, `left = (stageW − width) / 2`,
+  `height = 84` (actions, one row) / `128` (two rows) / `40` (hint only, and
+  whenever a sheet is open) / `104` (result card),
+  `top = handBand.top − 8 − height`.
+- Hand panel, fallback anchor (when
+  `handBand.top − 8 − height < compassBox.bottom + 8`):
+  `top = handBand.bottom + 8`, full width minus the gutters.
+- Toast stack: `top = topBar.bottom + 8`, `width = min(32rem, stageW − 16)`,
+  centred.
+- Sheet: §5's formula, on the collapsed panel's top.
+
+If **no anchor exists** (the scene has not published a projection yet), the top
+bar and the toast root still mount — they do not depend on the board — and the
+hand panel is **not mounted**. The HUD never guesses a hand position, so nothing
+jumps on first paint.
+
+Width does not affect the collision rule: the panel is above or below the band,
+never beside it, so its width can be a constant without becoming illegal.
+
+### 7.4 The measured reference
+
+Clearance from the compass's bottom edge to the nearest at-rest HUD rect for
+the reference hand, at the gate aspects:
+
+| Aspect | compass bottom | panel top | clearance | result card |
+| --- | --- | --- | --- | --- |
+| 21:9 | 654 | 826 | 171 px | 151 px |
+| 16:9 | 643 | 822 | 179 px | 159 px |
+| 3:2 | 563 | 718 | 154 px | 135 px |
+| 4:3 | 579 | 713 | 134 px | 114 px |
+| 1:1 | 577 | 662 | 84 px | 65 px |
+| 3:4 | 681 | 782 | 100 px | 81 px |
+| 9:16 | 793 | 874 | 81 px | 61 px |
+| 390 × 844 | 484 | 574 (below) | 90 px, belt and braces | — |
+| 320 × 568 | 347 | 410 (below) | 63 px | — |
+
+The band is **not at a fixed screen position**, and neither is the compass: the
+camera fits the board, so a hand with more melds pulls the whole projection in.
+At 16:9 the compass's bottom edge moves from `671 px` (no melds) to `627 px`
+(four melds including a kan), and the hand band's top from `958 px` to `876 px`.
+That is why the anchor is the live projection, and why the gate runs every hand
+state rather than one fixture.
+
+At 9:16, the tightest gate aspect, the panel clearance by hand state is:
+
+| Human hand | buttons | panel clearance | result-card clearance |
+| --- | --- | --- | --- |
+| 13 + draw (no melds) | 14 | 84 px | 64 px |
+| 10 + draw (one meld) | 11 | 81 px | 61 px |
+| 7 + draw (two melds) | 8 | 45 px | 25 px |
+| 4 + draw (three melds) | 5 | 45 px | 25 px |
+| 1 + draw (four melds) | 2 | 43 px | 23 px |
+| 1 + draw (four melds, one a kan) | 2 | 32 px | 12 px |
+
+Across all seven gate aspects and all six states, the worst panel clearance is
+`32 px` and the worst result-card clearance is `12 px`, both at 9:16 with a
+four-meld kan hand. Both are legal against the `8 px` rule, and they are the
+numbers the gate must beat. They are also why the result card has a **fixed
+shape**: a headline, one clamped detail line and the chips, capped at `104 px`
+— a card that grew with its text would break the contract at 9:16.
+
+A **wrapped** action row (`128 px`) at 9:16 with a four-meld hand does not fit
+above the hand (`900 − 8 − 128 = 764` against a compass bottom of `776`), so the
+fallback moves the panel below the hand, where there are `496 px`. That is the
+fallback doing its job, not an exception: the gate asserts whichever anchor is
+chosen.
+
+The top bar ends at `56 px`; the compass's top edge is never above `328 px` in
+any measured state and aspect (the minimum is 1 meld at 3:2), so the bar cannot
+reach it — the nearest it comes is `272 px`. Every gate aspect keeps the panel's
+and card's bottom edges `≥ 8 px` above the hand band, and the panel is inside
+the stage in every state.
+
+### 7.5 Who enforces it
+
+- **H2** lands `hudLayout.ts` with the rect set and its test: the seven aspects
+  × six hand states (no melds, one, two, three, four, and four including a kan),
+  each unanswered and answered/locked, with the real `hitRects()` and
+  `compassPlateRect()` output. A violation prints the rect pair, the aspect and
+  the clearance, and fails.
+- **H3** adds the action row's real content height (wrapping up to two rows)
+  and the hint row to the state and re-runs the same matrix, including the
+  below-the-hand fallback for a wrapped row.
+- **H4** adds the top bar's setup trigger and asserts the open sheet's bottom
+  edge; **H5** adds the result card (2 lines + chips, the tallest form) and
+  asserts the closed state.
+- **R15 (3D-15)** runs the whole matrix on the stress fixture: all zones full,
+  four riichi, a kan, three-row rivers, answered and unanswered, plus the
+  handoff screenshots. A HUD rect that intersects is a failure there too.
+- Command: `cd frontend && npx vitest run src/renderers/hud` (H2 onwards).
+  No GPU, no browser.
+
+### 7.6 Exemptions, stated so they are not smuggled in
+
+- The **open sheet and its scrim** may cover the hand, the compass and the
+  board. They are excluded from `E`; the sheet is still bound by the
+  collapsed-panel rule, and by its height cap.
+- **Debug and perf panels** (`?debug=`, `?perf=1`) may cover anything: they are
+  diagnostics, mounted only by a query flag, and deliberately on a lower rung.
+- The 3D-08 **hover lift** crosses the panel's `8 px` gap visually. It is a
+  mesh move, not a rect, and it does not change any hit target.
+- The scene's **own** notices (`renderer-3d-notice`, hero/carve panels) are not
+  HUD chrome; they keep their positions and their tests.
+
+---
+
+## 8. Visual tokens
+
+The HUD is a dark glass surface over a lit green felt. Legibility is a number,
+not an opinion: the table below is the sRGB composite over the felt's base
+(`#1a5038`) and its lit highlight (`#2f7a55`), with the WCAG 2.1 contrast
+formula. `#12141a` and `rgba(9, 14, 19, α)` are the palette `App.css` already
+uses; the tone colours are `AnswerSummary`'s.
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--hud-surface` | `rgba(9, 14, 19, 0.88)` | panels over the felt (alpha floor **0.84**) |
+| `--hud-surface-solid` | `#12141a` | long text, sheet body, lists |
+| `--hud-sheet-surface` | `#141b25` | sheet panel (the `.hotseat-card` colour) |
+| `--hud-border` | `1px solid #2a3442` | every panel |
+| `--hud-border-accent` | `#34506e` | interactive controls |
+| `--hud-radius` | `10px` panel, `8px` control, `999px` chip | shape |
+| `--hud-shadow` | `0 8px 24px rgba(0, 0, 0, 0.45)` | sheet and result card only |
+| `--hud-scrim` | `rgba(5, 8, 13, 0.45)` | the sheet's scrim (`45 %`, not the 2D modal's `68 %`) |
+| `--hud-backdrop` | `blur(8px) saturate(1.1)` | enhancement only; never required |
+| `--hud-text` | `#e7ecf3` | primary |
+| `--hud-text-muted` | `#8b94a7` | secondary, unit labels |
+| `--hud-accent` | `#a5d8ff` | links, the Next hand label, focus text |
+| `--hud-focus` | `2px solid #74c0fc`, offset `2px` | focus ring, as `App.css` |
+| `--hud-ok` / `--hud-warn` / `--hud-bad` | `#8ce99a` / `#ffd43b` / `#ff8a8a` | tone marks |
+| tone surfaces | `#122018` / `#1f1a12` / `#241717` (opaque) | result card by outcome |
+| `--hud-text-xs` | `0.72rem / 1.3` | chips, probabilities |
+| `--hud-text-sm` | `0.78rem / 1.35` | controls, captions |
+| `--hud-text-md` | `0.86rem / 1.3` | result headline |
+| `--hud-space` | `8px` | gutter, padding unit |
+| `--hud-tap` | `44px` | minimum control height |
+
+Measured contrast (primary / muted / accent):
+
+- translucent surface at `α 0.88` over the lit felt (`#2f7a55`): `14.8:1` /
+  `5.8:1` / `11.6:1`; over the bright felt (`#409668`): `14.4:1` / `5.6:1` /
+  `11.3:1`;
+- the solid sheet surface `#12141a`: `15.5:1` / `6.0:1` / `12.2:1`;
+- the three tone surfaces: `14.2:1`, `14.6:1`, `14.6:1` for primary text;
+- the panel's hint row **through the open sheet's scrim**: primary text
+  `#e7ecf3` lands at about `5.1:1` (`#82858c` on `#0a1315`), which is why the
+  hint uses primary text, not `--hud-text-muted`.
+
+Rules:
+
+1. **No text on the felt.** Every panel paints a surface; the alpha floor is
+   `0.84`, which is what keeps the muted text at AA (`≥ 4.5:1`) even on the
+   felt's brightest point.
+2. `backdrop-filter` is additive. If a browser ignores it, the same alpha
+   carries the text; the HUD must never rely on blur for contrast or layout.
+3. Text scale is fixed (`rem`), not `vw`: a HUD that shrinks its type on a
+   narrow stage becomes unreadable. Controls keep `44 px` height; only their
+   decoration collapses (§5).
+4. Numerals in probabilities and scores are `tabular-nums` so they do not jitter.
+5. Each tone is a border/mark accent on the standard surface, except the result
+   card, which uses the existing opaque tone surfaces — they are already
+   readable and already the learner's visual language.
+
+---
+
+## 9. Seams for H2 – H5
+
+All HUD code lives under `frontend/src/renderers/hud/` (the 3D chain's
+directory). `App.tsx` is touched only at the 3D mount seam.
+
+| Unit | Files (new unless noted) | App seam |
+| --- | --- | --- |
+| **H1** | `3d_hud.md`, plan §11 and pointers | none |
+| **H2** | `hud/{HudLayer.tsx,Hud.css,tokens.css,hudLayout.ts,Sheet.tsx,toast root}`, `hud/*.test.*`; `renderers/contract.ts` + `three/hitTest.ts` + `three/Scene.ts` + `RendererHost.tsx` (arm `handBandRect`), `RendererHost.css` (scene rung unchanged) | mounts `<HudLayer>` before `<main className="table-3d">` for the 3D mount only |
+| **H3** | `hud/{ActionRail.tsx,HandRail.tsx,toast.tsx}`, `components/HandDock.tsx` (opt-out prop or extracted rail), `hudLayout.ts` (rail heights) | passes the existing store handlers through |
+| **H4** | `hud/{SetupSheet.tsx,...}`, reuses `ScenarioPicker`, `HotseatCard` (body only), `ExportImportControls`, `TableInfo`, notes | the setup trigger and sheet wiring |
+| **H5** | `hud/{ResultCard.tsx,VerdictSheet.tsx}`, reuses `VerdictPanel`/`AnswerSummary` | Details → sheet; Next hand unchanged |
+
+Order and gates:
+
+- H2 depends on H1 and on R14's view-switch mount (it mounts into the 3D
+  branch). H3 depends on H2. H4 depends on H2. H5 depends on H2 and H3.
+- R15 (3D-15) runs last and verifies the whole composition; its report gains
+  the HUD matrix and the user's verdict on the composition diagrams.
+- Each unit keeps the frontend gate green and extends the collision test; none
+  touches Rust, `GameState`, the 2D layouts or the retired 2.5D pipeline.
+
+The scene-side contract addition H2 needs, stated exactly:
+
+```ts
+/** A lock-independent projection rect, in CSS px, relative to the stage. */
+export interface BandRect {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface TableRenderer {
+  /** Hand + draw interaction targets; empty when locked (3D-08, unchanged). */
+  hitRects(): readonly HitRect[];
+  /** Hand + draw union with the same 44 px expansion, computed when locked too. */
+  handBandRect(): BandRect | null;
+  /** The compass plate's projected box (3D-09, unchanged). */
+  compassRect(): CompassRect | null;
+}
+```
+
+`handBandRect()` must come from the same `frameForAspect` + `hitRects` code
+path as the interaction rects (a drift test asserts the union equality while
+unanswered), so the anchor cannot diverge from the buttons it describes.
+
+### As built (3D-H2, 2026-11-19)
+
+H2 landed the shell exactly as specified above. The facts H3–H5 build on:
+
+- **Files.** `renderers/hud/{HudLayer.tsx, Hud.css, tokens.css, hudLayout.ts,
+  Sheet.tsx, hudAnchors.ts, domMetrics.ts}` plus their tests, and the contract
+  addition `BandRect` + `TableRenderer.handBandRect()` in `renderers/contract.ts`,
+  `three/hitTest.ts`, `three/Scene.ts`. `App.tsx` changed only at the 3D mount
+  seam: it renders `<HudLayer>` as the fixed sibling of `<main className="table-3d">`
+  and passes the shell/stage refs, the next-hand handler and its disabled flag.
+- **The anchor seam.** `RendererHost` publishes `{ handBand, compass }` into
+  `hud/hudAnchors.ts` on every re-projection (resize, new snapshot, board ready)
+  and clears them on unmount or degrade; `HudLayer` subscribes with
+  `useSyncExternalStore`. The renderer never reaches into the HUD and the HUD
+  never calls the renderer, so `hudLayout()` stays pure.
+- **Safe areas.** `.hud-inset-probe` is the only element that reads
+  `env(safe-area-inset-*)`; `domMetrics.readSafeAreaInsets()` reads its computed
+  padding once per resize pass and the numbers enter `hudLayout()`. The top bar's
+  inline padding is `max(6px, inset)` on each side and `max(6px, safeTop)` above.
+- **Slots.** `HudLayer` takes `hintRow`, `actionRail`, `resultCard`, `toasts` +
+  `toastCount`, and `sheet` + `onCloseSheet`. The panel mounts only when it has
+  content (`slot: none` paints nothing), keeps `84`/`128`/`40`/`104` px, and
+  collapses to the hint row while a sheet is open. H3 fills the two rows and the
+  toast root, H5 the result card, H4/H5 the sheet body.
+- **Nested layers.** A native document-level Escape listener cannot be stopped
+  by a descendant's `stopPropagation` (both run on `document`), so the sheet
+  consumes the first Escape when its body contains
+  `[data-hud-popover="open"]` (exported as `NESTED_LAYER_ATTRIBUTE`). H4 must set
+  that attribute on its open scenario picker / hotseat card.
+- **Retired.** The `?preview=deal` review aid (3D-12) is gone: the top bar's
+  Next Scenario control is the real one, so the deal-in is one tap away. The
+  `preview` query value is `sticks | null` only.
+
+---
+
+## 10. Non-goals
+
+- No change to `App.tsx`, any component, `App.css`, the store, Rust, `GameState`
+  or the snapshot in H1.
+- No change to the stacked or top-down layouts, and no return of the retired
+  2.5D pipeline (`docs/2_5d-removal.md`).
+- No new camera framing, no new tile geometry, no new asset. The signed-off rig
+  (75 mm, 50° pitch, portrait 62°) and the committed carve stay as they are.
+- No new grading, verdict or scenario logic; the HUD only re-hosts what exists.
+- No second hand, no tile thumbnails, no miniature board.
+- No persistent HUD settings beyond what the app already stores (view, quality).
+
+---
+
+## 11. Provenance of the numbers
+
+- Aspects: `CAMERA.supportedAspects` plus the two phone sizes already pinned by
+  `compassOverlay.test.ts`.
+- Projections: `layoutBoard(boardFixture())`, `frameForAspect()`, `hitRects()`,
+  `compassPlateRect()`, `compassBox()` at the stage sizes named above, CSS px,
+  DPR 1. The fixture's default is one meld per seat; the no-meld, two-, three-
+  and four-meld variants (and a four-meld kan) were measured through
+  `boardFixture({ meldCounts, kan })` for §7.4's table.
+- Compass clearance: `compassBox()`'s bottom edge (the DOM square, not the
+  plate).
+- Contrast: sRGB composite of the panel alpha over the felt colour, WCAG 2.1
+  relative luminance; the felt colours are `FELT`'s `#1a5038` and a lit
+  highlight measured from the felt shader's range.
+- Nothing here is a visual judgement; §12 is the only human call.
+
+---
+
+## 12. Questions for the user (the handoff)
+
+The composition is a user decision (AGENTS.md §6). These are the choices this
+document makes; each can be changed in this file before H2 starts.
+
+1. **Top bar contents.** Next hand is its one labelled control; the setup
+   trigger and the full-screen toggle are icon buttons at the other end. Is
+   "next-hand only" meant that strictly (no setup trigger there either, and the
+   sheet opens from a corner), or is this reading right?
+2. **One bottom panel.** The hint row, the action row and the result card are
+   rows of a single `36rem` panel directly above the hand (worst clearance
+   `32 px` at 9:16 with a four-meld hand), falling below it on phones. The
+   alternative is a fixed bottom-left panel that never moves. Which do you want?
+3. **Mortal chip.** Pre-answer, the hint row carries a one-line Mortal chip
+   that opens the verdict sheet (so Peek survives). Alternatively the chip moves
+   to the top bar, or pre-answer Peek is dropped in 3D and stays a 2D feature.
+4. **Result card slot.** The card replaces both panel rows above the hand (same
+   pixels), and its shape is fixed at `104 px` so the 9:16 clearance holds. The
+   hint's redundant "Answer submitted" line is dropped post-answer.
+5. **Sheet on portrait.** A centred panel from `64 px` to above the collapsed
+   hint row, over a `45 %` scrim that keeps the hint readable while the board is
+   dimmed. Or should it be a bottom drawer that fully covers the hint row?
+6. **Toasts.** Top-centre under the top bar, up to three, no auto-dismiss for
+   errors. Accept?
+7. **Tokens.** `0.88` panel alpha (floor `0.84`), `10/8 px` radii, `0.78rem`
+   controls, tone surfaces reused from `AnswerSummary`. Accept?

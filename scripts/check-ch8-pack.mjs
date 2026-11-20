@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 /**
- * Verify the first curated ch. 8 defense pack (implementation unit Q2).
+ * Verify a curated lesson pack's content (implementation units Q2 and Q3).
  *
  *   node scripts/check-ch8-pack.mjs
  *   node scripts/check-ch8-pack.mjs --dir frontend/public/scenarios \
  *     --pack replay.ch8-defense.2026-11 --json
+ *   node scripts/check-ch8-pack.mjs --chapter ch7 --allow-no-variants
  *
  * The generic hosting check (`check-pack-hosting.mjs`) proves the manifest,
  * hashes, budgets and provenance envelope. This check proves the pack's
- * **content** is the lesson pack Q2 promised:
+ * **content** is the lesson pack the pipeline promised, for the chapter named
+ * by `--chapter`:
  *
- *   - exactly ch. 8 lessons and `ch8.*` book sections, no other chapter;
+ *   - exactly that chapter's lessons and `<chapter>.*` book sections, no other
+ *     chapter;
  *   - at least 100 scenarios, no duplicate scenario id;
  *   - variants are a real share of the pack (default at least 20 %) and come
  *     from at least two transform families;
@@ -28,28 +31,47 @@ import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const CH8_LESSONS = new Set([
-  'fold_to_riichi',
-  'defense_safety_chart',
-  'suji_kabe_safety',
-  'kabe_no_chance',
-  'kabe_one_chance',
-  'kabe_double_one_chance',
-  'kabe_suji_defense',
-  'defense_stuck_heuristic',
-  'defense_multi_threat',
-  'push_or_fold',
-  'open_hand_defense',
-]);
-const DEFAULT_PACK = 'replay.ch8-defense.2026-11';
+const CHAPTERS = {
+  ch8: {
+    lessons: new Set([
+      'fold_to_riichi',
+      'defense_safety_chart',
+      'suji_kabe_safety',
+      'kabe_no_chance',
+      'kabe_one_chance',
+      'kabe_double_one_chance',
+      'kabe_suji_defense',
+      'defense_stuck_heuristic',
+      'defense_multi_threat',
+      'push_or_fold',
+      'open_hand_defense',
+    ]),
+    sectionPattern: /^ch8\.\d+$/,
+    defaultPack: 'replay.ch8-defense.2026-11',
+  },
+  ch7: {
+    lessons: new Set([
+      'riichi_judgement',
+      'chiitoitsu_riichi_vs_dama',
+      'dama_bad_wait',
+      'dama_genbutsu_wait',
+      'dama_expensive_hand',
+      'dama_improving_hand',
+    ]),
+    sectionPattern: /^ch7\.\d+$/,
+    defaultPack: 'replay.ch7-riichi-dama.2026-11',
+  },
+};
+const DEFAULT_CHAPTER = 'ch8';
 const DEFAULT_MAX_BYTES = 50_000_000;
 const DEFAULT_MIN_SCENARIOS = 100;
 const DEFAULT_MIN_VARIANT_SHARE = 0.2;
 
 function parseArgs(argv) {
   const parsed = {
+    chapter: DEFAULT_CHAPTER,
     dir: join(repoRoot, 'frontend', 'public', 'scenarios'),
-    pack: DEFAULT_PACK,
+    pack: null,
     maxBytes: DEFAULT_MAX_BYTES,
     minScenarios: DEFAULT_MIN_SCENARIOS,
     minVariantShare: DEFAULT_MIN_VARIANT_SHARE,
@@ -70,7 +92,8 @@ function parseArgs(argv) {
       }
       return argv[index];
     };
-    if (flag === '--dir') parsed.dir = resolve(process.cwd(), value());
+    if (flag === '--chapter') parsed.chapter = value();
+    else if (flag === '--dir') parsed.dir = resolve(process.cwd(), value());
     else if (flag === '--pack') parsed.pack = value();
     else if (flag === '--max-bytes') parsed.maxBytes = Number(value());
     else if (flag === '--min-scenarios') parsed.minScenarios = Number(value());
@@ -79,8 +102,9 @@ function parseArgs(argv) {
     else if (flag === '--json') parsed.json = true;
     else if (flag === '--help' || flag === '-h') {
       console.log(
-        'node scripts/check-ch8-pack.mjs [--dir DIR] [--pack ID] [--max-bytes N] ' +
-          '[--min-scenarios N] [--min-variant-share F] [--allow-no-variants] [--json]',
+        'node scripts/check-ch8-pack.mjs [--chapter ch7|ch8] [--dir DIR] [--pack ID] ' +
+          '[--max-bytes N] [--min-scenarios N] [--min-variant-share F] ' +
+          '[--allow-no-variants] [--json]',
       );
       process.exit(0);
     } else {
@@ -88,10 +112,18 @@ function parseArgs(argv) {
       process.exit(2);
     }
   }
+  if (!(parsed.chapter in CHAPTERS)) {
+    console.error(`unknown chapter: ${parsed.chapter} (expected ${Object.keys(CHAPTERS).join(' or ')})`);
+    process.exit(2);
+  }
+  parsed.pack ??= CHAPTERS[parsed.chapter].defaultPack;
   return parsed;
 }
 
 const args = parseArgs(process.argv.slice(2));
+const chapter = CHAPTERS[args.chapter];
+const CHAPTER_LESSONS = chapter.lessons;
+const BOOK_SECTION_PATTERN = chapter.sectionPattern;
 const checks = [];
 const problems = [];
 
@@ -151,9 +183,9 @@ let sameHandVariants = 0;
 for (const [index, scenario] of scenarios.entries()) {
   if (scenarioIds.has(scenario.id)) duplicateIds.push(scenario.id);
   scenarioIds.add(scenario.id);
-  if (!CH8_LESSONS.has(scenario.lesson_id)) offChapter.push(scenario.lesson_id);
+  if (!CHAPTER_LESSONS.has(scenario.lesson_id)) offChapter.push(scenario.lesson_id);
   const key = scenario.book?.key;
-  if (!key || !/^ch8\.\d+$/.test(key)) missingBook.push(`${scenario.id}:${key ?? 'none'}`);
+  if (!key || !BOOK_SECTION_PATTERN.test(key)) missingBook.push(`${scenario.id}:${key ?? 'none'}`);
   const provenance = scenario.provenance ?? {};
   const isVariant =
     Boolean(provenance.variant_of) ||
@@ -193,11 +225,11 @@ check(
 );
 check(
   offChapter.length === 0,
-  `every scenario is a ch. 8 lesson (${offChapter.length} off-chapter)`,
+  `every scenario is a ${args.chapter} lesson (${offChapter.length} off-chapter)`,
 );
 check(
   missingBook.length === 0,
-  `every scenario carries a ch8.* book section (${missingBook.length} missing)`,
+  `every scenario carries a ${args.chapter}.* book section (${missingBook.length} missing)`,
 );
 const variantShare = scenarios.length === 0 ? 0 : variants / scenarios.length;
 if (variants === 0) {
@@ -278,6 +310,7 @@ function report() {
   const summary = {
     schema: 'riichiprac.ch8-pack-check',
     version: 1,
+    chapter: args.chapter,
     dir: args.dir,
     pack: args.pack,
     checks: checks.length,

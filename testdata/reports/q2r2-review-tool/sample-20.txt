@@ -1,0 +1,24 @@
+mine_replays review: 2250 item(s) from /home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense.2026-11/review-queue.jsonl
+  valid: 2250; invalid: 0; pending: 0; accepted: 2250; rejected: 0
+  progress: 2250/2250 dispositioned (100.0%); shown: 20 of 2250 filtered
+  sampled: up to 20 of 2250
+  replay.ch8-defense.2026-11-017 accepted  defense_safety_chart     ch8.2  late    `2346678m789p2357s` fold 2m          akochan_vs_mortal
+  replay.ch8-defense.2026-11-1007 accepted  defense_safety_chart     ch8.2  mid     `46m2445688p668s36z` fold 3z          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-1050 accepted  fold_to_riichi           ch8.3  late    `335m34567p113489s` fold 3p          mortal_mirror
+  replay.ch8-defense.2026-11-1126 accepted  suji_kabe_safety         ch8.2  late    `5799m11234447p6s7z` fold 9m          mortal_mirror
+  replay.ch8-defense.2026-11-1201 accepted  defense_safety_chart     ch8.2  late    `4567m667p234555s2z` fold 4m          mortal_mirror
+  replay.ch8-defense.2026-11-1603 accepted  fold_to_riichi           ch8.3  late    `1127m467p1124445s` fold 6p          mortal_mirror
+  replay.ch8-defense.2026-11-1624 accepted  defense_safety_chart     ch8.2  late    `6779m456799p257s6z` fold 6z          mortal_mirror
+  replay.ch8-defense.2026-11-1751 accepted  fold_to_riichi           ch8.3  late    `68m44588p1124457s` fold 4s          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-1777 accepted  defense_safety_chart     ch8.2  early   `33788m577p345s336z` fold 3z          mortal_mirror
+  replay.ch8-defense.2026-11-1957 accepted  defense_safety_chart     ch8.2  late    `23478m4567p6799s2z` fold 2m          mortal_mirror
+  replay.ch8-defense.2026-11-200 accepted  kabe_one_chance          ch8.2  early   `2889m578p1445889s` fold 9s          mortal_mirror
+  replay.ch8-defense.2026-11-2025 accepted  suji_kabe_safety         ch8.2  mid     `26889m338p356788s` fold 7s          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-2212 accepted  push_or_fold             ch8.1  mid     `6m23455566p22378s` fold 3p          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-332 accepted  fold_to_riichi           ch8.3  late    `58m156p122556679s` fold 1p          mortal_mirror
+  replay.ch8-defense.2026-11-335 accepted  defense_safety_chart     ch8.2  mid     `45567m66p34448s11z` fold 1z          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-342 accepted  defense_stuck_heuristic  ch8.3  early   `12357m4799p23999s` fold 9s          mortal_mirror
+  replay.ch8-defense.2026-11-405 accepted  push_or_fold             ch8.1  late    `3m123567899p2225z` fold 1p          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-446 accepted  fold_to_riichi           ch8.3  early   `28m4569p46688s156z` fold 5z          mortal_mirror
+  replay.ch8-defense.2026-11-621 accepted  defense_safety_chart     ch8.2  mid     `2466m23345p34567s` fold 2p          mortal_sampling_sweep
+  replay.ch8-defense.2026-11-709 accepted  fold_to_riichi           ch8.3  mid     `223457788m23p447s` fold 3m          mortal_sampling_sweep

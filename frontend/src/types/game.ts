@@ -48,7 +48,8 @@ export type DamaReason =
   | 'mangan'
   | 'haneman_plus'
   | 'early_turn'
-  | 'improving_hand';
+  | 'improving_hand'
+  | 'honitsu';
 
 /** Reasons a scenario recommends upgrading an open Pon to an Added Kan. */
 export type ShouminkanTrigger =

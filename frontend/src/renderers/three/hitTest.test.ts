@@ -9,6 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { TableSnapshot } from '../contract';
 import { HAND, TILE } from '../layoutConstants';
 import { boardFixture } from './boardFixture';
 import {
@@ -19,7 +20,7 @@ import {
   projectToPixels,
 } from './boardLayout';
 import type { BoardLayout, BoardTile, CameraFrame } from './boardLayout';
-import { MIN_HIT_TARGET_PX, handTileCell, hitRects } from './hitTest';
+import { MIN_HIT_TARGET_PX, handBandRect, handTileCell, hitRects } from './hitTest';
 import type { ProjectedRect } from './hitTest';
 
 const DESKTOP = { widthPx: 1920, heightPx: 1080 };
@@ -172,6 +173,80 @@ describe('3D hit testing: projection', () => {
     const seatTwoRects = hitRects(seatTwo, seatTwoFrame, DESKTOP);
     expect(seatTwoRects.every((rect) => rect.seat === 2)).toBe(true);
     expect(seatTwoRects).toHaveLength(handTiles(seatTwo).length);
+  });
+});
+
+describe('3D hit testing: the lock-independent hand band (3D-H2)', () => {
+  it('is exactly the union of the interaction rects while unanswered', () => {
+    for (const viewport of [DESKTOP, PHONE]) {
+      const layout = board();
+      const frame = frameForAspect(
+        viewport.widthPx / viewport.heightPx,
+        layout,
+      );
+      const rects = hitRects(layout, frame, viewport);
+      const band = handBandRect(layout, frame, viewport);
+      expect(band).not.toBeNull();
+      const left = Math.min(...rects.map((rect) => rect.left));
+      const top = Math.min(...rects.map((rect) => rect.top));
+      const right = Math.max(...rects.map((rect) => rect.left + rect.width));
+      const bottom = Math.max(...rects.map((rect) => rect.top + rect.height));
+      expect(band?.left).toBeCloseTo(left, 1);
+      expect(band?.top).toBeCloseTo(top, 1);
+      expect(band?.width).toBeCloseTo(right - left, 1);
+      expect(band?.height).toBeCloseTo(bottom - top, 1);
+    }
+  });
+
+  it('still reports the band once the hand is answered', () => {
+    const layout = board();
+    const frame = frameForAspect(DESKTOP.widthPx / DESKTOP.heightPx, layout);
+    const unlocked = handBandRect(layout, frame, DESKTOP);
+    const locked = handBandRect(layout, frame, DESKTOP, { locked: true });
+    // `hitRects()` is empty when locked, deliberately; the anchor is not.
+    expect(hitRects(layout, frame, DESKTOP, { locked: true })).toEqual([]);
+    expect(locked).toEqual(unlocked);
+  });
+
+  it('covers every hand button with room for the locked hand’s result card', () => {
+    const layout = board();
+    const frame = frameForAspect(DESKTOP.widthPx / DESKTOP.heightPx, layout);
+    const band = handBandRect(layout, frame, DESKTOP);
+    for (const rect of hitRects(layout, frame, DESKTOP)) {
+      expect(band!.left).toBeLessThanOrEqual(rect.left + 0.01);
+      expect(band!.top).toBeLessThanOrEqual(rect.top + 0.01);
+      expect(band!.left + band!.width).toBeGreaterThanOrEqual(
+        rect.left + rect.width - 0.01,
+      );
+      expect(band!.top + band!.height).toBeGreaterThanOrEqual(
+        rect.top + rect.height - 0.01,
+      );
+    }
+  });
+
+  it('has no band before a stage size exists, or with no hand', () => {
+    const layout = board();
+    const frame = frameForAspect(DESKTOP.widthPx / DESKTOP.heightPx, layout);
+    expect(handBandRect(layout, frame, { widthPx: 0, heightPx: 0 })).toBeNull();
+
+    // A snapshot whose human seat holds no concealed tiles, no draw and no
+    // melds: nothing to project, so no anchor to place a panel against.
+    const fixture = boardFixture();
+    const handless: TableSnapshot = {
+      ...fixture,
+      seats: [
+        { ...fixture.seats[0], concealed: [], draw: null, melds: [] },
+        fixture.seats[1],
+        fixture.seats[2],
+        fixture.seats[3],
+      ],
+    };
+    const emptyLayout = layoutBoard(handless);
+    const emptyFrame = frameForAspect(
+      DESKTOP.widthPx / DESKTOP.heightPx,
+      emptyLayout,
+    );
+    expect(handBandRect(emptyLayout, emptyFrame, DESKTOP)).toBeNull();
   });
 });
 

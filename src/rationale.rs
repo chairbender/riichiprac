@@ -474,6 +474,7 @@ impl DamaReason {
             Self::HanemanPlus => "haneman_plus",
             Self::EarlyTurn => "early_turn",
             Self::ImprovingHand => "improving_hand",
+            Self::Honitsu => "honitsu",
         }
     }
 
@@ -563,6 +564,14 @@ impl DamaReason {
                     "at least six kinds of tiles that can improve the scores",
                 ),
             }),
+            Self::Honitsu => Some(RuleText {
+                rule: "The seven-pairs hand is already honitsu or chinitsu: the book's \
+                       second dama case, because the flush is worth enough without Riichi \
+                       and the declaration would warn the table.",
+                quote: "you have {\\jap honitsu} (Half Flush) or {\\jap chinitsu} (Full \
+                        Flush) {\\jap chiitoitsu}",
+                citation: ch7(CHIITOITSU_BOX, 359, "waiting for 4,5,6"),
+            }),
             Self::NoTanyao | Self::NoRedFiveWait | Self::NoSujiTrap => None,
         }
     }
@@ -586,7 +595,8 @@ impl DamaReason {
             | Self::Mangan
             | Self::HanemanPlus
             | Self::EarlyTurn
-            | Self::ImprovingHand => None,
+            | Self::ImprovingHand
+            | Self::Honitsu => None,
         }
     }
 }
@@ -900,6 +910,11 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
                 "It is only the {turn}th turn and the ready hand has at least six kinds \
                  of draws that raise its score or improve its wait."
             )
+        }
+        DamaReason::Honitsu => {
+            "The seven-pairs hand is a one-suit shape, so the flush alone is worth \
+             Mangan or more without Riichi."
+                .to_string()
         }
     }
 }
@@ -5771,6 +5786,7 @@ mod tests {
             DamaReason::HanemanPlus,
             DamaReason::EarlyTurn,
             DamaReason::ImprovingHand,
+            DamaReason::Honitsu,
         ];
         let absent = [
             DamaReason::NoTanyao,
@@ -7123,6 +7139,7 @@ mod tests {
             DamaReason::HanemanPlus,
             DamaReason::EarlyTurn,
             DamaReason::ImprovingHand,
+            DamaReason::Honitsu,
         ] {
             citations.push(reason.rationale().expect("positive reason").citation);
         }

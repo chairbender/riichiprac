@@ -4,6 +4,37 @@
   "updated_at": "2026-11-19T00:00:00Z",
   "packs": [
     {
+      "id": "replay.ch7-riichi-dama.2026-11",
+      "path": "replay.ch7-riichi-dama.2026-11-08cbeacac15f.json.gz",
+      "sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d",
+      "bytes": 2176750,
+      "scenario_count": 2846,
+      "lesson_ids": [
+        "chiitoitsu_riichi_vs_dama",
+        "dama_bad_wait",
+        "dama_expensive_hand",
+        "dama_genbutsu_wait",
+        "dama_improving_hand",
+        "riichi_judgement"
+      ],
+      "lesson_counts": {
+        "chiitoitsu_riichi_vs_dama": 151,
+        "dama_bad_wait": 982,
+        "dama_expensive_hand": 111,
+        "dama_genbutsu_wait": 119,
+        "dama_improving_hand": 57,
+        "riichi_judgement": 1426
+      },
+      "book_sections": [
+        "ch7.1",
+        "ch7.2",
+        "ch7.3"
+      ],
+      "licence": "CC-BY-4.0",
+      "requires_model": false,
+      "data_commercial_use": false
+    },
+    {
       "id": "replay.ch8-defense-multi-threat.2026-11",
       "path": "replay.ch8-defense-multi-threat.2026-11-15fe519c65df.json.gz",
       "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",

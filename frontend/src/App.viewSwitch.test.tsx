@@ -278,10 +278,14 @@ describe('App view switch (3D-14)', () => {
 
     const shell = document.querySelector('.app-shell--3d');
     expect(shell).not.toBeNull();
-    // The stage is the shell's only element child: nothing in the document
-    // flow above or below the scene.
-    expect(shell?.children).toHaveLength(1);
-    expect(shell?.firstElementChild?.classList.contains('table-3d')).toBe(true);
+    // The stage and the floating HUD are the shell's only element children, and
+    // both are `position: fixed`: nothing sits in the document flow above or
+    // below the scene (3D-H2's HudLayer is `inset: 0; pointer-events: none`).
+    expect([...(shell?.children ?? [])].map((child) => child.className)).toEqual([
+      'hud-root',
+      'table-3d',
+    ]);
+    expect(shell?.querySelector(':scope > .table-3d')).not.toBeNull();
     for (const selector of [
       '.app-header',
       '.hand-dock',

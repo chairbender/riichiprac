@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /home/kylehipke/workspaces/riichiprac-261119-171935/frontend
+
+ ✓ src/services/packLoader.q1.test.ts (1 test) 438ms
+   ✓ Q1 pipeline pack loader smoke > loads the audited pipeline pack through the runtime loader 437ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  23:27:51
+   Duration  777ms (transform 84ms, setup 0ms, collect 88ms, tests 438ms, environment 0ms, prepare 48ms)
+
