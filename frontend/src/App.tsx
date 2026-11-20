@@ -177,6 +177,13 @@ export const App = () => {
    */
   const tableView = useSettingsStore((state) => state.view);
   const setTableView = useSettingsStore((state) => state.setView);
+  /**
+   * Replay-first source preference (RF2), surfaced by the picker's source
+   * filter (RF3). `loadPuzzle` snapshots it when a deal starts, so a change
+   * applies to the next hand and can never re-run the first-hand effect.
+   */
+  const preferReplay = useSettingsStore((state) => state.preferReplay);
+  const setPreferReplay = useSettingsStore((state) => state.setPreferReplay);
   const [exportDescription, setExportDescription] = useState('');
   /**
    * 3D-11: the notice the 3D host handed back when it degraded. Keeping it in
@@ -900,6 +907,8 @@ export const App = () => {
       packStatus={packStatus}
       packCount={packManifest?.packs.length ?? 0}
       packError={packError}
+      preferReplay={preferReplay}
+      onPreferReplayChange={setPreferReplay}
       requireAgreement={requireAgreement}
       aiStatus={aiStatus}
       agreementHint={agreementHint}

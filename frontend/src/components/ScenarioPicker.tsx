@@ -2,13 +2,20 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { HOTSEAT_SCENARIO_ID, isHotseatOnly } from '../hotseat';
 import {
   ALL_SCENARIOS,
+  DEFAULT_SOURCE_FILTER,
   groupScenarios,
+  pickerScenarioRows,
   selectedScenarioIds,
   selectionLabel,
   setScenariosSelected,
   toggleScenario,
 } from '../scenarios';
-import type { ScenarioId, ScenarioOption, ScenarioSelection } from '../scenarios';
+import type {
+  ScenarioId,
+  ScenarioOption,
+  ScenarioSelection,
+  ScenarioSourceFilter,
+} from '../scenarios';
 import type { PackManifestStatus } from '../services/packLoader';
 
 interface ScenarioPickerProps {
@@ -21,9 +28,43 @@ interface ScenarioPickerProps {
   packStatus: PackManifestStatus;
   packCount: number;
   packError: string | null;
+  /**
+   * The replay-first default: true deals a covered lesson from its replay row.
+   * The Generated source filter turns it off, which is how a session opts into
+   * generated drills for the default pool.
+   */
+  preferReplay: boolean;
+  /** Apply the source filter's default-pool choice. */
+  onPreferReplayChange: (preferReplay: boolean) => void;
 }
 
 const PANEL_ID = 'scenario-pool-panel';
+
+/**
+ * The source filter's three states, in the order the rollout plan names them.
+ * Each title spells out what the filter lists; none of it names an answer.
+ */
+const SOURCE_FILTERS: Array<{
+  id: ScenarioSourceFilter;
+  label: string;
+  hint: string;
+}> = [
+  {
+    id: 'replay',
+    label: 'Replay',
+    hint: 'Replay rows where a lesson has a pack. A lesson with no replay row keeps its generated row so it stays reachable.',
+  },
+  {
+    id: 'generated',
+    label: 'Generated',
+    hint: 'Generated drills only, and the default pool deals them. Covered lessons keep a replay row one filter away.',
+  },
+  {
+    id: 'both',
+    label: 'Both',
+    hint: 'Every row: a covered lesson leads with its replay position and the generated drill follows as the opt-in alternative.',
+  },
+];
 
 /**
  * Header control for the scenario pool.
@@ -32,6 +73,12 @@ const PANEL_ID = 'scenario-pool-panel';
  * the Riichi Book 1 chapter/section each lesson teaches (published by the Rust
  * manifest), with a checkbox per lesson and a tri-state checkbox per group, so
  * a pool can be one lesson, a chapter section, or any hand-picked mix.
+ *
+ * The panel also carries the replay-first source model (RF3): a Source filter
+ * (Replay/Generated/Both) plus per-row source labels. A covered lesson leads
+ * with its replay row and trails its generated drill as the **GENERATED**
+ * opt-in; the Generated filter also switches the default pool to generated
+ * drills. Filtering changes the rows listed, never the ticks already made.
  *
  * Edits are staged in `draft` and only handed to the app when the user deals:
  * ticking six boxes should not generate six tables (or six Mortal forward
@@ -45,16 +92,42 @@ export const ScenarioPicker = ({
   packStatus,
   packCount,
   packError,
+  preferReplay,
+  onPreferReplayChange,
 }: ScenarioPickerProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ScenarioSelection>(selection);
+  /**
+   * Which source the panel lists. Session state, not part of the draft: picking
+   * a scenario must not reset it, and it survives the panel closing. A stored
+   * `preferReplay: false` opens straight on Generated, the state that matches
+   * the pool it produces.
+   */
+  const [sourceFilter, setSourceFilter] = useState<ScenarioSourceFilter>(
+    preferReplay ? DEFAULT_SOURCE_FILTER : 'generated',
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const groups = useMemo(() => groupScenarios(scenarios), [scenarios]);
+  const rows = useMemo(
+    () => pickerScenarioRows(scenarios, sourceFilter),
+    [scenarios, sourceFilter],
+  );
+  const rowById = useMemo(
+    () => new Map(rows.map((row) => [row.option.id, row])),
+    [rows],
+  );
+  const visibleScenarios = useMemo(
+    () => rows.map((row) => row.option),
+    [rows],
+  );
+  const groups = useMemo(
+    () => groupScenarios(visibleScenarios),
+    [visibleScenarios],
+  );
   const draftIds = useMemo(
-    () => new Set(selectedScenarioIds(draft, scenarios)),
-    [draft, scenarios],
+    () => new Set(selectedScenarioIds(draft, scenarios, preferReplay)),
+    [draft, scenarios, preferReplay],
   );
   const draftGroupCount = groups.filter((group) =>
     group.scenarios.some((scenario) => draftIds.has(scenario.id)),
@@ -109,7 +182,19 @@ export const ScenarioPicker = ({
   };
 
   const toggleGroup = (ids: ScenarioId[], selected: boolean) => {
-    setDraft(setScenariosSelected(scenarios, draft, ids, selected));
+    setDraft(
+      setScenariosSelected(scenarios, draft, ids, selected, preferReplay),
+    );
+  };
+
+  /**
+   * The Generated filter is the visible way to stop preferring replay for a
+   * covered lesson, so it also sets `preferReplay`; the other two keep replay
+   * as the default source. Ticks and the draft selection are untouched.
+   */
+  const changeSourceFilter = (next: ScenarioSourceFilter) => {
+    setSourceFilter(next);
+    onPreferReplayChange(next !== 'generated');
   };
 
   const selectedCount = draft.kind === 'all' ? null : draft.ids.length;
@@ -124,17 +209,19 @@ export const ScenarioPicker = ({
           } · ${draftGroupCount} section${draftGroupCount === 1 ? '' : 's'}`;
 
   /**
-   * Pack status line.
+   * Pack/source status line.
    *
-   * Replay is the default source for a lesson its pack covers (RF2), so this
-   * note must not call pack rows opt-in; a failure note from a body that could
-   * not be delivered is appended. RF3 replaces this with the Replay/Generated
-   * source filter's own description.
+   * It explains the RF3 source model: replay is the default where a lesson has
+   * enough reviewed bases, PACK rows deal that audited hand, the GENERATED row
+   * drills the same lesson, and the filter only changes which rows are listed.
+   * A failure note from a body that could not be delivered is appended.
    */
+  const sourceNote =
+    'PACK rows deal a real audited replay hand; GENERATED rows drill the same lesson with the generator. Replay is the default where a lesson has enough reviewed bases, and filtering changes the rows listed, not the ticks you already made.';
   const knownPackNote =
     packCount === 1
-      ? 'Replay pack: PACK lessons deal a real audited hand. A covered lesson is dealt by default; its generated row drills that lesson instead.'
-      : `${packCount} replay packs: PACK lessons deal a real audited hand. A covered lesson is dealt by default; its generated row drills that lesson instead.`;
+      ? `Replay pack: ${sourceNote}`
+      : `${packCount} replay packs: ${sourceNote}`;
 
   const packNote =
     packStatus === 'loading'
@@ -142,7 +229,7 @@ export const ScenarioPicker = ({
       : packStatus === 'error'
         ? `Replay packs unavailable: ${packError ?? 'unknown error'}`
         : packStatus === 'empty'
-          ? 'No replay packs are published yet.'
+          ? 'No replay packs are published yet, so every lesson stays generated.'
           : packError
             ? `${knownPackNote} ${packError}`
             : knownPackNote;
@@ -186,6 +273,28 @@ export const ScenarioPicker = ({
               {packNote}
             </p>
           </div>
+
+          <fieldset className="scenario-picker-source">
+            <legend className="scenario-picker-source-legend">Source</legend>
+            <div className="scenario-picker-source-options">
+              {SOURCE_FILTERS.map((filter) => (
+                <label
+                  className="scenario-picker-source-option"
+                  key={filter.id}
+                  title={filter.hint}
+                >
+                  <input
+                    type="radio"
+                    name="scenario-source-filter"
+                    value={filter.id}
+                    checked={sourceFilter === filter.id}
+                    onChange={() => changeSourceFilter(filter.id)}
+                  />
+                  <span>{filter.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <label className="scenario-picker-all">
             <input
@@ -232,54 +341,80 @@ export const ScenarioPicker = ({
                   </label>
 
                   <ul className="scenario-group-items">
-                    {group.scenarios.map((scenario) => (
-                      <li className="scenario-item" key={scenario.id}>
-                        <label className="scenario-item-label">
-                          <input
-                            type="checkbox"
-                            checked={draftIds.has(scenario.id)}
-                            onChange={() =>
-                              setDraft(
-                                toggleScenario(scenarios, draft, scenario.id),
-                              )
-                            }
-                          />
-                          <span
-                            className="scenario-item-name"
-                            title={scenario.description}
-                          >
-                            {scenario.label}
-                          </span>
-                          {scenario.requires_ai && (
-                            <span className="scenario-item-badge">AI</span>
-                          )}
-                          {scenario.pack && (
+                    {group.scenarios.map((scenario) => {
+                      const row = rowById.get(scenario.id);
+                      const className =
+                        row?.generatedAlternative
+                          ? 'scenario-item scenario-item-generated-alt'
+                          : 'scenario-item';
+                      return (
+                        <li className={className} key={scenario.id}>
+                          <label className="scenario-item-label">
+                            <input
+                              type="checkbox"
+                              checked={draftIds.has(scenario.id)}
+                              onChange={() =>
+                                setDraft(
+                                  toggleScenario(
+                                    scenarios,
+                                    draft,
+                                    scenario.id,
+                                    preferReplay,
+                                  ),
+                                )
+                              }
+                            />
                             <span
-                              className="scenario-item-badge"
-                              title={`Replay pack ${scenario.pack.packId}`}
+                              className="scenario-item-name"
+                              title={scenario.description}
                             >
-                              PACK
+                              {scenario.label}
                             </span>
-                          )}
-                        </label>
-                        <button
-                          type="button"
-                          className="scenario-item-only"
-                          onClick={() =>
-                            deal({ kind: 'selected', ids: [scenario.id] })
-                          }
-                          title={
-                            scenario.id === HOTSEAT_SCENARIO_ID
-                              ? 'Choose the AI Hotseat starting conditions'
-                              : `Deal only ${scenario.label}`
-                          }
-                        >
-                          {scenario.id === HOTSEAT_SCENARIO_ID
-                            ? 'Setup'
-                            : 'Only'}
-                        </button>
-                      </li>
-                    ))}
+                            {scenario.requires_ai && (
+                              <span className="scenario-item-badge">AI</span>
+                            )}
+                            {scenario.pack && (
+                              <span
+                                className="scenario-item-badge"
+                                title={`Replay pack ${scenario.pack.packId}${
+                                  scenario.pack.bases > 0
+                                    ? ` · ${scenario.pack.bases} reviewed base${
+                                        scenario.pack.bases === 1 ? '' : 's'
+                                      }`
+                                    : ''
+                                }`}
+                              >
+                                PACK
+                              </span>
+                            )}
+                            {row?.generatedAlternative && (
+                              <span
+                                className="scenario-item-badge scenario-item-badge-generated"
+                                title="Generated drill: the opt-in alternative to this lesson's replay position."
+                              >
+                                GENERATED
+                              </span>
+                            )}
+                          </label>
+                          <button
+                            type="button"
+                            className="scenario-item-only"
+                            onClick={() =>
+                              deal({ kind: 'selected', ids: [scenario.id] })
+                            }
+                            title={
+                              scenario.id === HOTSEAT_SCENARIO_ID
+                                ? 'Choose the AI Hotseat starting conditions'
+                                : `Deal only ${scenario.label}`
+                            }
+                          >
+                            {scenario.id === HOTSEAT_SCENARIO_ID
+                              ? 'Setup'
+                              : 'Only'}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               );

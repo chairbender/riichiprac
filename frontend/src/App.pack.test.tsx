@@ -188,15 +188,60 @@ describe('App replay-pack loading', () => {
     await user.click(trigger);
 
     // The committed manifest covers fold_to_riichi (731 bases), so the lesson
-    // has a replay default *and* keeps its generated row for drilling it.
+    // has a replay default *and* keeps its generated row for drilling it. All
+    // stands for the replay row now, so that is the ticked one; the generated
+    // row is the explicit opt-in and is marked as such.
     const replayBox = await screen.findByRole('checkbox', {
       name: /Fold to Riichi \(replay\)/i,
     });
     const generatedBox = screen.getByRole('checkbox', {
-      name: /^Fold to Riichi$/i,
+      name: /^Fold to Riichi GENERATED$/i,
     });
     expect(replayBox).not.toBe(generatedBox);
-    expect((generatedBox as HTMLInputElement).checked).toBe(true);
+    expect((replayBox as HTMLInputElement).checked).toBe(true);
+    expect((generatedBox as HTMLInputElement).checked).toBe(false);
+    expect(
+      within(generatedBox.closest('li') as HTMLElement).getByText('GENERATED'),
+    ).toBeTruthy();
+  });
+
+  it('deals generated hands from All once the Generated filter is chosen', async () => {
+    const user = userEvent.setup();
+    wasmMock.generatedJson = JSON.stringify(firstBase.state);
+    const calls = stubFetch();
+
+    render(<App />);
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        firstBase.state.hand_string,
+      );
+    });
+    await waitFor(() => {
+      expect(calls).toContain('/scenarios/manifest.json');
+    });
+
+    const trigger = await screen.findByTitle(
+      'Choose one lesson, all scenarios, or a pool to randomise between',
+    );
+    await user.click(trigger);
+    const panel = await screen.findByRole('dialog', { name: 'Scenario pool' });
+    await user.click(
+      within(panel).getByRole('radio', { name: 'Generated' }),
+    );
+    // The filter is the visible form of the RF2 setting.
+    expect(useSettingsStore.getState().preferReplay).toBe(false);
+    await user.click(within(panel).getByRole('button', { name: 'Cancel' }));
+
+    // The next hand comes from the generator: no pack body is fetched.
+    wasmMock.generatedJson = JSON.stringify(fold.state);
+    await user.click(screen.getAllByLabelText('Next scenario')[0]);
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState?.hand_string).toBe(
+        fold.state.hand_string,
+      );
+    });
+    expect(calls.filter((url) => url.endsWith('.json.gz'))).toEqual([]);
+    expect(useGameStore.getState().error).toBeNull();
   });
 
   it('deals the covered lesson from its replay row on the next hand', async () => {
