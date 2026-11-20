@@ -59,7 +59,9 @@
   left: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  /* The end cluster sits on the control row, level with the setup trigger,
+     which is under the brand line at the start. */
+  align-items: flex-end;
   gap: var(--hud-space);
   box-sizing: border-box;
   padding: 6px;
@@ -68,11 +70,30 @@
   pointer-events: none;
 }
 
+/*
+ * The start cluster: the app's name on the very top-left, the setup trigger
+ * under it. The brand's 18 px line and 4 px gap are the layout's
+ * `HUD_TOP_BAR_BRAND`/`_GAP` (pinned by `hudCss.test.ts`), so the bar's height
+ * and the trigger's rect below it are the boxes the browser paints.
+ */
 .hud-top-bar__start {
   display: flex;
-  align-items: center;
-  gap: var(--hud-space);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   margin-right: auto;
+}
+
+.hud-top-bar__brand {
+  margin: 0;
+  color: var(--hud-text);
+  font-size: var(--hud-text-md);
+  font-weight: 700;
+  line-height: 18px;
+  letter-spacing: 0.01em;
+  /* The one HUD text directly over the felt: a dark shadow under the line is
+     what keeps it legible over the lit green without painting a plate. */
+  text-shadow: 0 1px 3px rgba(5, 8, 13, 0.75);
 }
 
 .hud-top-bar__end {

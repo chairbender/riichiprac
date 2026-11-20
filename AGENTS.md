@@ -144,9 +144,10 @@ governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
   status cards, action bar, hand dock, plus the projected hand buttons and compass — is a
   **floating layer over the scene** (Z order, like a typical game HUD): the hand/draw buttons
   landed in 3D-08, the compass in 3D-09, targeting as `position: fixed` in 3D-H2, together with
-  the shell's top bar (**Next Scenario, full screen and — from 3D-H4 — the Setup trigger; no brand,
-  no scenario name**), its safe-area handling, the sheet primitive and the mounted full-screen
-  toggle. 3D-H3…H5 fill that shell (action rail, toasts, setup sheet, result card and verdict
+  the shell's top bar (**the app name "riichiprac" on the very top-left with the Setup trigger under it — from
+  3D-H4 — plus Next Scenario and full screen; no scenario name, no lesson label**), its safe-area handling,
+  the sheet primitive and the mounted full-screen toggle. 3D-H3…H5 fill that shell (action rail, toasts,
+  setup sheet, result card and verdict
   sheet). A full-screen
   toggle promotes the shell so the layer comes along. The stacked and top-down views keep their
   own layout, and leaving 3D restores it. See

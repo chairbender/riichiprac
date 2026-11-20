@@ -26,6 +26,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CompassRect } from '../contract';
 import { HudLayer } from './HudLayer';
 import type { HudLayerProps } from './HudLayer';
+import { HUD_GAP, topBarHeight } from './hudLayout';
 import { clearHudAnchors, publishHudAnchors } from './hudAnchors';
 
 const ANCHOR_OWNER = {};
@@ -115,7 +116,7 @@ describe('HudLayer: the shell and the top bar', () => {
     expect(container.querySelector('.app-shell > main.table-3d')).not.toBeNull();
   });
 
-  it('shows no title or scenario name, and no trigger when none is passed', () => {
+  it('puts the app name on the very top-left and no scenario name', () => {
     render(<Harness />);
     const bar = document.querySelector('.hud-top-bar');
     expect(bar).not.toBeNull();
@@ -123,24 +124,32 @@ describe('HudLayer: the shell and the top bar', () => {
     expect(screen.getByRole('button', { name: 'Full screen' })).toBeTruthy();
     expect(bar?.querySelectorAll('button')).toHaveLength(2);
 
-    // No identity in the 3D HUD: no brand, no lesson label, no heading.
-    expect(bar?.textContent).toBe('Next ScenarioFull screen');
-    expect(bar?.querySelector('h1')).toBeNull();
-    expect(bar?.textContent).not.toMatch(/riichiprac/);
+    // Identity is the app's name only (user request 2026-11-20), never a
+    // scenario or lesson label.
+    expect(bar?.querySelector('h1')?.textContent).toBe('riichiprac');
+    expect(bar?.textContent).toBe('riichipracNext ScenarioFull screen');
+    expect(bar?.textContent).not.toMatch(/Fold to Riichi/);
   });
 
-  it('mounts the setup trigger at the bar’s start, before Next (3D-H4)', () => {
+  it('mounts the setup trigger under the brand, before Next (3D-H4)', () => {
     render(<Harness setupTrigger={<button type="button">Setup</button>} />);
     const bar = document.querySelector('.hud-top-bar') as HTMLElement;
     const start = bar.querySelector('.hud-top-bar__start') as HTMLElement;
     const end = bar.querySelector('.hud-top-bar__end') as HTMLElement;
-    expect(start.textContent).toBe('Setup');
+    // The brand is first in the start cluster; the trigger is under it.
+    expect(start.textContent).toBe('riichipracSetup');
+    const brand = start.querySelector('.hud-top-bar__brand');
+    const setup = start.querySelector('button');
+    if (!brand || !setup) throw new Error('the start cluster is incomplete');
+    expect(
+      brand.compareDocumentPosition(setup) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(end.textContent).toBe('Next ScenarioFull screen');
     // The start cluster precedes the end cluster in DOM (and tab) order.
     expect(
       start.compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(bar.textContent).not.toMatch(/riichiprac/);
   });
 
   it('wires Next Scenario to the caller and honours its disabled state', () => {
@@ -292,7 +301,8 @@ describe('HudLayer: the hand panel slot', () => {
     rerender(<Harness toasts={<p role="status">Loading…</p>} />);
     const stack = document.querySelector('.hud-toast-root') as HTMLElement;
     expect(stack).not.toBeNull();
-    expect(stack.style.top).toBe(`${56 + 8}px`);
+    // Under the bar, which carries the brand line above its control row.
+    expect(stack.style.top).toBe(`${topBarHeight() + HUD_GAP}px`);
     expect(stack.textContent).toContain('Loading…');
   });
 });

@@ -27,6 +27,8 @@ import { frameForAspect, layoutBoard } from '../three/boardLayout';
 import { compassPlateRect, handBandRect, hitRects } from '../three/hitTest';
 import {
   HUD_ACTION_RAIL_HEIGHT,
+  HUD_TOP_BAR_BRAND,
+  HUD_TOP_BAR_BRAND_GAP,
   HUD_GAP,
   HUD_HAND_RAIL_HEIGHT,
   HUD_PANEL_ACTIONS_ONE_ROW,
@@ -261,7 +263,9 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
     { stage: GATE_STAGES[3], panel: 713, result: 693, sheetBottom: 749, clearance: 134 },
     { stage: GATE_STAGES[4], panel: 662, result: 642, sheetBottom: 698, clearance: 84 },
     { stage: GATE_STAGES[5], panel: 782, result: 762, sheetBottom: 818, clearance: 100 },
-    { stage: GATE_STAGES[6], panel: 874, result: 854, sheetBottom: 896, clearance: 81 },
+    // 9:16: the brand line made the bar taller, so the sheet's bottom is now
+    // the collapsed hint panel's top (910) rather than the 832 px cap.
+    { stage: GATE_STAGES[6], panel: 874, result: 854, sheetBottom: 910, clearance: 81 },
   ] as const;
 
   for (const golden of GOLDEN) {
@@ -537,7 +541,9 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
     const stage = { width: 1920, height: 1080 };
     const scene = sceneFor(stage, {});
     const plain = layoutFor(stage, scene, { slot: 'none', sheet: false, toasts: 0 });
-    expect(plain.topBar.height).toBe(56);
+    expect(plain.topBar.height).toBe(
+      HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP + HUD_TOP_BAR_CONTROL + 2 * 6,
+    );
     expect(plain.topBarPadding).toEqual({ top: 6, right: 6, bottom: 6, left: 6 });
 
     const notched = layoutFor(
@@ -547,7 +553,9 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
       { top: 44, right: 20, bottom: 34, left: 12 },
     );
     // 44 control + 6 bottom + max(6, 44) top.
-    expect(notched.topBar.height).toBe(94);
+    expect(notched.topBar.height).toBe(
+      HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP + HUD_TOP_BAR_CONTROL + 6 + 44,
+    );
     expect(notched.topBarPadding.top).toBe(44);
     expect(notched.topBarPadding.right).toBe(20);
     expect(notched.topBarPadding.bottom).toBe(6);
@@ -576,7 +584,7 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
       { slot: 'none', sheet: true, toasts: 0 },
     );
     expect(layout.sheet).not.toBeNull();
-    expect(layout.sheet!.top).toBe(64);
+    expect(layout.sheet!.top).toBe(layout.topBar.height + HUD_GAP);
     expect(layout.sheet!.top + layout.sheet!.height).toBeLessThanOrEqual(
       stage.height,
     );
@@ -588,7 +596,7 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
     const none = layoutFor(stage, scene, { slot: 'none', sheet: false, toasts: 0 });
     expect(none.toasts).toBeNull();
     const three = layoutFor(stage, scene, { slot: 'none', sheet: false, toasts: 3 });
-    expect(three.toasts?.top).toBe(56 + HUD_GAP);
+    expect(three.toasts?.top).toBe(three.topBar.height + HUD_GAP);
     expect(three.toasts?.width).toBe(512);
     // Three rows is taller than one; the cap is three (§2).
     const five = layoutFor(stage, scene, { slot: 'none', sheet: false, toasts: 5 });
@@ -723,7 +731,9 @@ describe('HUD layout: the setup trigger and the open sheet (3D-H4)', () => {
     });
     expect(layout.setupTrigger).toEqual({
       left: layout.topBarPadding.left,
-      top: layout.topBarPadding.top,
+      // Under the brand line: the very top-left is the app's name, not a
+      // control (user request 2026-11-20).
+      top: layout.topBarPadding.top + HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP,
       width: HUD_SETUP_TRIGGER_WIDTH,
       height: HUD_SETUP_TRIGGER_HEIGHT,
     });
@@ -746,7 +756,9 @@ describe('HUD layout: the setup trigger and the open sheet (3D-H4)', () => {
       { top: 44, right: 20, bottom: 34, left: 12 },
     );
     expect(notched.setupTrigger.left).toBe(12);
-    expect(notched.setupTrigger.top).toBe(44);
+    expect(notched.setupTrigger.top).toBe(
+      44 + HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP,
+    );
     expect(notched.setupTrigger.height).toBe(HUD_TOP_BAR_CONTROL);
   });
 

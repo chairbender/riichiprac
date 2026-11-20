@@ -253,15 +253,22 @@ describe('App 3D HUD mount (3D-H2)', () => {
     expect(screen.getByTestId('renderer-host')).toBeTruthy();
   });
 
-  it('replaces the 2D header with a top bar that has no brand or scenario name', async () => {
+  it('replaces the 2D header with a top bar that carries only the app name', async () => {
     const { container } = renderThree();
     await waitFor(() => expect(hostMock.props).not.toBeNull());
 
     expect(container.querySelector('.app-header')).toBeNull();
-    expect(screen.queryByRole('heading', { name: /riichiprac/i })).toBeNull();
+    // The name is the only identity (user request 2026-11-20), and it is an
+    // h1 at the bar's start with the setup trigger under it.
+    const brand = container.querySelector('.hud-top-bar__brand');
+    expect(brand?.tagName).toBe('H1');
+    expect(brand?.textContent).toBe('riichiprac');
+    expect(
+      container
+        .querySelector('.hud-top-bar__start')
+        ?.contains(brand as Node),
+    ).toBe(true);
     const bar = container.querySelector('.hud-top-bar');
-    expect(bar?.textContent).not.toMatch(/riichiprac/i);
-    // No lesson label either: a visible scenario name would hint at the answer.
     expect(bar?.textContent).not.toMatch(/Fold to Riichi/i);
     expect(screen.getByRole('button', { name: 'Next scenario' })).toBeTruthy();
   });

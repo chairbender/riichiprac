@@ -29,6 +29,17 @@ export const HUD_TOP_BAR_CONTROL = 44;
 export const HUD_TOP_BAR_PAD = 6;
 
 /**
+ * The brand line's height and the gap under it (user request 2026-11-20).
+ *
+ * The top bar's start cluster is a column: "riichiprac" on the very top-left,
+ * the setup trigger under it. The line height is fixed in `Hud.css`
+ * (`18px`, `--hud-text-md`) and pinned by `hudCss.test.ts`, so the bar's height
+ * and the trigger's rect below it are the boxes the browser paints.
+ */
+export const HUD_TOP_BAR_BRAND = 18;
+export const HUD_TOP_BAR_BRAND_GAP = 4;
+
+/**
  * The setup trigger's reserved box (3D-H4): the bar's start control. One
  * tap-height button at the bar's leading padding, reserved at `96 px` — the
  * width its label ("Setup") and the shared button padding need — and pinned in
@@ -151,7 +162,7 @@ export interface HudState {
 
 /** Everything `HudLayer` positions, plus the panel's anchor and clearances. */
 export interface HudLayout {
-  /** Full width, `44 + 6 + max(6, safeTop)` tall (§7.3). */
+  /** Full width, `brand + 44 + 6 + max(6, safeTop)` tall (§7.3). */
   readonly topBar: HudRect;
   /** The bar's padding, after the safe insets: `top = max(6, safeTop)`. */
   readonly topBarPadding: HudInsets;
@@ -240,7 +251,11 @@ function round(value: number): number {
 /** The top bar's height for these safe insets (§5/§7.3). */
 export function topBarHeight(insets: HudInsets = NO_INSETS): number {
   return (
-    HUD_TOP_BAR_CONTROL + HUD_TOP_BAR_PAD + Math.max(HUD_TOP_BAR_PAD, insets.top)
+    HUD_TOP_BAR_BRAND +
+    HUD_TOP_BAR_BRAND_GAP +
+    HUD_TOP_BAR_CONTROL +
+    HUD_TOP_BAR_PAD +
+    Math.max(HUD_TOP_BAR_PAD, insets.top)
   );
 }
 
@@ -372,13 +387,14 @@ export function hudLayout(
     left: round(Math.max(HUD_TOP_BAR_PAD, insets.left)),
   };
   /*
-   * The setup trigger is the bar's first control, so it starts at the bar's
-   * leading padding and keeps the control row's height. It is clamped to the
-   * stage so a degenerate viewport cannot produce a rect wider than the bar.
+   * The setup trigger is the bar's first *control*, under the brand line, so it
+   * starts at the leading padding plus the brand's line and gap, and keeps the
+   * control row's height. It is clamped to the stage so a degenerate viewport
+   * cannot produce a rect wider than the bar.
    */
   const setupTrigger = rect(
     topBarPadding.left,
-    topBarPadding.top,
+    topBarPadding.top + HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP,
     Math.min(
       HUD_SETUP_TRIGGER_WIDTH,
       Math.max(0, width - topBarPadding.left - topBarPadding.right),

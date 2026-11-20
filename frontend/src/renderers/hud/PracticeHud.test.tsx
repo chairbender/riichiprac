@@ -33,6 +33,7 @@ import { HudLayer } from './HudLayer';
 import { HudToastStack } from './ToastStack';
 import { buildHudToasts } from './toastModel';
 import { clearHudAnchors, publishHudAnchors } from './hudAnchors';
+import { HUD_GAP, topBarHeight } from './hudLayout';
 import { kanToggleTile } from '../../actions';
 import { handHintFor } from '../../handHint';
 import { useGameStore } from '../../store/useGameStore';
@@ -422,9 +423,9 @@ describe('3D practice HUD: messages are toasts over the scene', () => {
     const { container } = render(<PracticeHud />);
     const stack = container.querySelector('.hud-toast-root') as HTMLElement;
     expect(stack).not.toBeNull();
-    // The stack is the layout's rect: under the bar (56 + 8) and above the
-    // published hand band, which starts at 640.
-    expect(stack.style.top).toBe('64px');
+    // The stack is the layout's rect: under the bar (brand line + controls)
+    // and above the published hand band, which starts at 640.
+    expect(stack.style.top).toBe(`${topBarHeight() + HUD_GAP}px`);
     expect(parseFloat(stack.style.top) + parseFloat(stack.style.height)).toBeLessThan(
       BAND.top,
     );

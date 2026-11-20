@@ -9,10 +9,10 @@
  *
  * What it owns in H2:
  *
- * - the top bar: next hand and full screen, and — from 3D-H4 — the setup
- *   trigger at the bar's start. No scenario name and no `riichiprac` title
- *   (user decision 2026-11-19, §1.1); the setup trigger is the one front door
- *   to the setup sheet and the only app chrome the bar may grow (§3);
+ * - the top bar: the app's name ("riichiprac") on the very top-left with the
+ *   setup trigger under it (3D-H4), and next hand + full screen on the right.
+ *   Never a scenario or lesson name (user decision 2026-11-19, §1.1): a visible
+ *   lesson name is an answer hint;
  * - the one hand panel's slot (H3/H5 fill it), the toast root (H3) and the
  *   sheet root + `Sheet` primitive (H4/H5);
  * - the layout: `hudLayout()` from the live `handBandRect()`/`compassRect()`
@@ -288,8 +288,15 @@ export function HudLayer({
             paddingLeft: `${layout.topBarPadding.left}px`,
           }}
         >
-          {/* H4 mounts the setup trigger here; nothing else sits at the start. */}
-          <div className="hud-top-bar__start">{setupTrigger}</div>
+          {/*
+            * The identity is the app's name only, on the very top-left with the
+            * setup trigger beneath it (user request 2026-11-20). Never the
+            * scenario or lesson: a visible lesson name is an answer hint (§1.1).
+            */}
+          <div className="hud-top-bar__start">
+            <h1 className="hud-top-bar__brand">riichiprac</h1>
+            {setupTrigger}
+          </div>
           <div className="hud-top-bar__end">
             <NextScenarioButton onClick={onNextScenario} disabled={nextDisabled} />
             <FullscreenButton target={shellRef} />
