@@ -108,6 +108,9 @@ jobs:
       - name: Verify committed ch7 riichi/dama pack content
         run: node scripts/check-ch8-pack.mjs --dir frontend/dist/scenarios --chapter ch7 --allow-no-variants
 
+      - name: Verify committed ch5 value pack content
+        run: node scripts/check-ch8-pack.mjs --dir frontend/dist/scenarios --chapter ch5 --allow-no-variants
+
       - name: Verify pack bodies are served raw
         run: node scripts/check-pack-serving.mjs
 

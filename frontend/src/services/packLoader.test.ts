@@ -189,8 +189,9 @@ const fixtureBody = new Uint8Array(
 describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
     expect(packManifestUrl()).toBe('/scenarios/manifest.json');
-    expect(fixtureManifest.packs).toHaveLength(3);
+    expect(fixtureManifest.packs).toHaveLength(4);
     expect(fixtureManifest.packs.map((pack) => pack.id).sort()).toEqual([
+      'replay.ch5-values.2026-11',
       'replay.ch7-riichi-dama.2026-11',
       'replay.ch8-defense-multi-threat.2026-11',
       'replay.ch8-defense.2026-11',
@@ -236,6 +237,21 @@ describe('committed pack', () => {
     }
     expect(coverage.get('chiitoitsu_riichi_vs_dama')?.bases).toBe(151);
     expect(coverage.get('dama_improving_hand')?.bases).toBe(57);
+  });
+
+  it('makes the shipped ch5 lessons replay-default from the manifest alone', () => {
+    const coverage = lessonReplayCoverage(fixtureManifest);
+    const ch5Lessons = ['honitsu_decision', 'pinfu_head', 'chiitoi_vs_toitoi'];
+    for (const lesson of ch5Lessons) {
+      const record = coverage.get(lesson);
+      expect(record, lesson).toBeDefined();
+      expect(record?.covered, lesson).toBe(true);
+      expect(record?.packId, lesson).toBe('replay.ch5-values.2026-11');
+    }
+    expect(coverage.get('honitsu_decision')?.bases).toBe(1319);
+    expect(coverage.get('pinfu_head')?.bases).toBe(257);
+    // The ch5 tenpai lesson stays below the 40-base floor, so it has no row.
+    expect(coverage.get('sanshoku_pursuit')).toBeUndefined();
   });
 
   it('loads, verifies and decodes the real body, then serves it from cache', async () => {

@@ -15,6 +15,12 @@ The rules are chapter-scoped (`--chapter`):
   rejected because it is an offense drill, not a defense drill.
 * `ch7` (Q3) — the riichi/dama declaration lessons. Those decisions are tenpai
   by definition, so the ready-hand rule does not apply.
+* `ch5` (Q4) — the hand-building/value lessons. None of the shipped shapes is a
+  tenpai decision (`honitsu_decision` needs 1-2 shanten and refuses a discard
+  into tenpai, `chiitoi_vs_toitoi` is exactly 1-away, `pinfu_head` needs >= 2
+  shanten), so a ready hand is out of shape and rejected. `sanshoku_pursuit`
+  is the one ch. 5 tenpai lesson, but it is far below the coverage floor and is
+  not in the pack's lesson scope.
 
 For a large queue (Q2r2), `--verdicts-out FILE` writes one
 `riichiprac.review-verdicts` document that
@@ -46,8 +52,23 @@ CH7_LESSONS = {
     "dama_expensive_hand",
     "dama_improving_hand",
 }
+CH5_LESSONS = {
+    "honitsu_decision",
+    "pinfu_head",
+    "chiitoi_vs_toitoi",
+    "sanshoku_pursuit",
+}
 
 SCOPES = {
+    "ch5": {
+        "prefix": "ch5.",
+        "lessons": CH5_LESSONS,
+        "reject_ready_hand": True,
+        "note": (
+            "q4 mechanical review: stable ch5 book label, legal answer, "
+            "unique visible state, clean walk; ready hands are out of shape"
+        ),
+    },
     "ch7": {
         "prefix": "ch7.",
         "lessons": CH7_LESSONS,

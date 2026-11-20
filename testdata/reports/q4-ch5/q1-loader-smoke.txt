@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /home/kylehipke/workspaces/riichiprac-261119-2335/frontend
+
+ ✓ src/services/packLoader.q1.test.ts (1 test) 267ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  00:55:58
+   Duration  613ms (transform 80ms, setup 0ms, collect 81ms, tests 267ms, environment 0ms, prepare 76ms)
+

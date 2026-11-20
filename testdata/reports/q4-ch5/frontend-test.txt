@@ -1,0 +1,112 @@
+
+> frontend@0.0.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/kylehipke/workspaces/riichiprac-261119-2335/frontend
+
+ ✓ src/renderers/motionPreference.test.ts (5 tests) 11ms
+ ✓ src/renderers/capabilities.test.ts (37 tests) 58ms
+ ✓ src/components/AppControls.test.tsx (4 tests) 156ms
+ ✓ src/components/FullscreenButton.test.tsx (6 tests) 189ms
+ ✓ tools/review-queue/review-ui.test.mjs (11 tests) 411ms
+ ✓ src/scenarios.test.ts (60 tests) 39ms
+ ✓ src/renderers/three/tileMaterial.test.ts (37 tests) 37ms
+ ✓ src/App.renderer3d.test.tsx (1 test) 174ms
+ ✓ src/App.renderer3d.overlay.test.tsx (2 tests) 240ms
+ ✓ src/renderers/snapshot.test.ts (26 tests) 42ms
+ ✓ src/renderers/three/boardLayout.test.ts (37 tests) 922ms
+   ✓ 3D board layout: camera framing > keeps every tile inside the safe area at every aspect 411ms
+ ✓ src/renderers/three/reliefAssets.test.ts (22 tests) 535ms
+ ✓ src/App.renderer3d.degrade.test.tsx (2 tests) 461ms
+   ✓ App 3D degrade return (3D-11) > returns to the stored view, clears the query flag and keeps a dismissible notice 380ms
+ ✓ src/renderers/overlay.test.tsx (15 tests) 947ms
+ ✓ src/services/packLoader.test.ts (85 tests) 1043ms
+   ✓ committed pack > loads, verifies and decodes the real body, then serves it from cache 870ms
+ ✓ src/App.viewSwitch.test.tsx (8 tests) 718ms
+ ✓ src/renderers/three/tileGeometry.test.ts (18 tests) 166ms
+ ✓ src/renderers/layoutConstants.test.ts (22 tests) 13ms
+ ✓ src/renderers/three/shadows.test.ts (16 tests) 151ms
+ ✓ src/renderers/RendererHost.test.tsx (36 tests) 1577ms
+   ✓ RendererHost perf HUD (3D-13) > refreshes the printed numbers while the HUD stays open 665ms
+stdout | src/renderers/three/hero.test.ts > the 8-texel parallax budget at every supported aspect > stays inside the budget at every aspect
+3D-05 hero parallax bound (clamp 8 texels)
+2.333: hand 13.48° → 0.47 texels, pond 37.75° → 1.52 texels, wall 42.83° → 1.82 texels, back 0.00° → 0.00 texels
+1.778: hand 14.62° → 0.51 texels, pond 37.03° → 1.48 texels, wall 43.69° → 1.88 texels, back 0.00° → 0.00 texels
+1.500: hand 15.52° → 0.55 texels, pond 36.47° → 1.45 texels, wall 44.34° → 1.92 texels, back 0.00° → 0.00 texels
+1.333: hand 15.64° → 0.55 texels, pond 36.39° → 1.45 texels, wall 44.42° → 1.93 texels, back 0.00° → 0.00 texels
+1.000: hand 15.64° → 0.55 texels, pond 36.39° → 1.45 texels, wall 44.42° → 1.93 texels, back 0.00° → 0.00 texels
+0.750: hand 28.67° → 1.07 texels, pond 23.76° → 0.86 texels, wall 33.31° → 1.29 texels, back 0.00° → 0.00 texels
+0.563: hand 28.67° → 1.07 texels, pond 23.76° → 0.86 texels, wall 33.31° → 1.29 texels, back 0.00° → 0.00 texels
+
+stdout | src/renderers/three/hero.test.ts > the 8-texel parallax budget at every supported aspect > prints the strict board-wide worst case, the pose the hero set omits
+3D-05 strict board worst (frameForAspect): 1.33 meld-1-2 at 47.98° → 2.18 texels at the live scale (physical 8.72); hero view worst (same frame): 1.93
+
+ ✓ src/renderers/three/hero.test.ts (18 tests) 94ms
+ ✓ src/renderers/three/boardMesh.test.ts (11 tests) 93ms
+ ✓ src/components/ScenarioPicker.test.tsx (23 tests) 1890ms
+ ✓ src/renderers/compassOverlay.test.ts (9 tests) 178ms
+ ✓ tools/review-queue/review-core.test.mjs (16 tests) 28ms
+ ✓ src/renderers/three/probes.test.ts (14 tests) 72ms
+ ✓ src/renderers/three/motion.test.ts (14 tests) 109ms
+ ✓ src/renderers/three/hitTest.test.ts (10 tests) 59ms
+ ✓ src/scenarioHistory.test.ts (11 tests) 16ms
+ ✓ src/renderers/three/seamProbe.test.ts (7 tests) 35ms
+stdout | src/renderers/three/carveShadow.test.ts > the self-shadow on the committed `1p` carve > never shadows the open face, and darkens the groove floor by a bounded amount
+3D-10 self-shadow calibration (strength 0.45, bias 0.02, softness 0.35, reach clamp 6 px)
+hand: key 33.15°, reach 5.03 px · open face visibility 1.0000 · floor visibility 0.932 · carved pixels touched 18.3% · key lost 1.95%
+pond: key 35.03°, reach 5.39 px · open face visibility 1.0000 · floor visibility 0.918 · carved pixels touched 20.4% · key lost 2.34%
+wall: key 35.03°, reach 5.39 px · open face visibility 1.0000 · floor visibility 0.918 · carved pixels touched 20.4% · key lost 2.34%
+
+ ✓ src/renderers/three/carveShadow.test.ts (1 test) 155ms
+ ✓ src/renderers/three/lighting.test.ts (13 tests) 16ms
+ ✓ src/agreement.test.ts (15 tests) 15ms
+ ✓ src/renderers/three/cameraRig.test.ts (9 tests) 327ms
+ ✓ src/renderers/three/perf.test.ts (11 tests) 18ms
+ ✓ src/renderers/three/debugPath.test.ts (6 tests) 14ms
+ ✓ src/store/useSettingsStore.test.ts (9 tests) 216ms
+ ✓ src/types/verdict.test.ts (19 tests) 14ms
+ ✓ src/services/mortalClient.test.ts (8 tests) 18ms
+ ✓ src/renderers/three/glintProbe.test.ts (6 tests) 7ms
+stdout | src/renderers/three/carveReport.test.ts > the board’s carve bounds at every supported aspect > keeps both reaches inside their clamps
+3D-10 carve bounds (clamps: 8 parallax / 6 shadow texels)
+0.563: parallax 38.03° → 1.54 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+0.750: parallax 38.03° → 1.54 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+1.000: parallax 47.98° → 2.18 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+1.333: parallax 47.98° → 2.18 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+1.778: parallax 46.65° → 2.08 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+2.333: parallax 45.14° → 1.97 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+0.429: parallax 38.03° → 1.54 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+
+ ✓ src/renderers/three/carveReport.test.ts (5 tests) 110ms
+ ✓ src/stateFile.test.ts (7 tests) 17ms
+ ✓ src/hotseat.test.ts (9 tests) 14ms
+ ✓ src/renderers/three/compassPlate.test.ts (4 tests) 63ms
+ ✓ src/renderers/moduleBoundary.test.ts (6 tests) 21ms
+ ✓ src/renderers/three/felt.test.ts (5 tests) 203ms
+ ✓ src/actions.test.ts (10 tests) 13ms
+ ✓ src/seatOrder.test.ts (7 tests) 6ms
+ ✓ src/renderers/resolveTableMount.test.ts (8 tests) 16ms
+ ✓ src/renderers/three/hover.test.ts (5 tests) 18ms
+ ✓ src/App.pack.test.tsx (6 tests) 2131ms
+   ✓ App replay-pack loading > starts with the manifest only, then loads one pack body for a replay lesson 981ms
+   ✓ App replay-pack loading > deals the covered lesson from its replay row on the next hand 458ms
+ ↓ src/services/packLoader.q1.test.ts (1 test | 1 skipped)
+ ✓ src/callDecision.test.ts (5 tests) 14ms
+ ✓ src/meld.test.ts (8 tests) 6ms
+ ✓ src/renderers/three/sha256.test.ts (4 tests) 97ms
+ ✓ src/renderers/contract.test.ts (5 tests) 7ms
+ ✓ src/session.test.ts (6 tests) 13ms
+ ✓ src/renderers/three/drawCalls.test.ts (3 tests) 215ms
+ ✓ src/handHint.test.ts (6 tests) 4ms
+ ✓ src/display.test.ts (4 tests) 9ms
+ ✓ src/renderers/perfHud.test.ts (4 tests) 6ms
+ ✓ src/renderers/three/sticks.test.ts (11 tests) 1730ms
+   ✓ the carved pip > paints one red pip on a white body, with no end bands 1452ms
+ ✓ src/renderers/three/Scene.test.ts (3 tests) 5ms
+
+ Test Files  62 passed | 1 skipped (63)
+      Tests  811 passed | 1 skipped (812)
+   Start at  01:00:28
+   Duration  4.62s (transform 3.94s, setup 0ms, collect 14.62s, tests 15.99s, environment 6.83s, prepare 5.49s)
+

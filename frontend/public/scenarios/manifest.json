@@ -1,8 +1,33 @@
 {
   "schema": "riichiprac.scenario-pack-manifest",
   "version": 1,
-  "updated_at": "2026-11-19T00:00:00Z",
+  "updated_at": "2026-11-20T00:00:00Z",
   "packs": [
+    {
+      "id": "replay.ch5-values.2026-11",
+      "path": "replay.ch5-values.2026-11-5d0b01e6badb.json.gz",
+      "sha256": "5d0b01e6badb331b6771c239e50c4fac2659bbfcf338641199dc6bdb447f5864",
+      "bytes": 1176300,
+      "scenario_count": 1670,
+      "lesson_ids": [
+        "chiitoi_vs_toitoi",
+        "honitsu_decision",
+        "pinfu_head"
+      ],
+      "lesson_counts": {
+        "chiitoi_vs_toitoi": 94,
+        "honitsu_decision": 1319,
+        "pinfu_head": 257
+      },
+      "book_sections": [
+        "ch5.3",
+        "ch5.4",
+        "ch5.5"
+      ],
+      "licence": "CC-BY-4.0",
+      "requires_model": false,
+      "data_commercial_use": false
+    },
     {
       "id": "replay.ch7-riichi-dama.2026-11",
       "path": "replay.ch7-riichi-dama.2026-11-08cbeacac15f.json.gz",

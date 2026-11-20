@@ -1,0 +1,244 @@
+{
+  "schema": "riichiprac.variant-report",
+  "version": 1,
+  "generated_at": "2026-11-20T00:00:00Z",
+  "pack_id": "replay.ch5-values.2026-11",
+  "bases": 1745,
+  "variants_per_base": 1,
+  "attempts": 8455,
+  "preserved": 5744,
+  "shipped": 4881,
+  "withdrawn_disabled": 0,
+  "dropped_by_cap": 0,
+  "duplicate_states": 863,
+  "rejections": {
+    "answer_changed": 37,
+    "duplicate_state": 863,
+    "lesson_missing": 78,
+    "state_unreachable": 2442,
+    "transform_noop": 154
+  },
+  "pair_yield": [
+    {
+      "lesson": "chiitoi_vs_toitoi",
+      "transform": "seat_perm",
+      "attempted": 97,
+      "preserved": 58,
+      "ratio": 0.5979381,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 39
+      }
+    },
+    {
+      "lesson": "chiitoi_vs_toitoi",
+      "transform": "suit_perm",
+      "attempted": 97,
+      "preserved": 97,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "chiitoi_vs_toitoi",
+      "transform": "rank_mirror",
+      "attempted": 97,
+      "preserved": 97,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "chiitoi_vs_toitoi",
+      "transform": "wind_relabel",
+      "attempted": 97,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 97
+      }
+    },
+    {
+      "lesson": "chiitoi_vs_toitoi",
+      "transform": "red5_normalize",
+      "attempted": 97,
+      "preserved": 88,
+      "ratio": 0.9072165,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 51,
+        "transform_noop": 9
+      }
+    },
+    {
+      "lesson": "honitsu_decision",
+      "transform": "seat_perm",
+      "attempted": 1378,
+      "preserved": 830,
+      "ratio": 0.6023222,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 548
+      }
+    },
+    {
+      "lesson": "honitsu_decision",
+      "transform": "suit_perm",
+      "attempted": 1378,
+      "preserved": 1378,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "honitsu_decision",
+      "transform": "rank_mirror",
+      "attempted": 1378,
+      "preserved": 1298,
+      "ratio": 0.94194484,
+      "disabled": false,
+      "rejections": {
+        "answer_changed": 15,
+        "lesson_missing": 65
+      }
+    },
+    {
+      "lesson": "honitsu_decision",
+      "transform": "wind_relabel",
+      "attempted": 1378,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 1378
+      }
+    },
+    {
+      "lesson": "honitsu_decision",
+      "transform": "red5_normalize",
+      "attempted": 1378,
+      "preserved": 1198,
+      "ratio": 0.8693759,
+      "disabled": false,
+      "rejections": {
+        "answer_changed": 22,
+        "duplicate_state": 802,
+        "lesson_missing": 13,
+        "transform_noop": 145
+      }
+    },
+    {
+      "lesson": "pinfu_head",
+      "transform": "seat_perm",
+      "attempted": 270,
+      "preserved": 160,
+      "ratio": 0.5925926,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 10,
+        "state_unreachable": 110
+      }
+    },
+    {
+      "lesson": "pinfu_head",
+      "transform": "suit_perm",
+      "attempted": 270,
+      "preserved": 270,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "pinfu_head",
+      "transform": "rank_mirror",
+      "attempted": 270,
+      "preserved": 270,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "pinfu_head",
+      "transform": "wind_relabel",
+      "attempted": 270,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 270
+      }
+    }
+  ],
+  "disabled_pairs": [
+    {
+      "lesson": "chiitoi_vs_toitoi",
+      "transform": "wind_relabel",
+      "ratio": 0.0,
+      "min_yield": 0.5,
+      "attempted": 97,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "honitsu_decision",
+      "transform": "wind_relabel",
+      "ratio": 0.0,
+      "min_yield": 0.5,
+      "attempted": 1378,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "pinfu_head",
+      "transform": "wind_relabel",
+      "ratio": 0.0,
+      "min_yield": 0.5,
+      "attempted": 270,
+      "reviewed": false,
+      "reason": "below_threshold"
+    }
+  ],
+  "cap_limited": [],
+  "effective_cap": 8,
+  "cap_cause": "per_base",
+  "min_yield": 0.5,
+  "label_kinds": {
+    "book": 4881
+  },
+  "labels": {
+    "cached": 0,
+    "evaluated": 0,
+    "retried": 0
+  },
+  "share": {
+    "bases": 1745,
+    "variants": 4881,
+    "pack_scenarios": 6626,
+    "variant_share": 0.73664355,
+    "largest_base": {
+      "base": "replay.ch5-values.2026-11-001",
+      "scenarios": 5
+    },
+    "largest_base_share": 0.00075460307,
+    "transform_families": [
+      "rank_mirror",
+      "red5_normalize",
+      "seat_perm",
+      "suit_perm"
+    ],
+    "by_family": {
+      "rank_mirror": 1665,
+      "red5_normalize": 433,
+      "seat_perm": 1038,
+      "suit_perm": 1745
+    },
+    "by_chain": {
+      "rank_mirror": 1665,
+      "red5_normalize": 433,
+      "seat_perm": 1038,
+      "suit_perm": 1745
+    }
+  },
+  "workers": 14,
+  "wall_time_ms": 58722,
+  "notes": [
+    "queue: 1745 base(s) from `/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch5-values.2026-11/review-queue.jsonl`; 0 held-out item(s) skipped; 0 reviewer-rejected item(s) skipped; 0 unusable item(s)"
+  ],
+  "errors": []
+}
