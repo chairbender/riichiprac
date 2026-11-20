@@ -161,8 +161,11 @@
 /*
  * One tile button. Its position and size are the renderer's projection; the
  * face is painted by the canvas underneath, so the button is only a hit target
- * and a focus ring. A hover/focus tint is a state cue, never a move: 3D-12 owns
- * the lift, and these rects stay fixed.
+ * and a focus ring. **The lift is the only hover cue**: a hovered tile rises
+ * (3D-12) and nothing is painted over the face, because a translucent box over
+ * the artwork read as a stray light patch rather than a highlight (user request
+ * 2026-11-20). Keyboard focus still gets its ring, so the 3D view keeps the
+ * 2D views' visible-focus behaviour.
  */
 .renderer-3d-tile {
   position: absolute;
@@ -174,10 +177,6 @@
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
-}
-
-.renderer-3d-tile:hover {
-  background: rgba(207, 224, 255, 0.08);
 }
 
 .renderer-3d-tile:focus-visible {

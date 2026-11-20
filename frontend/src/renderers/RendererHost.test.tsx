@@ -273,6 +273,29 @@ describe('RendererHost module boundary', () => {
   });
 });
 
+describe('RendererHost hover cue', () => {
+  const css = readFileSync(
+    join(process.cwd(), 'src/renderers/RendererHost.css'),
+    'utf8',
+  ).replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('paints nothing on a hovered tile: the lift is the only hover cue', () => {
+    // A translucent box over the face read as a stray light patch on the tile;
+    // it was removed at the user's request (2026-11-20).
+    expect(css).not.toMatch(/\.renderer-3d-tile:hover\s*\{/);
+    // The base button stays a bare hit target: no fill of its own.
+    expect(css).toMatch(
+      /\.renderer-3d-tile\s*\{[^}]*background:\s*transparent\s*;/,
+    );
+  });
+
+  it('keeps the keyboard focus ring, so focus is still visible', () => {
+    expect(css).toMatch(
+      /\.renderer-3d-tile:focus-visible\s*\{[^}]*outline:\s*2px solid/,
+    );
+  });
+});
+
 describe('RendererHost lifecycle', () => {
   it('mounts one decoration canvas named by a hidden heading, then disposes', async () => {
     const state = snapshot(3);

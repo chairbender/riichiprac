@@ -1676,9 +1676,11 @@ reference aspect clears 44 px on both axes). The overlay's DOM order is
 the click path has no renderer in it. `TableRenderer.setHoverTile(tile | null)`
 is the seam the overlay calls once per hover/focus change (and with `null` when
 the hovered button disappears); `Scene` responds by raising that tile by half a
-tile height (14 mm) along world +Y, on top of the button's CSS tint, without
-moving the button — see §9 decision 8. Reduced motion suppresses the lift but
-never the clear, and the overlay's rects always come from the un-lifted pose.
+tile height (14 mm) along world +Y, without moving the button — see §9
+decision 8. Nothing is painted over the face: the lift is the only hover cue
+(user request 2026-11-20), while keyboard focus keeps its ring. Reduced motion
+suppresses the lift but never the clear, and the overlay's rects always come
+from the un-lifted pose.
 The overlay is the first floating-layer element: absolutely positioned over the
 full-window stage, `pointer-events: none` except for its buttons.
 
@@ -2904,12 +2906,17 @@ in 3D-08 and 3D-S1 respectively, and are equally binding.
    **toggle** are the 3D HUD chain's (3D-H2 owns the shell and mounts the
    toggle). The stacked and top-down views keep their existing layout
    throughout.
-8. **Hover lift: half a tile height, on top of the tint** (added 2026-11-19, in
-   3D-08). A hovered or focused hand/draw tile rises by
+8. **Hover lift: half a tile height, with nothing painted over the face**
+   (added 2026-11-19, in 3D-08; tint removed 2026-11-20). A hovered or focused
+   hand/draw tile rises by
    `TILE.heightUnits / 2` = 14 mm along world +Y; the DOM button keeps its
-   projected rect and its CSS hover/focus tint, so the pointer target never
-   moves. This supersedes the ≤ 4 mm figure in §3D-12, which keeps the deal-in
-   and the event seam. Reduced motion suppresses the lift (never the clear).
+   projected rect, so the pointer target never moves. This supersedes the ≤ 4 mm
+   figure in §3D-12, which keeps the deal-in and the event seam. Reduced motion
+   suppresses the lift (never the clear). **Update (user request 2026-11-20):**
+   the button's `rgba(207, 224, 255, 0.08)` hover background was removed — over
+   the carved face it read as a stray light box, not a highlight — so the lift is
+   the only hover cue. Keyboard focus keeps its `:focus-visible` ring, which is
+   what preserves the 2D views' visible-focus behaviour.
 9. **POM step counts are measurements, not estimates, and they stand**
    (added 2026-11-19, in 3D-S1). `high` 12 / `balanced` 8 / `compat` 0 are
    confirmed on the machine described in §2.8: 12 steps costs +0.1 to +1.2 ms
