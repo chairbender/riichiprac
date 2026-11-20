@@ -738,13 +738,16 @@ export const App = () => {
    */
   const threeRevisionRef = useRef(0);
   const [threeRevision, setThreeRevision] = useState(0);
+  const bumpThreeRevision = useCallback(() => {
+    threeRevisionRef.current += 1;
+    setThreeRevision(threeRevisionRef.current);
+  }, []);
   useEffect(() => {
     // Only the opt-in 3D view pays for this: the standard views never read a
     // revision, so they must not re-render because of one.
     if (!gameState || tableMount.kind !== 'three') return;
-    threeRevisionRef.current += 1;
-    setThreeRevision(threeRevisionRef.current);
-  }, [gameState, tableMount.kind]);
+    bumpThreeRevision();
+  }, [gameState, tableMount.kind, bumpThreeRevision]);
 
   /*
    * `?preview=sticks` (3D-09) is a visual-review aid, not game state: it marks
@@ -754,6 +757,16 @@ export const App = () => {
    */
   const previewSticks =
     tableMount.kind === 'three' && tableMount.query.preview === 'sticks';
+
+  /*
+   * `?preview=deal` (3D-12) is the deal-in's review aid, in the same spirit as
+   * `?preview=sticks`: it adds a control that re-cuts the *current* hand so the
+   * bounded deal-in can be watched repeatedly before 3D-14 mounts the Next
+   * Scenario chrome over the scene. Only the revision moves; the game state,
+   * the answer and the 2D views never see it.
+   */
+  const previewDeal =
+    tableMount.kind === 'three' && tableMount.query.preview === 'deal';
 
   const threeSnapshot = useMemo(() => {
     if (!gameState || tableMount.kind !== 'three') return null;
@@ -929,6 +942,18 @@ export const App = () => {
             <p className="status-msg" role="status">
               Loading table…
             </p>
+          )}
+
+          {/* 3D-12's review aid: `?renderer=3d&preview=deal` only. */}
+          {previewDeal && threeSnapshot && (
+            <button
+              type="button"
+              className="deal-preview"
+              onClick={bumpThreeRevision}
+              title="Review aid: re-cut the current hand to watch the bounded deal-in. The game state does not change."
+            >
+              Replay deal-in (preview)
+            </button>
           )}
         </main>
       </div>
