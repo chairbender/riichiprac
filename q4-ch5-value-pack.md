@@ -133,6 +133,19 @@ raise every quota proportionally; this run trades pack size for the quota mix
 the selector was configured for, and every lesson still has hundreds (or 94)
 bases of real variety.
 
+> **Correction (2026-11-20, task 261120-0843).** The quota mix was not the
+> binding limit. The stable-book pool is replay-clustered: the 3,000 stable
+> labels sit in 1,096 games, and 712 of those games hold two or more. Under
+> `--max-per-replay 2` that pool tops out at 1,808 bases, and the held-out split
+> (150, drawn before selection) plus the 18 exact duplicates account for the
+> observed 1,745 — the family quotas were met (book 904/900, coverage 452/450,
+> placement 150/150) and the final fill was already allowed to exceed them. The
+> selector now treats the per-replay cap like the section/kind/turn caps: a
+> last-resort fill relaxes it when the remaining pool has nothing else to offer
+> and records `source_replay_relaxed`, so a re-run with `--size 3000` can reach
+> the pack room instead of stopping at 1,745. See `replay-miner-operations.md`
+> (`--max-per-replay`). This shipped pack was not re-selected.
+
 The thinnest lesson, `chiitoi_vs_toitoi`, supplied 97 selected bases (120 stable
 labels in the corpus, 114 candidates); the section/kind caps did not starve it.
 

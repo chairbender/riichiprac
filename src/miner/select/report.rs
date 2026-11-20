@@ -112,6 +112,11 @@ pub struct SelectionReport {
     pub dedupe: DedupeStats,
     /// Scenarios selected beyond a diversity cap after the relaxed fill.
     pub cap_relaxed: u64,
+    /// Scenarios selected beyond the per-replay cap by the last-resort fill,
+    /// because every remaining candidate came from a replay already at its
+    /// maximum.
+    #[serde(default)]
+    pub source_replay_relaxed: u64,
     /// Slots filled after the quota round (open slots plus the relaxed fill).
     pub relaxed_fill: u64,
     /// The held-out split.
@@ -220,8 +225,8 @@ impl SelectionReport {
         ));
         if self.relaxed_fill > 0 {
             out.push_str(&format!(
-                "  relaxed fill: {} slot(s) after the quota round, {} beyond a cap\n",
-                self.relaxed_fill, self.cap_relaxed
+                "  relaxed fill: {} slot(s) after the quota round, {} beyond a cap, {} beyond a per-replay cap\n",
+                self.relaxed_fill, self.cap_relaxed, self.source_replay_relaxed
             ));
         }
 

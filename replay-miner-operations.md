@@ -1064,7 +1064,14 @@ rejected (`out_of_scope`, `scope_not_stable_book`).
 `--extracted-only` drops replay files that have no `decisions` rows before the
 walk (a 999-file data root may hold only a few hundred extracted games).
 `--max-per-replay N` caps one source game's contribution, so adjacent turns
-cannot look like repeats. `--workers N` (default `0`) uses every available core;
+cannot look like repeats. Like the section/kind/turn caps, it is a
+**crowding-out guard**, not a mix rule: the quota round and the strict fills
+respect it, but if the pack still has room and every remaining candidate comes
+from a replay already at its maximum, the last-resort fill takes the best of
+them rather than shipping short. The report counts those slots as
+`source_replay_relaxed` (and notes how many attempts the cap blocked), so the
+variety cost is visible. A corpus-family cap is never relaxed that way.
+`--workers N` (default `0`) uses every available core;
 `--progress` prints phase/file progress to stderr. The selection passes are
 parallelised per replay file and merged in file order, so the report and pack
 are deterministic for a given worker count.
