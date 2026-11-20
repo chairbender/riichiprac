@@ -967,6 +967,57 @@ H2 landed the shell exactly as specified above. The facts H3–H5 build on:
   Next Scenario control is the real one, so the deal-in is one tap away. The
   `preview` query value is `sticks | null` only.
 
+### As built (3D-H3, 2026-11-20)
+
+The playing state is in the floating panel. This is what the next units build on.
+
+- **Files.** `renderers/hud/{ActionRail.tsx, actionRail.ts, HandRail.tsx,
+  handRail.ts, ToastStack.tsx, toastModel.ts}` plus `hudLayout.ts`'s row state
+  and the shared extraction `components/CallToggles.tsx`. `components/HandDock.tsx`
+  now renders `CallToggles`, `actions.kanToggleTile()` and
+  `handHint.handHintFor()` instead of its own copies, so the two shells cannot
+  drift. `App.tsx` changed only at the 3D mount seam.
+- **One hand.** The rail and the hint row render no tile control at all — in 3D
+  the only hand buttons are 3D-08's projected ones. `PracticeHud.test.tsx`
+  composes the real overlay with the real HUD and asserts exactly one button per
+  concealed tile plus the draw, that the rail adds none, and that Tab reaches the
+  rail's controls before the hand's buttons. It also proves the armed path: the
+  rail's toggles call the store's `toggleRiichi`/`toggleKan`, the projected tile
+  click calls the store's `selectTile`, and the answer arrives as `riichi`/`kan`
+  with no renderer in between.
+- **The panel's rows are layout.** `hudLayout()` now returns `handRail` and
+  `actionRail` (one or two rows) beside the panel, from the committed `8/24/4/44`
+  inner geometry; `hudAtRestRects()` lists them as `hand rail` and `action rail`
+  (`action rail n` when wrapped), so the collision matrix checks each row. The
+  state gained `slot: 'hint'`: a plain discard lesson shows the 40 px hint-only
+  panel, and an answered hand falls back to it until H5's result card lands.
+  `HudLayer` treats a null `actionRail` as absent for the same reason.
+- **The rail measures its wrap.** The action row's real height depends on the
+  stage width, so `ActionRail` observes its own content box and reports `1` or
+  `2` rows (`actionRail.railRowsForHeight`); `App` passes that as `actionRows`,
+  and `hudLayout()` turns it into the 84/128 px panel. No second layout path.
+- **Messages are toasts.** `toastModel.buildHudToasts()` is the priority list
+  (error, file error, imported description, file notice, loading status), capped
+  at three, and `ToastStack` renders each as `role="alert"`/`role="status"` with
+  a Dismiss control only where one was asked for. The 3D stage now holds the
+  scene and nothing in flow: App's `statusMessage` and `error` no longer render
+  as `.status-msg`/`.error-msg` siblings of the canvas.
+- **Departs from the draft task text, per §4.** The tile-less rail renders the
+  hint and the Mortal chip only: `AnswerSummary` is H5's result card and Next is
+  the top bar's single control, so a second summary or Next button would be a
+  duplicate control. The chip is informational here; H5 wraps it in the button
+  that opens the verdict sheet (the one thing left from "Peek survives").
+- **Collision result.** The matrix runs the seven gate aspects and two phone
+  rows × six hand states × answered/unanswered × `none`/`hint`/`actions ×1`/
+  `actions ×2`/`result`, on the real projection, with 2 toasts at rest. Every
+  row is at least `8 px` clear of the hand band and the compass, and the wrapped
+  rail still docks below the hand at 9:16 with a four-meld kan hand. The
+  hint-only panel's compass clearance is the one-row panel's plus `44 px`, so it
+  cannot be worse than the `32 px` H2 measured.
+- **Not done here.** The verdict sheet and result card (H5) and the setup sheet
+  (H4). The rail's chip has no action until H5; nothing else in the rail is
+  inert.
+
 ---
 
 ## 10. Non-goals

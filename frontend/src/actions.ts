@@ -4,6 +4,7 @@ import type {
   CorrectActionType,
   GameState,
   PlayerState,
+  TargetAction,
 } from './types/game';
 
 const CORRECT_ACTION_TYPES: CorrectActionType[] = [
@@ -161,6 +162,36 @@ export function findKanCandidateTile(player: PlayerState): string | null {
   }
 
   return null;
+}
+
+/**
+ * The tile whose Call Kan toggle this hand shows, or null.
+ *
+ * The rule is shared by the 2D hand dock and the 3D HUD's action rail (3D-H3) so
+ * the two views cannot disagree about when the call exists:
+ *
+ * - an AI drill (`availableActions` supplied) answers through its action list,
+ *   never through a call toggle;
+ * - only a Kan lesson offers the call, even though any hand can hold four
+ *   copies — the question is whether the puzzle asks about it.
+ */
+export function kanToggleTile(
+  player: PlayerState,
+  options: {
+    /** Non-discard actions for an AI scenario; undefined for legacy lessons. */
+    readonly availableActions?: AiActionInfo[];
+    /**
+     * The state's target action: the lesson kind, not the answer. The push/fold
+     * lesson derives its target from `correct_action`, so naming it here can
+     * never leak an answer — it is only used to decide whether this lesson owns
+     * the Kan toggle.
+     */
+    readonly targetAction?: TargetAction;
+  },
+): string | null {
+  if (options.availableActions !== undefined) return null;
+  if (options.targetAction !== 'Kan') return null;
+  return findKanCandidateTile(player);
 }
 
 /** Collapse a red-five discard action onto its base tile for matching. */

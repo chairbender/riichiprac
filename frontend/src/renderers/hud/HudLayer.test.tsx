@@ -182,17 +182,44 @@ describe('HudLayer: the hand panel slot', () => {
     expect(screen.getByRole('button', { name: 'Next scenario' })).toBeTruthy();
   });
 
-  it('anchors the panel to the published band, 8 px above the hand', () => {
+  it('anchors a hint-only panel to the published band, 8 px above the hand', () => {
     render(<Harness hintRow={<span>Discard 9m</span>} />);
     const panel = document.querySelector('.hud-panel') as HTMLElement;
     expect(panel).not.toBeNull();
-    // 600 - 8 - 84 (hint row + action row), 36rem wide and centred.
-    expect(panel.style.top).toBe('508px');
+    // 600 - 8 - 40: the hint row alone, 36rem wide and centred (H3).
+    expect(panel.style.top).toBe('552px');
     expect(panel.style.left).toBe('224px');
     expect(panel.style.width).toBe('576px');
+    expect(panel.style.height).toBe('40px');
+    expect(panel.dataset.slot).toBe('hint');
+    expect(panel.textContent).toContain('Discard 9m');
+  });
+
+  it('reserves the action row only when the rail is mounted (H3)', () => {
+    const { rerender } = render(
+      <Harness
+        hintRow={<span>hint</span>}
+        actionRail={<button type="button">Call Riichi</button>}
+      />,
+    );
+    let panel = document.querySelector('.hud-panel') as HTMLElement;
+    // 600 - 8 - 84 (hint row + action row), and both rows are mounted.
+    expect(panel.style.top).toBe('508px');
     expect(panel.style.height).toBe('84px');
     expect(panel.dataset.slot).toBe('actions');
-    expect(panel.textContent).toContain('Discard 9m');
+    expect(panel.querySelector('.hud-hand-rail')?.textContent).toContain('hint');
+    expect(panel.querySelector('.hud-action-rail')?.textContent).toContain(
+      'Call Riichi',
+    );
+
+    // An explicit null is an empty rail: unmounted, not reserved (§7.1).
+    rerender(
+      <Harness hintRow={<span>hint</span>} actionRail={null} />,
+    );
+    panel = document.querySelector('.hud-panel') as HTMLElement;
+    expect(panel.dataset.slot).toBe('hint');
+    expect(panel.style.height).toBe('40px');
+    expect(panel.querySelector('.hud-action-rail')).toBeNull();
   });
 
   it('gives the result card the fixed 104 px slot and the panel replaces both rows', () => {
@@ -214,12 +241,12 @@ describe('HudLayer: the hand panel slot', () => {
   it('follows a new projection instead of caching the old one', () => {
     render(<Harness hintRow={<span>hint</span>} />);
     expect((document.querySelector('.hud-panel') as HTMLElement).style.top).toBe(
-      '508px',
+      '552px',
     );
 
     publish({ left: 300, top: 700, width: 400, height: 60 }, COMPASS);
     expect((document.querySelector('.hud-panel') as HTMLElement).style.top).toBe(
-      '608px',
+      '652px',
     );
   });
 

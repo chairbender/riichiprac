@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const wasmMock = vi.hoisted(() => ({
   generatedJson: '{}',
@@ -78,6 +78,8 @@ vi.mock('./renderers/RendererHost', () => ({
 
 import { App } from './App';
 import { useGameStore } from './store/useGameStore';
+import { clearHudAnchors, publishHudAnchors } from './renderers/hud/hudAnchors';
+import type { GameState, PlayerState } from './types/game';
 
 const scenariosDir = join(process.cwd(), 'public', 'scenarios');
 const manifest = JSON.parse(readFileSync(join(scenariosDir, 'manifest.json'), 'utf8')) as {
@@ -89,8 +91,73 @@ const fixture = JSON.parse(
 const hand = fixture.scenarios[0];
 if (!hand) throw new Error('fixture pack has no scenarios');
 
-function renderThree() {
-  wasmMock.generatedJson = JSON.stringify(hand.state);
+const HUMAN: PlayerState = {
+  seat: 0,
+  name: 'You',
+  is_human: true,
+  wind: 'East',
+  score: 25000,
+  // A callable quad, so a Kan lesson would offer the toggle too.
+  hand: ['1m', '1m', '1m', '1m', '2p', '3p', '4p', '5s', '6s', '7s', '2z', '3z'],
+  draw: '9p',
+  red_fives: [],
+  discards: [],
+  melds: [],
+  is_riichi: false,
+  riichi_discard_index: null,
+};
+
+function otherPlayer(seat: 1 | 2 | 3): PlayerState {
+  return {
+    ...HUMAN,
+    seat,
+    name: `P${seat}`,
+    is_human: false,
+    hand: ['1m', '1m', '1m', '1m', '1m', '1m', '1m', '1m', '1m', '1m'],
+    draw: null,
+    red_fives: [],
+  };
+}
+
+/**
+ * A call lesson that also offers Riichi: both shells must render the same call
+ * actions *and* the same two call toggles for it.
+ */
+function callState(overrides: Partial<GameState> = {}): GameState {
+  return {
+    category: 'call_pon_or_pass',
+    target_action: 'Call',
+    correct_action: { type: 'pass' },
+    call_offer: { action: 'Pon', label: 'Pon 5z', tile: '5z' },
+    decision: { kind: 'react_to_discard', from: 1, tile: '5z' },
+    riichi_triggers: [],
+    dama_reasons: [],
+    shouminkan_triggers: [],
+    hand_string: HUMAN.hand.join(''),
+    tiles: [...HUMAN.hand, HUMAN.draw].filter(
+      (tile): tile is string => tile !== null,
+    ),
+    shanten: 1,
+    is_agari: false,
+    decompositions_count: 1,
+    ukeire_tiles: [],
+    ukeire_total: 0,
+    round_wind: 'East',
+    hand_number: 1,
+    honba: 0,
+    riichi_sticks: 0,
+    dora_indicators: [],
+    ura_dora_indicators: [],
+    tiles_remaining: 60,
+    current_turn: 1,
+    can_riichi: true,
+    players: [HUMAN, otherPlayer(1), otherPlayer(2), otherPlayer(3)],
+    ...overrides,
+  };
+}
+
+function renderThree(state: unknown = hand.state) {
+  wasmMock.generatedJson = JSON.stringify(state);
   window.history.replaceState(null, '', '?renderer=3d');
   vi.stubGlobal(
     'fetch',
@@ -99,6 +166,38 @@ function renderThree() {
     }),
   );
   return render(<App />);
+}
+
+/** The stacked view, dealt the same state, for the drift comparisons. */
+function renderStacked(state: unknown) {
+  wasmMock.generatedJson = JSON.stringify(state);
+  window.history.replaceState(null, '', '/');
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw new Error('offline in test');
+    }),
+  );
+  return render(<App />);
+}
+
+/** One control's comparable surface: accessible name, pressed, disabled, words. */
+interface Control {
+  readonly label: string;
+  readonly pressed: string | null;
+  readonly disabled: boolean;
+  readonly text: string;
+}
+
+function controls(view: ParentNode, selector: string): Control[] {
+  return [...view.querySelectorAll<HTMLButtonElement>(selector)].map(
+    (element) => ({
+      label: element.getAttribute('aria-label') ?? '',
+      pressed: element.getAttribute('aria-pressed'),
+      disabled: element.disabled,
+      text: (element.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    }),
+  );
 }
 
 afterEach(() => {
@@ -172,5 +271,134 @@ describe('App 3D HUD mount (3D-H2)', () => {
 
     expect(container.querySelector('.hud-root')).toBeNull();
     expect(container.querySelector('.hud-top-bar')).toBeNull();
+  });
+});
+
+describe('App 3D practice HUD (3D-H3)', () => {
+  /*
+   * The HUD anchors come from the scene in the browser, but `RendererHost` is
+   * mocked here, so this file supplies the projection the panel positions
+   * against. The values only need to be a legal band; nothing in these tests
+   * depends on the pixels.
+   */
+  const ANCHOR_OWNER = {};
+
+  beforeEach(() => {
+    publishHudAnchors(ANCHOR_OWNER, {
+      handBand: { left: 400, top: 640, width: 200, height: 60 },
+      compass: null,
+    });
+  });
+
+  afterEach(() => {
+    clearHudAnchors(ANCHOR_OWNER);
+  });
+
+  it('mounts the hint row and the action rail, and no 2D hand dock', async () => {
+    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+
+    expect(container.querySelector('.hand-dock')).toBeNull();
+    expect(container.querySelector('.hand-tile-button')).toBeNull();
+    const rail = container.querySelector('.hud-action-rail');
+    const hint = container.querySelector('.hud-hand-rail__hint');
+    expect(rail).not.toBeNull();
+    expect(hint).not.toBeNull();
+    if (!rail || !hint) throw new Error('the hand panel mounts both rows');
+    // The rail is above the hand in the panel: hint row first, then the actions.
+    expect(
+      hint.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('words the same state exactly as the stacked view does', async () => {
+    const state = callState();
+    const stacked = renderStacked(state);
+    await waitFor(() =>
+      expect(stacked.container.querySelector('.hand-dock-label')).not.toBeNull(),
+    );
+    const stackedHint = stacked.container.querySelector('.hand-dock-label')
+      ?.textContent;
+    cleanup();
+
+    const three = renderThree(state);
+    await waitFor(() =>
+      expect(three.container.querySelector('.hud-hand-rail__hint')).not.toBeNull(),
+    );
+    expect(
+      three.container.querySelector('.hud-hand-rail__hint')?.textContent,
+    ).toBe(stackedHint);
+  });
+
+  it('renders the dock’s call toggles and action bar unchanged, in the rail', async () => {
+    const state = callState();
+    const stacked = renderStacked(state);
+    await waitFor(() =>
+      expect(stacked.container.querySelector('.call-toggles')).not.toBeNull(),
+    );
+    const dockToggles = controls(stacked.container, '.call-toggles button');
+    const dockActions = controls(stacked.container, '.action-bar button');
+    cleanup();
+
+    const three = renderThree(state);
+    await waitFor(() =>
+      expect(three.container.querySelector('.call-toggles')).not.toBeNull(),
+    );
+    expect(controls(three.container, '.hud-action-rail .call-toggles button')).toEqual(
+      dockToggles,
+    );
+    expect(controls(three.container, '.hud-action-rail .action-bar button')).toEqual(
+      dockActions,
+    );
+    // Order is the dock's own: the call actions, then the toggles.
+    const rail = three.container.querySelector('.hud-action-rail');
+    const groups = [...(rail?.querySelectorAll('.action-bar, .call-toggles') ?? [])];
+    expect(groups.map((group) => group.className)).toEqual([
+      'action-bar',
+      'call-toggles',
+    ]);
+  });
+
+  it('turns a deal error into a HUD toast, not a block in the scene', async () => {
+    wasmMock.generatedJson = '{}';
+    window.history.replaceState(null, '', '?renderer=3d');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline in test');
+      }),
+    );
+    const { container } = render(<App />);
+
+    await waitFor(() =>
+      expect(container.querySelector('.hud-toast--error')).not.toBeNull(),
+    );
+    const toast = container.querySelector('.hud-toast--error') as HTMLElement;
+    expect(toast.getAttribute('role')).toBe('alert');
+    expect(toast.closest('.hud-toast-root')).not.toBeNull();
+    // Nothing in the stage's flow: the scene keeps the whole window.
+    const stage = container.querySelector('main.table-3d') as HTMLElement;
+    expect(stage.querySelector('.status-msg')).toBeNull();
+    expect(stage.querySelector('.error-msg')).toBeNull();
+    expect(stage.querySelector('.hud-toast-root')).toBeNull();
+  });
+
+  it('keeps loading status in a toast while the table is being dealt', async () => {
+    wasmMock.generatedJson = JSON.stringify(callState());
+    window.history.replaceState(null, '', '?renderer=3d');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline in test');
+      }),
+    );
+    const { container } = render(<App />);
+    // The first paint is the loading state: the store starts `isLoading`.
+    expect(container.querySelector('.hud-toast--status')?.textContent).toBe(
+      'Loading table…',
+    );
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+    // Once the deal lands the status toast is gone.
+    expect(container.querySelector('.hud-toast--status')).toBeNull();
   });
 });

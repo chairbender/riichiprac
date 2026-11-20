@@ -2982,6 +2982,19 @@ Next Scenario and full screen only, and no 2D header is mounted in 3D. The
 as-built details (the anchor seam, the safe-area probe and the nested-layer
 marker) that H3–H5 depend on.
 
+**Landed: 3D-H3 (2026-11-20).** The hand panel's two rows and the toast stack
+are in: `ActionRail` (the shared `ActionBar` plus the extracted `CallToggles`),
+`HandRail` (the live-region hint from the shared `handHintFor` and the
+pre-answer Mortal chip), and `buildHudToasts`/`ToastStack`. `App.tsx`'s 3D
+branch passes them into `HudLayer` and no longer renders status/error blocks in
+the stage's flow. `hudLayout()` gained the `hint` slot, the per-row rects and
+their collision entries, and the rail reports its own 1/2-row wrap. One hand:
+the rail renders no tile control, and the composition test asserts one button
+per hand tile plus the draw, the armed riichi/kan submit through the store and
+rail-then-hand Tab order. `3d_hud.md` §9 records the as-built facts and the one
+deliberate departure from the draft task text (no `AnswerSummary` or Next in the
+tile-less rail; they are H5's result card and H2's top bar).
+
 **Rules binding all five units.**
 
 - **One hand.** The projected DOM buttons from 3D-08 are the only hand controls;

@@ -1,6 +1,6 @@
-import { findKanCandidateTile } from '../actions';
-import { formatTileForDisplay, sortHandForDisplay } from '../display';
-import { handHint } from '../handHint';
+import { kanToggleTile } from '../actions';
+import { sortHandForDisplay } from '../display';
+import { handHintFor } from '../handHint';
 import { handTileLabel } from '../handTileLabel';
 import type { SubmittedAnswer } from '../store/useGameStore';
 import type { AiActionInfo, AiEvaluation } from '../types/ai';
@@ -12,9 +12,8 @@ import type { PlayerState, TargetAction } from '../types/game';
 import type { DualGrade } from '../types/verdict';
 import { bookAcceptedTiles, mortalRecommendedTile } from '../types/verdict';
 import { AnswerSummary } from './AnswerSummary';
-import { KanIcon } from './KanIcon';
+import { CallToggles } from './CallToggles';
 import { NextScenarioButton } from './NextScenarioButton';
-import { RiichiStick } from './RiichiStick';
 import { Tile } from './Tile';
 
 interface HandDockProps {
@@ -84,11 +83,8 @@ export function HandDock({
   const isAnswered = grade !== null;
   const isAiScenario = availableActions !== undefined;
   // Only a Kan lesson offers the call: any hand can hold four copies, but only
-  // these puzzles ask about them.
-  const kanTile =
-    isAiScenario || targetAction !== 'Kan'
-      ? null
-      : findKanCandidateTile(player);
+  // these puzzles ask about them. Both shells share the rule (`kanToggleTile`).
+  const kanTile = kanToggleTile(player, { availableActions, targetAction });
 
   const bookTiles = bookAcceptedTiles(grade?.book ?? null);
   // The drill has no book column, so its selected-tile mark comes from Mortal.
@@ -99,12 +95,16 @@ export function HandDock({
 
   // Never derive this from `targetAction`: the push/fold lesson sets it from
   // the correct answer, so naming the action here would give the answer away.
-  const hint = handHint({
+  // The 3D HUD's hand rail calls the same `handHintFor`, so the two views cannot
+  // word the same state differently.
+  const hint = handHintFor({
+    player,
     isAnswered,
     canDiscard,
     callKan,
     callRiichi,
-    kanTileLabel: kanTile && formatTileForDisplay(kanTile),
+    availableActions,
+    targetAction,
   });
 
   // Mortal's per-tile probabilities are a spoiler until the answer exists (or
@@ -122,67 +122,23 @@ export function HandDock({
     }
   }
 
-  // The Call Kan toggle is a decision in its own right: surface Mortal's
-  // probability for the kan rather than only the discard badges on the tiles.
-  const kanProbability =
-    !isAiScenario && kanTile && revealMortal
-      ? aiEvaluation?.evaluations.find((action) => action.action === 'Kan')
-          ?.probability
-      : undefined;
-
   return (
     <section className="hand-dock" aria-label="Your hand">
       {isAnswered && grade ? (
         <AnswerSummary grade={grade} onDetails={onShowVerdict} />
       ) : (
-        !isAiScenario &&
-        (canRiichi || kanTile) && (
-          <div className="call-toggles">
-            {canRiichi && (
-              <button
-                type="button"
-                className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
-                onClick={onToggleRiichi}
-                disabled={isAnswered}
-                aria-pressed={callRiichi}
-                aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
-              >
-                <RiichiStick className="riichi-toggle-stick" />
-                <span className="riichi-toggle-label">Call Riichi</span>
-                <span className="riichi-toggle-state">
-                  {callRiichi ? 'ON' : 'OFF'}
-                </span>
-              </button>
-            )}
-
-            {kanTile && (
-              <button
-                type="button"
-                className={`kan-toggle${callKan ? ' kan-toggle--active' : ''}`}
-                onClick={onToggleKan}
-                disabled={isAnswered}
-                aria-pressed={callKan}
-                aria-label={`Call Kan toggle for ${formatTileForDisplay(
-                  kanTile,
-                )}, currently ${callKan ? 'on' : 'off'}`}
-              >
-                <KanIcon className="kan-toggle-icon" />
-                <span className="kan-toggle-label">Call Kan</span>
-                <span className="kan-toggle-tile">
-                  {formatTileForDisplay(kanTile)}
-                </span>
-                {kanProbability !== undefined && (
-                  <span
-                    className="kan-toggle-probability"
-                    aria-label={`Mortal rates Kan ${formatProbability(kanProbability)}`}
-                  >
-                    {formatProbability(kanProbability)}
-                  </span>
-                )}
-                <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
-              </button>
-            )}
-          </div>
+        !isAiScenario && (
+          <CallToggles
+            canRiichi={canRiichi}
+            kanTile={kanTile}
+            callRiichi={callRiichi}
+            callKan={callKan}
+            disabled={isAnswered}
+            evaluation={aiEvaluation}
+            revealMortal={revealMortal}
+            onToggleRiichi={onToggleRiichi}
+            onToggleKan={onToggleKan}
+          />
         )
       )}
 

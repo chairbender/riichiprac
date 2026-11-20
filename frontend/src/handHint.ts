@@ -9,6 +9,12 @@
  * wording; everything else reads the same neutral instruction whatever the
  * correct answer is.
  */
+
+import { kanToggleTile } from './actions';
+import { formatTileForDisplay } from './display';
+import type { AiActionInfo } from './types/ai';
+import type { PlayerState, TargetAction } from './types/game';
+
 export interface HandHintInput {
   /** True once a grade exists for the submitted answer. */
   isAnswered: boolean;
@@ -50,4 +56,43 @@ export function handHint({
     return 'Tap a tile to discard, or arm Call Kan';
   }
   return 'Tap a tile to discard';
+}
+
+/** Everything the two shells already know about the hand, in one place. */
+export interface HandHintStateInput {
+  readonly player: PlayerState;
+  readonly isAnswered: boolean;
+  readonly canDiscard: boolean;
+  readonly callRiichi: boolean;
+  readonly callKan: boolean;
+  /** Non-discard actions for an AI scenario; undefined for legacy lessons. */
+  readonly availableActions?: AiActionInfo[];
+  /** The lesson kind, used only to decide whether a Kan call is offered. */
+  readonly targetAction?: TargetAction;
+}
+
+/**
+ * The hint line for a whole hand state (3D-H3).
+ *
+ * The stacked/top-down `HandDock` and the 3D HUD's hand rail both call this, so
+ * the two views cannot drift: the Kan-callable tile is derived by the same
+ * `kanToggleTile` rule the toggle itself uses, and the wording by `handHint`.
+ */
+export function handHintFor({
+  player,
+  isAnswered,
+  canDiscard,
+  callRiichi,
+  callKan,
+  availableActions,
+  targetAction,
+}: HandHintStateInput): string {
+  const kanTile = kanToggleTile(player, { availableActions, targetAction });
+  return handHint({
+    isAnswered,
+    canDiscard,
+    callKan,
+    callRiichi,
+    kanTileLabel: kanTile ? formatTileForDisplay(kanTile) : null,
+  });
 }
