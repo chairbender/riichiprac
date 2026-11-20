@@ -32,4 +32,15 @@ export default tseslint.config(
       globals: { ...globals.node, ...globals.browser },
     },
   },
+  {
+    // The Q2r2 scenario-review tool is a standalone browser page (no build
+    // step) plus its vitest files. Lint it as browser ESM.
+    files: ['tools/**/*.mjs'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser, ...globals.node },
+    },
+  },
 )

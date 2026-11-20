@@ -36,14 +36,15 @@ use riichiprac::miner::variant::{
 };
 use riichiprac::miner::{
     AssemblyLimits, AssemblyOptions, AuditOptions, CLASSIFIER_VERSION, DEFAULT_GENERATOR_COMMIT,
-    DEFAULT_MAX_HOSTED_BYTES, DEFAULT_PACK_SIZE, DataRoot, FamilyFilter, GAMES_FILE_NAME,
-    HostOptions, MANIFEST_FILE_NAME, PackAudit, PackAuditContext, PackBudget, PackError,
-    PackFinding, PackFindingCode, PackId, PublishProfile, QPointCalibration, ReviewOptions,
-    SelectionConfig, SelectionOptions, TriggerConfig, TriggerFilter, TriggerSampleOptions,
-    TriggerSampleReport, audit_pack_dir, audit_summary, fixture_games, fixture_pack, latest_pack,
-    load_manifest, open_miner_db, pack_report, publish_hosted, publish_pack, read_pack, read_queue,
-    render_pack_report, review_queue, run_assembly, run_selection, run_trigger_sample,
-    selection_paths, utc_iso8601, write_games_atomic,
+    DEFAULT_MAX_HOSTED_BYTES, DEFAULT_PACK_SIZE, DataRoot, DispositionVerdict, FamilyFilter,
+    GAMES_FILE_NAME, HostOptions, MANIFEST_FILE_NAME, PackAudit, PackAuditContext, PackBudget,
+    PackError, PackFinding, PackFindingCode, PackId, PublishProfile, QPointCalibration,
+    ReviewFilter, ReviewOptions, ReviewStatus, SelectionConfig, SelectionOptions, TriggerConfig,
+    TriggerFilter, TriggerSampleOptions, TriggerSampleReport, audit_pack_dir, audit_summary,
+    fixture_games, fixture_pack, latest_pack, load_manifest, open_miner_db, pack_report,
+    publish_hosted, publish_pack, read_pack, read_queue, render_pack_report, review_queue,
+    run_assembly, run_selection, run_trigger_sample, selection_paths, utc_iso8601,
+    write_games_atomic,
 };
 
 #[derive(Debug, Parser)]
@@ -422,6 +423,46 @@ enum Command {
         /// Note recorded on every new disposition.
         #[arg(long, value_name = "TEXT")]
         note: Option<String>,
+
+        /// Only lessons in this list (repeatable or comma-separated).
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        lesson: Vec<String>,
+
+        /// Only sections with this prefix, e.g. `ch8` or `ch8.2` (repeatable).
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        section: Vec<String>,
+
+        /// Only items from these source replay families (repeatable).
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        family: Vec<String>,
+
+        /// Only these turn buckets (`early`, `mid`, `late`) or table turns.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        turn: Vec<String>,
+
+        /// Only these disposition states (`pending`, `accepted`, `rejected`).
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        status: Vec<String>,
+
+        /// Draw a deterministic sample of N filtered items.
+        #[arg(long, value_name = "N")]
+        sample: Option<usize>,
+
+        /// Seed for `--sample` (default `q2r2`; the browser view shares it).
+        #[arg(long, value_name = "TEXT")]
+        seed: Option<String>,
+
+        /// Show at most N rows after filtering and sampling.
+        #[arg(long, value_name = "N")]
+        limit: Option<usize>,
+
+        /// Apply this verdict to the shown selection; needs a filter and --note.
+        #[arg(long, value_name = "VERDICT")]
+        bulk_verdict: Option<String>,
+
+        /// Write the shown selection as a `riichiprac.review-verdicts` document.
+        #[arg(long, value_name = "FILE")]
+        verdicts_out: Option<PathBuf>,
 
         /// List every item with its verdict.
         #[arg(long)]
@@ -900,12 +941,42 @@ fn main() -> ExitCode {
             reject,
             verdicts,
             note,
+            lesson,
+            section,
+            family,
+            turn,
+            status,
+            sample,
+            seed,
+            limit,
+            bulk_verdict,
+            verdicts_out,
             list,
             show,
             dry_run,
             json,
         } => run_review_command(
-            &root, queue, pack, held_out, &accept, &reject, verdicts, note, list, show, dry_run,
+            &root,
+            queue,
+            pack,
+            held_out,
+            &accept,
+            &reject,
+            verdicts,
+            note,
+            &lesson,
+            &section,
+            &family,
+            &turn,
+            &status,
+            sample,
+            seed,
+            limit,
+            bulk_verdict,
+            verdicts_out,
+            list,
+            show,
+            dry_run,
             json,
         ),
         command => {
@@ -1616,6 +1687,16 @@ fn run_review_command(
     reject: &[String],
     verdicts: Option<PathBuf>,
     note: Option<String>,
+    lesson: &[String],
+    section: &[String],
+    family: &[String],
+    turn: &[String],
+    status: &[String],
+    sample: Option<usize>,
+    seed: Option<String>,
+    limit: Option<usize>,
+    bulk_verdict: Option<String>,
+    verdicts_out: Option<PathBuf>,
     list: bool,
     show: Option<String>,
     dry_run: bool,
@@ -1652,6 +1733,27 @@ fn run_review_command(
             }
         };
     }
+    let mut statuses = Vec::with_capacity(status.len());
+    for raw in status {
+        match ReviewStatus::parse(raw) {
+            Some(parsed) => statuses.push(parsed),
+            None => {
+                eprintln!(
+                    "mine_replays review: `{raw}` is not a status (pending, accepted, rejected)"
+                );
+                return ExitCode::from(2);
+            }
+        }
+    }
+    let bulk_verdict = match bulk_verdict.as_deref() {
+        None => None,
+        Some("accepted") => Some(DispositionVerdict::Accepted),
+        Some("rejected") => Some(DispositionVerdict::Rejected),
+        Some(other) => {
+            eprintln!("mine_replays review: `{other}` is not a verdict (accepted, rejected)");
+            return ExitCode::from(2);
+        }
+    };
     let report = match review_queue(&ReviewOptions {
         queue: path,
         accept: accept.to_vec(),
@@ -1659,6 +1761,18 @@ fn run_review_command(
         verdicts,
         note,
         dry_run,
+        filter: ReviewFilter {
+            lessons: lesson.to_vec(),
+            sections: section.to_vec(),
+            families: family.to_vec(),
+            turns: turn.to_vec(),
+            statuses,
+        },
+        sample,
+        seed: seed.unwrap_or_else(|| ReviewOptions::DEFAULT_SEED.to_string()),
+        limit,
+        bulk_verdict,
+        verdicts_out,
     }) {
         Ok(report) => report,
         Err(err) => {
@@ -2244,6 +2358,26 @@ mod tests {
             "verdicts.json",
             "--note",
             "ambiguous",
+            "--lesson",
+            "fold_to_riichi,kabe_one_chance",
+            "--section",
+            "ch8",
+            "--family",
+            "mortal_mirror",
+            "--turn",
+            "late",
+            "--status",
+            "pending",
+            "--sample",
+            "20",
+            "--seed",
+            "q2r2-cli",
+            "--limit",
+            "5",
+            "--bulk-verdict",
+            "accepted",
+            "--verdicts-out",
+            "out.json",
             "--list",
         ])
         .expect("review parses");
@@ -2255,6 +2389,16 @@ mod tests {
                 reject,
                 verdicts,
                 note,
+                lesson,
+                section,
+                family,
+                turn,
+                status,
+                sample,
+                seed,
+                limit,
+                bulk_verdict,
+                verdicts_out,
                 list,
                 ..
             } => {
@@ -2270,6 +2414,22 @@ mod tests {
                     Some(std::path::Path::new("verdicts.json"))
                 );
                 assert_eq!(note.as_deref(), Some("ambiguous"));
+                assert_eq!(
+                    lesson,
+                    vec!["fold_to_riichi".to_string(), "kabe_one_chance".to_string()]
+                );
+                assert_eq!(section, vec!["ch8".to_string()]);
+                assert_eq!(family, vec!["mortal_mirror".to_string()]);
+                assert_eq!(turn, vec!["late".to_string()]);
+                assert_eq!(status, vec!["pending".to_string()]);
+                assert_eq!(sample, Some(20));
+                assert_eq!(seed.as_deref(), Some("q2r2-cli"));
+                assert_eq!(limit, Some(5));
+                assert_eq!(bulk_verdict.as_deref(), Some("accepted"));
+                assert_eq!(
+                    verdicts_out.as_deref(),
+                    Some(std::path::Path::new("out.json"))
+                );
                 assert!(list);
             }
             other => panic!("expected the review command, got {other:?}"),

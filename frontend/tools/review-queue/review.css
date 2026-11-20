@@ -1,0 +1,242 @@
+:root {
+  color-scheme: light dark;
+  --border: #8884;
+  --muted: #777;
+  --accept: #2f7d32;
+  --reject: #a12622;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 1rem;
+  line-height: 1.4;
+}
+
+.page-header h1,
+.review-header h1 {
+  font-size: 1.3rem;
+  margin: 0 0 0.25rem;
+}
+
+.page-hint,
+.review-hint,
+#load-status {
+  margin: 0.25rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+#load-status[data-kind="error"] {
+  color: var(--reject);
+}
+
+.load-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.review-view {
+  margin-top: 1rem;
+}
+
+.review-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.review-filters h2 {
+  font-size: 1rem;
+  margin: 0;
+  width: 100%;
+}
+
+.filter-field,
+.filter-sample label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.filter-status {
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.filter-status legend {
+  font-size: 0.8rem;
+  padding: 0 0.2rem;
+}
+
+.filter-status label {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.filter-sample {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.filter-sample h3 {
+  font-size: 0.85rem;
+  margin: 0;
+  width: 100%;
+}
+
+.review-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .review-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.review-queue,
+.review-report {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.review-report:focus {
+  outline: 2px solid #4a90d9;
+  outline-offset: -2px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.25rem 0.35rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+tbody tr.selected {
+  background: #4a90d91f;
+}
+
+.queue-id {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #4a90d9;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+td.hand {
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  border-radius: 0.6rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.badge-accepted {
+  color: var(--accept);
+  border-color: var(--accept);
+}
+
+.badge-rejected {
+  color: var(--reject);
+  border-color: var(--reject);
+}
+
+.report-answer {
+  font-weight: 600;
+}
+
+.report-context,
+.report-note {
+  font-size: 0.9rem;
+}
+
+.table-snapshot {
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+}
+
+.provenance {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.15rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.provenance dt {
+  color: var(--muted);
+}
+
+.provenance dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.verdict-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.verdict-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1 1 12rem;
+}
+
+.verdict-controls button {
+  padding: 0.35rem 0.7rem;
+}
+
+button.accept {
+  border-color: var(--accept);
+  color: var(--accept);
+}
+
+button.reject {
+  border-color: var(--reject);
+  color: var(--reject);
+}

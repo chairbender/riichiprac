@@ -1128,6 +1128,40 @@ sections/lessons, non-book or contested labels, report/lesson mismatches,
 illegal answers, ready hands, duplicate exact/visible states and dirty walks.
 The human sample is the evidence that the remaining positions teach.
 
+#### Filtering, progress and the review surface (Q2r2)
+
+The same `review` command lists and narrows the queue instead of applying one
+verdict per id. `--lesson`, `--section` (dotted prefix), `--family` (source
+replay family), `--turn` (bucket or exact table turn) and `--status`
+(`pending`/`accepted`/`rejected`, latest disposition wins) compose as an AND
+filter. The run reports session progress over the whole queue — `pending`,
+`accepted`, `rejected`, the dispositioned percentage — plus how many rows the
+filter selected, so `--status pending` resumes exactly where the reviewer
+stopped. `--list` prints the shown rows with hand and answer; `--json` adds the
+per-row `lesson`, `turn`, `hand`, `answer` and `selection_reason`; `--show <id>`
+still prints one embedded report.
+
+`--sample N --seed TEXT` draws a deterministic sample of the filtered rows:
+candidates rank by FNV-1a 64 over `seed\0queue_id` plus a SplitMix64 finalizer
+(so sequential ids do not turn the sample into the first N), the first N are
+taken, and the rows return in queue order. `--limit` caps the printed rows.
+`--bulk-verdict accepted|rejected` applies a verdict to exactly the shown
+selection and refuses to run without at least one filter and a `--note`;
+`--verdicts-out FILE` writes that selection as an editable
+`riichiprac.review-verdicts` document instead. Neither changes the P1b gate: the
+sidecar is still append-only, latest-wins, and assembly still requires zero
+pending items.
+
+`frontend/tools/review-queue/` is a thin static browser view over the same queue
+and sidecar: filters and progress, rows without the answer (the list stays
+spoiler-free), and one embedded report at a time with the table, graded answer,
+Mortal ranking and provenance. Accept/reject entries are kept in a keyed
+`localStorage` session so a reload resumes, then exported as the same bulk
+verdicts document (or as append-only JSONL) and applied with
+`mine_replays review --verdicts`. The page never writes to the data root and is
+not part of the shipped app. `reviewing-scenario-packs.md` documents the 1k–2k
+workflow, what the human is judging, and how to verify the round trip.
+
 
 ### S2 acceptance evidence
 
