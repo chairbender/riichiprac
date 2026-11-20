@@ -114,6 +114,9 @@ jobs:
       - name: Verify committed ch9 seating/kan pack content
         run: node scripts/check-ch8-pack.mjs --dir frontend/dist/scenarios --chapter ch9 --allow-no-variants
 
+      - name: Verify committed ch3/4 shape pack content
+        run: node scripts/check-ch8-pack.mjs --dir frontend/dist/scenarios --chapter ch34 --allow-no-variants
+
       - name: Verify pack bodies are served raw
         run: node scripts/check-pack-serving.mjs
 

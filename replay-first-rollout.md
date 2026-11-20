@@ -113,21 +113,26 @@ classifier-ready but thin/zero lessons are corpus-growth targets (`C9`).
 
 **Shipped coverage (2026-11-20).** The ch8 packs cover eight lessons (five at or
 above the floor), the ch7 pack covers all six ch7 lessons at or above the floor,
-the ch5 pack covers three of its four lessons at or above the floor, and the ch9
-pack covers two of its five lessons at or above the floor. Sixteen of the
-nineteen hosted lessons are therefore replay-default:
+the ch5 pack covers three of its four lessons at or above the floor, the ch9
+pack covers two of its five lessons at or above the floor, and the ch3/4 shape
+pack (Q6) covers all six of its lessons at or above the floor. Twenty-two of the
+twenty-five hosted lessons are therefore replay-default:
 `fold_to_riichi` 731, `push_or_fold` 295, `defense_safety_chart` 766,
 `suji_kabe_safety` 357, `defense_multi_threat` 764, `riichi_judgement` 1,426,
 `chiitoitsu_riichi_vs_dama` 151, `dama_bad_wait` 982, `dama_expensive_hand` 111,
 `dama_genbutsu_wait` 119, `dama_improving_hand` 57, `honitsu_decision` 1,319,
-`pinfu_head` 257, `chiitoi_vs_toitoi` 94, `wind_discard_order` 567 and
-`ankan_decision` 62. The thin rows
+`pinfu_head` 257, `chiitoi_vs_toitoi` 94, `wind_discard_order` 567,
+`ankan_decision` 62, `protorun_priority` 289, `pair_count` 187,
+`skipping_block` 141, `protorun_plus_one` 97, `nakabukure_ready` 54 and
+`ryanmen_protorun` 54. The thin rows
 (`defense_stuck_heuristic` 32, `kabe_one_chance` 17,
 `kabe_double_one_chance` 13) stay opt-in under their pack;
 `shouminkan_decision` 19, `daiminkan_decision` 8 and `meld_or_not` 0 have no
 replay row at all (below the floor, corpus growth `C9`), and
 `sanshoku_pursuit` has no row either (2 stable labels, far below the
-floor). Regenerate the table with
+floor). The four thin ch3 shape lessons (`perfect_one_away` 25,
+`pair_count_open` 21, `nobetan_keep` 3, `ryankan_break` 1) have no replay row
+either and stay generated until `C9`. Regenerate the table with
 `node scripts/replay-coverage-report.mjs --json`.
 
 ## Design decisions
@@ -429,6 +434,20 @@ includes its recogniser tests and a label-yield pass.
 - `protorun_priority` (337), `pair_count` (223), `skipping_block` (166),
   `protorun_plus_one` (108), `nakabukure_ready` (67), `ryanmen_protorun` (66).
   Thin lessons stay generated until C9.
+- **Landed 2026-11-20.** Pack `replay.ch34-shapes.2026-11`: **822 reviewed
+  bases, 0 variants, 724,376 bytes**, all six lessons at or above the floor
+  (`protorun_priority` 289, `pair_count` 187, `skipping_block` 141,
+  `protorun_plus_one` 97, `nakabukure_ready` 54, `ryanmen_protorun` 54). The
+  four thin ch3 lessons (`perfect_one_away` 25, `pair_count_open` 21,
+  `nobetan_keep` 3, `ryankan_break` 1) stayed out of both selection and the
+  pack's lesson scope and remain generated-default for `C9`. Mechanical review
+  868/868 accepted under the new combined `--chapter ch34` scope (prefix list
+  over ch3.2/ch3.3/ch4.1; ready-hand rule lesson-scoped from each recogniser);
+  351-row sample including every base of the three lessons under 120; audit
+  clean on the hosted manifest; hosting and ch34/ch5/ch7/ch8/ch9 content checks
+  pass; serving 38/38; frontend tests/build/lint and Q1 e2e pass. Evidence:
+  `testdata/reports/q6-ch34/` and
+  [`q6-ch34-shapes-pack.md`](q6-ch34-shapes-pack.md).
 
 **Q7 — ch8 completion** (`riichiprac`, worktree)
 - **`open_hand_defense` (B4.4)**, plus `suji_trap_riichi`, `kabe_no_chance`,

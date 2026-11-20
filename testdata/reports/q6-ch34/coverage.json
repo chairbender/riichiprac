@@ -1,0 +1,252 @@
+{
+  "schema": "riichiprac.replay-coverage",
+  "version": 1,
+  "manifest": "/home/kylehipke/workspaces/riichiprac-261120-1609/frontend/public/scenarios/manifest.json",
+  "floor": 40,
+  "packs": [
+    "replay.ch34-shapes.2026-11",
+    "replay.ch5-values.2026-11",
+    "replay.ch7-riichi-dama.2026-11",
+    "replay.ch8-defense-multi-threat.2026-11",
+    "replay.ch8-defense.2026-11",
+    "replay.ch9-seating-calls.2026-11"
+  ],
+  "packs_without_counts": [],
+  "lessons": [
+    {
+      "lesson": "ankan_decision",
+      "pack": "replay.ch9-seating-calls.2026-11",
+      "book_section": "ch9.3",
+      "bases": 62,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "chiitoi_vs_toitoi",
+      "pack": "replay.ch5-values.2026-11",
+      "book_section": "ch5.3",
+      "bases": 94,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "chiitoitsu_riichi_vs_dama",
+      "pack": "replay.ch7-riichi-dama.2026-11",
+      "book_section": "ch7.1",
+      "bases": 151,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "dama_bad_wait",
+      "pack": "replay.ch7-riichi-dama.2026-11",
+      "book_section": "ch7.1",
+      "bases": 982,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "dama_expensive_hand",
+      "pack": "replay.ch7-riichi-dama.2026-11",
+      "book_section": "ch7.1",
+      "bases": 111,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "dama_genbutsu_wait",
+      "pack": "replay.ch7-riichi-dama.2026-11",
+      "book_section": "ch7.1",
+      "bases": 119,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "dama_improving_hand",
+      "pack": "replay.ch7-riichi-dama.2026-11",
+      "book_section": "ch7.1",
+      "bases": 57,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "defense_multi_threat",
+      "pack": "replay.ch8-defense-multi-threat.2026-11",
+      "book_section": "ch8.2",
+      "bases": 764,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "pack": "replay.ch8-defense.2026-11",
+      "book_section": "ch8.1",
+      "bases": 766,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "pack": "replay.ch8-defense.2026-11",
+      "book_section": "ch8.1",
+      "bases": 32,
+      "floor": 40,
+      "replay_default": false
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "pack": "replay.ch8-defense.2026-11",
+      "book_section": "ch8.1",
+      "bases": 731,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "honitsu_decision",
+      "pack": "replay.ch5-values.2026-11",
+      "book_section": "ch5.3",
+      "bases": 1319,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "kabe_double_one_chance",
+      "pack": "replay.ch8-defense.2026-11",
+      "book_section": "ch8.1",
+      "bases": 13,
+      "floor": 40,
+      "replay_default": false
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "pack": "replay.ch8-defense.2026-11",
+      "book_section": "ch8.1",
+      "bases": 17,
+      "floor": 40,
+      "replay_default": false
+    },
+    {
+      "lesson": "nakabukure_ready",
+      "pack": "replay.ch34-shapes.2026-11",
+      "book_section": "ch3.2",
+      "bases": 54,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "pair_count",
+      "pack": "replay.ch34-shapes.2026-11",
+      "book_section": "ch3.2",
+      "bases": 187,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "pinfu_head",
+      "pack": "replay.ch5-values.2026-11",
+      "book_section": "ch5.3",
+      "bases": 257,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "protorun_plus_one",
+      "pack": "replay.ch34-shapes.2026-11",
+      "book_section": "ch3.2",
+      "bases": 97,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "protorun_priority",
+      "pack": "replay.ch34-shapes.2026-11",
+      "book_section": "ch3.2",
+      "bases": 289,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "push_or_fold",
+      "pack": "replay.ch8-defense.2026-11",
+      "book_section": "ch8.1",
+      "bases": 295,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "riichi_judgement",
+      "pack": "replay.ch7-riichi-dama.2026-11",
+      "book_section": "ch7.1",
+      "bases": 1426,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "ryanmen_protorun",
+      "pack": "replay.ch34-shapes.2026-11",
+      "book_section": "ch3.2",
+      "bases": 54,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "skipping_block",
+      "pack": "replay.ch34-shapes.2026-11",
+      "book_section": "ch3.2",
+      "bases": 141,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "pack": "replay.ch8-defense.2026-11",
+      "book_section": "ch8.1",
+      "bases": 357,
+      "floor": 40,
+      "replay_default": true
+    },
+    {
+      "lesson": "wind_discard_order",
+      "pack": "replay.ch9-seating-calls.2026-11",
+      "book_section": "ch9.3",
+      "bases": 567,
+      "floor": 40,
+      "replay_default": true
+    }
+  ],
+  "replay_default": [
+    "ankan_decision",
+    "chiitoi_vs_toitoi",
+    "chiitoitsu_riichi_vs_dama",
+    "dama_bad_wait",
+    "dama_expensive_hand",
+    "dama_genbutsu_wait",
+    "dama_improving_hand",
+    "defense_multi_threat",
+    "defense_safety_chart",
+    "fold_to_riichi",
+    "honitsu_decision",
+    "nakabukure_ready",
+    "pair_count",
+    "pinfu_head",
+    "protorun_plus_one",
+    "protorun_priority",
+    "push_or_fold",
+    "riichi_judgement",
+    "ryanmen_protorun",
+    "skipping_block",
+    "suji_kabe_safety",
+    "wind_discard_order"
+  ],
+  "below_floor": [
+    "defense_stuck_heuristic",
+    "kabe_double_one_chance",
+    "kabe_one_chance"
+  ],
+  "totals": {
+    "lessons": 25,
+    "replay_default": 22,
+    "below_floor": 3,
+    "reviewed_bases": 8942
+  }
+}

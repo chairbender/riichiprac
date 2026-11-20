@@ -30,6 +30,21 @@ The rules are chapter-scoped (`--chapter`):
   situations", `shouminkan_decision` (kakan) is 1-away **or better**, and
   `ankan_decision`/`meld_or_not` are block-shape and cheap-and-slow rules where
   the hand's distance from tenpai is the argument, not a reason to reject it.
+* `ch34` (Q6) — the crossed ch. 3 tile-efficiency / shape lessons and the ch. 4
+  ryanmen rule, spanning three book sections (`ch3.2`, `ch3.3`, `ch4.1`), so the
+  section scope is a prefix **list**. The ready-hand rule is lesson-scoped from
+  each recogniser:
+  - `protorun_priority` (ch. 3, ch3:205/230), `pair_count` (ch3:336/343),
+    `skipping_block` (ch3:713) and `protorun_plus_one` (ch3:574) are slower-shape
+    discards — their recognisers require exactly 1-shanten
+    (`protorun_priority`, `protorun_plus_one`) or 2-shanten (`pair_count`,
+    `skipping_block`), so a ready hand is out of shape and rejected;
+  - `nakabukure_ready` (ch3:690/702, ch4:694/725) and `ryanmen_protorun` (ch. 4
+    ryanmen rule) are **tenpai cells by construction**: the nakabukure lesson
+    has an explicit ready-hand cell (`shanten == 0`) beside its two 1-away
+    cells, and `ryanmen_protorun` recognises a ready hand that partitions into
+    three sets, a pair and a side-wait protorun. Their ready hands are in shape
+    and kept.
 
 For a large queue (Q2r2), `--verdicts-out FILE` writes one
 `riichiprac.review-verdicts` document that
@@ -74,6 +89,16 @@ CH9_LESSONS = {
     "shouminkan_decision",
     "wind_discard_order",
 }
+CH34_LESSONS = {
+    "protorun_priority",
+    "pair_count",
+    "skipping_block",
+    "protorun_plus_one",
+    "nakabukure_ready",
+    "ryanmen_protorun",
+}
+# The tenpai-by-construction lessons; the rest of the ch34 scope is 1/2-away.
+CH34_READY_LESSONS = CH34_LESSONS - {"nakabukure_ready", "ryanmen_protorun"}
 
 SCOPES = {
     "ch5": {
@@ -119,13 +144,42 @@ SCOPES = {
             "for wind_discard_order only"
         ),
     },
+    "ch34": {
+        # Q6 spans ch3.2, ch3.3 and ch4.1, so the scope is a prefix list and
+        # the lesson set is explicit. The four shipped ch3.2/ch3.3. discards
+        # are 1/2-shanten by construction; nakabukure_ready has a ready cell
+        # and ryanmen_protorun is a tenpai decision, so their ready hands stay.
+        "prefixes": ("ch3.", "ch4.1"),
+        "lessons": CH34_LESSONS,
+        "ready_hand_lessons": CH34_READY_LESSONS,
+        "note": (
+            "q6 mechanical review: stable ch3/ch4 shape book label, legal "
+            "answer, unique visible state, clean walk; a ready hand is out of "
+            "shape for the 1/2-away shape lessons only"
+        ),
+    },
 }
+
+
+def section_in_scope(section, prefixes):
+    """A section matches when it is a prefix or a dotted child of one.
+
+    `"ch3."` matches `ch3.2` and `ch3.3`; `"ch4.1"` matches itself and any
+    `ch4.1.<n>` child. Used by the single-prefix scopes and the Q6 list.
+    """
+    for prefix in prefixes:
+        if prefix.endswith("."):
+            if section.startswith(prefix):
+                return True
+        elif section == prefix or section.startswith(prefix + "."):
+            return True
+    return False
 
 
 def main(path, verdicts_out=None, note=None, chapter="ch8"):
     scope = SCOPES[chapter]
     lessons_allowed = scope["lessons"]
-    section_prefix = scope["prefix"]
+    section_prefixes = scope.get("prefixes") or (scope["prefix"],)
     ready_hand_lessons = scope["ready_hand_lessons"]
 
     items = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
@@ -149,7 +203,7 @@ def main(path, verdicts_out=None, note=None, chapter="ch8"):
         verdict = decision.get("verdict") or {}
         lesson = item.get("lesson")
         section = item.get("book_section") or ""
-        if section and not section.startswith(section_prefix):
+        if section and not section_in_scope(section, section_prefixes):
             problems.append("out_of_scope_section")
         if not section:
             problems.append("missing_book_section")

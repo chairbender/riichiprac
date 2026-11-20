@@ -1,0 +1,220 @@
+{
+  "manifest": "frontend/public/scenarios/manifest.json",
+  "packs": [
+    {
+      "agents": [
+        "akochan (akochan master-53188a0-minimum, akochan-custom)",
+        "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+        "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+        "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+      ],
+      "book_sections": [
+        "ch3.2",
+        "ch3.3",
+        "ch4.1"
+      ],
+      "bytes": 724376,
+      "data_commercial_use": false,
+      "generated_at": "2026-11-20T00:00:00Z",
+      "largest_base_share": 0.0,
+      "lesson_counts": {
+        "nakabukure_ready": 54,
+        "pair_count": 187,
+        "protorun_plus_one": 97,
+        "protorun_priority": 289,
+        "ryanmen_protorun": 54,
+        "skipping_block": 141
+      },
+      "lesson_ids": [
+        "nakabukure_ready",
+        "pair_count",
+        "protorun_plus_one",
+        "protorun_priority",
+        "ryanmen_protorun",
+        "skipping_block"
+      ],
+      "licence": "CC-BY-4.0",
+      "max_bytes": 50000000,
+      "pack_id": "replay.ch34-shapes.2026-11",
+      "requires_model": false,
+      "scenario_count": 822,
+      "variant_count": 0,
+      "variant_share": 0.0
+    },
+    {
+      "agents": [
+        "akochan (akochan master-53188a0-minimum, akochan-custom)",
+        "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+        "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+        "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+      ],
+      "book_sections": [
+        "ch5.3",
+        "ch5.4",
+        "ch5.5"
+      ],
+      "bytes": 1176300,
+      "data_commercial_use": false,
+      "generated_at": "2026-11-20T00:00:00Z",
+      "largest_base_share": 0.0,
+      "lesson_counts": {
+        "chiitoi_vs_toitoi": 94,
+        "honitsu_decision": 1319,
+        "pinfu_head": 257
+      },
+      "lesson_ids": [
+        "chiitoi_vs_toitoi",
+        "honitsu_decision",
+        "pinfu_head"
+      ],
+      "licence": "CC-BY-4.0",
+      "max_bytes": 50000000,
+      "pack_id": "replay.ch5-values.2026-11",
+      "requires_model": false,
+      "scenario_count": 1670,
+      "variant_count": 0,
+      "variant_share": 0.0
+    },
+    {
+      "agents": [
+        "akochan (akochan master-53188a0-minimum, akochan-custom)",
+        "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+        "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+        "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+      ],
+      "book_sections": [
+        "ch7.1",
+        "ch7.2",
+        "ch7.3"
+      ],
+      "bytes": 2176750,
+      "data_commercial_use": false,
+      "generated_at": "2026-11-19T00:00:00Z",
+      "largest_base_share": 0.0,
+      "lesson_counts": {
+        "chiitoitsu_riichi_vs_dama": 151,
+        "dama_bad_wait": 982,
+        "dama_expensive_hand": 111,
+        "dama_genbutsu_wait": 119,
+        "dama_improving_hand": 57,
+        "riichi_judgement": 1426
+      },
+      "lesson_ids": [
+        "chiitoitsu_riichi_vs_dama",
+        "dama_bad_wait",
+        "dama_expensive_hand",
+        "dama_genbutsu_wait",
+        "dama_improving_hand",
+        "riichi_judgement"
+      ],
+      "licence": "CC-BY-4.0",
+      "max_bytes": 50000000,
+      "pack_id": "replay.ch7-riichi-dama.2026-11",
+      "requires_model": false,
+      "scenario_count": 2846,
+      "variant_count": 0,
+      "variant_share": 0.0
+    },
+    {
+      "agents": [
+        "akochan (akochan master-53188a0-minimum, akochan-custom)",
+        "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+        "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+        "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+      ],
+      "book_sections": [
+        "ch8.2"
+      ],
+      "bytes": 591096,
+      "data_commercial_use": false,
+      "generated_at": "2026-11-19T00:00:00Z",
+      "largest_base_share": 0.0,
+      "lesson_counts": {
+        "defense_multi_threat": 764
+      },
+      "lesson_ids": [
+        "defense_multi_threat"
+      ],
+      "licence": "CC-BY-4.0",
+      "max_bytes": 50000000,
+      "pack_id": "replay.ch8-defense-multi-threat.2026-11",
+      "requires_model": false,
+      "scenario_count": 764,
+      "variant_count": 0,
+      "variant_share": 0.0
+    },
+    {
+      "agents": [
+        "akochan (akochan master-53188a0-minimum, akochan-custom)",
+        "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+        "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+        "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+      ],
+      "book_sections": [
+        "ch8.1",
+        "ch8.2",
+        "ch8.3"
+      ],
+      "bytes": 2260809,
+      "data_commercial_use": false,
+      "generated_at": "2026-11-19T00:00:00Z",
+      "largest_base_share": 0.0,
+      "lesson_counts": {
+        "defense_safety_chart": 766,
+        "defense_stuck_heuristic": 32,
+        "fold_to_riichi": 731,
+        "kabe_double_one_chance": 13,
+        "kabe_one_chance": 17,
+        "push_or_fold": 295,
+        "suji_kabe_safety": 357
+      },
+      "lesson_ids": [
+        "defense_safety_chart",
+        "defense_stuck_heuristic",
+        "fold_to_riichi",
+        "kabe_double_one_chance",
+        "kabe_one_chance",
+        "push_or_fold",
+        "suji_kabe_safety"
+      ],
+      "licence": "CC-BY-4.0",
+      "max_bytes": 50000000,
+      "pack_id": "replay.ch8-defense.2026-11",
+      "requires_model": false,
+      "scenario_count": 2211,
+      "variant_count": 0,
+      "variant_share": 0.0
+    },
+    {
+      "agents": [
+        "akochan (akochan master-53188a0-minimum, akochan-custom)",
+        "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+        "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+        "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+      ],
+      "book_sections": [
+        "ch9.3",
+        "ch9.4"
+      ],
+      "bytes": 363061,
+      "data_commercial_use": false,
+      "generated_at": "2026-11-20T00:00:00Z",
+      "largest_base_share": 0.0,
+      "lesson_counts": {
+        "ankan_decision": 62,
+        "wind_discard_order": 567
+      },
+      "lesson_ids": [
+        "ankan_decision",
+        "wind_discard_order"
+      ],
+      "licence": "CC-BY-4.0",
+      "max_bytes": 50000000,
+      "pack_id": "replay.ch9-seating-calls.2026-11",
+      "requires_model": false,
+      "scenario_count": 629,
+      "variant_count": 0,
+      "variant_share": 0.0
+    }
+  ]
+}

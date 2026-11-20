@@ -1,0 +1,1451 @@
+{
+  "held_out": 0,
+  "ids": [
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-001",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-002",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-003",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-004",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-005",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-006",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-007",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-008",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-011",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-013",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-014",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-016",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-018",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-021",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-023",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-024",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-030",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-031",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-038",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-039",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-040",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-041",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-042",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-043",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-044",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-047",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-048",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-049",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-050",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-052",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-054",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-055",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-056",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-059",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-062",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-064",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-065",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-066",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-068",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-069",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-071",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-074",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-077",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-078",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-079",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-081",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-082",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-085",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-087",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-088",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-089",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-090",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-100",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-101",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-102",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-103",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-107",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-108",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-110",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-114",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-119",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-122",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-127",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-128",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-130",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-131",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-132",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-134",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-138",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-141",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-149",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-150",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-154",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-155",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-157",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-158",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-159",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-160",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-165",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-169",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-172",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-181",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-184",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-187",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-190",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-193",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-195",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-199",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-201",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-202",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-208",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-210",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-213",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-218",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-220",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-222",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-224",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-225",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-226",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-230",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-232",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-234",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-235",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-239",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-247",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-248",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-251",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-252",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-262",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-266",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-267",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-270",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-271",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-272",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-274",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-275",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-276",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-277",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-279",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-280",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-283",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-284",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-285",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-290",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-292",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-293",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-294",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-295",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-298",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-299",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-305",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-306",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-308",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-309",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-310",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-313",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-316",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-317",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-318",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-320",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-321",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-325",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-329",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-331",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-334",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-336",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-337",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-338",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-342",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-344",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-346",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-348",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-349",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-351",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-353",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-356",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-357",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-363",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-364",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-365",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-368",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-372",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-373",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-377",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-379",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-380",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-382",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-389",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-390",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-397",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-401",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-409",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-411",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-412",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-423",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-424",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-425",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-426",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-427",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-428",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-429",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-435",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-436",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-438",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-439",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-440",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-441",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-443",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-444",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-447",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-453",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-462",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-463",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-465",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-467",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-469",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-471",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-472",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-473",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-474",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-475",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-478",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-480",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-484",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-490",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-493",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-495",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-501",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-503",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-504",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-506",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-507",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-508",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-512",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-518",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-519",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-520",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-524",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-528",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-529",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-532",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-535",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-537",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-543",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-544",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-546",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-547",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-548",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-551",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-553",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-555",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-556",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-558",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-559",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-560",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-561",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-563",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-565",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-566",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-567",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-568",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-570",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-571",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-574",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-576",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-577",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-578",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-580",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-585",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-586",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-587",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-588",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-590",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-591",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-592",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-594",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-596",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-597",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-598",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-599",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-604",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-606",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-613",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-620",
+      "why": "family_guarantee:heterogeneous_table"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-625",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-626",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-627",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-631",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-632",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-633",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-639",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-643",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-650",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-652",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-654",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-655",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-658",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-660",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-661",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-662",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-665",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-666",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-667",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-668",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-669",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-670",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-675",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-676",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-677",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-680",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-684",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-685",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-690",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-693",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-694",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-695",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-704",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-706",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-709",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-710",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-712",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-722",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-724",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-728",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-730",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-731",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-738",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-739",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-740",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-750",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-756",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-758",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-764",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-766",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-767",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-772",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-773",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-775",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-780",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-790",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-791",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-792",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-797",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-798",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-800",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-801",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-802",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-803",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-805",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-806",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-807",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-808",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-810",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-815",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-817",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-821",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-825",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-829",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-831",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-833",
+      "why": "rare_lesson:nakabukure_ready"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-835",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-845",
+      "why": "rare_lesson:ryanmen_protorun"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-846",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-849",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-850",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-853",
+      "why": "rare_lesson:protorun_plus_one"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-855",
+      "why": "lesson_guarantee:pair_count"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-859",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-862",
+      "why": "lesson_guarantee:protorun_priority"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-863",
+      "why": "lesson_guarantee:skipping_block"
+    },
+    {
+      "queue_id": "replay.ch34-shapes.2026-11-865",
+      "why": "lesson_guarantee:protorun_priority"
+    }
+  ],
+  "items": 868,
+  "lessons": {
+    "nakabukure_ready": 57,
+    "pair_count": 196,
+    "protorun_plus_one": 101,
+    "protorun_priority": 307,
+    "ryanmen_protorun": 57,
+    "skipping_block": 150
+  },
+  "queue": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch34-shapes.2026-11/review-queue.jsonl",
+  "replay_families": {
+    "akochan_tactics": 21,
+    "akochan_vs_mortal": 6,
+    "heterogeneous_table": 10,
+    "mortal_mirror": 433,
+    "mortal_sampling_sweep": 398
+  },
+  "sampled": 351,
+  "sampled_lessons": {
+    "nakabukure_ready": 57,
+    "pair_count": 41,
+    "protorun_plus_one": 101,
+    "protorun_priority": 53,
+    "ryanmen_protorun": 57,
+    "skipping_block": 42
+  },
+  "sampled_replay_families": {
+    "akochan_tactics": 21,
+    "akochan_vs_mortal": 6,
+    "heterogeneous_table": 10,
+    "mortal_mirror": 169,
+    "mortal_sampling_sweep": 145
+  },
+  "schema": "riichiprac.q2r2-review-sample",
+  "sections": {
+    "ch3.2": 503,
+    "ch3.3": 308,
+    "ch4.1": 57
+  },
+  "seed": "q6-ch34-2026-11",
+  "selected": 868,
+  "version": 1
+}

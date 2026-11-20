@@ -2649,10 +2649,11 @@ The first pack (Q2) is done when all of these are true:
   recorded, and the scale-up decision is explicit.
 
 Q2 (and its Q2s/Q2m follow-ups) are shipped: two ch8 packs, 2,975 bases total.
-Q3 added the ch7 riichi/dama pack (2,846 bases across six lessons) and Q4 the
-ch5 value pack (1,670 bases across three lessons) and Q5 the ch9 seating/call
-pack (629 bases across two lessons), so the hosted set is now
-8,120 bases across five packs. The product target after that
+Q3 added the ch7 riichi/dama pack (2,846 bases across six lessons), Q4 the
+ch5 value pack (1,670 bases across three lessons), Q5 the ch9 seating/call
+pack (629 bases across two lessons) and Q6 the ch3/4 shape pack (822 bases
+across six lessons), so the hosted set is now
+8,942 bases across six packs. The product target after that
 is the replay-first rollout, which extends replay
 coverage to the other chapters and makes replay the default source for covered
 lessons; see §11.
