@@ -632,7 +632,8 @@ Rules:
 - Sheets, toasts and the result card appear with **no** transform, scale or
   slide: either instantly or a plain opacity change of at most `120 ms`.
 - No HUD element animates continuously. The only 3D motion the HUD can cause is
-  the 3D-08 hover lift, which reduced motion already suppresses.
+  the 3D-08 hover lift, which still applies under reduced motion because it is a
+  discrete pose change; reduced motion suppresses only the time-based deal-in.
 - Nothing auto-scrolls in 3D, so there is no smooth-scroll special case to
   honour (the 2D `showVerdict` scroll is 2D-only).
 

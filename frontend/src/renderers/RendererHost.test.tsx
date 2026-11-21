@@ -597,6 +597,28 @@ describe('RendererHost interaction overlay (3D-08)', () => {
     expect(hostMock.state.hover.at(-1)).toEqual({ seat: 0, zone: 'hand', slot: 0 });
   });
 
+  it('forwards hover even when reduced motion is requested', async () => {
+    // The lift is a discrete pose change, not an animation (user decision
+    // 2026-11-21): `prefers-reduced-motion` suppresses the deal-in only. The
+    // overlay must keep reporting, so a reduce-motion machine still gets the
+    // hover/focus cue. This is the regression guard: the old overlay dropped
+    // the report whenever the host resolved the flag true.
+    hostMock.state.rects = [HAND_RECT];
+    render(
+      <RendererHost
+        snapshot={handSnapshot()}
+        reducedMotion
+        onSelectTile={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(hostMock.state.live).toBe(1));
+    const button = await screen.findByRole('button', { name: 'Discard 1m' });
+    fireEvent.focus(button);
+    expect(hostMock.state.hover.at(-1)).toEqual({ seat: 0, zone: 'hand', slot: 0 });
+    fireEvent.pointerLeave(button);
+    expect(hostMock.state.hover.at(-1)).toBeNull();
+  });
+
   it('names the view and describes the interactive hand for screen readers', async () => {
     hostMock.state.rects = [HAND_RECT];
     render(<RendererHost snapshot={handSnapshot()} onSelectTile={() => undefined} />);

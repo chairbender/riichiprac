@@ -15,6 +15,7 @@ import type { BoardLayout } from './boardLayout';
 import { buildBoardInstances, NEUTRAL_ATLAS_RECT } from './boardMesh';
 import type { BoardInstance } from './boardMesh';
 import { HOVER_LIFT_UNITS, hoveredInstanceIndex, withHoverLift } from './hover';
+import { withVerticalLift } from './motion';
 
 const layout = layoutBoard(boardFixture());
 const instances = buildBoardInstances(layout, () => ({
@@ -80,6 +81,24 @@ describe('3D hover lift', () => {
     expect(handIndex).not.toBe(drawIndex);
     const lifted = withHoverLift(instances, layout, handRef);
     expect(lifted[drawIndex].matrix).toBe(instances[drawIndex].matrix);
+  });
+
+  it('applies the full lift with the deal-in lift at zero (reduced motion)', () => {
+    // User decision 2026-11-21: the hover lift is a discrete pose change, not
+    // an animation, so reduced motion does not remove it. The scene's
+    // reduced-motion frame is exactly this composition: the hover lift applied
+    // with the deal-in's time-based lift at zero.
+    const ref = { seat: 0 as const, zone: 'hand' as const, slot: 3 };
+    const index = hoveredInstanceIndex(layout, ref);
+    const lifted = withVerticalLift(withHoverLift(instances, layout, ref), 0);
+    expect(lifted[index].matrix[13]).toBeCloseTo(
+      instances[index].matrix[13] + HOVER_LIFT_UNITS,
+      9,
+    );
+    lifted.forEach((instance, current) => {
+      if (current === index) return;
+      expect(instance.matrix).toBe(instances[current].matrix);
+    });
   });
 
   it('is a no-op with no hover, or a hover that is not on this board', () => {
