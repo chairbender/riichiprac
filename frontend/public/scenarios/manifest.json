@@ -4,6 +4,37 @@
   "updated_at": "2026-11-20T00:00:00Z",
   "packs": [
     {
+      "id": "replay.ch34-shapes.2026-11",
+      "path": "replay.ch34-shapes.2026-11-1e7f3266ea8f.json.gz",
+      "sha256": "1e7f3266ea8f81bf3ea2e4626bbd9c7bc6096109bfbebdd7df51e7e1c3b01200",
+      "bytes": 724376,
+      "scenario_count": 822,
+      "lesson_ids": [
+        "nakabukure_ready",
+        "pair_count",
+        "protorun_plus_one",
+        "protorun_priority",
+        "ryanmen_protorun",
+        "skipping_block"
+      ],
+      "lesson_counts": {
+        "nakabukure_ready": 54,
+        "pair_count": 187,
+        "protorun_plus_one": 97,
+        "protorun_priority": 289,
+        "ryanmen_protorun": 54,
+        "skipping_block": 141
+      },
+      "book_sections": [
+        "ch3.2",
+        "ch3.3",
+        "ch4.1"
+      ],
+      "licence": "CC-BY-4.0",
+      "requires_model": false,
+      "data_commercial_use": false
+    },
+    {
       "id": "replay.ch5-values.2026-11",
       "path": "replay.ch5-values.2026-11-5d0b01e6badb.json.gz",
       "sha256": "5d0b01e6badb331b6771c239e50c4fac2659bbfcf338641199dc6bdb447f5864",

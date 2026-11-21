@@ -1,0 +1,37 @@
+{
+  "schema": "riichiprac.ch8-pack-check",
+  "version": 1,
+  "chapter": "ch5",
+  "dir": "/home/kylehipke/workspaces/riichiprac-261120-1609/frontend/public/scenarios",
+  "pack": "replay.ch5-values.2026-11",
+  "checks": 27,
+  "problems": [],
+  "scenarios": 1670,
+  "bases": 1670,
+  "variants": 0,
+  "variant_share": 0,
+  "transform_families": [],
+  "lessons": [
+    "chiitoi_vs_toitoi",
+    "honitsu_decision",
+    "pinfu_head"
+  ],
+  "lesson_counts": {
+    "chiitoi_vs_toitoi": 94,
+    "pinfu_head": 257,
+    "honitsu_decision": 1319
+  },
+  "book_sections": [
+    "ch5.3",
+    "ch5.4",
+    "ch5.5"
+  ],
+  "bytes": 1176300,
+  "agents": [
+    "akochan (akochan)",
+    "efficiency-safety-v1 (corpus-reference)",
+    "isolated-first-v1 (corpus-reference)",
+    "mortal-298k (mortal-candle)"
+  ],
+  "data_commercial_use": false
+}

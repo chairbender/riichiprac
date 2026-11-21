@@ -1,0 +1,481 @@
+{
+  "schema": "riichiprac.variant-report",
+  "version": 1,
+  "generated_at": "2026-11-20T00:00:00Z",
+  "pack_id": "replay.ch34-shapes.2026-11",
+  "bases": 868,
+  "variants_per_base": 1,
+  "attempts": 4340,
+  "preserved": 3012,
+  "shipped": 2491,
+  "withdrawn_disabled": 97,
+  "dropped_by_cap": 0,
+  "duplicate_states": 424,
+  "rejections": {
+    "disabled_pair": 97,
+    "duplicate_state": 424,
+    "label_conflict": 9,
+    "lesson_missing": 1,
+    "state_unreachable": 1233,
+    "tile_ledger": 3,
+    "transform_noop": 66,
+    "transform_rejected": 16
+  },
+  "pair_yield": [
+    {
+      "lesson": "nakabukure_ready",
+      "transform": "seat_perm",
+      "attempted": 57,
+      "preserved": 24,
+      "ratio": 0.42105263,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 24,
+        "transform_rejected": 9
+      }
+    },
+    {
+      "lesson": "nakabukure_ready",
+      "transform": "suit_perm",
+      "attempted": 57,
+      "preserved": 57,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "nakabukure_ready",
+      "transform": "rank_mirror",
+      "attempted": 57,
+      "preserved": 56,
+      "ratio": 0.98245615,
+      "disabled": false,
+      "rejections": {
+        "label_conflict": 1
+      }
+    },
+    {
+      "lesson": "nakabukure_ready",
+      "transform": "wind_relabel",
+      "attempted": 57,
+      "preserved": 3,
+      "ratio": 0.05263158,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 54
+      }
+    },
+    {
+      "lesson": "nakabukure_ready",
+      "transform": "red5_normalize",
+      "attempted": 57,
+      "preserved": 53,
+      "ratio": 0.9298246,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 24,
+        "label_conflict": 2,
+        "transform_noop": 2
+      }
+    },
+    {
+      "lesson": "pair_count",
+      "transform": "seat_perm",
+      "attempted": 196,
+      "preserved": 124,
+      "ratio": 0.63265306,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 72
+      }
+    },
+    {
+      "lesson": "pair_count",
+      "transform": "suit_perm",
+      "attempted": 196,
+      "preserved": 196,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "pair_count",
+      "transform": "rank_mirror",
+      "attempted": 196,
+      "preserved": 196,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "pair_count",
+      "transform": "wind_relabel",
+      "attempted": 196,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 196
+      }
+    },
+    {
+      "lesson": "pair_count",
+      "transform": "red5_normalize",
+      "attempted": 196,
+      "preserved": 178,
+      "ratio": 0.90816325,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 100,
+        "transform_noop": 18
+      }
+    },
+    {
+      "lesson": "protorun_plus_one",
+      "transform": "seat_perm",
+      "attempted": 101,
+      "preserved": 48,
+      "ratio": 0.47524753,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 52,
+        "transform_rejected": 1
+      }
+    },
+    {
+      "lesson": "protorun_plus_one",
+      "transform": "suit_perm",
+      "attempted": 101,
+      "preserved": 101,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "protorun_plus_one",
+      "transform": "rank_mirror",
+      "attempted": 101,
+      "preserved": 100,
+      "ratio": 0.990099,
+      "disabled": false,
+      "rejections": {
+        "label_conflict": 1
+      }
+    },
+    {
+      "lesson": "protorun_plus_one",
+      "transform": "wind_relabel",
+      "attempted": 101,
+      "preserved": 2,
+      "ratio": 0.01980198,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 99
+      }
+    },
+    {
+      "lesson": "protorun_plus_one",
+      "transform": "red5_normalize",
+      "attempted": 101,
+      "preserved": 90,
+      "ratio": 0.8910891,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 53,
+        "transform_noop": 11
+      }
+    },
+    {
+      "lesson": "protorun_priority",
+      "transform": "seat_perm",
+      "attempted": 307,
+      "preserved": 167,
+      "ratio": 0.5439739,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 139,
+        "transform_rejected": 1
+      }
+    },
+    {
+      "lesson": "protorun_priority",
+      "transform": "suit_perm",
+      "attempted": 307,
+      "preserved": 307,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "protorun_priority",
+      "transform": "rank_mirror",
+      "attempted": 307,
+      "preserved": 303,
+      "ratio": 0.98697066,
+      "disabled": false,
+      "rejections": {
+        "label_conflict": 3,
+        "lesson_missing": 1
+      }
+    },
+    {
+      "lesson": "protorun_priority",
+      "transform": "wind_relabel",
+      "attempted": 307,
+      "preserved": 2,
+      "ratio": 0.0065146578,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 305
+      }
+    },
+    {
+      "lesson": "protorun_priority",
+      "transform": "red5_normalize",
+      "attempted": 307,
+      "preserved": 286,
+      "ratio": 0.9315961,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 157,
+        "transform_noop": 21
+      }
+    },
+    {
+      "lesson": "ryanmen_protorun",
+      "transform": "seat_perm",
+      "attempted": 57,
+      "preserved": 16,
+      "ratio": 0.28070176,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 36,
+        "transform_rejected": 5
+      }
+    },
+    {
+      "lesson": "ryanmen_protorun",
+      "transform": "suit_perm",
+      "attempted": 57,
+      "preserved": 56,
+      "ratio": 0.98245615,
+      "disabled": false,
+      "rejections": {
+        "tile_ledger": 1
+      }
+    },
+    {
+      "lesson": "ryanmen_protorun",
+      "transform": "rank_mirror",
+      "attempted": 57,
+      "preserved": 55,
+      "ratio": 0.9649123,
+      "disabled": false,
+      "rejections": {
+        "label_conflict": 1,
+        "tile_ledger": 1
+      }
+    },
+    {
+      "lesson": "ryanmen_protorun",
+      "transform": "wind_relabel",
+      "attempted": 57,
+      "preserved": 2,
+      "ratio": 0.03508772,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 55
+      }
+    },
+    {
+      "lesson": "ryanmen_protorun",
+      "transform": "red5_normalize",
+      "attempted": 57,
+      "preserved": 50,
+      "ratio": 0.877193,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 24,
+        "label_conflict": 1,
+        "tile_ledger": 1,
+        "transform_noop": 5
+      }
+    },
+    {
+      "lesson": "skipping_block",
+      "transform": "seat_perm",
+      "attempted": 150,
+      "preserved": 99,
+      "ratio": 0.66,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 2,
+        "state_unreachable": 51
+      }
+    },
+    {
+      "lesson": "skipping_block",
+      "transform": "suit_perm",
+      "attempted": 150,
+      "preserved": 150,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "skipping_block",
+      "transform": "rank_mirror",
+      "attempted": 150,
+      "preserved": 150,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "skipping_block",
+      "transform": "wind_relabel",
+      "attempted": 150,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": true,
+      "rejections": {
+        "state_unreachable": 150
+      }
+    },
+    {
+      "lesson": "skipping_block",
+      "transform": "red5_normalize",
+      "attempted": 150,
+      "preserved": 141,
+      "ratio": 0.94,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 64,
+        "transform_noop": 9
+      }
+    }
+  ],
+  "disabled_pairs": [
+    {
+      "lesson": "nakabukure_ready",
+      "transform": "seat_perm",
+      "ratio": 0.42105263,
+      "min_yield": 0.5,
+      "attempted": 57,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "nakabukure_ready",
+      "transform": "wind_relabel",
+      "ratio": 0.05263158,
+      "min_yield": 0.5,
+      "attempted": 57,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "pair_count",
+      "transform": "wind_relabel",
+      "ratio": 0.0,
+      "min_yield": 0.5,
+      "attempted": 196,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "protorun_plus_one",
+      "transform": "seat_perm",
+      "ratio": 0.47524753,
+      "min_yield": 0.5,
+      "attempted": 101,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "protorun_plus_one",
+      "transform": "wind_relabel",
+      "ratio": 0.01980198,
+      "min_yield": 0.5,
+      "attempted": 101,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "protorun_priority",
+      "transform": "wind_relabel",
+      "ratio": 0.0065146578,
+      "min_yield": 0.5,
+      "attempted": 307,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "ryanmen_protorun",
+      "transform": "seat_perm",
+      "ratio": 0.28070176,
+      "min_yield": 0.5,
+      "attempted": 57,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "ryanmen_protorun",
+      "transform": "wind_relabel",
+      "ratio": 0.03508772,
+      "min_yield": 0.5,
+      "attempted": 57,
+      "reviewed": false,
+      "reason": "below_threshold"
+    },
+    {
+      "lesson": "skipping_block",
+      "transform": "wind_relabel",
+      "ratio": 0.0,
+      "min_yield": 0.5,
+      "attempted": 150,
+      "reviewed": false,
+      "reason": "below_threshold"
+    }
+  ],
+  "cap_limited": [],
+  "effective_cap": 8,
+  "cap_cause": "per_base",
+  "min_yield": 0.5,
+  "label_kinds": {
+    "book": 2491
+  },
+  "labels": {
+    "cached": 0,
+    "evaluated": 0,
+    "retried": 0
+  },
+  "share": {
+    "bases": 868,
+    "variants": 2491,
+    "pack_scenarios": 3359,
+    "variant_share": 0.7415898,
+    "largest_base": {
+      "base": "replay.ch34-shapes.2026-11-018",
+      "scenarios": 5
+    },
+    "largest_base_share": 0.0014885382,
+    "transform_families": [
+      "rank_mirror",
+      "red5_normalize",
+      "seat_perm",
+      "suit_perm"
+    ],
+    "by_family": {
+      "rank_mirror": 860,
+      "red5_normalize": 376,
+      "seat_perm": 388,
+      "suit_perm": 867
+    },
+    "by_chain": {
+      "rank_mirror": 860,
+      "red5_normalize": 376,
+      "seat_perm": 388,
+      "suit_perm": 867
+    }
+  },
+  "workers": 14,
+  "wall_time_ms": 10670,
+  "notes": [
+    "queue: 868 base(s) from `/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch34-shapes.2026-11/review-queue.jsonl`; 0 held-out item(s) skipped; 0 reviewer-rejected item(s) skipped; 0 unusable item(s)"
+  ],
+  "errors": []
+}

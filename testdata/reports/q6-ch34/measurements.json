@@ -1,0 +1,273 @@
+{
+  "assembly": {
+    "audit_clean": true,
+    "audited": true,
+    "bases": 822,
+    "bytes": 724376,
+    "drop_counts": {
+      "base_dropped": 133,
+      "duplicate_hand": 771,
+      "variants_disabled": 1633
+    },
+    "max_scenarios": 2000,
+    "review": {
+      "accepted": 868,
+      "checked": true,
+      "items": 868,
+      "rejected": 0
+    },
+    "scenarios": 822,
+    "sha256": "1e7f3266ea8f81bf3ea2e4626bbd9c7bc6096109bfbebdd7df51e7e1c3b01200",
+    "variants": 0
+  },
+  "body": {
+    "bytes": 724376,
+    "gzip_ratio": 0.1102,
+    "sha256": "1e7f3266ea8f81bf3ea2e4626bbd9c7bc6096109bfbebdd7df51e7e1c3b01200"
+  },
+  "corpus": null,
+  "labels": null,
+  "manifest_entry": {
+    "book_sections": [
+      "ch3.2",
+      "ch3.3",
+      "ch4.1"
+    ],
+    "bytes": 724376,
+    "data_commercial_use": false,
+    "id": "replay.ch34-shapes.2026-11",
+    "lesson_counts": {
+      "nakabukure_ready": 54,
+      "pair_count": 187,
+      "protorun_plus_one": 97,
+      "protorun_priority": 289,
+      "ryanmen_protorun": 54,
+      "skipping_block": 141
+    },
+    "lesson_ids": [
+      "nakabukure_ready",
+      "pair_count",
+      "protorun_plus_one",
+      "protorun_priority",
+      "ryanmen_protorun",
+      "skipping_block"
+    ],
+    "licence": "CC-BY-4.0",
+    "path": "replay.ch34-shapes.2026-11-1e7f3266ea8f.json.gz",
+    "requires_model": false,
+    "scenario_count": 822,
+    "sha256": "1e7f3266ea8f81bf3ea2e4626bbd9c7bc6096109bfbebdd7df51e7e1c3b01200"
+  },
+  "pack": {
+    "adjacent_same_replay_bases": 0,
+    "agents": [
+      "akochan",
+      "efficiency-safety-v1",
+      "isolated-first-v1",
+      "mortal-298k"
+    ],
+    "book_sections": [
+      "ch3.2",
+      "ch3.3",
+      "ch4.1"
+    ],
+    "corpus_id": "c8-smoke-2026-11",
+    "data_commercial_use": false,
+    "duplicate_hand_strings": 0,
+    "largest_hand_share": 0.001217,
+    "lessons": {
+      "nakabukure_ready": 54,
+      "pair_count": 187,
+      "protorun_plus_one": 97,
+      "protorun_priority": 289,
+      "ryanmen_protorun": 54,
+      "skipping_block": 141
+    },
+    "licence": "CC-BY-4.0",
+    "replays": 610,
+    "scenarios": 822,
+    "unique_hand_strings": 822
+  },
+  "pack_id": "replay.ch34-shapes.2026-11",
+  "review": {
+    "accepted": 868,
+    "invalid": 0,
+    "items": 868,
+    "pending": 0,
+    "rejected": 0,
+    "sample_report": "testdata/reports/q6-ch34/review-sample.json",
+    "sampled": 351,
+    "valid": 868
+  },
+  "schema": "riichiprac.pack-measurements",
+  "selection": {
+    "candidates_valid": 967,
+    "cap_relaxed": 0,
+    "decisions_labelled": 113094,
+    "decisions_seen": 787052,
+    "funnel": {
+      "counts": {
+        "book_matches": 113094,
+        "decision_points": 787052,
+        "games_parsed": 1542,
+        "games_requested": 1542,
+        "games_valid": 1542,
+        "gate_passed": 967,
+        "held_out": 90,
+        "mortal_labelled": 113094,
+        "packed": 0,
+        "reconstructed": 787052,
+        "selected": 868,
+        "trigger_hits": 646776
+      },
+      "rejections": {
+        "no_label": 673958,
+        "out_of_scope": 65176,
+        "scope_not_stable_book": 46951
+      }
+    },
+    "held_out": 90,
+    "lesson_counts": [
+      {
+        "candidates": 877,
+        "family": "book",
+        "quota": 900,
+        "selected": 470,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 0,
+        "family": "contested",
+        "quota": 150,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 0,
+        "family": "mortal_best",
+        "quota": 300,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 9,
+        "family": "mistake",
+        "quota": 300,
+        "selected": 7,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 106,
+        "family": "close_call",
+        "quota": 300,
+        "selected": 48,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 29,
+        "family": "speed_value",
+        "quota": 240,
+        "selected": 29,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 877,
+        "family": "coverage",
+        "quota": 450,
+        "selected": 235,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 0,
+        "family": "table_read",
+        "quota": 210,
+        "selected": 0,
+        "shortfall": "no_candidates"
+      },
+      {
+        "candidates": 649,
+        "family": "placement",
+        "quota": 150,
+        "selected": 79,
+        "shortfall": "shared_with_other_families"
+      },
+      {
+        "candidates": 0,
+        "family": "multi_step",
+        "quota": 0,
+        "selected": 0
+      }
+    ],
+    "notes": [
+      "games_generated is 0: selection consumes an existing corpus",
+      "packed is 0: P1a/P1b assemble, audit and ship the pack",
+      "a pack may not ship until every review-queue item has a disposition (P1b enforces it)",
+      "364 selection attempt(s) were skipped because a source replay hit its per-replay cap",
+      "56 scenario(s) were selected beyond the per-replay cap by the last-resort fill: every remaining candidate came from a replay already at its maximum, so the pack filled the slot instead of reporting a shortfall",
+      "scope: sections=ch3,ch4; lessons=protorun_priority,pair_count,skipping_block,protorun_plus_one,nakabukure_ready,ryanmen_protorun; corpus=mortal_mirror,mortal_sampling_sweep,akochan_tactics,akochan_vs_mortal,heterogeneous_table; stable book labels only",
+      "review queue: 868 item(s); held-out QA: 90 item(s)"
+    ],
+    "relaxed_fill": 56,
+    "replay_families": [
+      {
+        "bucket": "akochan_tactics",
+        "candidates": 21,
+        "cap_reached": false,
+        "selected": 21
+      },
+      {
+        "bucket": "akochan_vs_mortal",
+        "candidates": 6,
+        "cap_reached": false,
+        "selected": 6
+      },
+      {
+        "bucket": "heterogeneous_table",
+        "candidates": 10,
+        "cap_reached": false,
+        "selected": 10
+      },
+      {
+        "bucket": "mortal_mirror",
+        "candidates": 433,
+        "cap_reached": false,
+        "selected": 433
+      },
+      {
+        "bucket": "mortal_sampling_sweep",
+        "candidates": 407,
+        "cap_reached": false,
+        "selected": 398
+      }
+    ],
+    "replays_failed": 0,
+    "replays_walked": 1542,
+    "sections": [
+      {
+        "bucket": "ch3.2",
+        "candidates": 509,
+        "cap": 1800,
+        "cap_reached": false,
+        "selected": 503
+      },
+      {
+        "bucket": "ch3.3",
+        "candidates": 311,
+        "cap": 1800,
+        "cap_reached": false,
+        "selected": 308
+      },
+      {
+        "bucket": "ch4.1",
+        "candidates": 57,
+        "cap": 1800,
+        "cap_reached": false,
+        "selected": 57
+      }
+    ],
+    "selected": 868,
+    "size_requested": 3000,
+    "source_replay_relaxed": 56
+  },
+  "version": 1
+}

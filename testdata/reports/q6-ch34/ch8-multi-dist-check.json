@@ -1,0 +1,31 @@
+{
+  "schema": "riichiprac.ch8-pack-check",
+  "version": 1,
+  "chapter": "ch8",
+  "dir": "/home/kylehipke/workspaces/riichiprac-261120-1609/frontend/dist/scenarios",
+  "pack": "replay.ch8-defense-multi-threat.2026-11",
+  "checks": 27,
+  "problems": [],
+  "scenarios": 764,
+  "bases": 764,
+  "variants": 0,
+  "variant_share": 0,
+  "transform_families": [],
+  "lessons": [
+    "defense_multi_threat"
+  ],
+  "lesson_counts": {
+    "defense_multi_threat": 764
+  },
+  "book_sections": [
+    "ch8.2"
+  ],
+  "bytes": 591096,
+  "agents": [
+    "akochan (akochan)",
+    "efficiency-safety-v1 (corpus-reference)",
+    "isolated-first-v1 (corpus-reference)",
+    "mortal-298k (mortal-candle)"
+  ],
+  "data_commercial_use": false
+}

@@ -189,12 +189,17 @@ const ch9Entry = fixtureManifest.packs.find(
   (pack) => pack.id === 'replay.ch9-seating-calls.2026-11',
 )!;
 const ch9Body = new Uint8Array(readFileSync(new URL(ch9Entry.path, fixtureDir)));
+const ch34Entry = fixtureManifest.packs.find(
+  (pack) => pack.id === 'replay.ch34-shapes.2026-11',
+)!;
+const ch34Body = new Uint8Array(readFileSync(new URL(ch34Entry.path, fixtureDir)));
 
 describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
     expect(packManifestUrl()).toBe('/scenarios/manifest.json');
-    expect(fixtureManifest.packs).toHaveLength(5);
+    expect(fixtureManifest.packs).toHaveLength(6);
     expect(fixtureManifest.packs.map((pack) => pack.id).sort()).toEqual([
+      'replay.ch34-shapes.2026-11',
       'replay.ch5-values.2026-11',
       'replay.ch7-riichi-dama.2026-11',
       'replay.ch8-defense-multi-threat.2026-11',
@@ -291,6 +296,58 @@ describe('committed pack', () => {
     expect([...loaded.byLesson.keys()].sort()).toEqual([
       'ankan_decision',
       'wind_discard_order',
+    ]);
+    expect(memory.calls.write).toBe(1);
+  });
+
+  it('makes the shipped ch3/4 shape lessons replay-default from the manifest alone', () => {
+    const coverage = lessonReplayCoverage(fixtureManifest);
+    const ch34Lessons = [
+      'protorun_priority',
+      'pair_count',
+      'skipping_block',
+      'protorun_plus_one',
+      'nakabukure_ready',
+      'ryanmen_protorun',
+    ];
+    for (const lesson of ch34Lessons) {
+      const record = coverage.get(lesson);
+      expect(record, lesson).toBeDefined();
+      expect(record?.covered, lesson).toBe(true);
+      expect(record?.packId, lesson).toBe('replay.ch34-shapes.2026-11');
+    }
+    expect(coverage.get('protorun_priority')?.bases).toBe(289);
+    expect(coverage.get('pair_count')?.bases).toBe(187);
+    expect(coverage.get('skipping_block')?.bases).toBe(141);
+    expect(coverage.get('protorun_plus_one')?.bases).toBe(97);
+    expect(coverage.get('nakabukure_ready')?.bases).toBe(54);
+    expect(coverage.get('ryanmen_protorun')?.bases).toBe(54);
+    // The four thin ch3 shape lessons stay below the 40-base floor, so they
+    // have no replay row and keep the generated default until corpus growth C9.
+    expect(coverage.get('perfect_one_away')).toBeUndefined();
+    expect(coverage.get('pair_count_open')).toBeUndefined();
+    expect(coverage.get('nobetan_keep')).toBeUndefined();
+    expect(coverage.get('ryankan_break')).toBeUndefined();
+  });
+
+  it('loads the ch34 pack body through the same verification path', async () => {
+    const memory = memoryCache();
+    const loaded = await loadPack(ch34Entry, {
+      cache: memory.cache,
+      fetchImpl: vi.fn(async () => bodyResponse(ch34Body)),
+    });
+
+    expect(loaded.fromCache).toBe(false);
+    expect(loaded.pack.schema).toBe(PACK_SCHEMA);
+    expect(loaded.pack.pack_id).toBe(ch34Entry.id);
+    expect(loaded.pack.scenarios).toHaveLength(822);
+    expect([...loaded.byLesson.keys()].sort()).toEqual([
+      'nakabukure_ready',
+      'pair_count',
+      'protorun_plus_one',
+      'protorun_priority',
+      'ryanmen_protorun',
+      'skipping_block',
     ]);
     expect(memory.calls.write).toBe(1);
   });

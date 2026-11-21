@@ -8,6 +8,7 @@
  *   node scripts/check-ch8-pack.mjs --chapter ch7 --allow-no-variants
  *   node scripts/check-ch8-pack.mjs --chapter ch5 --allow-no-variants
  *   node scripts/check-ch8-pack.mjs --chapter ch9 --allow-no-variants
+ *   node scripts/check-ch8-pack.mjs --chapter ch34 --allow-no-variants
  *
  * The generic hosting check (`check-pack-hosting.mjs`) proves the manifest,
  * hashes, budgets and provenance envelope. This check proves the pack's
@@ -91,6 +92,24 @@ const CHAPTERS = {
     sectionPattern: /^ch9\.\d+$/,
     defaultPack: 'replay.ch9-seating-calls.2026-11',
   },
+  ch34: {
+    // Q6 spans three book sections (ch3.2, ch3.3, ch4.1), so the section
+    // pattern is an alternation rather than one chapter prefix. The lesson
+    // set stays explicit and lesson-scoped: the four thin ch3.2/ch3.3
+    // lessons (`perfect_one_away`, `pair_count_open`, `nobetan_keep`,
+    // `ryankan_break`) stay generated until corpus growth C9, and naming only
+    // the six shipped lessons keeps one from leaking in.
+    lessons: new Set([
+      'protorun_priority',
+      'pair_count',
+      'skipping_block',
+      'protorun_plus_one',
+      'nakabukure_ready',
+      'ryanmen_protorun',
+    ]),
+    sectionPattern: /^ch(3\.[23]|4\.1)$/,
+    defaultPack: 'replay.ch34-shapes.2026-11',
+  },
 };
 const DEFAULT_CHAPTER = 'ch8';
 const DEFAULT_MAX_BYTES = 50_000_000;
@@ -132,7 +151,7 @@ function parseArgs(argv) {
     else if (flag === '--json') parsed.json = true;
     else if (flag === '--help' || flag === '-h') {
       console.log(
-        'node scripts/check-ch8-pack.mjs [--chapter ch5|ch7|ch8|ch9] [--dir DIR] [--pack ID] ' +
+        'node scripts/check-ch8-pack.mjs [--chapter ch34|ch5|ch7|ch8|ch9] [--dir DIR] [--pack ID] ' +
           '[--max-bytes N] [--min-scenarios N] [--min-variant-share F] ' +
           '[--allow-no-variants] [--json]',
       );

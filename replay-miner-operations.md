@@ -1126,8 +1126,10 @@ additions make a ~2,000-candidate queue reviewable:
 - **Bulk verdicts.** `scripts/review-q2-queue.py --verdicts-out FILE` applies the
   mechanical chapter rules (`--chapter ch8` by default, `ch7` for the
   riichi/dama queue, where the ready-hand rejection does not apply, `ch5` for
-  the value lessons, whose shipped shapes are 1-away or slower, or `ch9` for the
-  seating/kan pack, where the ready-hand rule is lesson-scoped) to the whole
+  the value lessons, whose shipped shapes are 1-away or slower, `ch9` for the
+  seating/kan pack, where the ready-hand rule is lesson-scoped, or `ch34` for
+  the ch3/ch4 shape pack, whose section scope is a prefix list over ch3.2,
+  ch3.3 and ch4.1) to the whole
   queue and writes one
   `riichiprac.review-verdicts` v1 document:
   `{"schema": "riichiprac.review-verdicts", "version": 1, "note": "...",
@@ -1158,7 +1160,12 @@ floor and out of the pack's scope. The ch. 9 scope is **lesson-scoped**: only
 `daiminkan_decision`'s book situations are explicitly "ready on a good wait" or
 "ready but outside the three situations", `shouminkan_decision` (kakan) applies
 at 1-away or better, and `ankan_decision`/`meld_or_not` argue from the hand's
-block shape and cheapness rather than its distance from tenpai. The human
+block shape and cheapness rather than its distance from tenpai. The ch. 34
+scope is lesson-scoped the same way and spans three sections (`ch3.2`, `ch3.3`,
+`ch4.1`): `protorun_priority`, `pair_count`, `skipping_block` and
+`protorun_plus_one` are 1/2-shanten discards by construction and reject a ready
+hand, while `nakabukure_ready` has an explicit ready-hand cell and
+`ryanmen_protorun` is a tenpai decision, so both keep ready hands. The human
 sample is the evidence that the remaining positions teach.
 
 #### Filtering, progress and the review surface (Q2r2)
@@ -2098,6 +2105,28 @@ tenpai is intrinsic); 691/691 were accepted, and a 220-row stratified sample
 includes all 91 kan/call bases. Details:
 [`q5-ch9-seating-calls-pack.md`](q5-ch9-seating-calls-pack.md), evidence:
 [`testdata/reports/q5-ch9/`](testdata/reports/q5-ch9/); coverage:
+`node scripts/replay-coverage-report.mjs`.
+
+**Ch. 3/4 shape pack (Q6, 2026-11-20).** The same classifier-v3 corpus produced
+`replay.ch34-shapes.2026-11`: `select --section ch3,ch4 --lesson
+protorun_priority,pair_count,skipping_block,protorun_plus_one,nakabukure_ready,ryanmen_protorun`
+returned 868 reviewed bases from 967 gate passes (822 shipped after
+`--unique-hands`), 724,376 bytes, 610 source replays, 822 unique hands. All six
+lessons clear the 40-base floor (`protorun_priority` 289, `pair_count` 187,
+`skipping_block` 141, `protorun_plus_one` 97, `nakabukure_ready` 54,
+`ryanmen_protorun` 54); the four thin ch3 lessons (`perfect_one_away` 25,
+`pair_count_open` 21, `nobetan_keep` 3, `ryankan_break` 1) stayed out of the
+selection and lesson scope and remain generated-default for C9. The selection
+ran 58 min on 14 workers; 56 slots came from the last-resort fill past
+`--max-per-replay 2` (the book-only fill rule from `261120-0843`) and no
+section/kind/turn cap was relaxed. The mechanical review takes
+`--chapter ch34`, a **prefix list** over ch3.2/ch3.3/ch4.1 whose ready-hand rule
+is lesson-scoped from each recogniser (the four 1/2-shanten discards reject a
+ready hand; `nakabukure_ready`'s ready cell and the tenpai `ryanmen_protorun`
+keep it); 868/868 were accepted, and a 351-row stratified sample includes every
+base of the three lessons under 120. Details:
+[`q6-ch34-shapes-pack.md`](q6-ch34-shapes-pack.md), evidence:
+[`testdata/reports/q6-ch34/`](testdata/reports/q6-ch34/); coverage:
 `node scripts/replay-coverage-report.mjs`.
 
 **Replay-first rollout.** The next product phase extends packs to the remaining
