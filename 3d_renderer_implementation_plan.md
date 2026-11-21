@@ -440,7 +440,10 @@ fixture:
   separated by the felt break (the alternative, pulling it outward into the far
   player's felt band, was not chosen), and the live wall thins honestly rather
   than evenly. The look itself is still an AGENTS.md §6 handoff: the numeric
-  gate above plus `?renderer=3d` for the user's verdict.
+  gate above plus `?renderer=3d` for the user's verdict. **User sign-off
+  (2026-11-20):** "Looks good" after reviewing the live view — the 8.4 mm dead
+  wall break, the bottom-only draw-edge stack and the asymmetric thinning all
+  accepted.
 
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
