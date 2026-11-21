@@ -16,6 +16,7 @@ import {
   displayCopies,
   isSelectableCopy,
   previewCopiesFor,
+  sharesCall,
 } from '../callChoices';
 import type {
   CallCopy,
@@ -783,8 +784,17 @@ export const useGameStore = create<GameStore>((set, get) => {
         isDraw: candidate.isDraw,
       };
       const next = [...pending.picks, picked];
-      const picks =
+      let picks =
         next.length > pending.need ? next.slice(next.length - pending.need) : next;
+
+      /*
+       * Keep the newest tile and only the raised tiles that can share a call
+       * with it. A tile that cannot join the current selection replaces it
+       * (user request 2026-11-21), rather than leaving an impossible pair up.
+       */
+      if (picks.length > 1 && !sharesCall(pending.options, picks)) {
+        picks = [picks[picks.length - 1]];
+      }
 
       if (picks.length === pending.need) {
         const option = callOptionForPicks(pending, picks);

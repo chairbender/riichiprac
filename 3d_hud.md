@@ -1005,8 +1005,9 @@ result card. This is what the next units build on.
   legal option; for Riichi, the engine's legal discards). Leaving the button, or
   opening the pick, lowers them. While the pick is open every hand tile outside
   the legal set is darkened and inert; picked tiles stay raised. A Chi pick
-  toggles: clicking a raised tile lowers it, and a third click keeps only the
-  most recent two. The 3D scene lifts the real mesh
+  toggles: clicking a raised tile lowers it, and clicking a tile that cannot
+  join the raised one replaces it, so only the clicked tile stays up. The 3D
+  scene lifts the real mesh
   (`TableRenderer.setLiftedTiles`, a set, not one hover) and the overlay paints
   a dim layer; the 2D dock lifts the tile buttons and filters the rest.
 - **Review aid: `?preview=calls`.** The crafted cases in

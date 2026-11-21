@@ -447,28 +447,28 @@ describe('calls: hover preview and selection', () => {
     expect(useGameStore.getState().submittedAnswer).toBeNull();
   });
 
-  it('keeps only the most recent two tiles raised when a third is picked', () => {
+  it('lowers a raised tile that cannot join the tile just clicked', () => {
     load(drillChi());
     useGameStore.getState().beginCall('chi');
 
     // 2p and 5p are each selectable, but together they are not a Chi.
     useGameStore.getState().pickCallTile('2p', 2);
     useGameStore.getState().pickCallTile('5p', 4);
+    // The new tile replaces the old one instead of leaving an impossible pair
+    // raised (user request 2026-11-21).
     expect(useGameStore.getState().pendingCall?.picks.map((p) => p.code)).toEqual([
-      '2p',
       '5p',
     ]);
-    expect(useGameStore.getState().callError).toBe(
-      'Those tiles do not make a Chi.',
-    );
+    expect(useGameStore.getState().callError).toBeNull();
 
-    // A third tile drops the oldest, leaving 5p + 6p, which is Chi_Mid.
+    // 5p + 6p is Chi_Mid, so the second valid tile completes the call.
     useGameStore.getState().pickCallTile('6p', 5);
     expect(useGameStore.getState().submittedAnswer).toMatchObject({
       action: 'best',
       action_name: 'Chi_Mid',
     });
   });
+
 });
 
 describe('calls: rejections, cancel and pass', () => {

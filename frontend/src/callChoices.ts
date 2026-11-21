@@ -486,6 +486,14 @@ export function canPickCopy(pending: PendingCall, copy: CallCopy): boolean {
   );
 }
 
+/** True when one legal option contains every one of these picks together. */
+export function sharesCall(
+  options: readonly CallOption[],
+  picks: readonly CallCopy[],
+): boolean {
+  return options.some((option) => containsAll(option.handTiles, picks));
+}
+
 /** The option a completed pick set answers, or null when it answers none. */
 export function callOptionForPicks(
   pending: PendingCall,
