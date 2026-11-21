@@ -28,7 +28,6 @@ import {
   frameForAspect,
   layoutBoard,
   placeHandBand,
-  withoutHandBandTiles,
 } from '../three/boardLayout';
 import type { LayoutProfile } from '../layoutConstants';
 import { compassPlateRect, handBandRect, hitRects } from '../three/hitTest';
@@ -118,14 +117,11 @@ function sceneFor(
   const board = layoutBoard(boardFixture(options), profile);
   const viewport = { widthPx: stage.width, heightPx: stage.height };
   /*
-   * Desktop is the committed board: the hand is on the mat and the camera
-   * frames it. Mobile solves the frame for the table without the hand, then
-   * places the hand in its screen-space band — which is where the HUD's own
-   * anchor and the hand buttons come from.
+   * The frame is solved from the mat layout, hand included, on both profiles
+   * (2026-11-21): that is what keeps the camera in one place when a meld or a
+   * wall depletion changes the board. Mobile then lifts the hand into its band.
    */
-  const frame = mobile
-    ? frameForAspect(stage.width / stage.height, withoutHandBandTiles(board))
-    : frameForAspect(stage.width / stage.height, board);
+  const frame = frameForAspect(stage.width / stage.height, board);
   const placed = mobile ? placeHandBand(board, frame, viewport) : board;
   const compass = compassPlateRect(frame, viewport, profile);
   const scene: Scene = {
@@ -305,9 +301,9 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
    * reaches, and the compass clearance the gate measures.
    */
   const GOLDEN = [
-    { stage: GATE_STAGES[0], callBar: 836, result: 776, sheetBottom: 1072, clearance: 192 },
-    { stage: GATE_STAGES[1], callBar: 876, result: 816, sheetBottom: 1072, clearance: 244 },
-    { stage: GATE_STAGES[2], callBar: 790, result: 730, sheetBottom: 952, clearance: 237 },
+    { stage: GATE_STAGES[0], callBar: 836, result: 776, sheetBottom: 1072, clearance: 200 },
+    { stage: GATE_STAGES[1], callBar: 876, result: 816, sheetBottom: 1072, clearance: 252 },
+    { stage: GATE_STAGES[2], callBar: 790, result: 730, sheetBottom: 952, clearance: 245 },
     { stage: GATE_STAGES[3], callBar: 801, result: 741, sheetBottom: 952, clearance: 256 },
     { stage: GATE_STAGES[4], callBar: 859, result: 799, sheetBottom: 992, clearance: 308 },
     { stage: GATE_STAGES[5], callBar: 1061, result: 1001, sheetBottom: 1192, clearance: 409 },

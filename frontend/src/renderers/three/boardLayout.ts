@@ -84,7 +84,12 @@ import {
   pondRadiiFor,
 } from '../layoutConstants';
 import type { LayoutProfile } from '../layoutConstants';
-import { decodeWallSlot, isDeadWallSlot } from '../wall';
+import {
+  deadWallStacks,
+  decodeWallSlot,
+  isDeadWallSlot,
+  liveWallStacks,
+} from '../wall';
 
 /** A point or vector in world space, in tile units. */
 export type Vec3 = readonly [number, number, number];
@@ -1123,6 +1128,57 @@ export function framingPoints(layout: BoardLayout): Vec3[] {
   for (const tile of layout.tiles) {
     points.push(...orientedBoxCorners(orientedBox(tile.pose)));
   }
+  /*
+   * The wall ring's **fixed** envelope, whatever the live wall's count.
+   *
+   * The wall follows state (`tiles_remaining` depletes one arc from the break),
+   * so a state with fewer tiles used to shrink the framing target: the solver
+   * pulled the camera in and the table slid down under the hand. The ring's
+   * geometry never moves, so its envelope is added here from the committed
+   * constants and the camera stays in one place at a given aspect — which is
+   * what the user sees when a side run still has all 17 stacks.
+   */
+  points.push(...wallEnvelopePoints(layout.humanSeat));
+  return points;
+}
+
+/**
+ * The wall ring's outermost corners for a seat, independent of occupancy.
+ *
+ * Every stack (live and dead) at the top tier, as the corners of the tile body
+ * that would sit there. Memoised per seat: the ring is a constant of the table.
+ */
+const WALL_ENVELOPE_CACHE = new Map<Seat, Vec3[]>();
+
+function wallEnvelopePoints(humanSeat: Seat): Vec3[] {
+  const cached = WALL_ENVELOPE_CACHE.get(humanSeat);
+  if (cached) return cached;
+
+  const points: Vec3[] = [];
+  const topTier = wallTierHeightUnits(WALL.tiers - 1);
+  const stacks: { run: Seat; stack: number; dead: boolean }[] = [];
+  for (const stack of liveWallStacks(humanSeat)) {
+    stacks.push({ ...stack, dead: false });
+  }
+  for (const stack of deadWallStacks(humanSeat)) {
+    stacks.push({ ...stack, dead: true });
+  }
+  for (const { run, stack, dead } of stacks) {
+    const pose: TilePose = {
+      position: seatPoint(
+        run,
+        wallStackW(stack) + (dead ? WALL.deadWallGapUnits : 0),
+        wallRunRadius(run, humanSeat),
+        topTier,
+      ),
+      yawDeg: seatYawDeg(run),
+      tiltDeg: 90,
+      rollDeg: 0,
+      sizeUnits: TILE_SIZE,
+    };
+    points.push(...orientedBoxCorners(orientedBox(pose)));
+  }
+  WALL_ENVELOPE_CACHE.set(humanSeat, points);
   return points;
 }
 

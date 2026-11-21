@@ -1176,7 +1176,14 @@ export class TableScene implements TableRenderer {
      * Otherwise the solved distance would still reserve room for a row that is
      * no longer on the table and the board would shrink for nothing.
      */
-    const framing = source ? withoutHandBandTiles(source) : undefined;
+    /*
+     * The framing target is the *mat* layout, hand included: the band is placed
+     * inside the frame afterwards, and excluding the on-mat hand made a seat's
+     * meld row the binding edge on a phone — so declaring a meld moved the
+     * camera. With the hand in the target the solve is the committed one and a
+     * meld cannot shift it (261120-2225's guarantee).
+     */
+    const framing = source ?? undefined;
     this.frame = frameForAspect(this.aspect, framing);
     const viewport = { widthPx: this.cssWidth, heightPx: this.cssHeight };
     const bandable =

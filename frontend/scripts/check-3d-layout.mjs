@@ -870,10 +870,9 @@ async function main() {
       F.boardFixture({ meldCounts: [0, 0, 0, 0] }),
       'mobile',
     );
-    const shippedFrame = L.frameForAspect(
-      width / height,
-      L.withoutHandBandTiles(source),
-    );
+    // The shipped solve frames the mat layout, hand included, so the camera is
+    // the same for every state (2026-11-21).
+    const shippedFrame = L.frameForAspect(width / height, source);
     const band = L.placeHandBand(source, shippedFrame, {
       widthPx: width,
       heightPx: height,
@@ -916,6 +915,72 @@ async function main() {
     if (bottomFraction > 0.03) bandBottomOk = false;
     if (!(handDepth < tableDepth)) bandOk = false;
   }
+  /*
+   * Camera stability (2026-11-21): the frame must depend on the aspect, not on
+   * the state. A depleted wall, a short river or a declared meld used to move
+   * the solved distance — the table slid under the hand in some scenarios.
+   */
+  /*
+   * Occupancy must not move the camera at all: the wall's remaining tiles and
+   * the rivers' lengths are pure state, and a depleted run used to pull the
+   * solve in. A declared meld is allowed the committed 2 % (261120-2225), which
+   * is 0.4 units and invisible.
+   */
+  const occupancyVariants = [
+    ['reference', {}],
+    ['empty rivers', { riverCounts: [0, 0, 0, 0] }],
+    ['full rivers', { riverCounts: [22, 22, 22, 22] }],
+    ['wall drawn down', { tilesRemaining: 4 }],
+    ['wall and rivers minimal', { tilesRemaining: 4, riverCounts: [0, 0, 0, 0] }],
+  ];
+  const meldVariants = [
+    ['no melds', { meldCounts: [0, 0, 0, 0] }],
+    ['four melds + kan', { meldCounts: [4, 4, 4, 4], kan: true }],
+  ];
+  let cameraStable = true;
+  let meldCameraStable = true;
+  for (const [width, height] of [
+    [844, 390],
+    [932, 430],
+    [1920, 1080],
+    [810, 1440],
+  ]) {
+    const solve = (options) =>
+      L.frameForAspect(
+        width / height,
+        L.layoutBoard(F.boardFixture(options), 'mobile'),
+      );
+    const base = solve(occupancyVariants[0][1]);
+    for (const [, options] of occupancyVariants) {
+      const frame = solve(options);
+      if (
+        !close(frame.distanceUnits, base.distanceUnits, 1e-9) ||
+        !close(frame.shiftNdcY, base.shiftNdcY, 1e-9)
+      ) {
+        cameraStable = false;
+      }
+    }
+    for (const [, options] of meldVariants) {
+      const frame = solve(options);
+      if (
+        Math.abs(frame.distanceUnits / base.distanceUnits - 1) > 0.02 ||
+        !close(frame.shiftNdcY, base.shiftNdcY, 1e-9)
+      ) {
+        meldCameraStable = false;
+      }
+    }
+  }
+  check(
+    'the wall and the rivers never move the camera',
+    cameraStable,
+    `${occupancyVariants.length} states x 4 aspects`,
+  );
+  check(
+    'a declared meld moves the camera under the committed 2 %',
+    meldCameraStable,
+    `${meldVariants.length} states x 4 aspects`,
+  );
+
   check('the hand row is its committed width fraction', bandOk, '66 %');
   check('the hand row sits within 3 % of the frame bottom', bandBottomOk);
 
