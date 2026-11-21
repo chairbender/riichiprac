@@ -331,7 +331,7 @@ function demos(): CallDemoCase[] {
     { id: 'kan-single', title: 'Self-turn Kan, four copies (press completes it)', state: kanSingle },
     { id: 'riichi-one', title: 'Riichi, one legal discard (press completes it)', state: riichiOne },
     { id: 'riichi-many', title: 'Riichi, three legal discards (pick one)', state: riichiMany },
-    { id: 'drill-chi', title: 'Drill with Chi/Pon-style actions and Pass', state: drillChi },
+    { id: 'drill-chi', title: 'Drill with three Chi actions and Pass', state: drillChi },
   ];
 }
 

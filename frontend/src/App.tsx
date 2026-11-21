@@ -421,21 +421,23 @@ export const App = () => {
         commitHistory();
       };
 
-      /*
-       * The call review set: a query-gated sequence of crafted positions the
-       * Next hand control walks. It bypasses replay/generation entirely so the
-       * review starts instantly and every case is one tap away.
-       */
-      if (callDemoIndexRef.current !== null) {
-        const demo =
-          CALL_DEMO_CASES[callDemoIndexRef.current % CALL_DEMO_CASES.length];
-        finish(() => loadFromJson(JSON.stringify(demo.state)));
-        return;
-      }
-
       try {
         await ensureWasmReady();
         if (requestId !== loadRequestId.current) return;
+
+        /*
+         * The call review set: a query-gated sequence of crafted positions the
+         * Next hand control walks. It bypasses replay/generation entirely so
+         * the review starts instantly and every case is one tap away. Wasm is
+         * already ready here, so a Riichi hover can ask the engine for its
+         * legal discards on the first pointer move.
+         */
+        if (callDemoIndexRef.current !== null) {
+          const demo =
+            CALL_DEMO_CASES[callDemoIndexRef.current % CALL_DEMO_CASES.length];
+          finish(() => loadFromJson(JSON.stringify(demo.state)));
+          return;
+        }
 
         if (!wasmCatalogRef.current) {
           const manifest = parseScenarioManifest(list_scenarios());
