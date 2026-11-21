@@ -4,10 +4,10 @@
  *
  * The fixture is not produced by `snapshotFromGameState`: the layout unit owns
  * no game rules, and the gate script must be able to run without a `GameState`.
- * It builds the same shapes the adapter produces (a full 132-tile decorative
- * wall, 13 - 3·melds concealed tiles per seat, a draw, melds, rivers up to the
- * 18 + 4 overflow capacity, dora on the far wall) so the layout is exercised at
- * its widest and deepest.
+ * It builds the same shapes the adapter produces (the depleted live wall from
+ * `tilesRemaining` plus the 14-tile dead wall, 13 - 3·melds concealed tiles per
+ * seat, a draw, melds, rivers up to the 18 + 4 overflow capacity, dora on the
+ * dead wall) so the layout is exercised at its widest and deepest.
  *
  * Pure data: no DOM, no three.js, no randomness.
  */
@@ -20,7 +20,7 @@ import type {
   TableSnapshot,
   TileFaceId,
 } from '../contract';
-import { WALL } from '../layoutConstants';
+import { wallSlotId, wallSlots } from '../wall';
 
 /** Options for {@link boardFixture}; every field has a realistic default. */
 export interface FixtureOptions {
@@ -36,6 +36,12 @@ export interface FixtureOptions {
   readonly doraCount?: number;
   /** The 1000-point pot. Defaults to 2; the 3D board does not draw it (3D-09). */
   readonly riichiSticks?: number;
+  /**
+   * `compass.tilesRemaining`, which is also the live wall's tile count. Defaults
+   * to 69, the first decision after the deal and the dealer's draw; pass a small
+   * number for a late-hand fixture. Clamped by the wall model to 0..70.
+   */
+  readonly tilesRemaining?: number;
   /**
    * Absolute seats that have declared riichi. Omitted, every seat whose river
    * is long enough (all four by default) has, so the per-seat sticks are all
@@ -104,24 +110,18 @@ function tile(
   };
 }
 
-/** The fixed decorative wall: four runs, two tiers, minus every draw-end top. */
-function buildWall(): SnapshotTile[] {
-  const wall: SnapshotTile[] = [];
-  for (let run = 0; run < WALL.runs; run += 1) {
-    for (let stack = 0; stack < WALL.stacksPerRun; stack += 1) {
-      for (let tier = 0; tier < WALL.tiers; tier += 1) {
-        if (stack === WALL.drawEndSlot && tier >= WALL.drawEndTiers) continue;
-        wall.push({
-          face: 'blank',
-          zone: 'wall',
-          slot: run * WALL.slotsPerRun + stack * WALL.tiers + tier,
-          faceUp: false,
-          sideways: false,
-        });
-      }
-    }
-  }
-  return wall;
+/**
+ * The wall at the fixture's live count: the fixed dead wall plus the live wall's
+ * remaining slots, exactly as `snapshotFromGameState` builds it.
+ */
+function buildWall(tilesRemaining: number, humanSeat: Seat): SnapshotTile[] {
+  return wallSlots(tilesRemaining, humanSeat).map(({ run, stack, tier }) => ({
+    face: 'blank',
+    zone: 'wall',
+    slot: wallSlotId(run, stack, tier),
+    faceUp: false,
+    sideways: false,
+  }));
 }
 
 /**
@@ -137,6 +137,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
   const meldCounts = options.meldCounts ?? ([1, 1, 1, 1] as const);
   const doraCount = options.doraCount ?? 3;
   const riichiSticks = options.riichiSticks ?? 2;
+  const tilesRemaining = options.tilesRemaining ?? 69;
   const draw = options.draw ?? true;
   const declared = options.riichiSeats
     ? new Set<number>(options.riichiSeats)
@@ -200,7 +201,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
     revision: 1,
     humanSeat,
     seats: seats as unknown as TableSnapshot['seats'],
-    wall: buildWall(),
+    wall: buildWall(tilesRemaining, humanSeat),
     dora: Array.from({ length: doraCount }, (_, index) =>
       tile('dora', index, 27 + index),
     ),
@@ -209,7 +210,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
       handNumber: 1,
       honba: 1,
       riichiSticks,
-      tilesRemaining: 42,
+      tilesRemaining,
     },
     highlightDiscard:
       riverCounts[0] > 0 ? { seat: 0, index: riverCounts[0] - 1 } : null,

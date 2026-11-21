@@ -83,6 +83,7 @@ import type {
 import {
   SCENARIO_HISTORY_VERSION,
   ScenarioHistory,
+  withoutAnswerState,
 } from './scenarioHistory';
 import type { ScenarioSnapshot } from './scenarioHistory';
 import { stackOrder } from './seatOrder';
@@ -143,6 +144,7 @@ export const App = () => {
   const callPreview = useGameStore((state) => state.callPreview);
   const submittedAnswer = useGameStore((state) => state.submittedAnswer);
   const dualGrade = useGameStore((state) => state.dualGrade);
+  const resetAnswer = useGameStore((state) => state.resetAnswer);
   const peekedBeforeAnswer = useGameStore((state) => state.peekedBeforeAnswer);
   const peekMortal = useGameStore((state) => state.peekMortal);
   const loadFromJson = useGameStore((state) => state.loadFromJson);
@@ -671,7 +673,14 @@ export const App = () => {
     ],
   );
 
-  /** Put a history entry's hand and its answer state back on screen. */
+  /**
+   * Put a history entry's hand back on screen, unanswered.
+   *
+   * Back/Forward is "show me that table again", not "show me the answer again":
+   * the stored snapshot's answer, verdict, peek, evaluation and armed toggles
+   * are stripped before the store sees it, so the hand comes back answerable
+   * without a re-deal. The table JSON itself is untouched.
+   */
   const restoreHistoryEntry = useCallback(
     (snapshot: ScenarioSnapshot) => {
       loadedWithRef.current = {
@@ -681,7 +690,7 @@ export const App = () => {
       setSelection(snapshot.selection);
       setRequireAgreement(snapshot.requireAgreement);
       updateExportDescription(snapshot.exportDescription);
-      restoreSnapshot(snapshot);
+      restoreSnapshot(withoutAnswerState(snapshot));
     },
     [restoreSnapshot, updateExportDescription],
   );
@@ -717,8 +726,9 @@ export const App = () => {
 
   /**
    * Keep the current entry's snapshot matching the screen. Answering, peeking,
-   * arming Riichi, or editing the export note all land here, so going Back and
-   * Forward again restores the answered hand instead of a fresh copy of it.
+   * arming Riichi, or editing the export note all land here, so the entry keeps
+   * the same table and note. The answer state is recorded too but Back/Forward
+   * strips it on restore, so it is never brought back as a finished answer.
    */
   useEffect(() => {
     const snapshot = buildSnapshot();
@@ -1173,6 +1183,7 @@ export const App = () => {
         onDetails={() => setHudSheet('verdict')}
         onNext={handleNextScenario}
         nextDisabled={isLoading}
+        onReset={resetAnswer}
       />
     ) : undefined;
   // The outcome's green/amber/red is the result panel's outline, not an inner
@@ -1570,6 +1581,7 @@ export const App = () => {
           revealMortal={dualGrade !== null || peekedBeforeAnswer}
           nextDisabled={isLoading}
           onNextScenario={handleNextScenario}
+          onResetAnswer={resetAnswer}
           onShowVerdict={showVerdict}
           previewTiles={callPreview}
           onBeginCall={beginCall}

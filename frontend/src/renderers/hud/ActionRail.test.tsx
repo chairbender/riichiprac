@@ -130,6 +130,7 @@ function dock(overrides: Partial<ComponentProps<typeof HandDock>> = {}) {
       callError={null}
       aiEvaluation={null}
       onNextScenario={() => undefined}
+      onResetAnswer={() => undefined}
       onShowVerdict={() => undefined}
       onBeginCall={() => undefined}
       onPass={() => undefined}

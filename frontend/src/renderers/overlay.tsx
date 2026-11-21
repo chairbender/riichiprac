@@ -21,9 +21,11 @@
  *   same arguments;
  * - visible focus, and focus kept somewhere valid when the answered hand
  *   removes the buttons;
- * - hover/focus reported through `onHoverTile` for 3D-12's bounded lift, with
- *   the motion suppressed under `prefers-reduced-motion`. The buttons never move
- *   for it: their rects come from the camera, not from interaction state.
+ * - hover/focus reported through `onHoverTile` for 3D-12's bounded lift. The
+ *   lift is a discrete pose change, not an animation, so it is reported even
+ *   under `prefers-reduced-motion` (which suppresses the deal-in instead). The
+ *   buttons never move for it: their rects come from the camera, not from
+ *   interaction state.
  *
  * 3D-09 adds {@link TableCompass}: the table's numbers are DOM, never 3D text.
  * It is a separate sibling of the hand group, not a child of it, so the hand's
@@ -64,8 +66,6 @@ export interface TableOverlayProps {
    * and tiles the call cannot use are disabled, exactly as in `HandDock`.
    */
   readonly pendingCall?: PendingCall | null;
-  /** Suppress the hover/focus lift (the focus ring still shows). */
-  readonly reducedMotion?: boolean;
   /** The handler every table view calls for a hand-tile click. */
   readonly onSelectTile: (tile: string, index?: number, isDraw?: boolean) => void;
   /** Report the pointer/focus tile for 3D-12's lift, or null for none. */
@@ -83,7 +83,6 @@ export function TableOverlay({
   snapshot,
   rects,
   pendingCall = null,
-  reducedMotion = false,
   onSelectTile,
   onHoverTile,
 }: TableOverlayProps) {
@@ -143,8 +142,8 @@ export function TableOverlay({
    * Drop a lift whose button has gone. Answering removes every button and a new
    * snapshot may replace the hovered one; a removed element gets no
    * `pointerleave`, so the renderer would otherwise keep that tile raised
-   * forever. Null is always reported, even under reduced motion: it only
-   * clears, and clearing must never be suppressed.
+   * forever. Null is always reported: it only clears, and clearing must never
+   * be suppressed.
    */
   useLayoutEffect(() => {
     const key = hoveredKeyRef.current;
@@ -156,9 +155,9 @@ export function TableOverlay({
 
   const hover = (tile: OverlayHandTile | null, key: string | null = null) => {
     hoveredKeyRef.current = tile ? key : null;
-    // Suppress the lift under reduced motion; report the clear regardless so a
-    // stale raised tile can never survive.
-    if (tile && reducedMotion) return;
+    // The lift is a discrete pose change, not an animation (user decision
+    // 2026-11-21): report it under every motion preference. Reduced motion
+    // still suppresses the deal-in, which is the actual animation.
     onHoverTile?.(tile);
   };
 

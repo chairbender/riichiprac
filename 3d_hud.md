@@ -107,10 +107,10 @@ Every element the 2D shell renders today, and where it goes in 3D. "Dropped"
 means the control does not exist in the 3D view; it always comes with the
 reason. No element of `App.tsx`'s 2D return is left unmapped.
 
-Legend for the destination column: **TOP BAR**, **ACTION RAIL**, **RESULT
-CARD** and **HAND RAIL** (the last three are rows of the one hand panel, §2),
-**SETUP SHEET**, **VERDICT SHEET**, **TOAST**, **SCENE** (3D-02/08/09,
-unchanged), **DROPPED**, **2D ONLY**.
+Legend for the destination column: **TOP BAR**, **CALL ROW** (the isolated
+pre-answer row, §2), **RESULT CARD** (the one post-answer panel), **SETUP
+SHEET**, **VERDICT SHEET**, **TOAST**, **SCENE** (3D-02/08/09, unchanged),
+**DROPPED**, **2D ONLY**.
 
 | # | Element (source) | Today | In 3D | Unit |
 | --- | --- | --- | --- | --- |
@@ -146,7 +146,7 @@ unchanged), **DROPPED**, **2D ONLY**.
 | 30 | Agreement note (`role="status"`) | inline | **SETUP SHEET**, "Table info" | H4 |
 | 31 | Scenario note | inline | **SETUP SHEET**, "Table info" | H4 |
 | 32 | `PositionDescriptionCard` + Dismiss | inline | **TOAST** (first line + Details); full text in **SETUP SHEET**, "Table info" | H3/H4 |
-| 33 | Pre-answer verdict status line (tone + text) | verdict panel | **HAND RAIL** chip with a short state ("Peek", "Mortal unavailable", "Mortal thinking…"); the full line in the **VERDICT SHEET** | H3/H5 |
+| 33 | Pre-answer verdict status line (tone + text) | verdict panel | **DROPPED in 3D** (2026-11-21) — no pre-answer Mortal chip; the full line is in the post-answer **VERDICT SHEET** | H5 |
 | 34 | Peek button | verdict panel | **VERDICT SHEET** (pre-answer) | H5 |
 | 35 | Retry (pre-answer Mortal error) | verdict panel | **VERDICT SHEET** | H5 |
 | 36 | Peeked-Mortal card | verdict panel | **VERDICT SHEET** | H5 |
@@ -163,12 +163,12 @@ unchanged), **DROPPED**, **2D ONLY**.
 | 47 | `HandDock` section "Your hand" | dock | **SCENE** — the 3D overlay's group keeps that name; no duplicate group | 3D-08 |
 | 48 | Hand + draw tile buttons (labels, order, disabled, answer marks, AI badges) | dock | **SCENE** — the projected buttons; the HUD renders none | 3D-08 |
 | 49 | `hand` grid + `Tile` SVGs | dock | **SCENE** (canvas) | 3D-07/08 |
-| 50 | Call bar (`CallControls`: Chi/Pon/Kan/Riichi/Pass, then its tile pick) | dock | **ACTION RAIL** — the same component, not a copy | H3 |
-| 51 | Call pick prompt and Cancel (2026-11-20 click-then-pick flow) | dock | **ACTION RAIL** beside the call bar | H3 |
-| 52 | Hint line (`.hand-dock-label`, `aria-live`) | dock | **HAND RAIL** | H3 |
+| 50 | Call bar (`CallControls`: Chi/Pon/Kan/Riichi/Pass, then its tile pick) | dock | **CALL ROW** — the same component, not a copy | H3 |
+| 51 | Call pick prompt and Cancel (2026-11-20 click-then-pick flow) | dock | **CALL ROW** beside the call bar | H3 |
+| 52 | Hint line (`.hand-dock-label`, `aria-live`) | dock | **DROPPED in 3D** (2026-11-21) — the call row's pick prompt is the only instruction | H3 |
 | 53 | Dock `NextScenarioButton` | dock | **DROPPED** — the top bar, the post-answer result card and the verdict sheet carry Next; the dock's is not re-mounted | H3/H5 |
-| 54 | `ActionBar` (the drill's remaining non-call actions, labels, probabilities) | below the table | **ACTION RAIL** | H3 |
-| 55 | `DecisionPopup` (built, never mounted) | — | **DROPPED** — the rail is the only call surface; do not mount a second one | H3 |
+| 54 | `ActionBar` (the drill's remaining non-call actions, labels, probabilities) | below the table | **CALL ROW** | H3 |
+| 55 | `DecisionPopup` (built, never mounted) | — | **DROPPED** — the call row is the only call surface; do not mount a second one | H3 |
 | 56 | `statusMessage` (loading table/pack/agreement/Mortal/hotseat) | `role="status"` | **TOAST**, persistent while loading | H3 |
 | 57 | `error` (`role="alert"`) | inline | **TOAST**, error tone, until the next deal | H3 |
 | 58 | `threeNotice` + Dismiss (3D-11 degrade notice) | 2D shell | **2D ONLY** — it appears only after returning to a 2D view | — |
@@ -196,6 +196,7 @@ second strip of tiles.
 | Hand + draw tile buttons | **scene** (3D-08) | the projected buttons; the HUD never renders a second hand |
 | `hand` grid + tile images | **scene** (canvas) | drawn in 3D |
 | Dock `NextScenarioButton` | **dropped** | the top bar, the post-answer result card and the verdict sheet each carry Next (user request 2026-11-20); the dock's is not re-mounted |
+| Dock post-answer pair (`Reset` beside `Next`) | **result card** | `PostAnswerControls` is one shared component: the 2D dock renders it after an answer, the 3D card renders the same pair, so Reset and Next cannot drift or duplicate. Reset returns the same hand to unanswered (`resetAnswer`), with no re-deal |
 | Hint row post-answer | **folded into the result card** | "Answer submitted" is redundant beside the result; the outcome is the message |
 
 Consequences the units must honour:
@@ -232,7 +233,7 @@ After an answer the one panel is the result card:
 
 | Panel row | Height | When |
 | --- | --- | --- |
-| result card | `104 px` (two `44 px` rows: outcome, then picks + Next) | after an answer |
+| result card | `104 px` (two `44 px` rows: outcome, then picks + Reset + Next) | after an answer |
 
 It is `min(36rem, stageW − 16)` wide, centred on the stage, and sits `8 px`
 above the hand band (or below it on the phones).
@@ -615,8 +616,9 @@ Rules:
   (the panel's `8 px` gap to the hand is a layout gap, not an inset).
 - The hand is the lowest scene element, and in landscape it ends `40–76 px`
   above the stage bottom (reference hand, 21:9, `1080 − 1010 = 70 px`), which
-  clears a `34 px` home indicator without any HUD involvement. The hand panel is
-  above the hand, so no HUD rect competes for the bottom inset.
+  clears a `34 px` home indicator without any HUD involvement. The call row and
+  the result panel are above the hand, so no HUD rect competes for the bottom
+  inset.
 - `dvh` changes when mobile browser chrome shows/hides. The HUD recomputes on
   `resize` (and `orientationchange`, and `fullscreenchange`) through one
   `ResizeObserver` on the stage; the renderer already re-fits on resize, so the
@@ -632,7 +634,8 @@ Rules:
 - Sheets, toasts and the result card appear with **no** transform, scale or
   slide: either instantly or a plain opacity change of at most `120 ms`.
 - No HUD element animates continuously. The only 3D motion the HUD can cause is
-  the 3D-08 hover lift, which reduced motion already suppresses.
+  the 3D-08 hover lift, which still applies under reduced motion because it is a
+  discrete pose change; reduced motion suppresses only the time-based deal-in.
 - Nothing auto-scrolls in 3D, so there is no smooth-scroll special case to
   honour (the 2D `showVerdict` scroll is 2D-only).
 
@@ -980,16 +983,18 @@ H2 landed the shell exactly as specified above. The facts H3–H5 build on:
 The playing state is the isolated call row; the one panel is the post-answer
 result card. This is what the next units build on.
 
-- **Files.** `renderers/hud/{ActionRail.tsx, actionRail.ts, HandRail.tsx,
-  handRail.ts, ToastStack.tsx, toastModel.ts}` plus `hudLayout.ts`'s row state
-  and the shared `components/CallControls.tsx` (which replaced the Riichi/Kan
-  `CallToggles` in the 2026-11-20 click-then-pick flow). `components/HandDock.tsx`
-  renders the same `CallControls` and the same `handHint()`, so the two shells
-  cannot drift. `App.tsx` changed only at the 3D mount seam.
+- **Files.** `renderers/hud/{ActionRail.tsx, actionRail.ts, ToastStack.tsx,
+  toastModel.ts}` plus `hudLayout.ts`'s row state and the shared
+  `components/CallControls.tsx` (which replaced the Riichi/Kan `CallToggles` in
+  the 2026-11-20 click-then-pick flow). `HandRail.tsx`/`handRail.ts` existed for
+  the pre-answer hint and Mortal chip and were deleted with that panel on
+  2026-11-21. `components/HandDock.tsx` renders the same `CallControls` and the
+  same `handHint()`, so the two shells cannot drift. `App.tsx` changed only at
+  the 3D mount seam.
 - **One hand.** The call row and the result panel render no tile control at all — in 3D
   the only hand buttons are 3D-08's projected ones. `PracticeHud.test.tsx`
   composes the real overlay with the real HUD and asserts exactly one button per
-  concealed tile plus the draw, that the rail adds none, and that Tab reaches the
+  concealed tile plus the draw, that the row adds none, and that Tab reaches the
   rail's controls before the hand's buttons. It also proves the call path: the
   rail's call buttons call the store's `beginCall`, a projected tile click calls
   the store's `selectTile`, and the answer arrives as `riichi`/`kan`/`call` with
@@ -1050,7 +1055,8 @@ result card. This is what the next units build on.
   (H4). The rail's chip has no action until H5; nothing else in the rail is
   inert.
 - **User verdict (2026-11-20):** accepted — "looks fine" on the running dev
-  server, with the rail, the tile-less hint row and the toasts as composed here.
+  server, with the pre-answer controls and the toasts as composed here (the
+  controls later became the isolated call row, 2026-11-21).
 - **Follow-up landed with the sign-off (2026-11-20, user request):** the snapshot
   now carries every hand in **display order** (manzu, pinzu, souzu, then honors,
   by rank) instead of the engine's order, so the painted hand on the 3D canvas
@@ -1081,11 +1087,17 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   2026-11-20). It replaces both panel rows and
   never expands on its own; Details is the only way into the sheet. The card's
   two rows are both `44 px` — the outcome row, then the picks line with the
-  card's own **Next Scenario** control on its right (user request 2026-11-20),
-  so dealing again does not require the top bar.
+  card's own post-answer pair on its right: **Reset** beside **Next Scenario**
+  (task 261120-2319; both come from the shared `PostAnswerControls`, as in the
+  2D dock), so dealing again or retrying the same hand does not require the top
+  bar. Reset calls the store's `resetAnswer`: the same `GameState` returns to
+  unanswered (answer, verdict, peek, evaluation and armed calls cleared, no
+  re-deal), and the card unmounts as the hand's pre-answer rail returns.
 - **Next is on the sheet too.** The sheet header carries the same Next control
   beside Close (always visible, no scrolling the body); it closes the sheet and
-  deals. The top bar's Next remains, and the 2D dock still has only its own.
+  deals. The top bar's Next remains, and the 2D dock has the same Reset + Next
+  pair the card does. Reset is not duplicated into the sheet: the card is its one
+  home, and closing the sheet returns to it.
 - **The sheet.** `VerdictSheet` is the 2D `VerdictPanel` unchanged: grade
   columns, `ActionRanking`, `CallReport`, `ScenarioExplanation`, the outcome
   band, the peek card and Retry. The sheet is entered post-answer from the
@@ -1094,8 +1106,7 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   closes it; the sheet holds the full-size Peek and Retry controls.
 - **Announcement and focus.** `HudLayer`'s announcer is mounted for the life of
   the HUD and only its text changes, so one answer is announced once even
-  though the card unmounts while the sheet is open; post-answer the hint row
-  stops being a live region. When the control that had focus went away with the
+  though the card unmounts while the sheet is open. When the control that had focus went away with the
   answer (a projected tile or a rail action), the card focuses its Details
   button; otherwise focus is left alone. The card's only motion is a plain
   `120 ms` opacity fade, suppressed by reduced motion.

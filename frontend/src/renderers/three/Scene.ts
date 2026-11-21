@@ -296,7 +296,7 @@ export class TableScene implements TableRenderer {
    * nothing at all. Only a new snapshot revision starts it.
    */
   private readonly dealIn: DealInMotion;
-  /** {prefers-reduced-motion}: no deal-in, no lift (the DOM focus ring stays). */
+  /** {prefers-reduced-motion}: no deal-in animation; the instant hover lift stays. */
   private readonly reducedMotion: boolean;
   /** `?debug=hero`: a fixed macro shot of four tiles, so the deal-in never runs. */
   private readonly heroView: boolean;
@@ -590,11 +590,12 @@ export class TableScene implements TableRenderer {
 
   /**
    * 3D-12's hover lift, landed in 3D-08 because the user asked for it there: the
-   * hovered/focused hand tile rises half a tile height (14 mm) on top of the DOM
-   * button's tint. The button does not move; its rect comes from the un-lifted
-   * pose (see `hitTest.ts`), so the pointer stays on the same target while the
-   * tile rises beneath it. Reduced motion suppresses the lift (the overlay stops
-   * reporting it, and the scene ignores one that arrives anyway).
+   * hovered/focused hand tile rises half a tile height (14 mm). The button does
+   * not move; its rect comes from the un-lifted pose (see `hitTest.ts`), so the
+   * pointer stays on the same target while the
+   * tile rises beneath it. The lift is a discrete pose change, not an animation,
+   * so it applies under every motion preference (user decision 2026-11-21);
+   * reduced motion suppresses only the deal-in.
    */
   setHoverTile(tile: HandTileRef | null): void {
     this.setLiftedTiles(tile ? [tile] : []);
@@ -1183,8 +1184,11 @@ export class TableScene implements TableRenderer {
     const base = buildBoardInstances(layout, (face: TileFaceId) =>
       assets.cellForFace(face),
     );
-    const liftedRefs = this.reducedMotion ? [] : this.lifted;
-    const lifted = withLiftedTiles(base, layout, liftedRefs);
+    // The lift is a discrete pose change and is never gated by the motion
+    // preference (user decision 2026-11-21). Only the deal-in, which animates
+    // over time, honours reduced motion. The set form carries the pointer hover,
+    // the call preview and a multi-tile pick alike.
+    const lifted = withLiftedTiles(base, layout, this.lifted);
     const liftUnits = this.reducedMotion ? 0 : sample.liftUnits;
     return withVerticalLift(lifted, liftUnits);
   }

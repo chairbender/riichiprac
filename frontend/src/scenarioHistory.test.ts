@@ -5,6 +5,7 @@ import {
   ScenarioHistory,
   encodeScenarioSnapshot,
   readScenarioSnapshot,
+  withoutAnswerState,
 } from './scenarioHistory';
 import type { HistoryLike, ScenarioSnapshot } from './scenarioHistory';
 
@@ -169,6 +170,57 @@ describe('readScenarioSnapshot', () => {
     expect(restored).not.toHaveProperty('callRiichi');
     expect(restored).not.toHaveProperty('callKan');
     expect(restored?.submittedAnswer).toEqual(ANSWER);
+  });
+});
+
+describe('withoutAnswerState', () => {
+  it('strips the answer, verdict, peek, evaluation and armed calls', () => {
+    const answered = snapshot({
+      submittedAnswer: ANSWER,
+      dualGrade: GRADE,
+      peekedBeforeAnswer: true,
+      evaluation: {
+        model: 'mortal_298k.safetensors',
+        expected_value: 0.1,
+        recommended_action: 'Discard_1z',
+        riichi_discard: null,
+        evaluations: [],
+      },
+    });
+
+    const reset = withoutAnswerState(answered);
+
+    expect(reset.submittedAnswer).toBeNull();
+    expect(reset.dualGrade).toBeNull();
+    expect(reset.peekedBeforeAnswer).toBe(false);
+    expect(reset.evaluation).toBeNull();
+  });
+
+  it('keeps the table, how it was drawn and the description fields', () => {
+    const answered = snapshot({
+      submittedAnswer: ANSWER,
+      dualGrade: GRADE,
+      selection: { kind: 'selected', ids: ['push_or_fold'] },
+      requireAgreement: false,
+      positionDescription: 'Imported from a file',
+      exportDescription: 'Draft note',
+    });
+
+    const reset = withoutAnswerState(answered);
+
+    // Same table, so a history restore never re-deals or regenerates.
+    expect(reset.json).toBe(answered.json);
+    expect(reset.selection).toEqual(answered.selection);
+    expect(reset.requireAgreement).toBe(false);
+    expect(reset.positionDescription).toBe('Imported from a file');
+    expect(reset.exportDescription).toBe('Draft note');
+  });
+
+  it('does not mutate the snapshot stored in the history entry', () => {
+    const answered = snapshot({ submittedAnswer: ANSWER, dualGrade: GRADE });
+    withoutAnswerState(answered);
+    expect(answered.submittedAnswer).toEqual(ANSWER);
+    expect(answered.dualGrade).toEqual(GRADE);
   });
 });
 

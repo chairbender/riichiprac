@@ -62,6 +62,9 @@ persistent View control is 3D-15's decision**, not 3D-14's.
   flow around it**, and the app's UI is planned as a floating layer over the
   scene (user guidance, 2026-11-18; §9 decision 7), with an optional full-screen
   toggle;
+  *(Superseded in part, 2026-11-20: 3D is now the **default** view, not opt-in,
+  and the 2.5D chain it was to sit beside has been retired — see §9 decision 1
+  and AGENTS.md §4.)*
 - the same board information the top-down view shows: four seats with concealed
   hands, the human's drawn tile, four discard rivers, open melds, the wall,
   dora indicators, riichi declarations and sticks, wind/score/round compass;
@@ -93,10 +96,14 @@ persistent View control is 3D-15's decision**, not 3D-14's.
   play surface is one felt plane (procedural, no new asset) plus a screen-space
   vignette; the compass is a DOM overlay.
 - **WebGPU, post-processing, MSAA, shadow maps, glTF, KTX2/Draco.**
-- **Wall depletion.** The wall is drawn full (as the 2.5D view draws it) and
+- ~~**Wall depletion.** The wall is drawn full (as the 2.5D view draws it) and
   `tiles_remaining` stays a compass number. Deriving per-slot wall occupancy
   from `tiles_remaining` would invent physical state the engine does not
-  publish; see §9 R6.
+  publish; see §9 R6.~~ **Superseded 2026-11-20 (task 261120-2112):** the wall is
+  now the real depleted wall and the dead wall is a separated, intact block.
+  `tiles_remaining` is the published live count, and the draw order is the
+  table's physical rule, so the occupancy is derived from state rather than
+  invented; see §2.4's wall-model revision and §9 R6's resolution.
 - **An agent signing off visuals.** Every look decision is a user handoff
   (AGENTS.md §6).
 
@@ -295,7 +302,7 @@ The world-space layout already exists, user-signed-off, in
 | --- | --- | --- |
 | Mat | 25 units = 700 mm square; side wall runs at 6.875 (derived), end runs at 5.875 | layout reference; the drawn felt is a square sized per frame to reach the top and bottom edges (3D-02), wall ring |
 | Tile | 1 unit = 28 mm; 21 × 28 × 16.5 mm; bodies **touch** (no groove) | tile mesh + layout pitch |
-| Wall | 4 runs × 17 stacks × 2 tiers, 0.75 pitch (one tile), one missing top tile at slot 16 (draw end) | wall layout |
+| Wall | 4 runs × 17 stacks × 2 tiers, 0.75 pitch (one tile); 122 live + 14 dead (see §2.4a) | wall layout |
 | Ponds | 3 rows × 6, nearest row at 4.81, then 3.81 and 2.81 (one tile apart), 4 overflow anchors on the near row | river layout |
 | Human hand | 13 tiles + a draw slot at +5.5125, reclined about its far bottom edge | hand layout |
 | Compass well | 4 units | compass overlay anchor |
@@ -399,6 +406,47 @@ and they supersede the reference values above where they differ.
 - **Side effect, accepted:** the frame is solved against the actual tiles, so a
   meld-heavy board (which reaches further to the player's right) solves slightly
   further back. A typical board is stable.
+
+### 2.4a The wall model (261120-2112, user decisions 2026-11-20)
+
+The wall was the one part of the board that did not follow state: 132 tiles were
+drawn at every count. It now follows the real table, in one pure module
+(`frontend/src/renderers/wall.ts`) shared by the snapshot adapter and the board
+fixture:
+
+- **Counts.** The wall is 136 tiles: **122 live (61 stacks x 2 tiers)** and the
+  **14-tile dead wall (7 stacks x 2)** on the far run's draw-end half (stacks
+  10..16, where the dora indicators already sat). `GameState.tiles_remaining` is
+  the live wall after the dead wall; it is `70 - draws` (`src/replay/walk.rs`),
+  so a decision holds at most 70 live tiles and none of the 52 dealt ones are
+  drawn.
+- **Draw order.** The live wall is one contiguous arc that leaves the break
+  (the dead wall's own draw end) the other way around the ring: far run 0..9,
+  the right run, the human's run, the left run. Draws consume it from the break
+  end, **top tier then bottom**, so the remaining tiles are the arc's suffix and
+  an odd count leaves one **bottom-only** stack at the draw edge.
+- **Dead wall.** Always the 7 far-run draw-end stacks, intact, never depleting;
+  the dora indicators replace its top-tier tiles. It is separated from the live
+  wall by a deliberate **0.3-unit (8.4 mm) felt break** along the run (the user's
+  choice over pulling it out of the ring), so it reads as a separate block while
+  staying on the ring's radius. The gate measures the break and the intact 14.
+- **Consequences.** The live-wall picture is deliberately asymmetric (at the
+  first decision it is the near-right half, the right run and the far-right
+  half; the left side is empty, because the deal came from there) — the user
+  chose honest contiguous depletion over an evenly thinned ring. The shadow
+  layer now casts one band per **occupied** wall stretch, not one per run, so an
+  empty run does not cast a phantom wall.
+- **2D views.** They draw no wall (the compass carries `tiles_remaining`), so
+  nothing there changed. The snapshot contract stayed additive: `wall` is still
+  the face-down list, now the live tiles plus the dead block.
+- **User decisions (2026-11-20).** The dead wall stays in the ring and is
+  separated by the felt break (the alternative, pulling it outward into the far
+  player's felt band, was not chosen), and the live wall thins honestly rather
+  than evenly. The look itself is still an AGENTS.md §6 handoff: the numeric
+  gate above plus `?renderer=3d` for the user's verdict. **User sign-off
+  (2026-11-20):** "Looks good" after reviewing the live view — the 8.4 mm dead
+  wall break, the bottom-only draw-edge stack and the asymmetric thinning all
+  accepted.
 
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
@@ -518,11 +566,12 @@ The canvas is an image. Everything a user can do or must hear is DOM:
   trailing two digits small and grey) while the accessible name keeps the full
   score. The corners carry no stick icon (the 3D bar on the plate is the
   declarer's marker), but the corner name still ends ", riichi".
-- Hover/focus lifts the tile in 3D (bounded, reduced-motion aware) and never
-  moves the button.
-- Tile faces, rivers, melds and walls are decorative and not individually
-  focusable — exactly as in the top-down view, where only the hand is
-  interactive. A hidden heading names the view for screen readers.
+- Hover/focus lifts the tile in 3D (bounded, and applied under every motion
+  preference because it is a discrete change) and never moves the button.
+- Tile faces, rivers, melds and walls carry no individual focus (the wall does
+  reflect state, but it is not interactive) — exactly as in the top-down view,
+  where only the hand is interactive. A hidden heading names the view for screen
+  readers.
 - The interaction layer is a pure function of `TableSnapshot` + camera matrices
   (`hitTest.ts`), so it is unit-testable in Node without WebGL.
 - **Chrome over the scene.** The stage is the whole window (§2.1). The floating
@@ -625,10 +674,11 @@ Instances: one tile mesh with capacity **320**. Triangles ≤ 200 k (320 × ≤ 
 tris + environment).
 
 The instance count is worth stating because the starting proposal assumed 136:
-the wall alone is 4 × 17 × 2 = 136 tiles, and it is decorative but drawn full
-(§0), so a full board is 136 + up to 53 concealed/draw + up to 72 discards + up
-to ~20 meld tiles + 5 dora ≈ 280. Capacity 320 leaves headroom; 192 k triangles
-is a non-issue at this scale, which is why the tile budget can stay ≤ 600.
+the drawn wall is at most **70 live + 14 dead = 84 tiles** (§2.4a), so a full
+board is 84 (minus the dora-covered tiles) + up to 53 concealed/draw + up to 72
+discards + up to ~20 meld tiles + 5 dora ≈ 234. Capacity 320 leaves headroom;
+192 k triangles is a non-issue at this scale, which is why the tile budget can
+stay ≤ 600.
 
 Where the budget is most likely to be missed, in order:
 
@@ -791,9 +841,10 @@ chunk must stay lazy for anyone using the stacked, top-down or 2.5D views.
    validated against the manifest, uploaded with mipmaps and anisotropy; on any
    failure the procedural cell is used.
 6. **Layout.** Every tile in the snapshot becomes a `PlacedTile` (position,
-   rotation, face rect, flags). Walls come from constants; the human hand
-   reclines; rivers fill 3 × 6 from the far row; melds sit right of the hand;
-   dora indicators sit face-up on the far wall's top tier.
+   rotation, face rect, flags). The wall comes from `renderers/wall.ts` (the
+   live suffix plus the separated dead block); the human hand reclines; rivers
+   fill 3 × 6 from the far row; melds sit right of the hand; dora indicators sit
+   face-up on the dead wall's top tier.
 7. **Pack and draw.** Instance matrices and per-instance attributes are packed
    into one `InstancedMesh`; contact shadows and riichi sticks are separate
    instanced draws; the felt is one plane. One frame, then idle until dirty.
@@ -862,8 +913,8 @@ export interface TableSnapshot {
   readonly revision: number;
   readonly humanSeat: Seat;
   readonly seats: readonly [SnapshotSeat, SnapshotSeat, SnapshotSeat, SnapshotSeat];
-  readonly wall: readonly SnapshotTile[];      // face-down, fixed count, decorative
-  readonly dora: readonly SnapshotTile[];      // face-up on the far wall
+  readonly wall: readonly SnapshotTile[];      // face-down: live (from tiles_remaining) + 14 dead
+  readonly dora: readonly SnapshotTile[];      // face-up on the dead wall
   readonly compass: {
     readonly roundWind: 'East' | 'South' | 'West' | 'North';
     readonly handNumber: number;
@@ -1103,7 +1154,9 @@ who does not ask for it.
 - `webglcontextlost` is prevented, one restore is attempted, a second loss
   disposes and reports `failed` with a message over the stage.
 - Precedence is explicit and tested: explicit query param > stored view >
-  default (`stacked`).
+  default (`stacked`). *(Update 2026-11-20: the default is now `rendered3d`, the
+  3D table; the precedence itself is unchanged. A browser without WebGL2 draws
+  the stacked fallback without rewriting the stored choice.)*
 - Framing numbers at 16:9 match the reference within 1 px for the mat corners
   (printed by `check-3d-layout.mjs` in 3D-06; this unit prints them from the
   camera rig).
@@ -1451,11 +1504,12 @@ the committed table geometry.
   rows with the overflow extending the near row, melds right of each hand with
   the called tile sideways, the human hand reclined 40° (band 30–45°) with a
   separate draw slot, opponent hands upright and face-down, dora indicators
-  face-up on the far wall's top tier (one per indicator, from the draw end),
+  face-up on the dead wall's top tier (one per indicator, from the draw end),
   riichi sticks near the centre.
 - The multiset of foreground tiles equals the snapshot's foreground tiles
-  exactly (no duplicates, none dropped); wall tiles are the fixed decorative
-  set and are excluded from that comparison.
+  exactly (no duplicates, none dropped); the wall tiles (live suffix + the
+  intact dead block) are excluded from that comparison and checked separately
+  against the published count.
 - No two foreground tiles' oriented boxes intersect (a separating-axis check at
   the closed contact seams); stacked wall tiers are the only intentional
   proximity and are separated by the tier gap.
@@ -1635,7 +1689,8 @@ keyboard and screen reader.
 - `hitTest.ts` (in `three/`, because it uses the camera): pure world-OBB →
   CSS-rect projection (`hitRects()`).
 - `overlay.tsx`: absolutely positioned buttons for hand and draw tiles, plus a
-  focus ring, hover lift callbacks, and reduced-motion handling.
+  focus ring and hover lift callbacks (the lift is a discrete pose change, so
+  the motion preference does not gate it).
 - Tests that compare this view's accessible surface with `PhysicalTable`'s.
 
 **Acceptance criteria**
@@ -1680,8 +1735,10 @@ is the seam the overlay calls once per hover/focus change (and with `null` when
 the hovered button disappears); `Scene` responds by raising that tile by half a
 tile height (14 mm) along world +Y, without moving the button — see §9
 decision 8. Nothing is painted over the face: the lift is the only hover cue
-(user request 2026-11-20), while keyboard focus keeps its ring. Reduced motion
-suppresses the lift but never the clear, and the overlay's rects always come
+(user request 2026-11-20), while keyboard focus keeps its ring. The lift is a
+discrete pose change, not an animation, so it applies under every motion
+preference (user decision 2026-11-21); reduced motion suppresses only the
+deal-in. A null hover always clears, and the overlay's rects always come
 from the un-lifted pose.
 The overlay is the first floating-layer element: absolutely positioned over the
 full-window stage, `pointer-events: none` except for its buttons.
@@ -2058,8 +2115,8 @@ decision for a later unit, not a drive-by edit.
 - At `compat` with > 33 ms for 2 s, the host reports `degrade`, records the
   reason in `sessionStorage` so the next mount does not auto-try, and returns to
   the previously selected view with a dismissible notice.
-- `prefers-reduced-motion: reduce` removes the deal-in and hover lift; the POM
-  and layout are unchanged.
+- `prefers-reduced-motion: reduce` removes the deal-in animation; the instant
+  hover lift still applies. The POM and layout are unchanged.
 - Context loss twice in a session → fallback, remembered for the session.
 - A missing WebGL2 makes the 3D option disabled with a title explaining why, and
   never persisted.
@@ -2137,9 +2194,10 @@ no 3D value is written to the settings store.)
 
 *Reduced motion.* `usePrefersReducedMotion` follows
 `prefers-reduced-motion: reduce`, including live changes; the host uses it when
-the prop is not supplied and passes the resolved flag to `RendererOptions` and
-the DOM overlay (which already suppresses the hover report). 3D-12 consumes the
-same flag for the deal-in; neither POM nor the layout reads it.
+the prop is not supplied and passes the resolved flag to `RendererOptions`. The
+DOM overlay reports hover/focus under every preference: the lift is a discrete
+pose change, not an animation (user decision 2026-11-21). 3D-12 consumes the
+same flag for the deal-in only; neither POM nor the layout reads it.
 
 *Acceptance evidence.* `capabilities.test.ts` prints and asserts the viewport/DPR
 matrix, the three tier budgets, URL > stored > auto, the pointer/hardware rules,
@@ -2604,7 +2662,10 @@ a shadow on the felt.
   tests compute the base from the tiles' contact corners.
 - Every band is a blurred rectangle with the 1.5σ fade margin, so its alpha
   reaches 0 inside the quad (no half-opacity cut-off).
-- One quad per hand group and per wall run; still one instanced draw.
+- One quad per hand group and per **occupied** wall stretch (task 261120-2112:
+  the live wall empties as tiles are drawn, so an empty run casts nothing and the
+  dead block's felt break splits the far run into two stretches); still one
+  instanced draw.
 
 **Gate:** frontend gate.
 
@@ -2868,7 +2929,7 @@ which files it touched.
 | R3 | Three.js version churn breaks shader/instancing APIs | low / medium | exact pin, no addons, upgrade only as an explicit task with a budget + look re-check | 3D-02, 3D-16 |
 | R4 | Merge contention with the parallel 2.5D view work in `App.tsx`, `useSettingsStore.ts`, `AppControls.tsx`, `AGENTS.md` (conflicts, not dependencies) | high / low | keep the 3D diff to the mount point; rebase and resolve by hand; neither chain waits for the other | 3D-02, 3D-14 |
 | R5 | Mobile GPU memory (58 MB atlas + existing 43 MB model) or thermal throttling | medium / medium | compat tier half-res, 0 POM, on-demand frames, 30 fps floor, auto-fallback remembered per session | 3D-11 |
-| R6 | The wall is decorative, so a "full wall + 14-tile hands" picture is physically impossible | certain / low | documented; depletion needs a Rust wall census, out of v1 (non-goal) | plan |
+| R6 | The wall is decorative, so a "full wall + 14-tile hands" picture is physically impossible | certain / low | **resolved 2026-11-20 (261120-2112):** the wall follows `tiles_remaining` through `renderers/wall.ts` (live 122 + dead 14, arc suffix, top-first draws); no Rust field was needed, and the dead wall is separated by a 0.3-unit felt break (§2.4a) | plan, gate |
 | R7 | The DOM overlay drifts from the 3D camera (buttons not aligned with tiles) | medium / high (usability) | single projection source (`hitRects()`), tests at two aspects, user check on the final board. **Closed in 3D-08** by the drift test that re-projects the hand OBBs through `frameForAspect`; the remaining user check is 3D-15's | 3D-08 |
 | R8 | Shading/looks cannot be verified in CI | certain / medium | numeric probes for colours and POM displacement, debug modes, explicit user handoffs, no self-approval | all |
 | R9 | A new runtime dependency is more than the repo wants | low / medium | lazy chunk, budget gate, exact pin, MIT notice; the renderer interface keeps the choice reversible | 3D-02, 3D-16 |
@@ -2923,8 +2984,11 @@ in 3D-08 and 3D-S1 respectively, and are equally binding.
    hand/draw tile rises by
    `TILE.heightUnits / 2` = 14 mm along world +Y; the DOM button keeps its
    projected rect, so the pointer target never moves. This supersedes the ≤ 4 mm
-   figure in §3D-12, which keeps the deal-in and the event seam. Reduced motion
-   suppresses the lift (never the clear). **Update (user request 2026-11-20):**
+   figure in §3D-12, which keeps the deal-in and the event seam. **Update (user
+   decision 2026-11-21): the lift applies under every motion preference.** It is
+   a discrete pose change, not an animation, so `prefers-reduced-motion: reduce`
+   suppresses only the deal-in; the hover/focus lift and its clear are always
+   delivered. **Update (user request 2026-11-20):**
    the button's `rgba(207, 224, 255, 0.08)` hover background was removed — over
    the carved face it read as a stray light box, not a highlight — so the lift is
    the only hover cue. Keyboard focus keeps its `:focus-visible` ring, which is
@@ -3163,9 +3227,21 @@ it was right and corrected where the repository or the browser facts disagree.
     scene is one felt plane plus a CSS vignette; the compass is DOM. This keeps
     the two renderers consistent about where information lives and avoids 3D
     text entirely.
-18. **Wall depletion.** Considered and rejected: `tiles_remaining` is a draw
-    count, not a per-slot census. Drawing a full decorative wall (as the 2.5D
-    view does) is the honest option until the engine publishes wall occupancy.
+18. **Wall depletion.** Considered and rejected in v1: `tiles_remaining` is a
+    draw count, not a per-slot census. **Resolved 2026-11-20 (task
+    261120-2112):** the count *is* enough once the table's physical draw order
+    is written down. The engine publishes the one variable (live tiles left),
+    and `renderers/wall.ts` declares the dead wall's fixed 7 far-run stacks, the
+    live arc's direction from the break, and top-then-bottom consumption. The
+    live wall is therefore the arc's suffix, an odd count leaves one bottom-only
+    stack at the draw edge, and the 14-tile dead wall never depletes. No Rust
+    change was needed (the engine's `tiles_remaining` is already the live wall
+    after the dead wall; `src/replay/walk.rs` documents `70 - draws`), and the
+    snapshot/contract stayed additive: `wall` is still the face-down list, now
+    the live tiles plus the dead block. The dead block is separated by a
+    committed 0.3-unit (8.4 mm) felt break along the far run. A decision state
+    cannot exceed 70 live tiles (the deal is already off the wall), which is what
+    lets the layout skip the dealt positions instead of drawing a phantom wall.
 19. **State ownership.** The proposal has the renderer consume an unspecified
     "board state". The plan specifies a typed, immutable `TableSnapshot` produced
     only by a pure adapter, with a revision that distinguishes a new position
