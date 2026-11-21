@@ -291,6 +291,12 @@ export class TableScene implements TableRenderer {
   private readonly heroView: boolean;
   /** The deal-in's frame loop, while one is running. */
   private motionHandle: number | null = null;
+  /**
+   * The HUD owns the human's hand (`3d_phone_layout_plan.md` §4): the board is
+   * laid out without their concealed tiles and draw, so `hitRects()` /
+   * `handBandRect()` are empty and the phone hand strip is the only hand.
+   */
+  private readonly hideHumanHand: boolean;
   /** 3D-11's frame-time monitor: one tier downgrade per sustained window. */
   private readonly perf: FrameTimeMonitor;
   /**
@@ -324,6 +330,7 @@ export class TableScene implements TableRenderer {
     this.canvas = canvas;
     this.reducedMotion = options.reducedMotion;
     this.heroView = options.debug === 'hero';
+    this.hideHumanHand = options.hideHumanHand === true;
     this.dealIn = new DealInMotion(clock, options.reducedMotion);
     this.perf = new FrameTimeMonitor(options.tier);
 
@@ -405,7 +412,7 @@ export class TableScene implements TableRenderer {
     const isCut = this.dealIn.cut(snapshot.revision);
     this.revision = snapshot.revision;
     this.locked = snapshot.locked;
-    const layout = layoutBoard(snapshot);
+    const layout = layoutBoard(this.boardSnapshot(snapshot));
     this.layout = layout;
     this.syncBoard(layout);
     // A deeper river or a taller hand can move the solved camera, so the frame
@@ -418,6 +425,24 @@ export class TableScene implements TableRenderer {
       else this.startDealIn();
     }
     this.requestFrame();
+  }
+
+  /**
+   * The snapshot the *board* is laid out from.
+   *
+   * On a phone the HUD owns the human's hand, so the scene is given the table
+   * without those tiles: the board's own framing then leaves them out, and
+   * `hitRects()`/`handBandRect()` are empty without a second lock path. The
+   * human's **melds** stay, because the user asked for them to remain visible
+   * on the table while the concealed hand moved to the strip.
+   */
+  private boardSnapshot(snapshot: TableSnapshot): TableSnapshot {
+    if (!this.hideHumanHand) return snapshot;
+    const human = snapshot.humanSeat;
+    const seats = snapshot.seats.map((seat, index) =>
+      index === human ? { ...seat, concealed: [], draw: null } : seat,
+    ) as unknown as TableSnapshot['seats'];
+    return { ...snapshot, seats };
   }
 
   /** Resize the backing store (area-capped per tier) and re-solve the camera framing. */

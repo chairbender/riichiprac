@@ -836,6 +836,61 @@
   overscroll-behavior: contain;
 }
 
+/* The phone hand strip (3d_phone_layout_plan.md §4) ----------------------- */
+
+/*
+ * The human's hand, out of the table and pinned to the bottom safe edge. It is
+ * opaque on purpose: it is the one surface that may cover the felt, because the
+ * scene does not draw the human's hand on a phone at all. Its rect comes from
+ * `hudLayout()` like every other panel.
+ */
+.hud-hand-strip {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+  /* Matches `handStripFor()`'s chrome: 4 px top, 8 px sides, 8 px bottom. A
+     bottom safe inset makes the rect taller and the extra height stays empty
+     under the tiles. */
+  padding: 4px 8px 8px;
+  background-color: var(--hud-surface-solid);
+  border-top: var(--hud-border);
+  pointer-events: auto;
+}
+
+.hud-hand-strip .hud-hand-rail {
+  /* The hint lives in the strip: it explains the tap, and it is directly above
+     the tiles it describes. */
+  padding: 0;
+}
+
+.hud-hand-strip .hand--strip {
+  grid-template-columns: repeat(
+    var(--hud-strip-columns, 14),
+    var(--hud-strip-tile, 44px)
+  );
+  gap: 4px;
+  width: auto;
+  padding-bottom: 0;
+  margin: 0 auto;
+  /* The art's own cap, so a tile never outgrows its column. */
+  --hand-tile-size: var(--hud-strip-tile, 44px);
+}
+
+.hud-hand-strip .hand-tile-button {
+  width: 100%;
+  padding: 0;
+  background-color: transparent;
+  border: 0;
+  border-radius: 5px;
+}
+
+/* The strip is the phone's only hand, so a hover lift is a touch cue only. */
+.hud-hand-strip .hand-tile-button:active:not(:disabled) {
+  transform: translateY(-2px);
+}
+
 /* Utilities -------------------------------------------------------------- */
 
 .hud-visually-hidden {

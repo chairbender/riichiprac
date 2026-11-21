@@ -98,6 +98,13 @@ export interface RendererHostProps {
   /** Call Kan is armed: the projected hand buttons say so (3D-08). */
   readonly callKan?: boolean;
   /**
+   * The HUD owns the human's hand (`3d_phone_layout_plan.md` §4): the scene
+   * draws the board without the human's concealed tiles and draw. Their melds
+   * stay on the table. The mount is fixed for its lifetime — App's phone answer
+   * does not change without a rotation-driven remount.
+   */
+  readonly hideHumanHand?: boolean;
+  /**
    * The hand-click handler the stacked/top-down views use (App's `selectTile`).
    * The overlay is rendered only when this is supplied; the answer flow itself
    * lives in the store, so disposing the renderer cannot break it.
@@ -480,6 +487,7 @@ export function RendererHost({
   fallback = null,
   callRiichi = false,
   callKan = false,
+  hideHumanHand = false,
   onSelectTile,
   onDegraded,
 }: RendererHostProps) {
@@ -757,6 +765,7 @@ export function RendererHost({
           reducedMotion: reduceMotion,
           // 3D-20: MSAA above the compat tier; see `capabilities.MSAA_SAMPLES`.
           antialias: antiAliasFor(resolvedTier),
+          hideHumanHand,
         });
         rendererRef.current = renderer;
         renderer.syncState(snapshotRef.current);
@@ -797,6 +806,7 @@ export function RendererHost({
   }, [
     capabilities,
     debug,
+    hideHumanHand,
     onDegraded,
     perfHud,
     reduceMotion,

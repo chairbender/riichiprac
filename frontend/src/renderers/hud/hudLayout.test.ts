@@ -44,13 +44,17 @@ import {
   HUD_SETUP_TRIGGER_WIDTH,
   HUD_SHEET_MAX_HEIGHT,
   HUD_SHEET_MAX_WIDTH,
+  HUD_STRIP_MIN_TILE,
   HUD_TOP_BAR_CONTROL,
   NO_INSETS,
+  handStripFor,
   hudAtRestRects,
   hudCollisions,
   hudLayout,
   hudPanelRows,
+  isPhoneStage,
   rectsIntersect,
+  topBarHeight,
 } from './hudLayout';
 import type {
   HudAnchors,
@@ -843,5 +847,246 @@ describe('HUD collision helper', () => {
     // The rect's bottom sits inside the compass's 8 px gutter: one violation
     // against the compass, none against the target below it.
     expect(violations.map((violation) => violation.against)).toEqual(['compass']);
+  });
+});
+
+/**
+ * The phone stages of `3d_phone_layout_plan.md` §4: the S22 Ultra portrait and
+ * landscape (with and without the browser's URL bar) plus the two compatibility
+ * rows the compass test already pins.
+ */
+const PHONE_STAGES: readonly (StageSize & { readonly label: string })[] = [
+  { label: '390x844 portrait', width: 390, height: 844 },
+  { label: '412x915 portrait (S22 Ultra)', width: 412, height: 915 },
+  { label: '844x390 landscape', width: 844, height: 390 },
+  { label: '932x430 landscape (S22 Ultra)', width: 932, height: 430 },
+  { label: '844x330 landscape (after chrome)', width: 844, height: 330 },
+  { label: '320x568', width: 320, height: 568 },
+];
+
+/** A phone's scene: the stage minus the strip the HUD reserves at its bottom. */
+function phoneScene(stage: StageSize, stripHeight: number) {
+  const sceneHeight = stage.height - stripHeight;
+  const frame = frameForAspect(stage.width / Math.max(1, sceneHeight));
+  const viewport = { widthPx: stage.width, heightPx: Math.max(1, sceneHeight) };
+  const compass = compassPlateRect(frame, viewport);
+  return {
+    anchors: { handBand: null, compass },
+    compassBox: compass ? compassBox(compass) : null,
+  };
+}
+
+function phoneLayout(
+  stage: StageSize,
+  state: Omit<HudState, 'phone'>,
+) {
+  const probe = hudLayout(stage, { handBand: null, compass: null }, {
+    ...state,
+    phone: true,
+  });
+  const strip = probe.handStrip;
+  if (!strip) throw new Error(`${stage.height}: no strip`);
+  const scene = phoneScene(stage, strip.rect.height);
+  return hudLayout(stage, scene.anchors, { ...state, phone: true });
+}
+
+describe('HUD layout: the phone hand strip (3d_phone_layout_plan.md §4)', () => {
+  it('pins the strip to the bottom edge, two rows of 7 or one of 14', () => {
+    for (const stage of PHONE_STAGES) {
+      const strip = handStripFor(stage);
+      expect(strip, stage.label).not.toBeNull();
+      if (!strip) continue;
+      const portrait = stage.height > stage.width;
+      expect(strip.rows, stage.label).toBe(portrait ? 2 : 1);
+      expect(strip.tilesPerRow, stage.label).toBe(portrait ? 7 : 14);
+      // Flush to the bottom edge, full width, and exactly 14 tiles fit.
+      expect(strip.rect.top + strip.rect.height, stage.label).toBeCloseTo(
+        stage.height,
+        6,
+      );
+      expect(strip.rect.left, stage.label).toBe(0);
+      expect(strip.rect.width, stage.label).toBe(stage.width);
+      expect(strip.rows * strip.tilesPerRow, stage.label).toBeGreaterThanOrEqual(
+        14,
+      );
+      // The hint row sits inside the strip, above the tiles.
+      expect(strip.hint.top, stage.label).toBeGreaterThanOrEqual(strip.rect.top);
+      expect(strip.hint.top + strip.hint.height, stage.label).toBeLessThanOrEqual(
+        strip.rect.top + strip.rect.height,
+      );
+    }
+  });
+
+  it('gives every tile the 44 px tap minimum on the target phones', () => {
+    const targets = PHONE_STAGES.filter(
+      (stage) => stage.label !== '320x568',
+    );
+    for (const stage of targets) {
+      const strip = handStripFor(stage);
+      expect(strip?.tileWidth ?? 0, stage.label).toBeGreaterThanOrEqual(
+        HUD_STRIP_MIN_TILE,
+      );
+      expect(strip?.tileHeight ?? 0, stage.label).toBeGreaterThanOrEqual(
+        HUD_STRIP_MIN_TILE,
+      );
+    }
+    // The 320 px compatibility row is the one stage where two rows of seven
+    // cannot reach 44: 7 x 40 px, recorded rather than hidden.
+    const tiny = handStripFor(PHONE_STAGES[5]);
+    expect(tiny?.tileWidth ?? 0).toBeGreaterThanOrEqual(39);
+    expect(tiny?.tileWidth ?? 0).toBeLessThan(HUD_STRIP_MIN_TILE);
+  });
+
+  it('docks the panel above the strip in portrait and beside the board in landscape', () => {
+    for (const stage of PHONE_STAGES) {
+      const layout = phoneLayout(stage, {
+        slot: 'actions',
+        sheet: false,
+        toasts: 0,
+      });
+      const portrait = stage.height > stage.width;
+      expect(layout.panelAnchor, stage.label).toBe(
+        portrait ? 'above-strip' : 'beside',
+      );
+      expect(layout.panel, stage.label).not.toBeNull();
+    }
+  });
+
+  it('never draws the panel off the stage or over the strip', () => {
+    for (const stage of PHONE_STAGES) {
+      for (const slot of ['hint', 'actions', 'result'] as const) {
+        for (const actionRows of [1, 2] as const) {
+          const layout = phoneLayout(stage, {
+            slot,
+            actionRows,
+            sheet: false,
+            toasts: 2,
+          });
+          const panel = layout.panel;
+          const strip = layout.handStrip;
+          if (!panel || !strip) continue;
+          const label = `${stage.label} ${slot} x${actionRows}`;
+          expect(panel.left, label).toBeGreaterThanOrEqual(0);
+          expect(panel.left + panel.width, label).toBeLessThanOrEqual(
+            stage.width + 0.01,
+          );
+          expect(panel.top, label).toBeGreaterThanOrEqual(0);
+          // The regression this unit exists for: the panel's bottom used to be
+          // drawn past the viewport edge in landscape (13-20 of 84 px visible).
+          expect(panel.top + panel.height, label).toBeLessThanOrEqual(
+            strip.rect.top + 0.01,
+          );
+          expect(panel.top + panel.height, label).toBeLessThanOrEqual(
+            stage.height + 0.01,
+          );
+        }
+      }
+    }
+  });
+
+  it('keeps the at-rest chrome off the strip and the compass', () => {
+    for (const stage of PHONE_STAGES) {
+      for (const slot of ['actions', 'result'] as const) {
+        const layout = phoneLayout(stage, {
+          slot,
+          actionRows: 2,
+          sheet: false,
+          toasts: 2,
+        });
+        const strip = layout.handStrip;
+        if (!strip) continue;
+        const scene = phoneScene(stage, strip.rect.height);
+        const violations = hudCollisions(hudAtRestRects(layout), {
+          // The strip is the phone's hand anchor; the projected band is absent.
+          handBand: strip.rect,
+          compassBox: scene.compassBox,
+        }).filter(
+          // The transparent top bar over the compass is the documented phone
+          // exception; the next test asserts the painted parts stay clear.
+          (violation) =>
+            !(
+              violation.rect === 'top bar' && violation.against === 'compass'
+            ),
+        );
+        expect(
+          violations,
+          `${stage.label} ${slot}: ${describeViolations(violations)}`,
+        ).toEqual([]);
+      }
+    }
+  });
+
+  it('lets the compass sit under the transparent top bar, never the painted clusters', () => {
+    /*
+     * A 390 px-tall stage cannot give the compass the 328 px of headroom the
+     * wide aspects have. The bar is a transparent band whose only painted
+     * parts are the setup trigger (left) and the Next/full-screen cluster
+     * (right), so the rule on a phone is horizontal clearance, not height.
+     */
+    for (const stage of PHONE_STAGES) {
+      const layout = phoneLayout(stage, {
+        slot: 'actions',
+        sheet: false,
+        toasts: 0,
+      });
+      const scene = phoneScene(stage, layout.handStrip?.rect.height ?? 0);
+      const compass = scene.compassBox;
+      if (!compass) continue;
+      expect(
+        rectsIntersect(layout.setupTrigger, compass),
+        `${stage.label}: setup trigger over the compass`,
+      ).toBe(false);
+      // The compass is centred, so it cannot reach either edge cluster: it
+      // keeps at least one control's width of clearance on the right, and the
+      // setup trigger is clear above.
+      expect(
+        Math.abs(compass.left + compass.width / 2 - stage.width / 2),
+        stage.label,
+      ).toBeLessThan(1);
+      expect(compass.left + compass.width, stage.label).toBeLessThanOrEqual(
+        stage.width - HUD_TOP_BAR_CONTROL,
+      );
+    }
+  });
+
+  it('gives the sheet the whole stage below the top bar', () => {
+    for (const stage of PHONE_STAGES) {
+      const layout = phoneLayout(stage, {
+        slot: 'result',
+        sheet: true,
+        toasts: 0,
+      });
+      expect(layout.sheet, stage.label).not.toBeNull();
+      if (!layout.sheet) continue;
+      // The regression: the sheet used to be bounded by the collapsed hint
+      // panel (189 px in landscape, 399 px in portrait).
+      expect(layout.sheet.top, stage.label).toBeCloseTo(topBarHeight() + HUD_GAP, 1);
+      expect(
+        layout.sheet.top + layout.sheet.height,
+        stage.label,
+      ).toBeCloseTo(stage.height - HUD_GAP, 1);
+      // Only the hint row is hidden with it: a sheet on a phone unmounts the
+      // panel rather than collapsing it.
+      expect(layout.panel, stage.label).toBeNull();
+    }
+  });
+
+  it('never mounts the strip on a tablet or a desktop stage', () => {
+    // `handStripFor` is pure geometry; the phone *decision* is `isPhoneStage`,
+    // which the caller makes once and passes to both the HUD and the renderer.
+    expect(isPhoneStage({ width: 1024, height: 768 }, true)).toBe(false);
+    expect(isPhoneStage({ width: 1920, height: 1080 }, true)).toBe(false);
+    expect(isPhoneStage({ width: 412, height: 915 }, false)).toBe(false);
+    expect(isPhoneStage({ width: 412, height: 915 }, true)).toBe(true);
+    expect(isPhoneStage({ width: 932, height: 430 }, true)).toBe(true);
+    expect(handStripFor({ width: 0, height: 844 })).toBeNull();
+    // A phone-class stage only gets the strip when the HUD is told it is one.
+    const stage = { width: 390, height: 844 };
+    const wide = hudLayout(stage, { handBand: null, compass: null }, {
+      slot: 'actions',
+      sheet: false,
+      toasts: 0,
+    });
+    expect(wide.handStrip).toBeNull();
   });
 });

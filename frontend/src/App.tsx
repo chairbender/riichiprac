@@ -31,6 +31,7 @@ import type { HudSheetContent } from './renderers/hud/HudLayer';
 import { ResultCard } from './renderers/hud/ResultCard';
 import { SetupSheet, SetupTrigger } from './renderers/hud/SetupSheet';
 import { HudToastStack } from './renderers/hud/ToastStack';
+import { usePhoneStage } from './renderers/hud/usePhoneStage';
 import { VerdictSheet } from './renderers/hud/VerdictSheet';
 import { buildHudToasts } from './renderers/hud/toastModel';
 import {
@@ -262,6 +263,12 @@ export const App = () => {
    */
   const threeShellRef = useRef<HTMLDivElement>(null);
   const threeStageRef = useRef<HTMLElement>(null);
+  /*
+   * The one phone answer, shared by the HUD (which lays out the hand strip) and
+   * the renderer host (which stops drawing the projected hand), so they can
+   * never disagree about who owns the hand (`3d_phone_layout_plan.md` §4).
+   */
+  const phoneStage = usePhoneStage();
   /** The parsed WASM catalogue, so a repeat deal does not re-parse it. */
   const wasmCatalogRef = useRef<ScenarioOption[] | null>(null);
   /**
@@ -1164,6 +1171,38 @@ export const App = () => {
     answered && dualGrade ? outcomeTone(dualGrade.outcome) : undefined;
 
   /*
+   * The phone's hand strip (3d_phone_layout_plan.md §4): the human's 14 tiles,
+   * out of the table and pinned to the bottom edge at a fixed, tappable size.
+   * It is the dock's own buttons through `HandDock`'s `strip` variant, so the
+   * labels, answer marks, AI badges and handlers cannot drift apart. The
+   * renderer stops drawing the projected hand with the same `phoneStage` flag,
+   * which is why there is never more than one hand on screen.
+   */
+  const hudHandStrip =
+    phoneStage && humanPlayer ? (
+      <HandDock
+        variant="strip"
+        player={humanPlayer}
+        grade={dualGrade}
+        answer={submittedAnswer}
+        callRiichi={callRiichi}
+        callKan={callKan}
+        aiEvaluation={evaluation}
+        availableActions={isDrill ? availableActions : undefined}
+        canDiscard={canDiscard}
+        canRiichi={canRiichi}
+        revealMortal={dualGrade !== null || peekedBeforeAnswer}
+        targetAction={gameState?.target_action}
+        nextDisabled={isLoading}
+        onNextScenario={handleNextScenario}
+        onShowVerdict={showVerdict}
+        onToggleRiichi={toggleRiichi}
+        onToggleKan={toggleKan}
+        onSelectTile={selectTile}
+      />
+    ) : undefined;
+
+  /*
    * The one HUD sheet (H2's primitive): the full 2D verdict panel, pre-answer
    * (status + Peek + Retry) and post-answer (grade columns, ranking, call
    * report, explanation). It reads the store's existing state, so opening it is
@@ -1417,6 +1456,8 @@ export const App = () => {
           stageRef={threeStageRef}
           onNextScenario={handleNextScenario}
           nextDisabled={isLoading}
+          phone={phoneStage}
+          handStrip={hudHandStrip}
           setupTrigger={
             <SetupTrigger
               onOpen={() => setHudSheet('setup')}
@@ -1449,6 +1490,7 @@ export const App = () => {
               tier={tableMount.query.quality}
               debug={tableMount.query.debug}
               perfHud={tableMount.query.perf}
+              hideHumanHand={phoneStage && humanPlayer !== null}
               callRiichi={callRiichi}
               callKan={callKan}
               onSelectTile={selectTile}

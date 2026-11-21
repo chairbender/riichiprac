@@ -195,6 +195,13 @@ export interface RendererOptions {
    * see the plan's §2.6 note and the seam gate's numbers.
    */
   readonly antialias: boolean;
+  /**
+   * The HUD owns the human's hand on this mount (`3d_phone_layout_plan.md`
+   * §4): the scene draws the board without the human's concealed tiles and
+   * draw, so the phone hand strip is the only hand on screen. Their **melds
+   * stay on the table** — the user asked for those to stay visible.
+   */
+  readonly hideHumanHand?: boolean;
 }
 
 /** Reserved for a future live/replay source. Not called in v1. */

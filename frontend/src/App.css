@@ -940,17 +940,35 @@
   min-height: 0;
   overflow: hidden;
   background-color: #0b1116;
+  /* A stray drag over the felt must not rubber-band the page (3d_phone_layout_plan.md §3.4). */
+  overscroll-behavior: none;
+}
+
+/*
+ * While the 3D shell is mounted the document itself never scrolls: the stage is
+ * fixed and the HUD is fixed over it. Scoped with `:has` so the 2D views keep
+ * their normal scrolling and pinch-zoom.
+ */
+html:has(.app-shell--3d),
+body:has(.app-shell--3d) {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* The 3D stage is the whole viewport, not a row in a column. */
 .app-shell--3d > .table-3d {
   position: fixed;
-  inset: 0;
+  inset: 0 0 var(--hud-hand-strip, 0px) 0;
   z-index: 0;
   display: flex;
   flex-direction: column;
   height: auto;
   padding: 0;
+  /*
+   * The canvas owns every gesture over it: no page pan, no double-tap zoom, no
+   * pinch. The hand strip lives *below* this box, so its taps are untouched.
+   */
+  touch-action: none;
 }
 
 .app-shell--3d .renderer-3d {

@@ -49,6 +49,13 @@ interface HandDockProps {
   onToggleRiichi: () => void;
   onToggleKan: () => void;
   onSelectTile: (tile: string, index?: number, isDraw?: boolean) => void;
+  /**
+   * `strip` renders the tiles alone, in fixed-width columns, for the phone's
+   * bottom hand strip (`3d_phone_layout_plan.md` §4): the HUD supplies the hint,
+   * the action rail and the result card around it, so this variant must not
+   * repeat them (3D-H3/3D-H5 own those surfaces).
+   */
+  variant?: 'dock' | 'strip';
 }
 
 /**
@@ -76,6 +83,7 @@ export function HandDock({
   onToggleRiichi,
   onToggleKan,
   onSelectTile,
+  variant = 'dock',
 }: HandDockProps) {
   // Presentation-only order: the engine's hand order is untouched, and the
   // draw/red-five flags travel with their copies so tsumogiri survives sorting.
@@ -122,6 +130,68 @@ export function HandDock({
     }
   }
 
+  const tileButtons = tiles.map((display, index) => {
+    const { code, isDraw, isRed, sourceIndex } = display;
+    const isSelected = answer?.tile === code;
+
+    let stateClass = '';
+    if (grade) {
+      if (isSelected && selectedTileCorrect) {
+        stateClass = ' hand-tile-button--correct';
+      } else if (isSelected) {
+        stateClass = ' hand-tile-button--incorrect';
+      } else if (bookTiles.includes(code)) {
+        stateClass = ' hand-tile-button--answer';
+      }
+    }
+
+    let aiClass = '';
+    if (grade && mortalTile === code) {
+      aiClass = ' hand-tile-button--mortal';
+    } else {
+      const aiProbability = aiProbabilities.get(code);
+      if (aiProbability !== undefined && aiProbability >= 0.01) {
+        aiClass = ' hand-tile-button--ai';
+        if (code === topAiTile) {
+          aiClass += ' hand-tile-button--ai-top';
+        }
+      }
+    }
+
+    return (
+      <button
+        key={`${code}-${sourceIndex}`}
+        type="button"
+        className={`hand-tile-button${stateClass}${aiClass}`}
+        onClick={() => onSelectTile(code, index, isDraw)}
+        disabled={isAnswered || !canDiscard}
+        aria-label={handTileLabel({
+          code,
+          isRed,
+          callKan,
+          callRiichi,
+        })}
+      >
+        {aiProbabilities.get(code) !== undefined &&
+          (aiProbabilities.get(code) ?? 0) >= 0.01 && (
+            <span className="ai-tile-badge" aria-hidden="true">
+              {formatProbability(aiProbabilities.get(code) ?? 0)}
+            </span>
+          )}
+        <Tile code={code} className="tile hand-tile" isRedFive={isRed} />
+      </button>
+    );
+  });
+
+  /*
+   * The phone strip: the tiles alone, at a fixed size, because the HUD already
+   * owns the hint, the action rail and the result card around them. Same
+   * buttons, same labels, same handlers as the dock — one hand, two homes.
+   */
+  if (variant === 'strip') {
+    return <div className="hand hand--strip">{tileButtons}</div>;
+  }
+
   return (
     <section className="hand-dock" aria-label="Your hand">
       {isAnswered && grade ? (
@@ -150,62 +220,7 @@ export function HandDock({
         className="hand"
         style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
       >
-        {tiles.map((display, index) => {
-          const { code, isDraw, isRed, sourceIndex } = display;
-          const isSelected = answer?.tile === code;
-
-          let stateClass = '';
-          if (grade) {
-            if (isSelected && selectedTileCorrect) {
-              stateClass = ' hand-tile-button--correct';
-            } else if (isSelected) {
-              stateClass = ' hand-tile-button--incorrect';
-            } else if (bookTiles.includes(code)) {
-              stateClass = ' hand-tile-button--answer';
-            }
-          }
-
-          let aiClass = '';
-          if (grade && mortalTile === code) {
-            aiClass = ' hand-tile-button--mortal';
-          } else {
-            const aiProbability = aiProbabilities.get(code);
-            if (aiProbability !== undefined && aiProbability >= 0.01) {
-              aiClass = ' hand-tile-button--ai';
-              if (code === topAiTile) {
-                aiClass += ' hand-tile-button--ai-top';
-              }
-            }
-          }
-
-          return (
-            <button
-              key={`${code}-${sourceIndex}`}
-              type="button"
-              className={`hand-tile-button${stateClass}${aiClass}`}
-              onClick={() => onSelectTile(code, index, isDraw)}
-              disabled={isAnswered || !canDiscard}
-              aria-label={handTileLabel({
-                code,
-                isRed,
-                callKan,
-                callRiichi,
-              })}
-            >
-              {aiProbabilities.get(code) !== undefined &&
-                (aiProbabilities.get(code) ?? 0) >= 0.01 && (
-                  <span className="ai-tile-badge" aria-hidden="true">
-                    {formatProbability(aiProbabilities.get(code) ?? 0)}
-                  </span>
-                )}
-              <Tile
-                code={code}
-                className="tile hand-tile"
-                isRedFive={isRed}
-              />
-            </button>
-          );
-        })}
+        {tileButtons}
       </div>
 
       {isAnswered && (

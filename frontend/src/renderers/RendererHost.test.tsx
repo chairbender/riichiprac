@@ -341,7 +341,21 @@ describe('RendererHost lifecycle', () => {
       perfHud: true,
       reducedMotion: true,
       antialias: true,
+      // The phone hand strip owns the hand; the scene draws the board without it.
+      hideHumanHand: false,
     });
+  });
+
+  it('hides the projected human hand when the phone strip owns it', async () => {
+    render(
+      <RendererHost
+        snapshot={snapshot()}
+        hideHumanHand
+        fallback={fallbackTable()}
+      />,
+    );
+    await waitFor(() => expect(hostMock.state.created).toBe(1));
+    expect(hostMock.state.options[0].hideHumanHand).toBe(true);
   });
 
   it('redraws on a new snapshot without remounting', async () => {

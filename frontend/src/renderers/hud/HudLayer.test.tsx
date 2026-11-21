@@ -473,3 +473,72 @@ describe('HudLayer: what the layer may never cover', () => {
     expect(onNextScenario).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('HudLayer: the phone hand strip (3d_phone_layout_plan.md §4)', () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty('--hud-hand-strip');
+  });
+
+  it('mounts the strip and publishes its height as the stage inset', () => {
+    render(
+      <Harness phone handStrip={<span data-testid="strip-hand">tiles</span>}>
+        <div data-testid="canvas" />
+      </Harness>,
+    );
+    const strip = document.querySelector('.hud-hand-strip');
+    expect(strip).not.toBeNull();
+    expect(strip?.contains(screen.getByTestId('strip-hand'))).toBe(true);
+    // The stage reads this variable to shrink its bottom edge; the scene is
+    // fitted above the strip, never covered by it.
+    const height = Number.parseFloat(
+      document.documentElement.style.getPropertyValue('--hud-hand-strip'),
+    );
+    expect(height).toBeGreaterThan(0);
+    expect(strip?.getAttribute('style')).toContain(`height: ${height}px`);
+  });
+
+  it('keeps the hint inside the strip and mounts no hand panel for it', () => {
+    render(
+      <Harness
+        phone
+        hintRow={<span data-testid="hint">tap one</span>}
+        handStrip={<span data-testid="strip-hand">tiles</span>}
+      />,
+    );
+    const strip = document.querySelector('.hud-hand-strip');
+    expect(strip?.contains(screen.getByTestId('hint'))).toBe(true);
+    // `hint` alone is not a reason to mount the panel on a phone: the strip
+    // already carries the row.
+    expect(document.querySelector('.hud-panel')).toBeNull();
+  });
+
+  it('still mounts the action rail panel, anchored clear of the strip', () => {
+    render(
+      <Harness
+        phone
+        hintRow={<span>tap one</span>}
+        actionRail={<span data-testid="rail">action</span>}
+        handStrip={<span data-testid="strip-hand">tiles</span>}
+      />,
+    );
+    const panel = document.querySelector('.hud-panel');
+    const strip = document.querySelector('.hud-hand-strip');
+    expect(panel).not.toBeNull();
+    expect(strip).not.toBeNull();
+    const panelTop = Number.parseFloat((panel as HTMLElement).style.top);
+    const stripTop = Number.parseFloat((strip as HTMLElement).style.top);
+    // The regression this unit exists for: the panel used to be drawn past the
+    // bottom edge in landscape.
+    expect(panelTop + (panel as HTMLElement).offsetHeight).toBeLessThanOrEqual(
+      stripTop + 0.01,
+    );
+  });
+
+  it('leaves the stage inset at zero on a desktop stage', () => {
+    render(<Harness hintRow={<span>hint</span>} />);
+    expect(document.querySelector('.hud-hand-strip')).toBeNull();
+    expect(
+      document.documentElement.style.getPropertyValue('--hud-hand-strip'),
+    ).toBe('0px');
+  });
+});

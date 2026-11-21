@@ -402,25 +402,45 @@ describe('tier resolution, URL > stored > auto (3D-11)', () => {
     ).toEqual({ tier: 'balanced', source: 'stored' });
   });
 
-  it('starts a touch-primary device at compat', () => {
+  it('starts a touch-primary device at balanced, not the DPR-1 compat tier', () => {
+    // 3d_phone_layout_plan.md §3.2: a phone is not a `compat` device. The old
+    // rule forced DPR 1 with no MSAA on a DPR-3.5 screen, which is 29 % of the
+    // native resolution and reads as blurry. A tablet-sized touch viewport gets
+    // `balanced`; a phone-sized one gets `high` (below).
     expect(
       resolveQualityTier({
         queryTier: null,
         storedTier: null,
-        environment: environment({ touchPrimary: true }),
+        environment: environment({
+          touchPrimary: true,
+          viewport: { width: 1366, height: 1024 },
+        }),
       }),
-    ).toEqual({ tier: 'compat', source: 'auto' });
+    ).toEqual({ tier: 'balanced', source: 'auto' });
   });
 
-  it('starts a small viewport at compat even with a mouse', () => {
+  it('starts a phone-sized viewport at high, whatever the pointer', () => {
+    // 412 x 915 at DPR 2 is 1.51 MP, well under both the 2.07 MP compat and the
+    // 8.29 MP high caps, so the budget — not the touch screen — chooses.
     expect(
       autoQualityTier(
-        environment({ viewport: { width: 768, height: 1024 } }),
+        environment({
+          touchPrimary: true,
+          viewport: { width: 412, height: 915 },
+        }),
       ),
-    ).toBe('compat');
+    ).toBe('high');
+    expect(
+      autoQualityTier(environment({ viewport: { width: 932, height: 430 } })),
+    ).toBe('high');
     expect(isSmallViewport({ width: 899, height: 1200 })).toBe(true);
     expect(isSmallViewport({ width: 1200, height: 599 })).toBe(true);
     expect(isSmallViewport({ width: 900, height: 600 })).toBe(false);
+    // A short but wide stage keeps `balanced`: at 1200 x 599 a DPR-2 store is
+    // 2.9 MP, fine, so it is the small viewport that selects, not the pointer.
+    expect(
+      autoQualityTier(environment({ viewport: { width: 1200, height: 599 } })),
+    ).toBe('high');
   });
 
   it('starts a large high-performance device at high', () => {

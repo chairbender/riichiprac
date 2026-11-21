@@ -28,7 +28,7 @@
  */
 
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import type { ReactNode, RefObject } from 'react';
+import type { CSSProperties, ReactNode, RefObject } from 'react';
 import { FullscreenButton } from '../../components/FullscreenButton';
 import { NextScenarioButton } from '../../components/NextScenarioButton';
 import { usePrefersReducedMotion } from '../motionPreference';
@@ -76,6 +76,18 @@ export interface HudLayerProps {
   readonly actionRail?: ReactNode;
   /** H5: the result card; replaces both rows and keeps the panel's fixed shape. */
   readonly resultCard?: ReactNode;
+  /**
+   * The phone's hand strip (3d_phone_layout_plan.md §4): the human's tiles,
+   * already rendered at their fixed strip size by `HandDock`'s `strip` variant.
+   * Mounted only on a phone-class stage, where it replaces the projected hand.
+   */
+  readonly handStrip?: ReactNode;
+  /**
+   * A phone-class stage: the strip replaces the hand band, and the sheet takes
+   * the whole stage. `App` computes it once and passes the same value to the
+   * renderer, so the two cannot disagree.
+   */
+  readonly phone?: boolean;
   /**
    * H5: the result panel's tone (`outcomeTone`). The tone surface and its
    * green/amber/red outline are the **panel's**, not an inner box's, so the
@@ -149,6 +161,8 @@ export function HudLayer({
   hintRow,
   actionRail,
   resultCard,
+  handStrip,
+  phone = false,
   resultTone,
   toasts,
   toastCount,
@@ -160,6 +174,7 @@ export function HudLayer({
   const probeRef = useRef<HTMLSpanElement>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
   const toastRef = useRef<HTMLDivElement>(null);
 
   const anchors = useHudAnchors();
@@ -226,10 +241,28 @@ export function HudLayer({
             actionRows,
             sheet: sheetOpen,
             toasts: toastCount ?? (toasts !== undefined ? 1 : 0),
+            // The strip is the phone's hand: without one there is nothing to
+            // anchor, so the phone layout is not claimed.
+            phone: phone && handStrip !== undefined,
           },
           metrics.insets,
         )
       : null;
+
+  /*
+   * The strip's height is the stage's bottom inset: `App.css` reads this
+   * variable on `.table-3d`, so the scene is fitted into the box above the strip
+   * instead of being covered by it. Writing it on the document root is what
+   * lets the fixed stage — a sibling of this layer — see it.
+   */
+  const stripHeight = layout?.handStrip?.rect.height ?? 0;
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--hud-hand-strip', `${stripHeight}px`);
+    return () => {
+      root.style.removeProperty('--hud-hand-strip');
+    };
+  }, [stripHeight]);
 
   /*
    * Under an open sheet the panel collapses to its hint row (§5) and the action
@@ -326,6 +359,24 @@ export function HudLayer({
         </div>
       )}
 
+      {layout?.handStrip && handStrip !== undefined && (
+        <div
+          ref={stripRef}
+          className="hud-hand-strip"
+          data-rows={layout.handStrip.rows}
+          style={{
+            ...rectStyle(layout.handStrip.rect),
+            ...({
+              '--hud-strip-tile': `${layout.handStrip.tileWidth}px`,
+              '--hud-strip-columns': `${layout.handStrip.tilesPerRow}`,
+            } as CSSProperties),
+          }}
+        >
+          {hintRow !== undefined && <div className="hud-hand-rail">{hintRow}</div>}
+          {handStrip}
+        </div>
+      )}
+
       {layout?.toasts && (
         <div ref={toastRef} className="hud-toast-root" style={rectStyle(layout.toasts)}>
           {toasts}
@@ -339,7 +390,7 @@ export function HudLayer({
           actions={sheet?.actions}
           onClose={() => onCloseSheet?.()}
           rect={layout?.sheet ?? null}
-          inertTargets={[topBarRef, panelRef, toastRef, stageRef]}
+          inertTargets={[topBarRef, panelRef, stripRef, toastRef, stageRef]}
           fallbackFocus={fallbackFocus}
           reducedMotion={reducedMotion}
         >

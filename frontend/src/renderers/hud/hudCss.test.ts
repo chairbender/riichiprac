@@ -38,8 +38,7 @@ function stripComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
-/** Every `selector { declarations }` pair, flattened to one selector string. */
-function blocks(css: string): Block[] {
+/** Every `selector { declarations }` pair, flattened to one selector string. */function blocks(css: string): Block[] {
   const source = stripComments(css);
   const found: Block[] = [];
   const pattern = /([^{}]+)\{([^{}]*)\}/g;
@@ -248,8 +247,7 @@ describe('HUD stylesheet: the committed visual tokens (3d_hud.md §8)', () => {
     expect(setupDecls.get('box-sizing')).toBe('border-box');
   });
 
-  it('reads the safe-area insets in exactly one probe, with no layout impact', () => {    const [probe] = blocksFor(HUD, '.hud-inset-probe');
-    expect(probe).toBeDefined();
+  it('reads the safe-area insets in exactly one probe, with no layout impact', () => {    const [probe] = blocksFor(HUD, '.hud-inset-probe');    expect(probe).toBeDefined();
     const decls = declarations(probe.body);
     expect(decls.get('padding')).toMatch(/env\(safe-area-inset-top\)/);
     expect(decls.get('padding')).toMatch(/env\(safe-area-inset-left\)/);
@@ -262,5 +260,26 @@ describe('HUD stylesheet: the committed visual tokens (3d_hud.md §8)', () => {
       /safe-area-inset/.test(block.body),
     ).map((block) => block.selector);
     expect(envUsers).toEqual(['.hud-inset-probe']);
+  });
+
+  it('paints the phone hand strip as an opaque, tappable surface (3d_phone_layout_plan.md §4)', () => {
+    const [strip] = blocksFor(HUD, '.hud-hand-strip');
+    expect(strip).toBeDefined();
+    const decls = declarations(strip.body);
+    // It is the one surface that covers the felt, so it is opaque, not the
+    // translucent panel glass: the scene's hand is not drawn under it.
+    expect(decls.get('background-color')).toBe('var(--hud-surface-solid)');
+    expect(decls.get('pointer-events')).toBe('auto');
+    expect(decls.get('position')).toBe('absolute');
+
+    // Its tiles take their size from the layout, never from a CSS constant.
+    const [tiles] = blocksFor(HUD, '.hud-hand-strip .hand--strip');
+    expect(tiles).toBeDefined();
+    expect(declarations(tiles.body).get('grid-template-columns')).toMatch(
+      /var\(--hud-strip-columns/,
+    );
+    expect(declarations(tiles.body).get('grid-template-columns')).toMatch(
+      /var\(--hud-strip-tile/,
+    );
   });
 });

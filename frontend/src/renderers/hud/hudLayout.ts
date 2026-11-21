@@ -95,6 +95,50 @@ export const HUD_SHEET_MAX_HEIGHT = 832;
 /** The sheet's share of the stage height when that is smaller than the cap. */
 export const HUD_SHEET_STAGE_FRACTION = 0.78;
 
+/*
+ * The phone hand strip (3d_phone_layout_plan.md §4).
+ *
+ * On a phone the human's hand leaves the table: it becomes a fixed strip pinned
+ * to the bottom safe edge, sized by the tap minimum instead of by the camera
+ * projection, so the tiles are readable and tappable. The 14 interactive tiles
+ * (13 concealed + the draw) are always the same set, so the strip's size does
+ * not change when the hand is answered or a call is made.
+ */
+/** A hand is always 14 interactive tiles (13 concealed + the draw). */
+export const HUD_STRIP_TILES = 14;
+/** The gap between strip tiles, and the strip's own side gutter. */
+export const HUD_STRIP_GAP = 4;
+export const HUD_STRIP_GUTTER = 8;
+/** The strip's top padding: 4 px, so the hint hugs the surface's edge. */
+export const HUD_STRIP_TOP_PAD = 4;
+/** The tap minimum the strip is sized by (`--hud-tap`). */
+export const HUD_STRIP_MIN_TILE = 44;
+/** Above this stage width the strip fits in one row; phones are narrower. */
+export const HUD_STRIP_ONE_ROW_MIN_WIDTH = 640;
+/** The largest a strip tile may get (a four-meld hand would otherwise balloon). */
+export const HUD_STRIP_MAX_TILE = 72;
+/** The tile art is 3:4 (`riichi-mahjong-tiles` is a `300 x 400` viewBox). */
+export const HUD_STRIP_TILE_ASPECT = 4 / 3;
+/** The right-hand control column a landscape phone docks the panel in. */
+export const HUD_PHONE_COLUMN_MIN = 150;
+export const HUD_PHONE_COLUMN_MAX = 240;
+export const HUD_PHONE_COLUMN_FRACTION = 0.24;
+/** A stage at most this narrow on its short side is a phone (see `HudState.phone`). */
+export const HUD_PHONE_MIN_STAGE_SIDE = 500;
+
+/**
+ * Whether a stage is phone-class: a coarse pointer on a stage whose short side
+ * is at most {@link HUD_PHONE_MIN_STAGE_SIDE}. `hudLayout()` stays pure, so the
+ * caller resolves this and passes it in as `HudState.phone`.
+ */
+export function isPhoneStage(stage: StageSize, touchPrimary: boolean): boolean {
+  return (
+    touchPrimary &&
+    Math.min(stage.width, stage.height) > 0 &&
+    Math.min(stage.width, stage.height) <= HUD_PHONE_MIN_STAGE_SIDE
+  );
+}
+
 /** A CSS-pixel rectangle, relative to the stage's top-left corner. */
 export interface HudRect {
   readonly left: number;
@@ -147,7 +191,28 @@ export type HudSlot = 'none' | 'hint' | 'actions' | 'result';
 export type HudPanelSlot = 'none' | 'hint' | 'actions' | 'result';
 
 /** Which side of the hand band the panel ended up on. */
-export type HudPanelAnchor = 'none' | 'above' | 'below';
+export type HudPanelAnchor = 'none' | 'above' | 'below' | 'above-strip' | 'beside';
+
+/**
+ * The phone hand strip: the human's 14 interactive tiles, pinned to the bottom
+ * safe edge and sized by the tap minimum (3d_phone_layout_plan.md §4).
+ *
+ * It is the phone's *hand anchor*: `HudLayout.handStrip` replaces the projected
+ * hand band in the collision exclusion set, and the panel sits above it (or
+ * beside the board on a short landscape stage, where the compass leaves no room
+ * above).
+ */
+export interface HudStrip {
+  /** The strip's surface: full width, flush to the bottom safe edge. */
+  readonly rect: HudRect;
+  /** The live-region hint row inside the strip, directly above the tiles. */
+  readonly hint: HudRect;
+  /** One row of 14 on a wide stage, two rows of 7 on a narrow one. */
+  readonly rows: number;
+  readonly tilesPerRow: number;
+  readonly tileWidth: number;
+  readonly tileHeight: number;
+}
 
 /** The few bits of state the layout depends on. */
 export interface HudState {
@@ -158,6 +223,13 @@ export interface HudState {
   readonly sheet: boolean;
   /** How many toasts the stack shows (0–3, §2). */
   readonly toasts: number;
+  /**
+   * Phone-class stage (`3d_phone_layout_plan.md` §4): the hand is the bottom
+   * strip instead of the projected scene buttons, and the sheet takes the whole
+   * stage below the top bar. `HudLayer` sets it from a coarse pointer and the
+   * stage size; the tests set it explicitly.
+   */
+  readonly phone?: boolean;
 }
 
 /** Everything `HudLayer` positions, plus the panel's anchor and clearances. */
@@ -203,6 +275,11 @@ export interface HudLayout {
   readonly toasts: HudRect | null;
   /** The open sheet's panel, or null when closed (or the stage is too short). */
   readonly sheet: HudRect | null;
+  /**
+   * The phone hand strip, or null on a tablet/desktop stage. When present it is
+   * the hand anchor: it replaces the projected hand band in the exclusion set.
+   */
+  readonly handStrip: HudStrip | null;
   /** Compass bottom edge → the panel's top edge (negative is illegal). */
   readonly panelCompassClearance: number | null;
   /** The gap between the panel and the hand band's nearest edge. */
@@ -275,6 +352,121 @@ function panelHeight(
     return actionRows === 2 ? HUD_PANEL_ACTIONS_TWO_ROWS : HUD_PANEL_ACTIONS_ONE_ROW;
   }
   return HUD_PANEL_HINT_ONLY;
+}
+
+/**
+ * The phone hand strip's geometry for one stage (3d_phone_layout_plan.md §4.1).
+ *
+ * The tile is sized from the stage width, never from the camera: 14 tiles in one
+ * row on a landscape phone, two rows of 7 on a portrait one, each tile at least
+ * {@link HUD_STRIP_MIN_TILE} wide where the stage allows it. The strip is flush
+ * to the bottom edge and padded by the bottom safe inset, so a home indicator
+ * never sits on a tile.
+ */
+export function handStripFor(
+  stage: StageSize,
+  insets: HudInsets = NO_INSETS,
+  reservePx = 0,
+): HudStrip | null {
+  const width = stage.width;
+  const height = stage.height;
+  if (!(width > 0) || !(height > 0)) return null;
+
+  const rows = width >= HUD_STRIP_ONE_ROW_MIN_WIDTH ? 1 : 2;
+  const tilesPerRow = Math.ceil(HUD_STRIP_TILES / rows);
+  const usable = width - 2 * HUD_STRIP_GUTTER - (tilesPerRow - 1) * HUD_STRIP_GAP;
+  const maxTileWidth = Math.max(
+    0,
+    Math.min(usable / tilesPerRow, HUD_STRIP_MAX_TILE),
+  );
+  const bottomPad = Math.max(HUD_PANEL_PAD, insets.bottom);
+  const chrome =
+    HUD_STRIP_TOP_PAD +
+    HUD_HAND_RAIL_HEIGHT +
+    HUD_RAIL_GAP +
+    (rows - 1) * HUD_STRIP_GAP +
+    bottomPad;
+
+  /*
+   * The strip yields to the panel: on a short landscape stage the action
+   * column needs room above it, so the strip takes no more than the stage
+   * leaves — but never so little that a tile drops below the tap minimum. When
+   * the two cannot both be honoured the strip keeps the minimum and the panel
+   * is the one clipped, because the hand is the interaction surface.
+   */
+  const minimum = chrome + rows * (HUD_STRIP_MIN_TILE * HUD_STRIP_TILE_ASPECT);
+  const ideal = chrome + rows * maxTileWidth * HUD_STRIP_TILE_ASPECT;
+  const allowed = height - Math.max(0, reservePx);
+  const stripHeight = Math.max(minimum, Math.min(ideal, allowed));
+
+  const tileHeight = Math.max(
+    0,
+    (stripHeight - chrome) / rows,
+  );
+  const tileWidth = Math.min(maxTileWidth, tileHeight / HUD_STRIP_TILE_ASPECT);
+  const top = height - stripHeight;
+
+  return {
+    rect: rect(0, top, width, stripHeight),
+    hint: rect(
+      HUD_STRIP_GUTTER,
+      top + HUD_STRIP_TOP_PAD,
+      Math.max(0, width - 2 * HUD_STRIP_GUTTER),
+      HUD_HAND_RAIL_HEIGHT,
+    ),
+    rows,
+    tilesPerRow,
+    tileWidth: round(tileWidth),
+    tileHeight: round(tileWidth * HUD_STRIP_TILE_ASPECT),
+  };
+}
+
+/** The right-hand control column a landscape phone docks the panel in. */
+function phoneColumnWidth(stageWidth: number): number {
+  return Math.max(
+    Math.min(HUD_PHONE_COLUMN_MIN, stageWidth - 2 * HUD_GAP),
+    Math.min(
+      HUD_PHONE_COLUMN_MAX,
+      Math.round(stageWidth * HUD_PHONE_COLUMN_FRACTION),
+    ),
+  );
+}
+
+/**
+ * The panel's rect on a phone.
+ *
+ * Primary: above the strip, centred, which is what a portrait phone uses (the
+ * board is width-bound there, so the strip costs it nothing). When that would
+ * reach the compass — a landscape phone, where the compass leaves only a few
+ * pixels between itself and the strip — the panel docks in the **right control
+ * column** instead, beside the board rather than stacked over it.
+ */
+function anchorPhonePanel(
+  stage: StageSize,
+  strip: HudRect,
+  barHeight: number,
+  compassBottom: number | null,
+  height: number,
+): { top: number; left: number; width: number; anchor: HudPanelAnchor } {
+  const above = strip.top - HUD_GAP - height;
+  if (compassBottom === null || above >= compassBottom + HUD_GAP) {
+    const panelWidth = Math.min(HUD_PANEL_MAX_WIDTH, stage.width - 2 * HUD_GAP);
+    return {
+      top: above,
+      left: (stage.width - panelWidth) / 2,
+      width: panelWidth,
+      anchor: 'above-strip',
+    };
+  }
+
+  const width = phoneColumnWidth(stage.width);
+  const columnTop = barHeight + HUD_GAP;
+  return {
+    top: columnTop,
+    left: stage.width - HUD_GAP - width,
+    width,
+    anchor: 'beside',
+  };
 }
 
 /**
@@ -408,11 +600,39 @@ export function hudLayout(
       : null;
   const compass = compassSquare(anchors.compass);
   const compassBottom = compass ? compass.top + compass.height : null;
+  /*
+   * On a short landscape stage the panel docks in the right-hand column, so the
+   * strip must leave room for the tallest panel above it. Reserving it always
+   * (not only when an action rail happens to be mounted) keeps the hand from
+   * jumping when one appears.
+   */
+  const stripReserve =
+    width > height
+      ? barHeight + 2 * HUD_GAP + HUD_PANEL_ACTIONS_TWO_ROWS
+      : 0;
+  const strip =
+    state.phone === true ? handStripFor(stage, insets, stripReserve) : null;
 
-  // A sheet collapses the panel to its hint row; with nothing mounted at all the
-  // 40 px band is still reserved, because it is the sheet's bottom bound (§5).
+  /*
+   * A sheet collapses the panel to its hint row; with nothing mounted at all the
+   * 40 px band is still reserved, because it is the sheet's bottom bound (§5).
+   *
+   * On a phone the strip already carries the hint row, so the panel exists only
+   * for the action rail or the result card, and an open sheet (which takes the
+   * whole stage there) hides it entirely.
+   */
   const panelSlot: HudPanelSlot =
-    state.slot === 'none' ? 'none' : state.sheet ? 'hint' : state.slot;
+    state.slot === 'none'
+      ? 'none'
+      : strip !== null
+        ? state.sheet
+          ? 'none'
+          : state.slot === 'hint'
+            ? 'none'
+            : state.slot
+        : state.sheet
+          ? 'hint'
+          : state.slot;
   const actionRows = state.actionRows === 2 ? 2 : 1;
 
   let panel: HudRect | null = null;
@@ -425,7 +645,72 @@ export function hudLayout(
   let panelCompassClearance: number | null = null;
   let panelHandClearance: number | null = null;
 
-  if (band) {
+  if (strip) {
+    /*
+     * The phone: the strip is the hand anchor. The panel sits above it on a
+     * portrait stage and in the right control column on a landscape one, never
+     * off the stage and never over the compass.
+     */
+    if (panelSlot !== 'none') {
+      /*
+       * A portrait phone only ever uses the above-the-strip anchor; going
+       * beside the board there would mean covering the compass. So when the
+       * full panel does not fit above the strip (the 320 px compatibility
+       * row), it steps down to one action row and then to the hint alone,
+       * rather than moving over the compass.
+       */
+      const attempts: { height: number; rows: 1 | 2 }[] = [
+        { height: panelHeight(panelSlot, actionRows), rows: actionRows },
+      ];
+      if (panelSlot === 'actions' && actionRows === 2) {
+        attempts.push({ height: HUD_PANEL_ACTIONS_ONE_ROW, rows: 1 });
+      }
+      let chosen = attempts[0];
+      let anchored = anchorPhonePanel(
+        stage,
+        strip.rect,
+        barHeight,
+        compassBottom,
+        chosen.height,
+      );
+      if (anchored.anchor === 'beside' && height > width) {
+        for (const attempt of attempts) {
+          const candidate = anchorPhonePanel(
+            stage,
+            strip.rect,
+            barHeight,
+            compassBottom,
+            attempt.height,
+          );
+          if (candidate.anchor === 'above-strip') {
+            chosen = attempt;
+            anchored = candidate;
+            break;
+          }
+        }
+      }
+      const top = Math.max(barHeight + HUD_GAP, anchored.top);
+      panel = rect(anchored.left, top, anchored.width, chosen.height);
+      panelAnchor = anchored.anchor;
+      ({ handRail, actionRail, resultCard, sheetTrigger } = hudPanelRows(
+        panel,
+        panelSlot,
+        chosen.rows,
+      ));
+      panelHandClearance = strip.rect.top - (top + chosen.height);
+      panelCompassClearance =
+        compassBottom !== null ? top - compassBottom : null;
+    }
+
+    // The sheet uses the whole stage below the top bar: a phone has no spare
+    // band, and the strip is hidden behind the modal anyway (§3.3).
+    const sheetTop = barHeight + HUD_GAP;
+    const sheetBottom = height - HUD_GAP;
+    const sheetWidth = Math.min(HUD_SHEET_MAX_WIDTH, width - 2 * HUD_GAP);
+    if (sheetBottom - sheetTop > 0 && sheetWidth > 0) {
+      sheet = rect((width - sheetWidth) / 2, sheetTop, sheetWidth, sheetBottom - sheetTop);
+    }
+  } else if (band) {
     // The sheet is bounded by the collapsed (hint-only) panel's top, whatever
     // the panel is actually showing while the sheet is open.
     const collapsed = anchorPanel(band, compassBottom, HUD_PANEL_HINT_ONLY);
@@ -473,7 +758,7 @@ export function hudLayout(
 
   // No board yet: the top bar and the toast root still mount, and the sheet (if
   // one is somehow open) uses the stage instead of guessing a hand position.
-  if (!band && state.sheet) {
+  if (!band && !strip && state.sheet) {
     const sheetTop = barHeight + HUD_GAP;
     const sheetBottom = height - 2 * HUD_GAP;
     const sheetWidth = Math.min(HUD_SHEET_MAX_WIDTH, width - 2 * HUD_GAP);
@@ -483,15 +768,41 @@ export function hudLayout(
   }
 
   const toastCount = clamp(Math.trunc(state.toasts) || 0, 3);
-  const toastWidth = Math.min(HUD_TOAST_MAX_WIDTH, width - 2 * HUD_GAP);
+  const toastStackHeight =
+    toastCount * HUD_TOAST_HEIGHT + Math.max(0, toastCount - 1) * HUD_GAP;
+  let toastWidth = Math.min(HUD_TOAST_MAX_WIDTH, width - 2 * HUD_GAP);
+  let toastLeft = (width - toastWidth) / 2;
+  /*
+   * A phone's compass sits high — the stage is short — so the centred stack
+   * would cover it. The stack takes the wider free band beside the compass
+   * instead, which is what keeps the round and scores readable while a status
+   * line is up.
+   */
+  if (
+    strip &&
+    compass &&
+    toastStackHeight > 0 &&
+    rectsIntersect(
+      {
+        left: toastLeft,
+        top: barHeight + HUD_GAP,
+        width: toastWidth,
+        height: toastStackHeight,
+      },
+      compass,
+    )
+  ) {
+    const leftGap = compass.left - 2 * HUD_GAP;
+    const rightGap = width - (compass.left + compass.width) - 2 * HUD_GAP;
+    toastWidth = Math.max(
+      0,
+      Math.min(HUD_TOAST_MAX_WIDTH, Math.max(leftGap, rightGap)),
+    );
+    toastLeft = rightGap > leftGap ? width - HUD_GAP - toastWidth : HUD_GAP;
+  }
   const toasts =
     toastCount > 0 && toastWidth > 0
-      ? rect(
-          (width - toastWidth) / 2,
-          barHeight + HUD_GAP,
-          toastWidth,
-          toastCount * HUD_TOAST_HEIGHT + (toastCount - 1) * HUD_GAP,
-        )
+      ? rect(toastLeft, barHeight + HUD_GAP, toastWidth, toastStackHeight)
       : null;
 
   return {
@@ -507,6 +818,7 @@ export function hudLayout(
     sheetTrigger,
     toasts,
     sheet,
+    handStrip: strip,
     panelCompassClearance,
     panelHandClearance,
   };

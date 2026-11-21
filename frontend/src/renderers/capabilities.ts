@@ -452,15 +452,40 @@ export function highPerformanceHint(environment: TierEnvironment): boolean {
  *
  * This is only the fallback when neither the URL nor a stored preference names
  * a tier; {@link resolveQualityTier} owns that precedence.
+ *
+ * **A phone is not a `compat` device** (3d_phone_layout_plan.md §3.2). The old
+ * rule sent every touch-primary device to `compat`, which renders at DPR 1 with
+ * no MSAA: on a DPR-3.5 phone that is 29 % of the native resolution, and the
+ * board reads as blurry. A phone's CSS viewport is small, so DPR 2 costs well
+ * under the caps (412 × 915 × 4 = 1.5 MP against a 2.07 MP `compat` budget and
+ * an 8.29 MP `high` one), so the tier is chosen by the backing-store budget
+ * rather than by the presence of a touch screen.
  */
 export function autoQualityTier(environment: TierEnvironment): QualityTier {
-  if (environment.touchPrimary || isSmallViewport(environment.viewport)) {
-    return 'compat';
+  if (isSmallViewport(environment.viewport)) {
+    // A phone-class viewport always fits `high`'s 2× and its area cap; a large
+    // CSS viewport that is merely short stays on `balanced` so its area rule
+    // still has room to breathe.
+    return highAffordable(environment.viewport, 'high') ? 'high' : 'balanced';
+  }
+  if (environment.touchPrimary) {
+    return 'balanced';
   }
   if (highPerformanceHint(environment) && isLargeViewport(environment.viewport)) {
     return 'high';
   }
   return 'balanced';
+}
+
+/**
+ * Whether a tier's DPR-2-class budget covers this viewport without the area cap
+ * biting (i.e. `sqrt(maxPixels / area) >= 2`).
+ */
+function highAffordable(viewport: ViewportSize, tier: QualityTier): boolean {
+  const area = viewport.width * viewport.height;
+  if (!(area > 0)) return false;
+  const budget = TIER_BACKING_STORE[tier];
+  return budget.maxDevicePixelRatio >= 2 && budget.maxPixels / area >= 4;
 }
 
 /** Where the resolved tier came from. */

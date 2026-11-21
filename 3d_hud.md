@@ -33,9 +33,20 @@ and the gate move together and the composition rules below stay the same.
 3. **One hand.** The hand and draw tiles are the projected DOM buttons from
    3D-08. The HUD never renders a second hand, a tile strip, or a thumbnail of
    them.
+   **Phone exception (2026-11-20).** On a phone-class stage (`isPhoneStage()`:
+   a coarse pointer on a stage whose short side is ≤ 500 px) the hand leaves the
+   table and the HUD owns it: a fixed-size strip pinned to the bottom safe edge,
+   built from `HandDock`'s own tile buttons (`variant="strip"`), never a second
+   implementation. The scene stops drawing the human's concealed tiles and draw
+   and the strip is the only hand; the player's **melds stay on the table**.
+   Layout, numbers and the cost to the board are in
+   [`3d_phone_layout_plan.md`](3d_phone_layout_plan.md) §4. On tablet and
+   desktop this paragraph is inert.
 4. **Always visible:** Next hand and the hand panel — its hint row, its action
    row while there is something to act on, and the result card after an answer.
-   **Everything else is a sheet or a toast** (user decision 2026-11-19).
+   **Everything else is a sheet or a toast** (user decision 2026-11-19). On a
+   phone the hint row lives inside the hand strip, so the panel mounts only for
+   an action row or a result card.
 5. **A sheet is a modal, not a column.** It covers the scene while open, the
    scene is `inert`, and one is open at most.
 6. **The result starts small.** A result card summarises; only a tap opens the
@@ -515,6 +526,13 @@ Its body scrolls internally; the page does not scroll.
 
 ### Phone compatibility rows
 
+**As built 2026-11-20:** a phone-class stage no longer uses the projected hand.
+`3d_phone_layout_plan.md` §4 replaces it with a bottom hand strip, and the board
+is fitted into the stage above that strip; the panel therefore anchors to the
+strip (portrait) or beside the board (landscape), and the sheet takes the whole
+stage below the top bar. The two rows below remain the record of the
+*projected-hand* fallback, which is what a phone did before the strip.
+
 | Stage | panel | reason |
 | --- | --- | --- |
 | 390 × 844 | **below** the hand: `574–658` | the gap above the hand is `484 → 541 = 57 px`; the panel needs `92 px` |
@@ -746,6 +764,14 @@ jumps on first paint.
 
 Width does not affect the collision rule: the panel is above or below the band,
 never beside it, so its width can be a constant without becoming illegal.
+
+**Phone exception (2026-11-20).** On a phone the anchor set is
+`above-strip` | `beside`, because the strip sits at the bottom edge and a
+landscape stage has no room between the compass and it: portrait anchors the
+panel above the strip (centred, §5's width) and landscape docks it in a
+right-hand control column (`min(240, max(150, 24 % of the stage width))` wide).
+The strip replaces the hand band in `E`. The gate checks both anchors and never
+lets a panel leave the stage. See `3d_phone_layout_plan.md` §4.
 
 ### 7.4 The measured reference
 
