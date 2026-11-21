@@ -29,6 +29,7 @@ import {
   railRowsForHeight,
 } from './actionRail';
 import type { ActionRailModel } from './actionRail';
+import { HudBandContext } from './hudBand';
 
 // The SVG tile art is irrelevant here; the controls are the subject.
 vi.mock('../../components/Tile', () => ({ Tile: () => null }));
@@ -241,6 +242,73 @@ describe('3D action rail: the same controls as the 2D dock', () => {
     expect(controls(container, '.action-bar button')).toHaveLength(1);
     fireEvent.click(within(container).getByRole('button', { name: 'Tsumo' }));
     expect(onAction).toHaveBeenCalledWith(TSUMO);
+  });
+});
+
+describe('3D action rail: §5’s collapsed forms (3D-H6)', () => {
+  /** The drill action and the call labels, with Mortal's probabilities on both. */
+  const DECORATED: AiEvaluation = {
+    ...EVALUATION,
+    evaluations: [
+      ...EVALUATION.evaluations,
+      { action: 'Agari', label: 'Tsumo', type: 'agari', probability: 0.4 },
+    ],
+  };
+
+  /** The rail as one band draws it, with every decoration available. */
+  function railInBand(band: 'wide' | 'square' | 'portrait') {
+    return render(
+      <HudBandContext.Provider value={band}>
+        <ActionRail
+          model={model({
+            actions: [TSUMO],
+            evaluation: DECORATED,
+            revealMortal: true,
+          })}
+        />
+      </HudBandContext.Provider>,
+    );
+  }
+
+  it('draws the labels and both probability badges at wide', () => {
+    const { container } = railInBand('wide');
+    expect(container.querySelector('.action-button-probability')?.textContent).toBe(
+      '40%',
+    );
+    // Pon is the one call with a Mortal score in `CALLS`/`EVALUATION`.
+    expect(container.querySelector('.call-button-probability')?.textContent).toBe(
+      '25%',
+    );
+    expect(controls(container, '.call-controls button')).toHaveLength(5);
+    expect(container.querySelector('.action-button-label')?.textContent).toBe(
+      'Tsumo',
+    );
+  });
+
+  it('hides the probability badges at square and portrait', () => {
+    for (const band of ['square', 'portrait'] as const) {
+      const { unmount, container } = railInBand(band);
+      // The verdict sheet carries the numbers instead.
+      expect(container.querySelector('.action-button-probability'), band).toBeNull();
+      expect(container.querySelector('.call-button-probability'), band).toBeNull();
+      // Every control stays: collapse removes decoration only.
+      const callLabels = controls(container, '.call-controls button').map(
+        (control) => control.text,
+      );
+      expect(callLabels, band).toEqual(['Chi', 'Pon', 'Kan', 'Riichi', 'Pass']);
+      expect(container.querySelector('.action-button-label')?.textContent).toBe(
+        'Tsumo',
+      );
+      unmount();
+    }
+  });
+
+  it('keeps every call’s accessible name and disabled rule at portrait', () => {
+    const { container } = railInBand('portrait');
+    const [chi, pon] = controls(container, '.call-controls button');
+    expect(chi.label).toBe('Call Chi on 4p');
+    expect(pon.label).toBe('Call Pon 5z');
+    expect(pon.disabled).toBe(false);
   });
 });
 

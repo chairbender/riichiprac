@@ -35,6 +35,12 @@ export interface CallControlsProps {
   readonly evaluation?: AiEvaluation | null;
   /** Whether Mortal's probabilities may be shown. */
   readonly revealMortal?: boolean;
+  /**
+   * Whether the probability chips are drawn. §5 hides them on square and
+   * portrait stages (the verdict sheet still carries them); every call keeps its
+   * label, disabled rule and pick flow.
+   */
+  readonly showProbability?: boolean;
   readonly onBegin: (kind: CallKind) => void;
   readonly onPass: () => void;
   readonly onCancel: () => void;
@@ -59,6 +65,7 @@ export function CallControls({
   disabled = false,
   evaluation = null,
   revealMortal = false,
+  showProbability = true,
   onBegin,
   onPass,
   onCancel,
@@ -101,7 +108,7 @@ export function CallControls({
   if (buttons.calls.length === 0 && !buttons.pass) return null;
 
   const probabilityFor = (spec: CallButtonSpec): number | undefined => {
-    if (!revealMortal || !spec.action) return undefined;
+    if (!showProbability || !revealMortal || !spec.action) return undefined;
     return evaluation?.evaluations.find((action) => action.action === spec.action)
       ?.probability;
   };

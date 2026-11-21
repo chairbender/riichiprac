@@ -22,6 +22,9 @@
  * - the layout: `hudLayout()` from the live `handBandRect()`/`compassRect()`
  *   projection and the safe-area insets, recomputed on resize, orientation
  *   change, full-screen change and every new projection;
+ * - §5's aspect band: `hudLayout()` returns `wide`/`square`/`portrait`, the root
+ *   carries it as `data-band`, and `hud/hudBand.ts`'s context hands it to the
+ *   controls `App` builds (the setup trigger and the call row);
  * - the full-screen toggle, targeting the **shell** so the HUD travels with the
  *   scene.
  *
@@ -35,9 +38,10 @@ import { FullscreenButton } from '../../components/FullscreenButton';
 import { NextScenarioButton } from '../../components/NextScenarioButton';
 import { usePrefersReducedMotion } from '../motionPreference';
 import { readSafeAreaInsets, readStageSize } from './domMetrics';
+import { HudBandContext } from './hudBand';
 import { useHudAnchors } from './hudAnchors';
-import { hudLayout, NO_INSETS } from './hudLayout';
-import type { HudLayout, HudRect, HudSlot, StageSize } from './hudLayout';
+import { hudBand, hudLayout, NO_INSETS } from './hudLayout';
+import type { HudBand, HudLayout, HudRect, HudSlot, StageSize } from './hudLayout';
 import { Sheet } from './Sheet';
 import './tokens.css';
 import './Hud.css';
@@ -235,6 +239,7 @@ export function HudLayer({
   // The fallback for §6.5.5: when the opener is gone, focus goes to the top
   // bar's Next hand. `Sheet` focuses the first control inside this container.
   const fallbackFocus = topBarRef;
+  const band: HudBand = layout?.band ?? hudBand(metrics.stage);
 
   return (
     <div
@@ -242,100 +247,109 @@ export function HudLayer({
       className="hud-root"
       data-reduced-motion={reducedMotion ? 'true' : 'false'}
       data-sheet-open={sheetOpen ? 'true' : 'false'}
+      /*
+       * §5's aspect band is published once here: the top bar's and the call
+       * row's controls read it from context, so no component re-derives the
+       * aspect. The attribute is also the CSS hook for the collapsed forms whose
+       * size is a layout number (`Hud.css`).
+       */
+      data-band={band}
     >
-      {/* The only element that reads env(safe-area-inset-*); it never paints. */}
-      <span ref={probeRef} className="hud-inset-probe" aria-hidden="true" />
+      <HudBandContext.Provider value={band}>
+        {/* The only element that reads env(safe-area-inset-*); it never paints. */}
+        <span ref={probeRef} className="hud-inset-probe" aria-hidden="true" />
 
-      {/*
-       * H5: the HUD's one result live region. It stays mounted while the card
-       * comes and goes with the verdict sheet, so its text changes exactly once
-       * per answer (§6.5.10).
-       */}
-      <p
-        className="hud-announcer hud-visually-hidden"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {announcement}
-      </p>
-
-      {layout && (
-        <div
-          ref={topBarRef}
-          className="hud-top-bar"
-          style={{
-            height: `${layout.topBar.height}px`,
-            paddingTop: `${layout.topBarPadding.top}px`,
-            paddingRight: `${layout.topBarPadding.right}px`,
-            paddingBottom: `${layout.topBarPadding.bottom}px`,
-            paddingLeft: `${layout.topBarPadding.left}px`,
-          }}
+        {/*
+         * H5: the HUD's one result live region. It stays mounted while the card
+         * comes and goes with the verdict sheet, so its text changes exactly once
+         * per answer (§6.5.10).
+         */}
+        <p
+          className="hud-announcer hud-visually-hidden"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
         >
-          {/*
-            * The identity is the app's name only, on the very top-left with the
-            * setup trigger beneath it (user request 2026-11-20). Never the
-            * scenario or lesson: a visible lesson name is an answer hint (§1.1).
-            */}
-          <div className="hud-top-bar__start">
-            <h1 className="hud-top-bar__brand">riichiprac</h1>
-            {setupTrigger}
+          {announcement}
+        </p>
+
+        {layout && (
+          <div
+            ref={topBarRef}
+            className="hud-top-bar"
+            style={{
+              height: `${layout.topBar.height}px`,
+              paddingTop: `${layout.topBarPadding.top}px`,
+              paddingRight: `${layout.topBarPadding.right}px`,
+              paddingBottom: `${layout.topBarPadding.bottom}px`,
+              paddingLeft: `${layout.topBarPadding.left}px`,
+            }}
+          >
+            {/*
+              * The identity is the app's name only, on the very top-left with the
+              * setup trigger beneath it (user request 2026-11-20). Never the
+              * scenario or lesson: a visible lesson name is an answer hint (§1.1).
+              */}
+            <div className="hud-top-bar__start">
+              <h1 className="hud-top-bar__brand">riichiprac</h1>
+              {setupTrigger}
+            </div>
+            <div className="hud-top-bar__end">
+              <NextScenarioButton onClick={onNextScenario} disabled={nextDisabled} />
+              <FullscreenButton target={shellRef} />
+            </div>
           </div>
-          <div className="hud-top-bar__end">
-            <NextScenarioButton onClick={onNextScenario} disabled={nextDisabled} />
-            <FullscreenButton target={shellRef} />
+        )}
+
+        {/*
+         * The pre-answer call row: isolated buttons, no panel. The rect is the
+         * hand band's right-aligned box, so the controls grow towards the left as
+         * calls are added (user change 2026-11-21).
+         */}
+        {showCallBar && layout?.callBar && (
+          <div
+            ref={callBarRef}
+            className="hud-call-bar"
+            data-anchor={layout.callBarAnchor}
+            style={rectStyle(layout.callBar)}
+          >
+            {callBar}
           </div>
-        </div>
-      )}
+        )}
 
-      {/*
-       * The pre-answer call row: isolated buttons, no panel. The rect is the
-       * hand band's right-aligned box, so the controls grow towards the left as
-       * calls are added (user change 2026-11-21).
-       */}
-      {showCallBar && layout?.callBar && (
-        <div
-          ref={callBarRef}
-          className="hud-call-bar"
-          data-anchor={layout.callBarAnchor}
-          style={rectStyle(layout.callBar)}
-        >
-          {callBar}
-        </div>
-      )}
+        {showResult && layout?.panel && (
+          <div
+            ref={panelRef}
+            className="hud-panel"
+            data-slot="result"
+            data-tone={resultTone}
+            style={rectStyle(layout.panel)}
+          >
+            <div className="hud-result-card">{resultCard}</div>
+          </div>
+        )}
 
-      {showResult && layout?.panel && (
-        <div
-          ref={panelRef}
-          className="hud-panel"
-          data-slot="result"
-          data-tone={resultTone}
-          style={rectStyle(layout.panel)}
-        >
-          <div className="hud-result-card">{resultCard}</div>
-        </div>
-      )}
+        {layout?.toasts && (
+          <div ref={toastRef} className="hud-toast-root" style={rectStyle(layout.toasts)}>
+            {toasts}
+          </div>
+        )}
 
-      {layout?.toasts && (
-        <div ref={toastRef} className="hud-toast-root" style={rectStyle(layout.toasts)}>
-          {toasts}
+        <div className="hud-sheet-root">
+          <Sheet
+            open={sheetOpen}
+            title={sheet?.title ?? ''}
+            actions={sheet?.actions}
+            onClose={() => onCloseSheet?.()}
+            rect={layout?.sheet ?? null}
+            inertTargets={[topBarRef, callBarRef, panelRef, toastRef, stageRef]}
+            fallbackFocus={fallbackFocus}
+            reducedMotion={reducedMotion}
+          >
+            {sheet?.body}
+          </Sheet>
         </div>
-      )}
-
-      <div className="hud-sheet-root">
-        <Sheet
-          open={sheetOpen}
-          title={sheet?.title ?? ''}
-          actions={sheet?.actions}
-          onClose={() => onCloseSheet?.()}
-          rect={layout?.sheet ?? null}
-          inertTargets={[topBarRef, callBarRef, panelRef, toastRef, stageRef]}
-          fallbackFocus={fallbackFocus}
-          reducedMotion={reducedMotion}
-        >
-          {sheet?.body}
-        </Sheet>
-      </div>
+      </HudBandContext.Provider>
     </div>
   );
 }

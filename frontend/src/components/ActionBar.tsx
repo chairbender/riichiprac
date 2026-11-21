@@ -8,6 +8,12 @@ interface ActionBarProps {
   evaluation?: AiEvaluation | null;
   /** Whether Mortal's probabilities may be shown. */
   revealMortal?: boolean;
+  /**
+   * Whether the probability badges are drawn. §5 hides them on square and
+   * portrait stages (the verdict sheet still carries them); the button's label
+   * is unchanged either way.
+   */
+  showProbability?: boolean;
   onAction: (action: AiActionInfo) => void;
 }
 
@@ -25,6 +31,7 @@ export function ActionBar({
   disabled,
   evaluation,
   revealMortal = false,
+  showProbability = true,
   onAction,
 }: ActionBarProps) {
   const visible = actions.filter((action) => action.type !== 'discard');
@@ -33,11 +40,12 @@ export function ActionBar({
   return (
     <section className="action-bar" aria-label="Available actions">
       {visible.map((action) => {
-        const probability = revealMortal
-          ? evaluation?.evaluations.find(
-              (scored) => scored.action === action.action,
-            )?.probability
-          : undefined;
+        const probability =
+          showProbability && revealMortal
+            ? evaluation?.evaluations.find(
+                (scored) => scored.action === action.action,
+              )?.probability
+            : undefined;
         return (
           <button
             key={action.action}

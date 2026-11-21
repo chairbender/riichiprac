@@ -28,6 +28,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CompassRect } from '../contract';
 import { HudLayer } from './HudLayer';
 import type { HudLayerProps } from './HudLayer';
+import { SetupTrigger } from './SetupSheet';
 import { HUD_GAP, topBarHeight } from './hudLayout';
 import { clearHudAnchors, publishHudAnchors } from './hudAnchors';
 
@@ -409,6 +410,63 @@ describe('HudLayer: the sheet seam', () => {
     );
     expect(document.querySelector('.hud-call-bar')).toBeNull();
     expect(document.querySelector('.hud-panel')).toBeNull();
+  });
+});
+
+describe('HudLayer: §5’s band reaches the controls (3D-H6)', () => {
+  function withStageSize(width: number, height: number, body: () => void) {
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: width,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: height,
+    });
+    try {
+      body();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: originalWidth,
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalHeight,
+      });
+    }
+  }
+
+  it('publishes the portrait band on the root and to the setup trigger', () => {
+    withStageSize(390, 844, () => {
+      const { container } = render(
+        <Harness setupTrigger={<SetupTrigger onOpen={() => undefined} />} />,
+      );
+      const root = container.querySelector('.hud-root') as HTMLElement;
+      expect(root.dataset.band).toBe('portrait');
+      // The context reaches the caller-built slot: the trigger is the icon form
+      // with its label kept for assistive tech (the collision rect is 44 px).
+      const trigger = screen.getByRole('button', { name: 'Setup' });
+      expect(trigger.getAttribute('aria-label')).toBe('Setup');
+      expect(trigger.querySelector('.hud-visually-hidden')?.textContent).toBe(
+        'Setup',
+      );
+    });
+  });
+
+  it('stays wide on a wide stage, with the labelled trigger', () => {
+    withStageSize(1920, 1080, () => {
+      const { container } = render(
+        <Harness setupTrigger={<SetupTrigger onOpen={() => undefined} />} />,
+      );
+      const root = container.querySelector('.hud-root') as HTMLElement;
+      expect(root.dataset.band).toBe('wide');
+      const trigger = screen.getByRole('button', { name: 'Setup' });
+      expect(trigger.getAttribute('aria-label')).toBeNull();
+      expect(trigger.querySelector('.hud-top-bar__setup-label')).not.toBeNull();
+    });
   });
 });
 

@@ -45,9 +45,90 @@ export const HUD_TOP_BAR_BRAND_GAP = 4;
  * width its label ("Setup") and the shared button padding need — and pinned in
  * `Hud.css` as the control's `min-width`, so the rect the collision gate checks
  * and the button the browser paints are the same box.
+ *
+ * On portrait §5 collapses the label and the box shrinks to one tap square;
+ * that size is pinned by the portrait rule in `Hud.css` the same way.
  */
 export const HUD_SETUP_TRIGGER_WIDTH = 96;
+export const HUD_SETUP_TRIGGER_WIDTH_PORTRAIT = HUD_TOP_BAR_CONTROL;
 export const HUD_SETUP_TRIGGER_HEIGHT = HUD_TOP_BAR_CONTROL;
+
+/**
+ * §5's aspect bands, as the one threshold set every collapsed control follows.
+ *
+ * `wide` is `≥ 3:2`, `portrait` is `< 1` (strictly taller than wide), and
+ * everything between — the table's "square (4:3 – 1:1)" plus the narrow gap up
+ * to 3:2 — is `square`. The bands are continuous, so a resized window never
+ * falls between two rules; the gate's own aspects (21:9, 16:9, 3:2, 4:3, 1:1,
+ * 3:4, 9:16 and the two phone rows) each land in exactly one.
+ */
+export type HudBand = 'wide' | 'square' | 'portrait';
+
+export const HUD_WIDE_ASPECT = 3 / 2;
+export const HUD_PORTRAIT_ASPECT = 1;
+
+/** The band a stage belongs to, from its aspect ratio. */
+export function hudBand(stage: StageSize): HudBand {
+  const width = Number.isFinite(stage.width) ? Math.max(0, stage.width) : 0;
+  const height = Number.isFinite(stage.height) ? Math.max(0, stage.height) : 0;
+  // A stage with no size yet has no aspect; the uncollapsed form is the safe
+  // default, and nothing is painted from the layout until it has a size.
+  if (width === 0 || height === 0) return 'wide';
+  const aspect = width / height;
+  if (aspect < HUD_PORTRAIT_ASPECT) return 'portrait';
+  if (aspect < HUD_WIDE_ASPECT) return 'square';
+  return 'wide';
+}
+
+/**
+ * §5's "What collapses, and when", as data.
+ *
+ * Collapse removes decoration only — a probability badge, the setup trigger's
+ * label and the toast width cap. No control disappears, and the one that loses
+ * visible words (the setup trigger) keeps its accessible name.
+ *
+ * The 2026-11-21 call-row change removed the rail's ON/OFF words and the Mortal
+ * chip, so the only remaining rail decoration is the probability badge: square
+ * and portrait now collapse alike there, and the table's chip and hint rows
+ * have no control to act on.
+ */
+export interface HudCollapse {
+  readonly band: HudBand;
+  /** The setup trigger is a tap-sized icon button; its label is visually hidden. */
+  readonly setupIconOnly: boolean;
+  /** Mortal's probability badges are drawn in the call/action row. */
+  readonly actionProbabilities: boolean;
+  /** The toast stack takes the stage minus the gutters instead of `32rem`. */
+  readonly toastFullWidth: boolean;
+}
+
+/** The §5 row for one band. */
+export function hudCollapse(band: HudBand): HudCollapse {
+  if (band === 'portrait') {
+    return {
+      band,
+      setupIconOnly: true,
+      // "labels only": probabilities stay in the verdict sheet.
+      actionProbabilities: false,
+      toastFullWidth: true,
+    };
+  }
+  if (band === 'square') {
+    return {
+      band,
+      setupIconOnly: false,
+      // "probability badges hidden (they live in the verdict sheet)".
+      actionProbabilities: false,
+      toastFullWidth: false,
+    };
+  }
+  return {
+    band,
+    setupIconOnly: false,
+    actionProbabilities: true,
+    toastFullWidth: false,
+  };
+}
 
 /**
  * The result card's panel height, in CSS px. The panel is now only the
@@ -151,6 +232,8 @@ export interface HudState {
 
 /** Everything `HudLayer` positions, plus the anchors and clearances. */
 export interface HudLayout {
+  /** §5's aspect band, which every collapsed control follows. */
+  readonly band: HudBand;
   /** Full width, `brand + 44 + 6 + max(6, safeTop)` tall (§7.3). */
   readonly topBar: HudRect;
   /** The bar's padding, after the safe insets: `top = max(6, safeTop)`. */
@@ -329,6 +412,8 @@ export function hudLayout(
   const width = Number.isFinite(stage.width) ? Math.max(0, stage.width) : 0;
   const height = Number.isFinite(stage.height) ? Math.max(0, stage.height) : 0;
 
+  const aspectBand = hudBand({ width, height });
+  const collapse = hudCollapse(aspectBand);
   const barHeight = topBarHeight(insets);
   const topBar = rect(0, 0, width, barHeight);
   const topBarPadding: HudInsets = {
@@ -341,13 +426,16 @@ export function hudLayout(
    * The setup trigger is the bar's first *control*, under the brand line, so it
    * starts at the leading padding plus the brand's line and gap, and keeps the
    * control row's height. It is clamped to the stage so a degenerate viewport
-   * cannot produce a rect wider than the bar.
+   * cannot produce a rect wider than the bar. On portrait the label collapses
+   * to an icon (§5), so the same rect takes its tap-square size.
    */
   const setupTrigger = rect(
     topBarPadding.left,
     topBarPadding.top + HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP,
     Math.min(
-      HUD_SETUP_TRIGGER_WIDTH,
+      collapse.setupIconOnly
+        ? HUD_SETUP_TRIGGER_WIDTH_PORTRAIT
+        : HUD_SETUP_TRIGGER_WIDTH,
       Math.max(0, width - topBarPadding.left - topBarPadding.right),
     ),
     HUD_SETUP_TRIGGER_HEIGHT,
@@ -447,7 +535,12 @@ export function hudLayout(
   }
 
   const toastCount = clamp(Math.trunc(state.toasts) || 0, 3);
-  const toastWidth = Math.min(HUD_TOAST_MAX_WIDTH, width - 2 * HUD_GAP);
+  // §5: portrait toasts take the stage minus its gutters; every other band is
+  // capped at `32rem` so one line of text does not stretch across a wide table.
+  const toastWidth = Math.min(
+    collapse.toastFullWidth ? width - 2 * HUD_GAP : HUD_TOAST_MAX_WIDTH,
+    width - 2 * HUD_GAP,
+  );
   const toasts =
     toastCount > 0 && toastWidth > 0
       ? rect(
@@ -459,6 +552,7 @@ export function hudLayout(
       : null;
 
   return {
+    band: aspectBand,
     topBar,
     topBarPadding,
     setupTrigger,

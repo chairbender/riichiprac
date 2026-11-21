@@ -39,6 +39,7 @@ import type { ScenarioOption, ScenarioSelection } from '../../scenarios';
 import type { PackManifestStatus } from '../../services/packLoader';
 import type { TableView } from '../../store/useSettingsStore';
 import type { AiStatus } from '../../types/ai';
+import { useHudCollapse } from './hudBand';
 import { NESTED_LAYER_ATTRIBUTE } from './Sheet';
 
 /** The top bar's setup trigger: the one front door to the sheet (§3, row 3). */
@@ -48,7 +49,40 @@ export interface SetupTriggerProps {
   expanded?: boolean;
 }
 
+/**
+ * The setup trigger's icon (§5's portrait band): a sliders glyph, because the
+ * sheet is what to practise, the settings and the position controls. It is
+ * decorative — the button's name is "Setup" either way — so it is `aria-hidden`
+ * and hidden by CSS outside portrait.
+ */
+function SetupIcon() {
+  return (
+    <svg
+      className="hud-top-bar__setup-icon"
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M3 6.5h14M3 13.5h14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <circle cx="7.5" cy="6.5" r="2" fill="currentColor" />
+      <circle cx="12.5" cy="13.5" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function SetupTrigger({ onOpen, expanded = false }: SetupTriggerProps) {
+  /*
+   * §5: portrait collapses the label to an icon. The label stays in the DOM
+   * behind `.hud-visually-hidden` and the button keeps the `aria-label`, so its
+   * accessible name and the sheet's front door are unchanged.
+   */
+  const { setupIconOnly } = useHudCollapse();
   return (
     <button
       type="button"
@@ -56,9 +90,17 @@ export function SetupTrigger({ onOpen, expanded = false }: SetupTriggerProps) {
       onClick={onOpen}
       aria-haspopup="dialog"
       aria-expanded={expanded}
+      aria-label={setupIconOnly ? 'Setup' : undefined}
       title="Choose what to practise, the table settings, and import or export a position"
     >
-      Setup
+      <SetupIcon />
+      <span
+        className={
+          setupIconOnly ? 'hud-visually-hidden' : 'hud-top-bar__setup-label'
+        }
+      >
+        Setup
+      </span>
     </button>
   );
 }

@@ -33,6 +33,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SetupSheetProps } from './SetupSheet';
 import { SetupSheet, SetupTrigger } from './SetupSheet';
 import { HudLayer } from './HudLayer';
+import { HudBandContext } from './hudBand';
 import { clearHudAnchors, publishHudAnchors } from './hudAnchors';
 import type { BookSection, ScenarioOption, ScenarioSelection } from '../../scenarios';
 import { ALL_SCENARIOS } from '../../scenarios';
@@ -218,6 +219,48 @@ describe('Setup sheet: the trigger and the modal', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.getByTestId('canvas')).toBe(canvas);
     expect(stage.hasAttribute('inert')).toBe(false);
+  });
+});
+
+describe('Setup sheet: the portrait icon trigger (§5)', () => {
+  function triggerIn(band: 'wide' | 'square' | 'portrait') {
+    return render(
+      <HudBandContext.Provider value={band}>
+        <SetupTrigger onOpen={() => undefined} />
+      </HudBandContext.Provider>,
+    );
+  }
+
+  it('keeps the visible label and its width at wide and square', () => {
+    for (const band of ['wide', 'square'] as const) {
+      triggerIn(band);
+      const trigger = screen.getByRole('button', { name: 'Setup' });
+      // The label is the button's name at the uncollapsed sizes, and the icon
+      // is decoration only (CSS hides it outside portrait).
+      expect(trigger.getAttribute('aria-label'), band).toBeNull();
+      const label = trigger.querySelector('.hud-top-bar__setup-label');
+      expect(label?.textContent, band).toBe('Setup');
+      expect(
+        trigger.querySelector('.hud-top-bar__setup-icon')?.getAttribute('aria-hidden'),
+        band,
+      ).toBe('true');
+      cleanup();
+    }
+  });
+
+  it('hides the label behind hud-visually-hidden on portrait, keeping the name', () => {
+    triggerIn('portrait');
+    const trigger = screen.getByRole('button', { name: 'Setup' });
+    // §5: the label is decoration; the accessible name and the sheet's front
+    // door are not. The label stays in the DOM, visually hidden.
+    expect(trigger.getAttribute('aria-label')).toBe('Setup');
+    const label = trigger.querySelector('.hud-visually-hidden');
+    expect(label?.textContent).toBe('Setup');
+    expect(trigger.querySelector('.hud-top-bar__setup-label')).toBeNull();
+    expect(
+      trigger.querySelector('.hud-top-bar__setup-icon')?.getAttribute('aria-hidden'),
+    ).toBe('true');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
   });
 });
 

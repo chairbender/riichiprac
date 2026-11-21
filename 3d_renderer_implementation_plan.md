@@ -3223,6 +3223,22 @@ again never requires the top bar; the top bar's stays as it was. `3d_hud.md` §9
 records the as-built facts. The composition handoff awaits the user's verdict;
 3D-15/16 remain.
 
+**Landed: HUD §5 collapse table (2026-11-20, task 261120-1652).** The
+"What collapses, and when" table is implemented as an aspect band:
+`hudLayout.ts` derives `wide` (≥ 3:2), `square` (≥ 1, < 3:2) or `portrait`
+(< 1), `hudCollapse()` encodes each row as data, and `HudLayer` publishes the
+band through `hud/hudBand.ts`'s context. Portrait turns the setup trigger into
+the 44 px tap icon (label visually hidden, `aria-label` kept) and takes the
+toast stack to the gutters; square and portrait hide the call/action row's
+probability badges (the verdict sheet keeps the numbers); wide is unchanged.
+The 2026-11-21 call-row change removed the over-hand panel, hint line, Mortal
+chip and ON/OFF words, so those §5 rows no longer have a control to collapse.
+The two shared 2D components (`ActionBar`, `CallControls`) gained a default-on
+`showProbability` prop, so the 2D dock is untouched. The collision matrix runs
+the portrait × six-hand × two-row case, and `hudCss.test.ts` pins the collapsed
+trigger's width to the layout constant. The composition handoff awaits the
+user's verdict; 3D-15/16 remain.
+
 **Landed: 3D-H4 (2026-11-20).** The setup sheet is in:
 `hud/{SetupSheet.tsx, SetupSheet.test.tsx}` behind one top-bar trigger, with
 sections for the scenario pool (the 2D `ScenarioPicker`, staged draft intact,
@@ -3237,8 +3253,8 @@ closes it, and nothing re-deals or remounts the scene. The position-description
 toast gained a Details action into the sheet's full text. `3d_hud.md` §9 records
 the as-built facts, including the two deliberate deltas: the picker's panel is in
 flow inside the sheet instead of an absolutely positioned popover, and §5's
-portrait icon-only top bar is not implemented, so the trigger keeps its label
-and its reserved width at every aspect. The composition handoff awaits the
+portrait icon-only top bar was not implemented at H4 (the follow-up landed it —
+see the collapse-table note above). The composition handoff awaits the
 user's verdict; 3D-15/16 remain.
 
 **Rules binding all five units.**
