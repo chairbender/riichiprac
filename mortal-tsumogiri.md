@@ -1,5 +1,11 @@
 # Tsumogiri: river indicator and whether Mortal uses it
 
+> **Provenance and licence.** The Mortal observation encoder this note exercises
+> is a port of AGPL-3.0 `libriichi`, and the network mirrors `Equim-chan/Mortal`
+> v4. The repository is AGPL-3.0-or-later; see
+> [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+> [`docs/licensing.md`](docs/licensing.md).
+
 Status: implemented (indicator, generator timeline fix, report field); analysis
 below.
 

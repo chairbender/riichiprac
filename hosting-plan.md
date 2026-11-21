@@ -2,7 +2,8 @@
 
 Status: code complete (2026-11-10), plus scenario-pack hosting (P2,
 2026-11-17). Remaining work is the human-only "Manual one-time setup" section at
-the bottom. Licensing split (MIT app, AGPL weights) is recorded in section 5.
+the bottom. Licensing (AGPL-3.0-or-later for the app and the weights; MIT until
+2026-11-22) is recorded in section 5.
 This is the living status document for making the app deployable at $0.
 
 Branch sync (2026-11-10): merged `origin/main` at `319fd6f` into
@@ -218,23 +219,31 @@ first-time visitor costs 43 MB against Pages' 100 GB/month soft bandwidth
 (~2,300 first loads). Repeat visits read IndexedDB. Publishing the optional HF
 mirror moves that traffic off Pages without any app change.
 
-## 5. Licensing: weights are AGPL-3.0, the app stays MIT
+## 5. Licensing: AGPL-3.0-or-later, app and weights
+
+Status (2026-11-22): the repository relicensed from MIT to AGPL-3.0-or-later.
+The transition and its history are recorded in `docs/licensing.md`; the
+third-party provenance is in `THIRD_PARTY_NOTICES.md`.
 
 - [x] License facts verified against GitHub/HF APIs and recorded below.
-- [x] `README.md`: "Model weights license" section (MIT code, AGPL weights).
+- [x] `LICENSE`: the AGPL-3.0 text, replacing MIT on 2026-11-22.
+- [x] `README.md`: "License" section (app and weights).
+- [x] `Cargo.toml` and `frontend/package.json`: `AGPL-3.0-or-later`.
 - [x] `scripts/README.md`: licensing note, since `convert_weights.py` is the
       corresponding source for the AGPL file.
 - [x] Manual setup steps carry the `license: agpl-3.0` tag and provenance.
 - [x] Research log of the rejected alternatives (direct `.pth`, CI conversion).
 
-Files touched: `README.md`, `hosting-plan.md`, `scripts/README.md`.
+Files touched: `LICENSE`, `THIRD_PARTY_NOTICES.md`, `docs/licensing.md`,
+`README.md`, `hosting-plan.md`, `scripts/README.md`, `Cargo.toml`,
+`frontend/package.json` and the docs listed in `docs/licensing.md`.
 
 Verified 2026-11-10, recorded here so the decision does not have to be
 re-researched:
 
 | Artifact | License | Evidence |
 | --- | --- | --- |
-| This repo (`LICENSE`) | **MIT** | `LICENSE` at the repo root |
+| This repo (`LICENSE`) | **AGPL-3.0-or-later** | `LICENSE` at the repo root; MIT until 2026-11-22 |
 | `Equim-chan/Mortal` (trained the weights) | **AGPL-3.0** | `api.github.com/repos/Equim-chan/Mortal` → `license.spdx_id` |
 | `VoidShine/mortal-298k` (only published 298k checkpoint) | **AGPL-3.0** | repo `LICENSE` is the AGPL-3.0 text; model card has `license: agpl-3.0` |
 | Crate dependencies | no GPL/AGPL | `cargo metadata`: MIT, Apache-2.0, MPL-2.0, BSD, ISC, Unicode only |
@@ -247,11 +256,15 @@ AGPL-3.0 training code. HF and GitHub were searched for `mortal-298k`,
 safetensors conversion exists. `critter/akochan` has no license file at all, so
 it is not a cleaner substitute.
 
-**Why the repo can stay MIT.** The app does not link the weights; it fetches
-them as data at runtime (`services/weightLoader.ts`) and they are never part of
-the build. The AGPL attaches to the weights and to works based on them, not to a
-separate MIT program that reads a file as input — the familiar "MIT engine,
-AGPL assets" arrangement.
+**Why the app is AGPL too.** The earlier position was "MIT app, AGPL weights":
+the app fetched the weights as data and did not link them, so the code could stay
+permissive. That stopped being true when the shipped WASM grew translated ports
+of `libriichi`: `src/ai/sp.rs` is a port of the single-player EV solver,
+`src/ai/encoder.rs` implements `PlayerState::encode_obs(4, false)`, and
+`src/ai/model.rs` mirrors `mortal/model.py` v4. `Cargo.toml` has no `libriichi`
+dependency, but the code is translated, not linked, and it ships in
+`riichiprac_bg.wasm`; the AGPL therefore reaches the distributed app. The
+repository is AGPL-3.0-or-later as a whole.
 
 **Obligations when publishing the converted file** (HF repo, release asset, or
 `dist/models/`):
@@ -259,18 +272,21 @@ AGPL assets" arrangement.
 1. Tag it AGPL-3.0 (`license: agpl-3.0` in the model card / release notes) and
    include the license text.
 2. Offer the corresponding source: `scripts/convert_weights.py` plus a pointer
-   to `VoidShine/mortal-298k` (upstream `Equim-chan/Mortal`). No app source needs
-   to be handed over.
-3. Keep the "Model weights license" note in `README.md` accurate.
+   to `VoidShine/mortal-298k` (upstream `Equim-chan/Mortal`).
+3. Keep the "License" note in `README.md` and the `weights-v1` release notes
+   accurate.
 
 AGPL §13 (network use) targets users interacting with the *program* remotely;
-serving static weight bytes is not that, but the source offer above covers it
-cheaply either way.
+the source is public at <https://github.com/chairbender/riichiprac>, so the
+deployed app satisfies it. A modified version served to users must offer its own
+Corresponding Source. Serving static weight bytes is not itself network
+interaction with the program, but the source offer above covers it cheaply
+either way.
 
 Uncertainty worth stating: whether model weights are copyrightable at all is
 unsettled and jurisdiction-dependent, and whether AGPL's "based on the Program"
 reaches weights produced by AGPL training code is untested. Both point the same
-way — keep the notice, do not relicense the app.
+way — keep the notice, and keep the app's licence aligned with the code it ships.
 
 ### Research log: alternatives considered and rejected
 
@@ -289,8 +305,9 @@ way — keep the notice, do not relicense the app.
 - **Point `VITE_WEIGHTS_URL` at the `.pth`**: does not work, same format and
   layout reasons.
 
-If the AI panel is ever removed or made user-supplied-weights-only, the repo
-becomes purely MIT with no weight licensing question at all.
+If the evaluator were ever removed entirely, the remaining code could in
+principle be relicensed permissively again; until then the repository is
+AGPL-3.0-or-later because of the ports in `src/ai/`.
 
 ## 6. Verification (acceptance)
 
@@ -493,8 +510,9 @@ flip and its rollback in [`replay-first-rollout.md`](replay-first-rollout.md).
 
 Nothing below can be done by an agent: it needs GitHub and Hugging Face
 credentials. Status as of 2026-11-10: the weights release exists (`weights-v1`)
-and Pages is enabled; the Hugging Face mirror and the browser verification are
-still outstanding.
+and Pages is enabled; its notes were annotated with the AGPL-3.0 licence and
+provenance on 2026-11-22. The Hugging Face mirror and the browser verification
+are still outstanding.
 
 ### A. Publish the weights (GitHub Release: done; Hugging Face optional)
 
@@ -509,7 +527,7 @@ gh auth login
 gh release create weights-v1 \
   frontend/public/models/mortal_298k.safetensors \
   --title "Mortal weights v1" \
-  --notes "Mortal 298k Safetensors weights for the riichiprac WASM evaluator. AGPL-3.0, derived from VoidShine/mortal-298k; conversion source: scripts/convert_weights.py."
+  --notes "Mortal 298k Safetensors weights for the riichiprac WASM evaluator. AGPL-3.0; derived from VoidShine/mortal-298k (https://huggingface.co/VoidShine/mortal-298k), a checkpoint of Equim-chan/Mortal. Conversion source: scripts/convert_weights.py. File SHA-256 afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128. The riichiprac repository is AGPL-3.0-or-later; see THIRD_PARTY_NOTICES.md and docs/licensing.md."
 ```
 
 Resulting URL (`RELEASE_WEIGHTS_URL`, also hard-coded in

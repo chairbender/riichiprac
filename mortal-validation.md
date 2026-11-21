@@ -1,5 +1,12 @@
 # Validating our Mortal wiring through mjai.ekyu.moe
 
+> **Provenance and licence.** The encoder and single-player solver in `src/ai/`
+> are ports of AGPL-3.0 [`libriichi`](https://github.com/Equim-chan/Mortal/tree/master/libriichi),
+> and the model mirrors [`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal)
+> v4. The repository is therefore AGPL-3.0-or-later, not MIT; see
+> [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+> [`docs/licensing.md`](docs/licensing.md).
+
 The app ships a client-side Mortal v4 port: [`src/ai/encoder.rs`](../src/ai/encoder.rs)
 builds libriichi's 1012×34 observation from a [`GameState`](../src/state.rs) and
 [`src/ai/wasm_bridge.rs`](../src/ai/wasm_bridge.rs) runs the checkpoint. If either

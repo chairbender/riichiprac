@@ -147,7 +147,7 @@ their base was dropped for repeating another hand.
 | Adjacent same-replay bases | 0 |
 | Actor hands | 2,211 unique |
 | Licence | CC-BY-4.0 |
-| Agents | Akochan `master-53188a0-minimum`, `mortal-298k` (`v4-candle+7e8134c`), two MIT reference policies |
+| Agents | Akochan `master-53188a0-minimum`, `mortal-298k` (`v4-candle+7e8134c`), two reference policies (project code, AGPL-3.0-or-later) |
 | Data commercial use | false (Akochan contributes) |
 | `requires_model` | false |
 

@@ -20,6 +20,8 @@ npm test
 The Mortal AI evaluator is optional. Its weights are not committed; generate them
 with `scripts/convert_weights.py` (see `scripts/README.md`). Without the weights,
 the app runs normally and the AI panel reports that the model is unavailable.
+The evaluator is a port of AGPL-3.0 `libriichi`/Mortal code, so the whole project
+is AGPL-3.0-or-later (see [License](#license)).
 
 ## Book vs. Mortal: how an answer is graded
 
@@ -580,20 +582,33 @@ only. See [`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md),
 [`hosting-plan.md`](hosting-plan.md#7-scenario-packs-same-origin-pages--optional-r2hf-mirror-p2)
 and [`replay-miner-operations.md`](replay-miner-operations.md).
 
-## Model weights license
+## License
 
-The app code in this repository is **MIT** (see `LICENSE`). The Mortal weights
-are a separate work under **AGPL-3.0**: they come from
+This repository is **AGPL-3.0-or-later** (see [`LICENSE`](LICENSE)). It was MIT
+until 2026-11-22; the change and its reason are recorded in
+[`docs/licensing.md`](docs/licensing.md). The reason is in the shipped code, not
+just the weights: `src/ai/sp.rs`, `src/ai/encoder.rs` and `src/ai/model.rs`
+contain translated ports of AGPL-3.0 `libriichi` and `Equim-chan/Mortal` v4, and
+those ports compile into the WASM the frontend ships.
+
+Third-party provenance is in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md): Mortal and libriichi, the
+converted weights, Three.js, the CC0 tile symbols, `agari` and the remaining
+dependencies.
+
+The Mortal weights (`mortal_298k.safetensors`) are an AGPL-3.0 work derived from
 [`VoidShine/mortal-298k`](https://huggingface.co/VoidShine/mortal-298k), a
-checkpoint of [`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal)
-(AGPL-3.0), converted by `scripts/convert_weights.py`.
+checkpoint of [`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal),
+converted by `scripts/convert_weights.py`. They are not committed: the published
+copy is the `weights-v1` Release asset, fetched at runtime or bundled into
+`dist/models/` by the deploy workflow. If you republish a converted copy, keep it
+tagged `license: agpl-3.0` and point at the converter as its source.
 
-The weights are fetched at runtime and are never part of the build, so the app
-and the weights are separate works: MIT here, AGPL-3.0 for the model file. If you
-republish the converted file, keep it tagged `license: agpl-3.0` and point at the
-conversion script as its source. Full reasoning, including the alternatives that
-were rejected and why, is in
-[`hosting-plan.md`](hosting-plan.md#5-licensing-weights-are-agpl-30-the-app-stays-mit).
+The source is public at <https://github.com/chairbender/riichiprac>, so the
+deployed app satisfies AGPL section 13. A modified version served to users must
+offer its own Corresponding Source. The licensing decision, the rejected
+alternatives and the update obligations are in
+[`hosting-plan.md`](hosting-plan.md#5-licensing-agpl-30-or-later-app-and-weights).
 
 ## Deploying
 

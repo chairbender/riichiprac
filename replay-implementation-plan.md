@@ -71,7 +71,9 @@ can run in parallel around that path.
 - any Tenhou, Mahjong Soul, Riichi City, Hime, M-League, Hugging Face or Kaggle
   replay corpus; no BYO replay; no human-expert-line family
   (`replay-strategy.md` §2, §5.10);
-- linking Mortal's `libriichi` (AGPL) into the shipped MIT/WASM app;
+- linking Mortal's `libriichi` crate into the shipped app (the WASM instead
+  carries translated ports of the encoder and single-player solver, which is why
+  the repository is AGPL-3.0-or-later — see `THIRD_PARTY_NOTICES.md`);
 - implementing the miner inside the WASM build or the frontend bundle;
 - point-denominated EV copy before a versioned Q→point calibration exists;
 - multi-step replay drills in the first pack (keep `replay_id` + `event_index`
@@ -89,7 +91,7 @@ gated on, with the place that enforces them.
 | --- | --- | --- |
 | AI self-play is the only replay source; no third-party corpus is acquired, ingested or shipped | `source.kind` allowlist at corpus ingest **and** pack publish; typed rejection, not a warning | F1, C1, P1a |
 | Published packs are `source.kind = "ai_selfplay"` with model/seed/agent provenance | pack schema + publisher audit; missing provenance is a hard failure | F1, P1a, Q1 |
-| Mortal code and weights are AGPL-3.0 and never enter the shipped MIT/WASM build | separate `riichiprac-corpus` process/repo; no `libriichi` dependency in this crate; app-side labelling uses the existing MIT `MortalV4Model` | C1, C2, L1 |
+| The `libriichi` crate and the weight files never enter the shipped WASM build; this repository is AGPL-3.0-or-later because the shipped evaluator ports `libriichi` | separate `riichiprac-corpus` process/repo; no `libriichi` dependency in this crate; app-side labelling uses the existing ported `MortalV4Model` | C1, C2, L1 |
 | Akochan is a rule-based generator whose outputs are non-commercial with attribution | per-game licence record; pack `data_commercial_use`; publisher refuses a commercial pack containing Akochan data | C5, P1a |
 | Use the complete `GameState` and existing validation/rationale/legal-action code | reuse `GameState`, `validate_reachable_state`, `finalize_state`, `rationale_for`, `legal_actions`, `compare_action_set`; no parallel scenario model | R2, B1, L1, V1 |
 | Mortal per-action values are Q values / model utility, not points | store `q_values` with `q_units: "model_utility"`; select by probability margin / Q-gap percentiles; calibrate before any point copy | L1, L2, S3 |
@@ -111,20 +113,21 @@ legality.
 
 ### 2.1 Repository and build boundaries
 
-The split exists to keep the MIT app and the AGPL generation stack legally and
-technically separate.
+The split exists to keep the native corpus stack out of the shipped app build.
+Both sides are AGPL-3.0-or-later: this repository because the shipped WASM ports
+parts of `libriichi`, and the corpus repo because it links `libriichi` directly.
 
 | Piece | Where it lives | Licence | Build | Ships? |
 | --- | --- | --- | --- | --- |
-| App + rules + `GameState` + MIT Mortal inference | this repo (`riichiprac`) | MIT | default native/WASM | yes |
-| Replay library (`src/replay/`) | this repo | MIT | native, behind `miner` feature | no |
-| Miner tooling (`src/miner/`, `src/bin/mine_replays.rs`) | this repo | MIT | `--features miner` | no |
-| Book classifiers, labeler, selection, transforms, pack tools | this repo (`src/miner/`) | MIT | `--features miner` | no |
+| App + rules + `GameState` + ported Mortal inference | this repo (`riichiprac`) | AGPL-3.0-or-later | default native/WASM | yes |
+| Replay library (`src/replay/`) | this repo | AGPL-3.0-or-later | native, behind `miner` feature | no |
+| Miner tooling (`src/miner/`, `src/bin/mine_replays.rs`) | this repo | AGPL-3.0-or-later | `--features miner` | no |
+| Book classifiers, labeler, selection, transforms, pack tools | this repo (`src/miner/`) | AGPL-3.0-or-later | `--features miner` | no |
 | Corpus runner and match orchestration | new **private** repo `riichiprac-corpus` | AGPL-3.0 (because it links `libriichi`); private until a later publication decision | native | no |
 | Mortal `libriichi` adapter + model weights | `riichiprac-corpus` (private) | AGPL-3.0 | native | no |
 | Akochan adapter / bridge | `riichiprac-corpus` (private) | AGPL-3.0 repo with Akochan NOTICE; user-supplied binary, private repo if bundled | native | no |
-| Pack publisher / audit | this repo | MIT | `--features miner` | tool only |
-| Frontend pack loader | this repo (`frontend/`) | MIT | Vite | yes |
+| Pack publisher / audit | this repo | AGPL-3.0-or-later | `--features miner` | tool only |
+| Frontend pack loader | this repo (`frontend/`) | AGPL-3.0-or-later | Vite | yes |
 
 Rules for the boundary:
 
@@ -138,9 +141,10 @@ Rules for the boundary:
   `cargo build` does not try to build it.
 - The corpus repo is where `libriichi` and Akochan live. It is never a build
   input of the app, never a Pages asset, and never a git submodule of this repo.
-- If the corpus repo only invokes engines as subprocesses, it may choose MIT,
-  but the conservative default is **AGPL-3.0**, because that is the licence of
-  the code it links. The app stays MIT either way.
+- If the corpus repo only invokes engines as subprocesses, it could choose a
+  different licence for its own code, but the conservative default is
+  **AGPL-3.0**, because that is the licence of the code it links. This repository
+  is AGPL-3.0-or-later regardless, because of the ports in `src/ai/`.
 
 ### 2.2 Component map
 
@@ -394,8 +398,10 @@ Therefore:
   set**, each with its own corpus unit, quota and acceptance gate;
 - a family that is disabled or misses its quota is visible in the corpus report;
   it cannot silently disappear from a pack;
-- licensing constraints from `replay-strategy.md` §3.4 remain intact: Mortal is
-  AGPL and stays out of the shipped app; Akochan outputs are non-commercial with
+- licensing constraints from `replay-strategy.md` §3.4 remain intact: Mortal's
+  native code and weights are AGPL-3.0 and stay out of the shipped app (the app
+  already carries translated ports of the encoder and solver, which is why the
+  repository is AGPL-3.0-or-later); Akochan outputs are non-commercial with
   attribution; pack data carries its own licence.
 
 ### 3.2 Agent model
@@ -456,7 +462,7 @@ not a substitute for Akochan or for the Mortal labeler.
 Why keep them:
 
 - **Weights-free instrumentation.** H0/H1 let the parser, walker, selector,
-  transforms and pack gates run in CI on any machine, with no GPU, no AGPL
+  transforms and pack gates run in CI on any machine, with no GPU, no model
   weights and no corpus download.
 - **Mistake generation without human data.** H2/H3 often play a different move
   from the Mortal top action; the position before that move is a "what should
@@ -535,7 +541,7 @@ The runner writes the resolved per-game roster and seeds into
 **Non-neural engines are generators and opponents first.** Akochan can be a
 generator, a second opinion and a source of different play. It is not the pack
 labeler unless its values are mapped and calibrated; the default labeler is the
-one `mortal_298k` checkpoint via the app's MIT inference.
+one `mortal_298k` checkpoint via the app's own Candle inference.
 
 ### 3.3 Matchup families and acceptance gates
 
@@ -638,8 +644,8 @@ corpus path, never an absolute local path or a username.
       "seed": "0x02",
       "reproducible": true,
       "licence": {
-        "id": "MIT",
-        "attribution": "riichiprac corpus reference policy",
+        "id": "AGPL-3.0",
+        "attribution": "riichiprac corpus reference policy (AGPL-3.0-or-later)",
         "data_commercial_use": true
       }
     }
@@ -669,7 +675,7 @@ has an unknown licence is rejected.
 
 - **Mortal.** AGPL-3.0 code and weights live in the corpus repo/process. The
   generated log is data; it is published with attribution to Mortal and the
-  model version, and the weights are never in the dataset. The app's MIT
+  model version, and the weights are never in the dataset. The app's own Candle
   inference may label a reconstructed `GameState`. `data_commercial_use: true`
   in the example records the strategy's data position; if the product owner
   prefers the stricter reading, set it to `false` for every corpus generated
@@ -1057,7 +1063,8 @@ later unit uses.
   raw-log copy, timestamped DB snapshots, `rclone check`, and a restore/integrity
   test. Do not put rclone credentials in either repo.
 - Document the JSON schema names and versioning rule.
-- No `libriichi` dependency; no AGPL code in this repo.
+- No `libriichi` dependency. The repository is AGPL-3.0-or-later because of the
+  translated ports in `src/ai/`, not because a crate is linked.
 
 **Accepts.** Schema round-trip; the DB schema creates/migrates on a fixture;
 the data-root layout and relative-path rule are tested; a SQLite `VACUUM INTO`
@@ -1171,8 +1178,8 @@ write.
 changing the runner; the same seed produces the same log; every game has complete
 per-seat provenance; replay paths are content-addressed and relative; the source/
 licence gates pass; the logs parse through R1/R2; the backup hook is optional and
-no-ops when no remote is configured; no weights or AGPL code are needed for the
-reference family.
+no-ops when no remote is configured; no weights are needed for the reference
+family.
 
 **Depends on.** F1, R1, R2.
 
@@ -1560,8 +1567,8 @@ misclassification of ambiguous shapes.
 
 ##### L1 — Native batch labeler, Q values and cache
 
-**Goal.** Label a reconstructed `GameState` with the app's MIT inference and keep
-the per-action Q values the browser currently discards.
+**Goal.** Label a reconstructed `GameState` with the app's own Candle inference
+and keep the per-action Q values the browser currently discards.
 
 **Scope.**
 
@@ -2474,7 +2481,8 @@ For the corpus repo:
 cc-task new "Corpus C2: Mortal libriichi backend + M1 Mortal mirror" \
   --open --type worktree --repo riichiprac-corpus <<'EOF'
 Implementation unit C2 from riichiprac/replay-implementation-plan.md. Private
-AGPL corpus repo; do not link libriichi into the app repo.
+AGPL corpus repo; do not link libriichi into the app repo (the app carries
+translated ports instead and is AGPL-3.0-or-later).
 EOF
 ```
 
@@ -2620,7 +2628,7 @@ glyph asset, follow AGENTS.md §6 and `frontend/tools/relief3d/bake-relief3d.mjs
 | 7 | Precomputed labels vs on-load labels | Labels make packs useful without weights but spoil the answer in JSON and can go stale | P1a, P3 |
 | 8 | Human review budget | 100 scenarios can be reviewed; 10k cannot without a review tool | S2, Q2 |
 | 9 | Variant caps vs anti-memorisation volume | Too many variants of one base is duplication; too few loses the benefit | V2 |
-| 10 | Data licence CC BY 4.0 vs CC0 | The app code is MIT; data needs its own clear licence | P1a (product-owner decision) |
+| 10 | Data licence CC BY 4.0 vs CC0 | The app code is AGPL-3.0-or-later; data needs its own clear licence | P1a (product-owner decision) |
 | 11 | Hosting budget | Pages is simple but has site/bandwidth limits; R2/HF are cheap and CORS-friendly | P2 |
 | 12 | Multi-step drills | They need a step engine and grading/history behavior; keep IDs now, ship later | P1a, P3 |
 | 13 | `mortal_298k` is a community checkpoint whose model card says it was trained on Tenhou hanchan data | This is a weights-provenance question, separate from the no-third-party-replay rule; review before commercial use | product owner; P1a licence gate |
@@ -2694,8 +2702,8 @@ lessons; see §11.
   layout and shared analysis helpers.
 - `src/generator/hotseat/` — existing policy-agnostic one-round simulator; a
   reference for the corpus protocol, not a substitute for a full native runner.
-- `src/ai/wasm_bridge.rs`, `src/ai/model.rs`, `src/decision.rs` — the MIT
-  inference path and the place to add a mining-only Q value.
+- `src/ai/wasm_bridge.rs`, `src/ai/model.rs`, `src/decision.rs` — the ported
+  inference path (AGPL-3.0-or-later) and the place to add a mining-only Q value.
 - `frontend/src/services/weightLoader.ts` — the ordered-source + IndexedDB
   pattern to reuse for packs.
 - [`replay-first-rollout.md`](replay-first-rollout.md) — the approved post-Q2
@@ -2766,7 +2774,7 @@ implicit stages explicit and gives them units and gates:
    ensembles are parked.
 
 Everything else follows the strategy: `GameState` reuse, source allowlist,
-AGPL separation, Q-value units, pack hosting and human review.
+AGPL-3.0-or-later provenance, Q-value units, pack hosting and human review.
 
 ## Appendix B — Unit-to-code map
 
