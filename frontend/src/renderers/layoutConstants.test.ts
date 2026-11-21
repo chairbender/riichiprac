@@ -139,10 +139,12 @@ describe('3D layout constants: pond', () => {
     // one tile height each. 2026-11-21: the end ponds moved in by a tile width
     // with the smaller compass, and the side ponds half a tile further out, so
     // the two axes have their own radii but the same one-tile pitch.
-    // The mobile end ponds moved in by the plate's full shrink: a tile width
-    // per side (2026-11-21). The readout's room comes from the DOM box's own
-    // minimum width, not from growing the plate back.
-    expect(POND.rowRadiiUnits[0]).toBeCloseTo(4.81 - TILE.widthUnits, 12);
+    // The mobile end ponds follow the plate: a tile width in, half a tile
+    // height back out (2026-11-22).
+    expect(POND.rowRadiiUnits[0]).toBeCloseTo(
+      4.81 - (TILE.widthUnits - TILE.heightUnits / 2),
+      12,
+    );
     expect(POND.rowRadiiUnits[0] - POND.rowRadiiUnits[1]).toBeCloseTo(
       TILE.heightUnits,
       12,
@@ -158,7 +160,10 @@ describe('3D layout constants: pond', () => {
     // ponds sit a tile width in and a tile thickness back.
     expect(
       POND.sideRowRadiiUnits[POND.rows - 1] - POND.rowRadiiUnits[POND.rows - 1],
-    ).toBeCloseTo(TILE.widthUnits / 2 + TILE.widthUnits, 12);
+    ).toBeCloseTo(
+      TILE.widthUnits / 2 + (TILE.widthUnits - TILE.heightUnits / 2),
+      12,
+    );
   });
 });
 

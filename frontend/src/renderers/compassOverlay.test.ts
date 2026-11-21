@@ -148,25 +148,25 @@ describe('compass model', () => {
     const box = compassBox(rect);
     expect(box).toEqual({ left: 160, top: 40, width: 180, height: 180 });
     /*
-     * Mobile follows the well's rectangle: 118 px minimum wide (the corner rows
-     * need the column), and 0.75 of the well's height — never more than 8 px
-     * short of it — so the bottom row stays above the first discard row, with a
-     * 56 px floor. Here that is 135 px.
+     * Mobile follows the well's rectangle and ends 8 px inside its edge (user
+     * request 2026-11-22), with a 118 px minimum width for the corner rows and a
+     * 56 px height floor. Here: 300 x 172, centred.
      */
     const mobile = compassBox(rect, 'mobile');
-    expect(mobile).toEqual({ left: 100, top: 62.5, width: 300, height: 135 });
+    expect(mobile).toEqual({ left: 100, top: 44, width: 300, height: 172 });
     const mobileSmall = compassBox(
       { left: 0, top: 0, width: 91, height: 69, centreX: 50, centreY: 40 },
       'mobile',
     );
     expect(mobileSmall.width).toBe(MIN_COMPASS_PX_MOBILE_WIDTH);
-    expect(mobileSmall.height).toBe(MIN_COMPASS_PX_MOBILE);
+    // 69 - 8 = 61, above the 56 px floor.
+    expect(mobileSmall.height).toBe(61);
     expect(mobile.left + mobile.width / 2).toBe(250);
     expect(mobile.top + mobile.height / 2).toBe(130);
     // The type follows the shorter axis, inside a legible pair of bounds.
     expect(compassFontPx(box)).toBeCloseTo(180 * 0.08, 9);
-    // The mobile box's shorter side is its height (135 px here).
-    expect(compassFontPx(mobile, 'mobile')).toBeCloseTo(135 * 0.08, 9);
+    // The mobile box's shorter side is its height (172 px here).
+    expect(compassFontPx(mobile, 'mobile')).toBeCloseTo(172 * 0.08, 9);
     // The floor is 11 px on desktop and 9 px in the mobile box.
     expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(11);
     expect(compassFontPx({ ...box, width: 20, height: 20 }, 'mobile')).toBe(9);
@@ -192,7 +192,8 @@ describe('compass model', () => {
       'mobile',
     );
     expect(tinyMobile.width).toBe(MIN_COMPASS_PX_MOBILE_WIDTH);
-    expect(tinyMobile.height).toBe(MIN_COMPASS_PX_MOBILE);
+    // 68 - 8 = 60, still above the 56 px floor.
+    expect(tinyMobile.height).toBe(60);
   });
 });
 
@@ -271,10 +272,7 @@ describe('compass projection', () => {
       // The height stays inside the plate's near edge, where the first discard
       // row begins (2026-11-22).
       expect(mobile.height, viewport.name).toBeCloseTo(
-        Math.max(
-          MIN_COMPASS_PX_MOBILE,
-          Math.min(well.height * 0.75, well.height - 8),
-        ),
+        Math.max(MIN_COMPASS_PX_MOBILE, well.height - 8),
         6,
       );
 

@@ -301,13 +301,13 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
    * reaches, and the compass clearance the gate measures.
    */
   const GOLDEN = [
-    { stage: GATE_STAGES[0], callBar: 836, result: 776, sheetBottom: 1072, clearance: 224 },
-    { stage: GATE_STAGES[1], callBar: 876, result: 816, sheetBottom: 1072, clearance: 276 },
-    { stage: GATE_STAGES[2], callBar: 790, result: 730, sheetBottom: 952, clearance: 265 },
-    { stage: GATE_STAGES[3], callBar: 801, result: 741, sheetBottom: 952, clearance: 274 },
-    { stage: GATE_STAGES[4], callBar: 859, result: 799, sheetBottom: 992, clearance: 322 },
-    { stage: GATE_STAGES[5], callBar: 1061, result: 1001, sheetBottom: 1192, clearance: 424 },
-    { stage: GATE_STAGES[6], callBar: 1301, result: 1241, sheetBottom: 1432, clearance: 548 },
+    { stage: GATE_STAGES[0], callBar: 836, result: 776, sheetBottom: 1072, clearance: 172 },
+    { stage: GATE_STAGES[1], callBar: 876, result: 816, sheetBottom: 1072, clearance: 224 },
+    { stage: GATE_STAGES[2], callBar: 790, result: 730, sheetBottom: 952, clearance: 220 },
+    { stage: GATE_STAGES[3], callBar: 801, result: 741, sheetBottom: 952, clearance: 234 },
+    { stage: GATE_STAGES[4], callBar: 859, result: 799, sheetBottom: 992, clearance: 292 },
+    { stage: GATE_STAGES[5], callBar: 1061, result: 1001, sheetBottom: 1192, clearance: 392 },
+    { stage: GATE_STAGES[6], callBar: 1301, result: 1241, sheetBottom: 1432, clearance: 520 },
   ] as const;
 
   for (const golden of GOLDEN) {

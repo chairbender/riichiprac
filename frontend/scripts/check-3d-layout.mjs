@@ -839,10 +839,10 @@ async function main() {
       0.004,
       1e-9,
     ) &&
-      // A full tile width smaller per side than the desktop plate.
+      // Half a tile height back out from the full shrink, per side.
       close(
         C.COMPASS_PLATE.sizeUnits - C.COMPASS_PLATE.mobileSizeUnits,
-        2 * C.TILE.widthUnits,
+        2 * (C.TILE.widthUnits - C.TILE.heightUnits / 2),
         1e-6,
       ),
     `${formatNumber(C.COMPASS_PLATE.mobileSizeUnits, 4)} vs ${formatNumber(C.COMPASS_PLATE.sizeUnits, 4)}`,

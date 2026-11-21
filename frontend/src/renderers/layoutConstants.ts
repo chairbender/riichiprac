@@ -102,11 +102,9 @@ export const STICK_MM = {
  * group.
  */
 /**
- * The compass sticks are drawn at **50 %** of the real 65 mm bar (2026-11-22:
- * 72 % was sized for the desktop plate; on the mobile plate the bars ran from
- * the score rows out to its near edge and read as sitting among the discards).
- * The radius below brings them in with it, so they cover the plate's middle
- * rather than its rim.
+ * The compass sticks are drawn at **72 %** of the real 65 mm bar, the size the
+ * compass was designed around. The 2026-11-22 attempt at 50 % made them read as
+ * small chips once the plate was restored to 89 % of its desktop size.
  *
  * The model's proportions, elliptical cross-section, end cut and pip are the
  * real thing; only its scale is a readability compromise for the compass. A
@@ -116,7 +114,7 @@ export const STICK_MM = {
  * so they can sit closer to the center and leave space for the scores").
  * At 72 % the bar is 46.8 mm long and the four fit the inner ring cleanly.
  */
-const STICK_MODEL_SCALE = 0.5;
+const STICK_MODEL_SCALE = 0.72;
 
 export const STICK = {
   /** Linear scale from the real 65 x 7 x 3.5 mm spec to the drawn bar. */
@@ -132,7 +130,7 @@ export const STICK = {
    * band between the centre group (~0.8 out) and the score row's inner edge
    * (~1.15 out, once the row is centred in its third of the plate again).
    */
-  radiusUnits: 0.72,
+  radiusUnits: 0.98,
 } as const;
 
 /**
@@ -354,16 +352,15 @@ const POND_NEAREST_ROW_RADIUS_UNITS = 4.81;
 const COMPASS_SHRINK_UNITS = TILE.widthUnits;
 
 /**
- * The mobile plate's net shrink per side: a full tile width.
+ * The mobile plate's net shrink per side.
  *
- * The "extend the sides back out a tile thickness" step (2026-11-21) was meant
- * to relieve a cramped **readout**, and it left the mobile board only 0.16 units
- * from the desktop one — invisible on a phone, and it gave back most of the
- * discard clearance. The readout is now given its width by
- * `MIN_COMPASS_PX_MOBILE_WIDTH` (a DOM box may overhang the plate), so the plate
- * keeps the full shrink and the discards keep their room.
+ * A tile width in (2026-11-21), then back out half a tile height (2026-11-22:
+ * the readout was cramped and the bars crowded the rim). The plate is 4.082
+ * units against the desktop 4.582 — 89 % of it — and the end ponds sit on its
+ * edge, so the discards line up with it.
  */
-const COMPASS_NET_SHRINK_UNITS = COMPASS_SHRINK_UNITS;
+const COMPASS_NET_SHRINK_UNITS =
+  COMPASS_SHRINK_UNITS - TILE.heightUnits / 2;
 
 /**
  * How much further out the left and right ponds sit (user request 2026-11-21:

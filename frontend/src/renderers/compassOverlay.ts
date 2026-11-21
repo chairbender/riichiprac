@@ -246,17 +246,14 @@ export function compassBox(
 ): CompassBox {
   if (profile === 'mobile') {
     /*
-     * The phone readout follows the plate's rectangle, but its **height** stays
-     * inside the plate's near edge: the first discard row begins where that edge
-     * ends, and a box as tall as the plate put the bottom score on top of the
-     * player's discards (2026-11-22). 0.75 of the plate's projected height,
-     * floored at 56 px so four rows of 9 px type still fit.
+     * The phone readout follows the plate's rectangle and ends a **tiny margin**
+     * inside its edge (user request 2026-11-22): the score rows sit along the
+     * plate's outline, and the first discard row begins just past it. 8 px is
+     * that margin; 56 px is the floor that keeps four rows of 9 px type
+     * legible on a very short stage.
      */
     const width = Math.max(rect.width, MIN_COMPASS_PX_MOBILE_WIDTH);
-    const height = Math.max(
-      MIN_COMPASS_PX_MOBILE,
-      Math.min(rect.height * 0.75, rect.height - 8),
-    );
+    const height = Math.max(MIN_COMPASS_PX_MOBILE, rect.height - 8);
     return {
       left: rect.centreX - width / 2,
       top: rect.centreY - height / 2,
