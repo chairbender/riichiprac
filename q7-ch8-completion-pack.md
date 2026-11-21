@@ -48,8 +48,8 @@ ship a below-floor body.
 
 The zero rows are not a classifier bug: the B4 report and the label pass agree,
 and the recognisers' own generator/classifier tests pass. Zero **contested**
-labels too means the position was not even a Mortal-visible book cell in these
-1,542 games — these shapes are simply absent from generic AI self-play.
+labels too means the classifier never fired at all on these 1,542 games — the
+shapes are simply absent from generic AI self-play.
 
 `supply-by-family.json` confirms where the non-zero supply comes from:
 `kabe_suji_defense` 17 stable in `mortal_mirror` and 15 in
@@ -74,8 +74,8 @@ pre-existing thin ch8 rows (`defense_stuck_heuristic` 32, `kabe_one_chance` 17,
 acceptance rule explicitly allows.
 
 This is the same outcome Q4/Q5/Q6 recorded for their thin lessons, and it keeps
-the acceptance gate honest: **every shipped lesson stays at or above 40 bases**,
-and everything thin is named here and in the coverage report.
+the acceptance gate honest: **every replay-default lesson stays at or above 40
+bases**, and everything thin is named here and in the coverage report.
 
 ## What C9 has to grow
 
@@ -138,7 +138,8 @@ python3 scripts/review-q2-queue.py \
   > testdata/reports/q7-ch8/mechanical-review.json
 # ... review --verdicts, sampled sheet, transform --variants 1,
 # pack assemble --no-variants --unique-hands --min-bases-per-lesson 40,
-# pack publish with all seven hosted packs, then the six checks below.
+# pack publish with all seven hosted packs, then the hosting/content/serving
+# checks below.
 ```
 
 Two pipeline gaps that would have bitten that run were fixed here:
