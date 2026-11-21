@@ -248,7 +248,9 @@ ch8 rows remain opt-in under their pack).
 ## User sign-off
 
 The 351-row sample and the published pack were presented on 2026-11-20.
-**User sign-off: pending** — recorded here when received.
+**User sign-off: approved** ("seems good") for the 822-base, 0-variant pack and
+the sampled content review, including the ready-cell `nakabukure_ready` rows and
+the tenpai `ryanmen_protorun` rows.
 
 ## Related links
 

@@ -447,7 +447,8 @@ includes its recogniser tests and a label-yield pass.
   clean on the hosted manifest; hosting and ch34/ch5/ch7/ch8/ch9 content checks
   pass; serving 38/38; frontend tests/build/lint and Q1 e2e pass. Evidence:
   `testdata/reports/q6-ch34/` and
-  [`q6-ch34-shapes-pack.md`](q6-ch34-shapes-pack.md).
+  [`q6-ch34-shapes-pack.md`](q6-ch34-shapes-pack.md). User sign-off: approved
+  2026-11-20 ("seems good") for the 351-row sample and the pack.
 
 **Q7 — ch8 completion** (`riichiprac`, worktree)
 - **`open_hand_defense` (B4.4)**, plus `suji_trap_riichi`, `kabe_no_chance`,
