@@ -9,7 +9,9 @@
  * a 14 mm tile rises beneath it.
  *
  * Recorded user decision (2026-11-19): the amount is half a tile height, not the
- * earlier ≤ 4 mm figure in §3D-12. It is applied on top of the button's CSS tint.
+ * earlier ≤ 4 mm figure in §3D-12. The lift is a discrete pose change, not an
+ * animation, so it applies under every motion preference (user decision
+ * 2026-11-21); reduced motion suppresses only the time-based deal-in.
  *
  * Pure data: no three.js, no DOM. `Scene` feeds the result to the instanced mesh.
  */

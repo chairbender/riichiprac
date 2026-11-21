@@ -302,7 +302,7 @@ describe('3D overlay: placement and motion', () => {
     }
   });
 
-  it('reports hover/focus for the lift, with motion suppressed on request', () => {
+  it('reports hover/focus for the lift under every motion preference', () => {
     const onHoverTile = vi.fn();
     const { container } = render(
       <TableOverlay {...overlayProps({ onHoverTile })} />,
@@ -317,20 +317,15 @@ describe('3D overlay: placement and motion', () => {
     });
     fireEvent.blur(button);
     expect(onHoverTile.mock.calls[1]).toEqual([null]);
-    cleanup();
 
-    const suppressed = vi.fn();
-    const quiet = render(
-      <TableOverlay {...overlayProps({ onHoverTile: suppressed, reducedMotion: true })} />,
-    );
-    const quietButton = within(quiet.container).getAllByRole('button')[0];
-    fireEvent.focus(quietButton);
-    // No lift is asked for...
-    expect(suppressed).not.toHaveBeenCalled();
-    // ...but a clear is still delivered, so a stale raised tile can never
-    // survive if motion is turned off between two hovers.
-    fireEvent.blur(quietButton);
-    expect(suppressed.mock.calls).toEqual([[null]]);
+    // The lift is a discrete pose change, not an animation (user decision
+    // 2026-11-21), so the overlay no longer has a reduced-motion branch: the
+    // deal-in is the animation that preference suppresses. A pointer hover
+    // still reports, and leaving still clears.
+    fireEvent.pointerEnter(button);
+    expect(onHoverTile.mock.calls.at(-1)?.[0]).toMatchObject({ code: '1m' });
+    fireEvent.pointerLeave(button);
+    expect(onHoverTile.mock.calls.at(-1)).toEqual([null]);
   });
 
   it('clears the lift when the hovered button disappears (answered hand)', () => {

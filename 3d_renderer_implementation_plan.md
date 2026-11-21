@@ -518,8 +518,8 @@ The canvas is an image. Everything a user can do or must hear is DOM:
   trailing two digits small and grey) while the accessible name keeps the full
   score. The corners carry no stick icon (the 3D bar on the plate is the
   declarer's marker), but the corner name still ends ", riichi".
-- Hover/focus lifts the tile in 3D (bounded, reduced-motion aware) and never
-  moves the button.
+- Hover/focus lifts the tile in 3D (bounded, and applied under every motion
+  preference because it is a discrete change) and never moves the button.
 - Tile faces, rivers, melds and walls are decorative and not individually
   focusable — exactly as in the top-down view, where only the hand is
   interactive. A hidden heading names the view for screen readers.
@@ -1635,7 +1635,8 @@ keyboard and screen reader.
 - `hitTest.ts` (in `three/`, because it uses the camera): pure world-OBB →
   CSS-rect projection (`hitRects()`).
 - `overlay.tsx`: absolutely positioned buttons for hand and draw tiles, plus a
-  focus ring, hover lift callbacks, and reduced-motion handling.
+  focus ring and hover lift callbacks (the lift is a discrete pose change, so
+  the motion preference does not gate it).
 - Tests that compare this view's accessible surface with `PhysicalTable`'s.
 
 **Acceptance criteria**
@@ -1680,8 +1681,10 @@ is the seam the overlay calls once per hover/focus change (and with `null` when
 the hovered button disappears); `Scene` responds by raising that tile by half a
 tile height (14 mm) along world +Y, without moving the button — see §9
 decision 8. Nothing is painted over the face: the lift is the only hover cue
-(user request 2026-11-20), while keyboard focus keeps its ring. Reduced motion
-suppresses the lift but never the clear, and the overlay's rects always come
+(user request 2026-11-20), while keyboard focus keeps its ring. The lift is a
+discrete pose change, not an animation, so it applies under every motion
+preference (user decision 2026-11-21); reduced motion suppresses only the
+deal-in. A null hover always clears, and the overlay's rects always come
 from the un-lifted pose.
 The overlay is the first floating-layer element: absolutely positioned over the
 full-window stage, `pointer-events: none` except for its buttons.
@@ -2058,8 +2061,8 @@ decision for a later unit, not a drive-by edit.
 - At `compat` with > 33 ms for 2 s, the host reports `degrade`, records the
   reason in `sessionStorage` so the next mount does not auto-try, and returns to
   the previously selected view with a dismissible notice.
-- `prefers-reduced-motion: reduce` removes the deal-in and hover lift; the POM
-  and layout are unchanged.
+- `prefers-reduced-motion: reduce` removes the deal-in animation; the instant
+  hover lift still applies. The POM and layout are unchanged.
 - Context loss twice in a session → fallback, remembered for the session.
 - A missing WebGL2 makes the 3D option disabled with a title explaining why, and
   never persisted.
@@ -2137,9 +2140,10 @@ no 3D value is written to the settings store.)
 
 *Reduced motion.* `usePrefersReducedMotion` follows
 `prefers-reduced-motion: reduce`, including live changes; the host uses it when
-the prop is not supplied and passes the resolved flag to `RendererOptions` and
-the DOM overlay (which already suppresses the hover report). 3D-12 consumes the
-same flag for the deal-in; neither POM nor the layout reads it.
+the prop is not supplied and passes the resolved flag to `RendererOptions`. The
+DOM overlay reports hover/focus under every preference: the lift is a discrete
+pose change, not an animation (user decision 2026-11-21). 3D-12 consumes the
+same flag for the deal-in only; neither POM nor the layout reads it.
 
 *Acceptance evidence.* `capabilities.test.ts` prints and asserts the viewport/DPR
 matrix, the three tier budgets, URL > stored > auto, the pointer/hardware rules,
@@ -2923,8 +2927,11 @@ in 3D-08 and 3D-S1 respectively, and are equally binding.
    hand/draw tile rises by
    `TILE.heightUnits / 2` = 14 mm along world +Y; the DOM button keeps its
    projected rect, so the pointer target never moves. This supersedes the ≤ 4 mm
-   figure in §3D-12, which keeps the deal-in and the event seam. Reduced motion
-   suppresses the lift (never the clear). **Update (user request 2026-11-20):**
+   figure in §3D-12, which keeps the deal-in and the event seam. **Update (user
+   decision 2026-11-21): the lift applies under every motion preference.** It is
+   a discrete pose change, not an animation, so `prefers-reduced-motion: reduce`
+   suppresses only the deal-in; the hover/focus lift and its clear are always
+   delivered. **Update (user request 2026-11-20):**
    the button's `rgba(207, 224, 255, 0.08)` hover background was removed — over
    the carved face it read as a stray light box, not a highlight — so the lift is
    the only hover cue. Keyboard focus keeps its `:focus-visible` ring, which is

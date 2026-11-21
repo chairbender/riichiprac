@@ -185,6 +185,11 @@ export interface RendererOptions {
   readonly tier: QualityTier;
   readonly debug: DebugMode | null;
   readonly perfHud: boolean;
+  /**
+   * `prefers-reduced-motion: reduce`. Suppresses the time-based deal-in only;
+   * the hover/focus lift is a discrete pose change and still applies (user
+   * decision 2026-11-21).
+   */
   readonly reducedMotion: boolean;
   /**
    * Whether the WebGL2 context is created with 4× MSAA (3D-20).
