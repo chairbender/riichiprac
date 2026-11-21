@@ -185,7 +185,7 @@ describe('ScenarioPicker ARIA parity', () => {
 });
 
 describe('replay pack entries', () => {
-  it('shows a replay entry with a PACK badge and the merged label', async () => {
+  it('shows a replay entry with a REPLAY badge and the merged label', async () => {
     const user = userEvent.setup();
     renderPicker();
     await openPanel(user);
@@ -196,7 +196,7 @@ describe('replay pack entries', () => {
     expect((box as HTMLInputElement).checked).toBe(false);
     const row = box.closest('li');
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getByText('PACK')).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('REPLAY')).toBeTruthy();
   });
 
   it('deals exactly the replay lesson from its Only button', async () => {
@@ -267,7 +267,7 @@ describe('replay pack entries', () => {
       .getByRole('checkbox', { name: /AI Hotseat/i })
       .closest('li') as HTMLElement;
     expect(within(aiRow).getByText('AI')).toBeTruthy();
-    expect(within(aiRow).queryByText('PACK')).toBeNull();
+    expect(within(aiRow).queryByText('REPLAY')).toBeNull();
   });
 });
 
@@ -317,7 +317,7 @@ describe('source filter and generated opt-in', () => {
       .getByRole('checkbox', { name: /fold to riichi generated/i })
       .closest('li') as HTMLElement;
 
-    expect(within(replayRow).getByText('PACK')).toBeTruthy();
+    expect(within(replayRow).getByText('REPLAY')).toBeTruthy();
     expect(within(generatedRow).getByText('GENERATED')).toBeTruthy();
     expect(
       replayRow.compareDocumentPosition(generatedRow) &
@@ -384,7 +384,7 @@ describe('source filter and generated opt-in', () => {
     ).toBeTruthy();
   });
 
-  it('Replay hides covered generated rows but keeps replay-less lessons', async () => {
+  it('Replay lists replay rows only and hides every generated row', async () => {
     const user = userEvent.setup();
     const { onPreferReplayChange } = renderPicker({
       scenarios: coveredCatalogue,
@@ -399,10 +399,31 @@ describe('source filter and generated opt-in', () => {
     expect(
       screen.getByRole('checkbox', { name: /fold to riichi \(replay\)/i }),
     ).toBeTruthy();
-    // AI Hotseat has no replay row and must stay reachable.
+    // A lesson without a replay row is reachable only under Generated or Both.
     expect(
-      screen.getByRole('checkbox', { name: /AI Hotseat/i }),
+      screen.queryByRole('checkbox', { name: /AI Hotseat/i }),
+    ).toBeNull();
+  });
+
+  it('says why the Replay filter is empty when no replay rows are published', async () => {
+    const user = userEvent.setup();
+    renderPicker({ scenarios: [fold, ryanmen, hotseat] });
+    const panel = await openPanel(user);
+
+    await user.click(within(panel).getByRole('radio', { name: 'Replay' }));
+
+    expect(
+      screen.queryByRole('checkbox', { name: /AI Hotseat/i }),
+    ).toBeNull();
+    expect(
+      within(panel).getByText(
+        'No replay rows are published yet. Pick Generated to drill generated scenarios, or Both to list every row.',
+      ),
     ).toBeTruthy();
+
+    // Generated and Both still list the generated rows.
+    await user.click(within(panel).getByRole('radio', { name: 'Generated' }));
+    expect(screen.getByRole('checkbox', { name: /AI Hotseat/i })).toBeTruthy();
   });
 
   it('keeps the filter and a generated tick across a selection change', async () => {
@@ -516,7 +537,7 @@ describe('pack manifest states', () => {
     renderPicker({ packStatus: 'ready', packCount: 1 });
     const panel = await openPanel(user);
     const note = within(panel).getByRole('status').textContent ?? '';
-    expect(note).toContain('PACK rows deal a real audited replay hand');
+    expect(note).toContain('REPLAY rows deal a real audited replay hand');
     expect(note).toContain('GENERATED rows drill the same lesson');
     expect(note).toContain('Replay is the default where a lesson has enough');
     expect(note).toContain('a launch’s first hand may fetch one replay body');

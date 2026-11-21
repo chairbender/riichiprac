@@ -462,7 +462,7 @@ scenario is handed to the app. Verified bytes live in IndexedDB
 (`riichiprac-packs`, key `<pack-id>@<sha256>@<cache-version>`), so a reload with
 the same content address downloads nothing; a corrupt or evicted entry is
 re-fetched and a cache failure is ignored. Replay lessons appear as opt-in
-picker entries (PACK badge, `all` excludes them, so the startup download is the
+picker entries (REPLAY badge, `all` excludes them, so the startup download is the
 manifest only). Details and evidence: P3 in `replay-implementation-plan.md`.
 
 **Manual setup for a mirror or a Release copy** (needs credentials):

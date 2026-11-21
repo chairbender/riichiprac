@@ -574,11 +574,11 @@ export type ScenarioSource = 'replay' | 'generated';
 /**
  * The picker's source filter.
  *
- * `both` lists every row; `replay` hides a covered lesson's generated row
- * (generated rows still appear for a lesson with no replay row, so nothing
- * disappears); `generated` hides every replay row. The filter changes the rows
- * listed and, through `preferReplay`, what the default pool deals for a covered
- * lesson — it never changes the generated catalogue or a lesson's drill.
+ * `both` lists every row; `replay` lists replay rows **only** (a lesson with no
+ * replay row is reachable under `generated` or `both`, never under `replay`);
+ * `generated` hides every replay row. The filter changes the rows listed and,
+ * through `preferReplay`, what the default pool deals for a covered lesson — it
+ * never changes the generated catalogue or a lesson's drill.
  */
 export type ScenarioSourceFilter = 'replay' | 'generated' | 'both';
 
@@ -676,13 +676,14 @@ export interface PickerScenarioRow {
  *
  * A covered lesson's replay row comes first and its generated row second, so
  * the default source leads and the opt-in drill trails it. A lesson below the
- * floor keeps the pre-RF2 order (generated, then its opt-in replay row), and a
- * lesson with no replay row is always listed as generated — even under the
- * `replay` filter, because hiding it would leave the lesson unreachable.
+ * floor keeps the pre-RF2 order (generated, then its opt-in replay row).
  *
- * The filter is presentational apart from the default pool's source, which the
- * picker switches with the generated filter. Ticked ids are untouched, so a row
- * hidden by a filter is still dealt by a pool that already holds it.
+ * The filter is exclusive: `replay` lists replay rows only and `generated`
+ * lists generated rows only, so a lesson with no replay row is reachable under
+ * Generated or Both but never under Replay. Presentational apart from the
+ * default pool's source, which the picker switches with the generated filter.
+ * Ticked ids are untouched, so a row hidden by a filter is still dealt by a
+ * pool that already holds it.
  */
 export function pickerScenarioRows(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
@@ -724,7 +725,9 @@ export function pickerScenarioRows(
       // The badge still marks the generated row of a covered lesson: it is the
       // opt-in alternative even when the filter has hidden the replay row.
       push(option, siblings, covered, covered);
-    } else if (filter === 'replay' && siblings.length > 0) {
+    } else if (filter === 'replay') {
+      // Replay is exclusive: the generated row is never listed, and a lesson
+      // with no replay row is left to the Generated and Both filters.
       for (const sibling of siblings) push(sibling, siblings, covered, false);
     } else if (covered) {
       for (const sibling of siblings) push(sibling, siblings, covered, false);

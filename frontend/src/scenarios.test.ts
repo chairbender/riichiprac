@@ -884,18 +884,16 @@ describe('picker source rows', () => {
     });
   });
 
-  it('filters to replay rows, keeping generated rows only where no replay exists', () => {
+  it('lists replay rows only, never a generated row', () => {
     const rows = pickerScenarioRows(merged, 'replay');
-    expect(rows.map((row) => row.option.id)).toEqual([
-      'open_hand_defense',
-      'ai_hotseat',
-      'proturun_priority',
-      replayPush,
-      replayFold,
-    ]);
-    expect(rows.every((row) => row.source === 'replay' || !row.hasReplay)).toBe(
-      true,
-    );
+    expect(rows.map((row) => row.option.id)).toEqual([replayPush, replayFold]);
+    expect(rows.every((row) => row.source === 'replay')).toBe(true);
+    expect(rows.every((row) => !row.generatedAlternative)).toBe(true);
+  });
+
+  it('lists nothing under the replay filter when no replay row exists', () => {
+    // A catalogue with no pack rows at all: the Replay filter lists nothing.
+    expect(pickerScenarioRows(replayCatalogue, 'replay')).toEqual([]);
   });
 
   it('hides every replay row under the generated filter', () => {
