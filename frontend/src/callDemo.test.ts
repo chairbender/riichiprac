@@ -61,7 +61,7 @@ describe('call demo: the review cases', () => {
       options?: number;
     }> = [
       { id: 'pon-single', kind: 'pon', options: 1 },
-      { id: 'pon-red', kind: 'pon', options: 2 },
+      { id: 'pon-red', kind: 'pon', options: 1 },
       { id: 'chi-single', kind: 'chi', options: 1 },
       { id: 'chi-multi', kind: 'chi', options: 3 },
       { id: 'kan-single', kind: 'kan', options: 1 },

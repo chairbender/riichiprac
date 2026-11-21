@@ -547,6 +547,13 @@ describe('snapshotFromGameState: melds', () => {
     const [kan] = snapshot.seats[0].melds;
     expect(kan.calledFrom).toBeNull();
     expect(kan.tiles.every((tile) => !tile.sideways)).toBe(true);
+    // A concealed quad's two outer tiles are face down; the middle two show.
+    expect(kan.tiles.map((tile) => tile.faceUp)).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ]);
   });
 });
 
@@ -667,6 +674,7 @@ describe('snapshotFromGameState: dora and wall', () => {
         face: '3s',
         zone: 'dora',
         slot: 0,
+        uid: 'dora-0',
         faceUp: true,
         sideways: false,
       },
@@ -674,6 +682,7 @@ describe('snapshotFromGameState: dora and wall', () => {
         face: '5z',
         zone: 'dora',
         slot: 1,
+        uid: 'dora-1',
         faceUp: true,
         sideways: false,
       },
@@ -843,5 +852,53 @@ describe('withPreviewRiichi (3D-09 preview only)', () => {
     expect(preview.wall).toBe(real.wall);
     expect(preview.seats[0].concealed).toBe(real.seats[0].concealed);
     expect(preview.locked).toBe(real.locked);
+  });
+});
+
+describe('261121-1206 tile identity and the current turn', () => {
+  function allTiles(snapshot: ReturnType<typeof snapshotFromGameState>) {
+    const tiles = [...snapshot.wall, ...snapshot.dora];
+    for (const seat of snapshot.seats) {
+      tiles.push(
+        ...seat.concealed,
+        ...seat.river,
+        ...seat.melds.flatMap((meld) => meld.tiles),
+      );
+      if (seat.draw) tiles.push(seat.draw);
+    }
+    return tiles;
+  }
+
+  it('gives every tile a unique uid, deterministic for the same state', () => {
+    const state = game({ tiles_remaining: 60 });
+    const first = snapshotFromGameState(state, 1, false);
+    const second = snapshotFromGameState(state, 2, false);
+
+    const tiles = allTiles(first);
+    const uids = tiles.map((tile) => tile.uid);
+    expect(uids.every((uid) => typeof uid === 'string' && uid.length > 0)).toBe(
+      true,
+    );
+    expect(new Set(uids).size).toBe(uids.length);
+    // The revision is not part of a tile's identity: two snapshots of the same
+    // state describe the same physical tiles.
+    expect(allTiles(second).map((tile) => tile.uid)).toEqual(uids);
+  });
+
+  it('carries the seat to act next', () => {
+    for (const turn of [0, 1, 2, 3] as const) {
+      const snapshot = snapshotFromGameState(
+        game({ current_turn: turn }),
+        1,
+        false,
+      );
+      expect(snapshot.currentTurn).toBe(turn);
+    }
+  });
+
+  it('rejects a turn outside the four seats', () => {
+    expect(() =>
+      snapshotFromGameState(game({ current_turn: 4 }), 1, false),
+    ).toThrow(/invalid current turn/);
   });
 });

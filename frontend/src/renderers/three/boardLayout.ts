@@ -124,6 +124,13 @@ export interface TilePose {
 export interface BoardTile {
   /** Stable across calls: `zone-seat-slot` or `zone-slot` for table-level tiles. */
   readonly id: string;
+  /**
+   * The physical tile's identity across snapshots (261121-1206): the snapshot's
+   * `uid`, or {@link id} for a hand-authored fixture. The answered transition
+   * pairs old and new poses by this key, so a tile that moves keeps one identity
+   * even though its `id` changes with its new position.
+   */
+  readonly uid: string;
   readonly zone: Zone;
   /** Absolute seat, or null for the wall and the dora indicators. */
   readonly seat: Seat | null;
@@ -432,8 +439,10 @@ function boardTile(
   pose: TilePose,
   faceUp: boolean,
 ): BoardTile {
+  const id = tileId(tile.zone, seat, tile.slot);
   return {
-    id: tileId(tile.zone, seat, tile.slot),
+    id,
+    uid: tile.uid ?? id,
     zone: tile.zone,
     seat,
     slot: tile.slot,
@@ -454,11 +463,17 @@ function lyingPose(
   height: number,
   yawDeg: number,
   rollDeg = 0,
+  /**
+   * A face-down lying tile is turned right over (tilt +90), so the blue back is
+   * what faces up: the shader's blue body is the local -Z half, not a texture
+   * swap. A closed kan's two outer tiles are the case this exists for.
+   */
+  faceUp = true,
 ): TilePose {
   return {
     position: seatPoint(seat, w, u, height),
     yawDeg,
-    tiltDeg: -90,
+    tiltDeg: faceUp ? -90 : 90,
     rollDeg,
     sizeUnits: TILE_SIZE,
   };
@@ -658,6 +673,7 @@ function placeSeatRow(
             TILE.thicknessUnits / 2,
             seatYawDeg(seat),
             tile.sideways ? -90 : 0,
+            tile.faceUp,
           ),
           tile.faceUp,
         ),

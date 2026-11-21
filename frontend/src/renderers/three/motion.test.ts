@@ -18,13 +18,22 @@ import {
   DealInMotion,
   EVENT_FLIGHT_MS,
   FELT_PLANE_Y,
+  ANSWER_MOVE_MS,
+  MoveMotion,
   dealInLiftUnits,
   flightWaypoints,
+  movedPose,
+  plannedMoves,
   sampleFlight,
   shouldDealIn,
   springProgress,
+  withMoveProgress,
   withVerticalLift,
 } from './motion';
+import { answeredBoard } from '../answeredBoard';
+import { answerPresentationFor } from '../../answerPresentation';
+import { CALL_DEMO_CASES } from '../../callDemo';
+import { snapshotFromGameState } from '../snapshot';
 
 const snapshot = boardFixture();
 const layout = layoutBoard(snapshot);
@@ -273,5 +282,157 @@ describe('3D-12 event seam (reserved: not called in v1)', () => {
     expect(
       flightWaypoints(layoutBoard(noDraw), { kind: 'draw', seat: 0, face: '1m' }),
     ).toBeNull();
+  });
+});
+
+describe('261121-1206 answered board motion', () => {
+  /**
+   * The fixture's human discards a concealed tile, so the hand re-flows and the
+   * draw folds into the hand: several poses change at once, which is exactly
+   * the transition the renderer must pair by uid.
+   */
+  const discard: TableSnapshot = answeredBoard(snapshot, {
+    family: 'discard',
+    discard: { code: '1m', isRed: false, fromDraw: false },
+  });
+
+  it('pairs the moved tiles by uid instead of cutting', () => {
+    const before = layoutBoard(snapshot);
+    const after = layoutBoard(discard);
+    const moves = plannedMoves(before, after);
+
+    expect(moves.length).toBeGreaterThan(1);
+    const discardMove = moves.find((move) => move.uid === 'hand-0-0');
+    expect(discardMove, 'the discarded hand tile keeps its identity').toBeDefined();
+    expect(discardMove?.arcUnits).toBeGreaterThan(0);
+
+    // The hand's own re-flow slides along the row: no hop.
+    const slide = moves.find((move) => move.from.position[0] !== move.to.position[0]);
+    expect(slide).toBeDefined();
+    expect(slide?.arcUnits).toBe(0);
+
+    // Nothing else on the table was touched.
+    for (const move of moves) {
+      expect(move.from.position).not.toEqual(move.to.position);
+    }
+  });
+
+  it('starts at the old poses, passes through the air and settles exactly', () => {
+    const before = layoutBoard(snapshot);
+    const after = layoutBoard(discard);
+    const moves = plannedMoves(before, after);
+    const discardMove = moves.find((move) => move.uid === 'hand-0-0');
+    expect(discardMove).toBeDefined();
+    if (!discardMove) return;
+
+    expect(movedPose(discardMove, 0)).toEqual(discardMove.from);
+    expect(movedPose(discardMove, 1)).toEqual(discardMove.to);
+
+    const start = withMoveProgress(after, moves, 0);
+    const middle = withMoveProgress(after, moves, 0.5);
+    const end = withMoveProgress(after, moves, 1);
+    expect(end).toBe(after);
+
+    const startTile = start.tiles.find((tile) => tile.uid === 'hand-0-0');
+    const middleTile = middle.tiles.find((tile) => tile.uid === 'hand-0-0');
+    const endTile = after.tiles.find((tile) => tile.uid === 'hand-0-0');
+    expect(startTile?.pose).toEqual(discardMove.from);
+    expect(endTile?.pose).toEqual(discardMove.to);
+    expect(middleTile?.pose.position).not.toEqual(discardMove.from.position);
+    expect(middleTile?.pose.position).not.toEqual(discardMove.to.position);
+    // The hop is upward, never through the felt.
+    expect(middleTile?.pose.position[1]).toBeGreaterThan(
+      Math.max(discardMove.from.position[1], discardMove.to.position[1]),
+    );
+
+    // The settled frame is the layout itself, not a tolerance match.
+    const beforeInstances = buildBoardInstances(before, () => ({
+      rect: NEUTRAL_ATLAS_RECT,
+    }));
+    const settled = buildBoardInstances(end, () => ({ rect: NEUTRAL_ATLAS_RECT }));
+    const movedId = endTile?.id;
+    const startInstance = buildBoardInstances(start, () => ({
+      rect: NEUTRAL_ATLAS_RECT,
+    })).find((instance) => instance.uid === 'hand-0-0');
+    const startSource = beforeInstances.find((instance) => instance.uid === 'hand-0-0');
+    expect(startInstance?.matrix).toEqual(startSource?.matrix);
+    expect(settled.some((instance) => instance.id === movedId)).toBe(true);
+  });
+
+  it('leaves every unmoved tile exactly at its new pose, even with repeated meld ids', () => {
+    // Two melds per seat make several BoardTile ids repeat (`meld-seat-slot`).
+    // The pose rewrite must key on the tile object, not that id, or an unmoved
+    // meld tile would jump to another meld's pose.
+    const crowded = boardFixture({ meldCounts: [2, 2, 2, 2] });
+    const after = answeredBoard(crowded, {
+      family: 'discard',
+      discard: { code: '1m', isRed: false, fromDraw: false },
+    });
+    const from = layoutBoard(crowded);
+    const to = layoutBoard(after);
+    const moves = plannedMoves(from, to);
+    const moved = new Set(moves.map((move) => move.uid));
+    const middle = withMoveProgress(to, moves, 0.5);
+
+    middle.tiles.forEach((tile, index) => {
+      if (!moved.has(tile.uid)) {
+        expect(tile.pose).toEqual(to.tiles[index].pose);
+      }
+    });
+  });
+
+  it('moves a Pon answer into place, even when the call is the wrong answer', () => {
+    const demo = CALL_DEMO_CASES.find((entry) => entry.id === 'pon-single');
+    expect(demo).toBeDefined();
+    if (!demo) return;
+    // pon-single's book answer is Pass, so calling Pon is an incorrect answer;
+    // the board must still show the call.
+    const base = snapshotFromGameState(demo.state, 1, false);
+    // The pick step names one copy; a Pon consumes both.
+    const action = answerPresentationFor(
+      demo.state,
+      { action: 'call', tile: '', action_name: 'Pon' },
+      [{ code: '5z', isRed: false }],
+    );
+    expect(action.family).toBe('pon');
+    const board = answeredBoard(base, action);
+    expect(board.seats[0].melds).toHaveLength(1);
+    expect(board.seats[0].melds[0].tiles).toHaveLength(3);
+
+    const moves = plannedMoves(layoutBoard(base), layoutBoard(board));
+    expect(moves.length).toBeGreaterThanOrEqual(3);
+    // The two hand tiles and the claimed discard all changed zone.
+    expect(moves.filter((move) => move.arcUnits > 0).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('runs for a bounded time and settles from the clock', () => {
+    const { clock, advance } = fakeClock();
+    const motion = new MoveMotion(clock);
+    expect(motion.start(layoutBoard(snapshot), layoutBoard(discard))).toBe(true);
+    expect(motion.active).toBe(true);
+    expect(motion.sample()).toMatchObject({ active: true, progress: 0 });
+
+    advance(ANSWER_MOVE_MS / 2);
+    const middle = motion.sample();
+    expect(middle.active).toBe(true);
+    expect(middle.progress).toBeGreaterThan(0);
+    expect(middle.progress).toBeLessThan(1);
+
+    advance(ANSWER_MOVE_MS);
+    expect(motion.sample()).toEqual({ active: false, progress: 1, done: true });
+    expect(motion.active).toBe(false);
+    expect(ANSWER_MOVE_MS).toBeLessThanOrEqual(400);
+  });
+
+  it('cuts instantly under reduced motion and starts nothing for an identical board', () => {
+    const reduced = new MoveMotion({ now: () => 0 }, true);
+    expect(reduced.start(layoutBoard(snapshot), layoutBoard(discard))).toBe(false);
+    expect(reduced.active).toBe(false);
+    expect(reduced.sample()).toEqual({ active: false, progress: 1, done: true });
+
+    const idle = new MoveMotion({ now: () => 0 });
+    const same = layoutBoard(snapshot);
+    expect(idle.start(same, same)).toBe(false);
+    expect(idle.plans).toHaveLength(0);
   });
 });

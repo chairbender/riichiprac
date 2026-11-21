@@ -108,6 +108,19 @@ it renders.
 Corollary: when a new unit and these sources disagree, the committed constants
 win; ask the user before inventing a third number.
 
+**The answered board (261121-1206).** After an answer the 3D board shows the
+resulting position, not the frozen decision: the discard lands in the river
+(sideways for Riichi), a call forms its meld with the claimed discard leaving
+the river, the hand re-flows, and every changed tile flies from its old pose to
+its new one (`ANSWER_MOVE_MS` ≤ 400 ms; reduced motion cuts). This is a
+**presentation-only** delta on top of the decision snapshot — the presentation
+helper (`src/answerPresentation.ts`) names the copies and
+`renderers/answeredBoard.ts` applies them; the Rust engine and the store's
+`gameState` are untouched, Reset returns the pre-answer board, and the 2D views
+still draw the decision position. The snapshot carries stable `uid`s and, for
+this one transition, `transition: 'answered'` at the same revision; that is the
+only exception to the "new revision is a cut" rule.
+
 ### 3c. The floating 3D HUD (3D-H2 onwards)
 
 The chrome over the 3D stage lives in `frontend/src/renderers/hud/` and is
