@@ -168,11 +168,14 @@ export interface RendererQuery {
   /**
    * A debug-only preview of a state the current hand may not contain, for
    * visual inspection (3D-09). `sticks` marks every seat riichi so the per-seat
-   * felt sticks and compass markers can be reviewed on any hand. It changes
-   * neither the game state nor the answer. (3D-12's `deal` value was retired in
-   * 3D-H2, when the real Next Scenario control landed over the scene.)
+   * felt sticks and compass markers can be reviewed on any hand. `melds` swaps
+   * the whole app for the deterministic layout fixture (`MeldPreview`), so a
+   * meld-heavy board can be reviewed without dealing one: it is parsed by
+   * `main.tsx`, not applied to the current game. Neither value changes the game
+   * state or the answer. (3D-12's `deal` value was retired in 3D-H2, when the
+   * real Next Scenario control landed over the scene.)
    */
-  readonly preview: 'sticks' | null;
+  readonly preview: 'sticks' | 'melds' | null;
 }
 
 /**
@@ -198,7 +201,7 @@ export function parseRendererQuery(search: string): RendererQuery {
     debug: isDebugMode(debug) ? debug : null,
     perf:
       perf !== null && (perf === '' || perf === '1' || perf === 'true'),
-    preview: preview === 'sticks' ? preview : null,
+    preview: preview === 'sticks' || preview === 'melds' ? preview : null,
   };
 }
 

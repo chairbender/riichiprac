@@ -538,6 +538,22 @@ re-measured pixel table, and the composition is an AGENTS.md §6 handoff.
 itself (which screen corner each seat's melds take, the half-shift, and the HUD
 panels' new positions) is the user's call in the live `?renderer=3d` view.
 
+**Review preview.** `?preview=melds` swaps the whole app for the deterministic
+layout fixture, so a meld-heavy board can be inspected without dealing one. It
+boots no game, WASM or store: `main.tsx` mounts `MeldPreview`, which draws
+`boardFixture` with a floating control bar. The default is the widest board —
+four melds per seat, each first meld a kan, human at the bottom — and the controls
+set each seat's meld count (0–4), toggle the kan, change the human seat, and
+rewrite the URL live:
+
+```
+?preview=melds&melds=4,4,4,4&kan=1&human=0
+?preview=melds&melds=4,3,2,1&kan=0&human=2
+```
+
+The fixture and the gate draw the same board, so the preview's composition is the
+one the numbers above describe.
+
 
 **Read AGENTS.md §3b first.** The 2.5D workspace already models the tile body and
 the whole table in 3D (`shell-spec.json` + `bake_shells.py`,
