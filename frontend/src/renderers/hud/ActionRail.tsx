@@ -1,18 +1,18 @@
 /**
  * The HUD action rail (3D-H3).
  *
- * The floating hand panel's action row: `ActionBar`'s non-discard actions and
- * the Riichi / Kan declaration toggles, in the 2D dock's order and with the 2D
- * dock's labels, `aria-pressed` state and disabled handling — because it renders
- * the same components (`ActionBar`, `CallToggles`) with the same props, not a
- * copy of them.
+ * The floating hand panel's action row: `ActionBar`'s remaining non-discard
+ * actions and the shared `CallControls` bar, in the 2D dock's order and with the
+ * 2D dock's words and disabled handling — because it renders the same
+ * components (`ActionBar`, `CallControls`) with the same props, not a copy of
+ * them.
  *
  * Two rules from `3d_hud.md`:
  *
- * - The toggles are *decisions*, not hand chrome (§4). Arming one changes the
- *   next hand-tile click — including 3D-08's projected buttons, which carry the
- *   armed wording through `handTileLabel` — and the answer itself goes through
- *   the store's `selectTile`, so nothing here depends on the renderer.
+ * - The calls are *decisions*, not hand chrome (§4). Pressing one either
+ *   submits it (one legal way to make it) or opens a pick step whose tiles come
+ *   from the projected hand: 3D-08's buttons call the store's `selectTile`, so
+ *   nothing here depends on the renderer.
  * - When the row would be empty it is **unmounted**, leaving the hint-only
  *   panel (§7.1). `App` asks `actionRailVisible()` before mounting this, and the
  *   component returns null for the same reason so no caller can reserve it.
@@ -24,7 +24,7 @@
 
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import { ActionBar } from '../../components/ActionBar';
-import { CallToggles } from '../../components/CallToggles';
+import { CallControls } from '../../components/CallControls';
 import {
   actionRailVisible,
   railActions,
@@ -42,7 +42,8 @@ export interface ActionRailProps {
  * The action row's controls, or nothing.
  *
  * The two groups are siblings inside one wrapping flow, so a narrow stage wraps
- * between controls rather than stacking separate bars.
+ * between controls rather than stacking separate bars. The call bar is the
+ * right-aligned group: the row grows towards the left as calls are added.
  */
 export function ActionRail({ model, onRowsChange }: ActionRailProps) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -65,36 +66,30 @@ export function ActionRail({ model, onRowsChange }: ActionRailProps) {
   if (!actionRailVisible(model)) return null;
 
   const actions = railActions(model.actions);
-  const showToggles =
-    !model.isAiScenario && (model.canRiichi || model.kanTile !== null);
 
   return (
     <div className="hud-action-rail-controls" ref={contentRef}>
       {actions.length > 0 && (
         <ActionBar
           actions={[...model.actions]}
-          // The 2D strip only exists before the answer; the rail hides then too.
           disabled={model.answered}
-          riichiArmed={model.callRiichi}
           evaluation={model.evaluation ?? null}
           revealMortal={model.revealMortal ?? false}
-          onToggleRiichi={model.onToggleRiichi}
           onAction={model.onAction}
         />
       )}
-      {showToggles && (
-        <CallToggles
-          canRiichi={model.canRiichi}
-          kanTile={model.kanTile}
-          callRiichi={model.callRiichi}
-          callKan={model.callKan}
-          disabled={model.answered}
-          evaluation={model.evaluation ?? null}
-          revealMortal={model.revealMortal ?? false}
-          onToggleRiichi={model.onToggleRiichi}
-          onToggleKan={model.onToggleKan}
-        />
-      )}
+      <CallControls
+        buttons={model.callButtons}
+        pending={model.pendingCall}
+        error={model.callError}
+        disabled={model.answered}
+        evaluation={model.evaluation ?? null}
+        revealMortal={model.revealMortal ?? false}
+        onBegin={model.onBeginCall}
+        onPass={model.onPass}
+        onCancel={model.onCancelCall}
+        onPreview={model.onPreviewCall}
+      />
     </div>
   );
 }

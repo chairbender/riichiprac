@@ -22,8 +22,6 @@ function snapshot(overrides: Partial<ScenarioSnapshot> = {}): ScenarioSnapshot {
     requireAgreement: true,
     submittedAnswer: null,
     dualGrade: null,
-    callRiichi: false,
-    callKan: false,
     peekedBeforeAnswer: false,
     evaluation: null,
     mortalAgreement: null,
@@ -85,9 +83,8 @@ describe('readScenarioSnapshot', () => {
     );
   });
 
-  it('keeps the toggle, agreement and description fields', () => {
+  it('keeps the agreement and description fields', () => {
     const original = snapshot({
-      callRiichi: true,
       requireAgreement: false,
       mortalAgreement: {
         max_candidates: 8,
@@ -138,8 +135,6 @@ describe('readScenarioSnapshot', () => {
       { submittedAnswer: { action: 1, tile: '1z' } },
       { submittedAnswer: { action: 'fold' } },
       { dualGrade: 'agree' },
-      { callRiichi: 1 },
-      { callKan: null },
       { peekedBeforeAnswer: 'no' },
       { evaluation: [] },
       { mortalAgreement: 'report' },
@@ -161,6 +156,10 @@ describe('readScenarioSnapshot', () => {
         ...snapshot(),
         json: TABLE_JSON,
         futureField: 'ignored',
+        // A history entry written before the call flow dropped its armed
+        // toggles still restores: those fields are simply not read.
+        callRiichi: true,
+        callKan: false,
         submittedAnswer: { ...ANSWER, extra: 'ignored' },
       },
     };
@@ -168,6 +167,8 @@ describe('readScenarioSnapshot', () => {
     const restored = readScenarioSnapshot(raw);
     expect(restored).not.toBeNull();
     expect(restored).not.toHaveProperty('futureField');
+    expect(restored).not.toHaveProperty('callRiichi');
+    expect(restored).not.toHaveProperty('callKan');
     expect(restored?.submittedAnswer).toEqual(ANSWER);
   });
 });
@@ -178,8 +179,6 @@ describe('withoutAnswerState', () => {
       submittedAnswer: ANSWER,
       dualGrade: GRADE,
       peekedBeforeAnswer: true,
-      callRiichi: true,
-      callKan: true,
       evaluation: {
         model: 'mortal_298k.safetensors',
         expected_value: 0.1,
@@ -194,8 +193,6 @@ describe('withoutAnswerState', () => {
     expect(reset.submittedAnswer).toBeNull();
     expect(reset.dualGrade).toBeNull();
     expect(reset.peekedBeforeAnswer).toBe(false);
-    expect(reset.callRiichi).toBe(false);
-    expect(reset.callKan).toBe(false);
     expect(reset.evaluation).toBeNull();
   });
 

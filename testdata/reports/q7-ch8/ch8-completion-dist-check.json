@@ -1,0 +1,43 @@
+{
+  "schema": "riichiprac.ch8-pack-check",
+  "version": 1,
+  "chapter": "ch8",
+  "dir": "/home/kylehipke/workspaces/riichiprac-261120-2158/frontend/dist/scenarios",
+  "pack": "replay.ch8-completion.2026-11",
+  "checks": 27,
+  "problems": [],
+  "scenarios": 386,
+  "bases": 386,
+  "variants": 0,
+  "variant_share": 0,
+  "transform_families": [],
+  "lessons": [
+    "defense_stuck_heuristic",
+    "kabe_double_one_chance",
+    "kabe_no_chance",
+    "kabe_one_chance",
+    "kabe_suji_defense",
+    "open_hand_defense"
+  ],
+  "lesson_counts": {
+    "defense_stuck_heuristic": 151,
+    "kabe_one_chance": 39,
+    "kabe_no_chance": 129,
+    "open_hand_defense": 4,
+    "kabe_double_one_chance": 36,
+    "kabe_suji_defense": 27
+  },
+  "book_sections": [
+    "ch8.2",
+    "ch8.3",
+    "ch8.4"
+  ],
+  "bytes": 330933,
+  "agents": [
+    "akochan (akochan)",
+    "efficiency-safety-v1 (corpus-reference)",
+    "isolated-first-v1 (corpus-reference)",
+    "mortal-298k (mortal-candle)"
+  ],
+  "data_commercial_use": false
+}

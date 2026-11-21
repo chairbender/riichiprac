@@ -1,0 +1,1087 @@
+{
+  "held_out": 0,
+  "ids": [
+    {
+      "queue_id": "replay.ch8-completion.2026-11-001",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-002",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-003",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-005",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-006",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-007",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-009",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-010",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-011",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-014",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-016",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-018",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-020",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-021",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-022",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-023",
+      "why": "rare_lesson:open_hand_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-024",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-025",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-026",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-027",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-028",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-029",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-030",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-031",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-032",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-036",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-037",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-040",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-041",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-042",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-043",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-044",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-046",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-047",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-048",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-050",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-051",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-052",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-053",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-054",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-055",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-056",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-059",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-060",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-062",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-064",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-065",
+      "why": "rare_lesson:open_hand_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-066",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-069",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-070",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-073",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-074",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-075",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-076",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-077",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-079",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-080",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-084",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-085",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-086",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-090",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-092",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-097",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-098",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-102",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-104",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-108",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-110",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-111",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-112",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-114",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-115",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-118",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-119",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-120",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-121",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-123",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-125",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-126",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-127",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-128",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-129",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-132",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-135",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-136",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-139",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-140",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-141",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-142",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-143",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-146",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-147",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-149",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-150",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-151",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-152",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-156",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-157",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-158",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-159",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-160",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-161",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-162",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-163",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-164",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-167",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-168",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-169",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-171",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-174",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-175",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-176",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-177",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-179",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-181",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-182",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-183",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-184",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-185",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-189",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-192",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-193",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-194",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-196",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-197",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-198",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-199",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-200",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-201",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-202",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-203",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-204",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-206",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-207",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-208",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-209",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-210",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-211",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-212",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-214",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-215",
+      "why": "rare_lesson:open_hand_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-216",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-217",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-218",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-219",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-221",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-222",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-223",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-224",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-225",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-227",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-229",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-230",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-231",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-233",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-234",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-236",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-237",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-239",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-240",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-241",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-242",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-243",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-244",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-248",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-249",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-250",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-252",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-254",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-255",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-256",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-257",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-258",
+      "why": "rare_lesson:open_hand_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-259",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-260",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-264",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-265",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-266",
+      "why": "family_guarantee:akochan_vs_mortal"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-267",
+      "why": "family_guarantee:akochan_tactics"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-268",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-273",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-274",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-275",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-276",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-278",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-279",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-280",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-281",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-282",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-283",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-285",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-287",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-288",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-291",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-292",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-295",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-298",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-299",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-300",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-302",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-304",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-309",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-310",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-311",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-312",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-313",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-314",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-317",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-318",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-321",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-323",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-324",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-325",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-327",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-328",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-329",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-330",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-331",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-332",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-333",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-334",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-338",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-339",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-340",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-341",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-342",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-343",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-344",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-346",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-348",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-350",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-352",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-354",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-356",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-357",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-358",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-359",
+      "why": "family_guarantee:mortal_mirror"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-363",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-364",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-366",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-367",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-371",
+      "why": "lesson_guarantee:defense_stuck_heuristic"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-372",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-374",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-375",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-376",
+      "why": "rare_lesson:kabe_double_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-377",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-379",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-380",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-382",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-385",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-386",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-389",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-390",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-391",
+      "why": "random_fill"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-392",
+      "why": "family_guarantee:mortal_sampling_sweep"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-394",
+      "why": "rare_lesson:kabe_suji_defense"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-396",
+      "why": "rare_lesson:kabe_one_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-397",
+      "why": "lesson_guarantee:kabe_no_chance"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-398",
+      "why": "rare_lesson:kabe_one_chance"
+    }
+  ],
+  "items": 400,
+  "lessons": {
+    "defense_stuck_heuristic": 161,
+    "kabe_double_one_chance": 37,
+    "kabe_no_chance": 131,
+    "kabe_one_chance": 39,
+    "kabe_suji_defense": 28,
+    "open_hand_defense": 4
+  },
+  "queue": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-completion.2026-11/review-queue.jsonl",
+  "replay_families": {
+    "akochan_tactics": 6,
+    "akochan_vs_mortal": 2,
+    "heterogeneous_table": 3,
+    "mortal_mirror": 191,
+    "mortal_sampling_sweep": 198
+  },
+  "sampled": 260,
+  "sampled_lessons": {
+    "defense_stuck_heuristic": 77,
+    "kabe_double_one_chance": 37,
+    "kabe_no_chance": 75,
+    "kabe_one_chance": 39,
+    "kabe_suji_defense": 28,
+    "open_hand_defense": 4
+  },
+  "sampled_replay_families": {
+    "akochan_tactics": 6,
+    "akochan_vs_mortal": 2,
+    "heterogeneous_table": 3,
+    "mortal_mirror": 127,
+    "mortal_sampling_sweep": 122
+  },
+  "schema": "riichiprac.q2r2-review-sample",
+  "sections": {
+    "ch8.2": 235,
+    "ch8.3": 161,
+    "ch8.4": 4
+  },
+  "seed": "q7-ch8-2026-11",
+  "selected": 400,
+  "version": 1
+}

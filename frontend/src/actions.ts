@@ -70,40 +70,6 @@ export function isCallDecision(state: GameState): boolean {
   return Boolean(state.call_offer) || state.correct_action?.type === 'pass';
 }
 
-/**
- * The two buttons a book call lesson renders: the offered call and Pass.
- *
- * The offer comes from the Rust payload (`call_offer`), so whether a Pon or a
- * Chi is available is decided by the engine, not re-derived in React.
- */
-export function callOfferActions(state: GameState): AiActionInfo[] {
-  const offer = state.call_offer;
-  if (!offer) return [];
-
-  return [
-    {
-      action: offer.action,
-      label: offer.label,
-      type: callType(offer.action),
-      tile: offer.tile,
-      tiles: offer.tiles ?? [],
-    },
-    { action: 'Pass', label: 'Pass', type: 'pass' },
-  ];
-}
-
-/** Coarse action family for a book lesson's offered call. */
-function callType(action: string): AiActionInfo['type'] {
-  switch (action) {
-    case 'Chi':
-      return 'chi';
-    case 'Kan':
-      return 'kan';
-    default:
-      return 'pon';
-  }
-}
-
 /** Whether the payload belongs to a Kan (Shouminkan or Ankan) lesson. */
 export function isKanDecision(action: CorrectAction): boolean {
   return action.type === 'kan' || action.type === 'discard';

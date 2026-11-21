@@ -152,7 +152,9 @@ describe('resetAnswer', () => {
     const table = useGameStore.getState().gameState;
     expect(table).not.toBeNull();
 
-    useGameStore.setState({ callRiichi: true, callKan: true });
+    useGameStore.setState({
+      callPreview: [{ code: '1z', isRed: false }],
+    });
     useGameStore.getState().submitAnswer({ action: 'fold', tile: '1z' });
     useGameStore.getState().peekMortal();
 
@@ -169,8 +171,8 @@ describe('resetAnswer', () => {
     expect(reset.submittedAnswer).toBeNull();
     expect(reset.dualGrade).toBeNull();
     expect(reset.peekedBeforeAnswer).toBe(false);
-    expect(reset.callRiichi).toBe(false);
-    expect(reset.callKan).toBe(false);
+    expect(reset.callPreview).toBeNull();
+    expect(reset.pendingCall).toBeNull();
     expect(reset.evaluation).toBeNull();
     expect(reset.isEvaluating).toBe(false);
   });

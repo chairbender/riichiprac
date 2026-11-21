@@ -1042,8 +1042,7 @@ the per-bucket `relaxed` count, and a shortfall reason per family
 A curated lesson pack needs selection to be scoped, not just balanced. Four
 optional filters sit before the gates:
 
-- `--section ch8` (or `ch8.2`) keeps only book sections with that prefix. A
-  Mortal-only candidate has no section and is rejected while a section scope is
+- `--section ch8` (or `ch8.2`) keeps only book sections with that prefix. A  Mortal-only candidate has no section and is rejected while a section scope is
   active, because a ch. 8 pack is a book-lesson pack.
 - `--lesson fold_to_riichi,defense_safety_chart` keeps exact lesson ids.
 - `--corpus-family` keeps only those replay family directories; selection also
@@ -1081,6 +1080,18 @@ feeds `book`, `coverage`, `table_read`, `placement` or whichever families its
 triggers name, and the quota fill balances those as usual. A lesson-scoped pack
 also needs a higher section cap (`--max-section-share`, default 0.20) because
 three ch. 8 sections cannot fill 100 slots under a 20-scenario per-section cap.
+
+**A base ships in one pack (Q7).** Per-lesson coverage is the sum of the hosted
+packs' `lesson_counts`, so selection drops any decision that another pack's body
+already ships (`already_packed` in the funnel's rejection counts; a re-run of
+the same pack id does not exclude its own rows). It reads the assembled
+`pack_scenarios` rows, not the wider `selected_scenarios` staging table, so a
+candidate an earlier pack selected and then dropped stays available. A later
+section pack that adds bases to an earlier lesson therefore ships *new*
+positions rather than reselling the earlier pack's bases, and the manifest sum
+stays the real reviewed-base count. A lesson learned by more than one pack is
+normal — the picker's default row follows the pack with the most bases — but the
+positions never repeat.
 
 ### Dedupe
 
@@ -1149,7 +1160,10 @@ additions make a ~2,000-candidate queue reviewable:
 The mechanical pass is still a gate, not a judgement: it rejects out-of-scope
 sections/lessons, non-book or contested labels, report/lesson mismatches,
 illegal answers, duplicate exact/visible states and dirty walks. The ch. 8
-scope also rejects a ready hand (that is an offense drill); the ch. 7 scope
+scope also rejects a ready hand (that is an offense drill) for every lesson
+except `suji_trap_riichi`, whose decision is a riichi/dama question and is
+tenpai by definition (Q7 added that lesson and ch8.4's `open_hand_defense` to
+the scope); the ch. 7 scope
 keeps it, because a riichi/dama decision is tenpai by definition. The ch. 5
 scope rejects it too: `honitsu_decision` needs 1-2 shanten and refuses a discard
 into tenpai, `chiitoi_vs_toitoi` is exactly 1-away, `pinfu_head` needs two or
@@ -2133,6 +2147,26 @@ base of the three lessons under 120. Details:
 book sections and makes replay the default source for covered lessons. Per-lesson
 coverage, the four missing classifiers, the source-tier picker and the per-section
 pack plan are in [`replay-first-rollout.md`](replay-first-rollout.md).
+
+**Q7 (ch8 completion, 2026-11-21).** Pack
+`replay.ch8-completion.2026-11`: 386 bases, 0 variants, six ch8.2–ch8.4
+lessons, selected lesson-scoped over the same 1,542-game corpus. Two supply
+facts made it work: the three thin ch8 rows were a pack-size share (a
+lesson-scoped selection recovers them), and `kabe_no_chance` was unreachable
+because `suji_kabe_safety` claimed every complete-blockade board through
+`CLASSIFIERS` order. `KabeNoChance` now precedes it, `CLASSIFIER_VERSION` is
+`4`, and the book-label pass moved 155 stable labels to `kabe_no_chance`
+(`0 → 155`; `suji_kabe_safety` `1,755 → 1,600`) with every other lesson
+unchanged. The selection rejected **63 already-packed** decisions, the new
+cross-pack rule above, so the two packs share lessons but never positions.
+Mechanical review took `--chapter ch8` (now naming `open_hand_defense` and
+`suji_trap_riichi`; the ready-hand rule is lesson-scoped for the suji-trap
+declaration): 400/400 accepted, a 260-row sample includes every base of the four
+lessons under 120, and coverage is 26 of 28 lesson ids replay-default. The two
+remaining rows (`kabe_suji_defense` 27, `open_hand_defense` 4) are opt-in below
+the floor and `suji_trap_riichi` stays generated-only (zero stable labels).
+Details: [`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md), evidence:
+[`testdata/reports/q7-ch8/`](testdata/reports/q7-ch8/).
 
 ## F1 acceptance evidence
 

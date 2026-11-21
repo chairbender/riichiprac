@@ -11,8 +11,15 @@
  * Pure data: no React, no DOM, no camera. `overlay.tsx` renders the result.
  */
 
+import type { CallCopy } from '../callChoices';
 import { tileSortValue } from '../display';
-import type { Seat, SnapshotTile, TableSnapshot, TileFaceId } from './contract';
+import type {
+  HandTileRef,
+  Seat,
+  SnapshotTile,
+  TableSnapshot,
+  TileFaceId,
+} from './contract';
 
 /**
  * One interactive hand tile, in the order `HandDock` shows it.
@@ -36,6 +43,41 @@ function tileCode(face: TileFaceId): { code: string; isRed: boolean } {
   return face.endsWith('r')
     ? { code: face.slice(0, -1), isRed: true }
     : { code: face, isRed: false };
+}
+
+/**
+ * The board references for the hand copies a call preview or pick names.
+ *
+ * The call model speaks in tile codes plus the red-five flag; the renderer's
+ * lift speaks in seat/zone/slot. This maps one to the other through the same
+ * snapshot the projected buttons use, so the raised tile is the button's tile.
+ */
+export function liftedHandRefs(
+  snapshot: TableSnapshot,
+  copies: readonly CallCopy[] | null | undefined,
+): HandTileRef[] {
+  if (!copies || copies.length === 0) return [];
+  const human = snapshot.humanSeat;
+  const seat = snapshot.seats[human];
+  if (!seat) return [];
+
+  const entries: SnapshotTile[] = [
+    ...seat.concealed,
+    ...(seat.draw ? [seat.draw] : []),
+  ];
+  const refs: HandTileRef[] = [];
+  for (const tile of entries) {
+    const { code, isRed } = tileCode(tile.face);
+    if (!copies.some((copy) => copy.code === code && copy.isRed === isRed)) {
+      continue;
+    }
+    refs.push({
+      seat: human,
+      zone: tile.zone as 'hand' | 'draw',
+      slot: tile.slot,
+    });
+  }
+  return refs;
 }
 
 /**

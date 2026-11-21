@@ -14,7 +14,13 @@ import { layoutBoard, poseMatrix } from './boardLayout';
 import type { BoardLayout } from './boardLayout';
 import { buildBoardInstances, NEUTRAL_ATLAS_RECT } from './boardMesh';
 import type { BoardInstance } from './boardMesh';
-import { HOVER_LIFT_UNITS, hoveredInstanceIndex, withHoverLift } from './hover';
+import {
+  HOVER_LIFT_UNITS,
+  hoveredInstanceIndex,
+  liftedInstanceIndexes,
+  withHoverLift,
+  withLiftedTiles,
+} from './hover';
 import { withVerticalLift } from './motion';
 
 const layout = layoutBoard(boardFixture());
@@ -81,6 +87,30 @@ describe('3D hover lift', () => {
     expect(handIndex).not.toBe(drawIndex);
     const lifted = withHoverLift(instances, layout, handRef);
     expect(lifted[drawIndex].matrix).toBe(instances[drawIndex].matrix);
+  });
+
+  it('raises every named tile at once for a call preview or a multi-pick', () => {
+    const hand = humanHand(layout);
+    const refs = [hand[0], hand[2], hand[4]].map((index) => {
+      const tile = layout.tiles[index];
+      return {
+        seat: tile.seat as 0,
+        zone: tile.zone as 'hand' | 'draw',
+        slot: tile.slot,
+      };
+    });
+
+    expect(liftedInstanceIndexes(layout, refs)).toEqual([hand[0], hand[2], hand[4]]);
+    const lifted = withLiftedTiles(instances, layout, refs);
+    for (const index of [hand[0], hand[2], hand[4]]) {
+      const base = poseMatrix(layout.tiles[index].pose);
+      expect(lifted[index].matrix[13]).toBeCloseTo(
+        base[13] + HOVER_LIFT_UNITS,
+        9,
+      );
+    }
+    // A tile that was not named stays exactly where it was.
+    expect(lifted[hand[1]]).toBe(instances[hand[1]]);
   });
 
   it('applies the full lift with the deal-in lift at zero (reduced motion)', () => {

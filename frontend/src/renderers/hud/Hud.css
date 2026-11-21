@@ -146,8 +146,12 @@
   outline-offset: 2px;
 }
 
-/* The one hand panel (§2, §5) --------------------------------------------- */
+/* The one panel: the post-answer result card (§2, §5) --------------------- */
 
+/*
+ * Pre-answer there is no panel at all (user change 2026-11-21): only the
+ * isolated call row below. This surface is the post-answer result card.
+ */
 .hud-panel {
   position: absolute;
   display: flex;
@@ -163,137 +167,78 @@
   pointer-events: auto;
 }
 
-/* The hint row: always visible, and the only row left under an open sheet. */
-.hud-hand-rail {
+/* The isolated pre-answer call row (user change 2026-11-21) ---------------- */
+
+/*
+ * No surface: the buttons are the only thing drawn. The rect comes from
+ * `hudLayout()`; its right edge is the hand band's right edge, and the inner
+ * flow is right-aligned, so more calls grow the row towards the left.
+ *
+ * The row itself takes no taps (like the HUD root); only the controls do.
+ */
+.hud-call-bar {
+  position: absolute;
   display: flex;
-  align-items: center;
-  gap: var(--hud-space);
-  min-height: 24px;
-  font-size: var(--hud-text-sm);
-  color: var(--hud-text);
-}
-
-/*
- * H3: the live-region instruction and the pre-answer Mortal chip. The hint keeps
- * primary text because it is read through the sheet's scrim (§8); the chip is
- * secondary and may collapse to its two-word state.
- */
-.hud-hand-rail__hint {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hud-mortal-chip {
-  flex: 0 0 auto;
-  max-width: 45%;
-  padding: 2px 8px;
-  overflow: hidden;
-  color: var(--hud-text-muted);
-  font-size: var(--hud-text-xs);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  border: 1px solid var(--hud-border-color);
-  border-radius: var(--hud-radius-chip);
-}
-
-.hud-mortal-chip[data-tone='ready'] {
-  color: var(--hud-ok);
-  border-color: var(--hud-ok);
-}
-
-.hud-mortal-chip[data-tone='bad'] {
-  color: var(--hud-bad);
-  border-color: var(--hud-bad);
-}
-
-.hud-mortal-chip[data-tone='loading'] {
-  color: var(--hud-text-muted);
-}
-
-/*
- * H5: the chip is the verdict sheet's pre-answer trigger. The hint row is 24 px
- * by contract (§5), so the chip keeps that height rather than growing the panel
- * to a tap-sized row; it meets the 24 px minimum target and the sheet it opens
- * is where the full-size controls (Peek, Retry) live.
- */
-.hud-mortal-chip--trigger {
+  align-items: flex-end;
+  justify-content: flex-end;
   box-sizing: border-box;
-  min-height: 24px;
-  padding: 2px 12px;
-  font: inherit;
-  font-size: var(--hud-text-xs);
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+  pointer-events: none;
 }
 
-.hud-mortal-chip--trigger:hover {
-  background-color: rgba(26, 42, 60, 0.94);
+.hud-call-bar > * {
+  pointer-events: none;
 }
 
-.hud-mortal-chip--trigger:focus-visible {
-  outline: 2px solid var(--hud-focus);
-  outline-offset: 2px;
-}
-
-.hud-action-rail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  /* 4 px between wrapped rows: the panel's own row gap, so 128 px fits. */
-  gap: 4px;
-  min-height: var(--hud-tap);
+/* Only the controls themselves take a tap; the row between them does not. */
+.hud-call-bar button,
+.hud-call-bar a {
+  pointer-events: auto;
 }
 
 /*
- * `ActionRail`'s own flow: the call's buttons and the Riichi/Kan toggles are
- * siblings in one wrapping row, so a narrow stage wraps between controls rather
- * than stacking two bars. `min-width: 0` lets a group shrink instead of pushing
- * the panel wider than its rect.
+ * `ActionRail`'s own flow: the remaining drill actions and the shared call bar
+ * are siblings in one wrapping row, so a narrow stage wraps between controls
+ * rather than stacking two bars. `min-width: 0` lets a group shrink instead of
+ * overflowing its rect, and the right alignment keeps the group over the right
+ * side of the hand.
  */
 .hud-action-rail-controls {
   display: flex;
   flex: 1;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
   min-width: 0;
   min-height: var(--hud-tap);
 }
 
-/* The hand rail's single row: the instruction, then the Mortal chip. */
-.hud-hand-rail-row {
-  display: flex;
-  align-items: center;
-  gap: var(--hud-space);
-  width: 100%;
+.hud-call-bar .call-controls {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.hud-call-bar .action-bar,
+.hud-call-bar .call-controls {
   min-width: 0;
 }
 
-/* The 2D strips' own surfaces are already dark; the panel supplies the room. */
-.hud-action-rail .action-bar,
-.hud-action-rail .call-toggles {
-  min-width: 0;
+/* The drill's action strip is bare too: isolated buttons, no surrounding box. */
+.hud-call-bar .action-bar {
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
 }
 
-.hud-action-rail .action-bar {
-  border: 1px solid var(--hud-border-color);
-  border-radius: var(--hud-radius-control);
-  background-color: var(--hud-surface-solid);
-}
-
-.hud-action-rail .action-button,
-.hud-action-rail .riichi-toggle,
-.hud-action-rail .kan-toggle {
+.hud-call-bar .action-button,
+.hud-call-bar .call-button,
+.hud-call-bar .call-controls-cancel {
   min-height: var(--hud-tap);
 }
 
-.hud-action-rail .action-button:focus-visible,
-.hud-action-rail .riichi-toggle:focus-visible,
-.hud-action-rail .kan-toggle:focus-visible {
+.hud-call-bar .action-button:focus-visible,
+.hud-call-bar .call-button:focus-visible,
+.hud-call-bar .call-controls-cancel:focus-visible {
   outline: 2px solid var(--hud-focus);
   outline-offset: 2px;
 }
@@ -659,14 +604,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   border: var(--hud-border);
   background-color: var(--hud-surface-solid);
-}
-
-/*
- * With a sheet open the scrim dims the panel; the hint stays legible at about
- * 5:1 because it uses primary text, not `--hud-text-muted` (§8).
- */
-.hud-panel[data-dimmed='true'] .hud-hand-rail {
-  color: var(--hud-text);
 }
 
 /* Toast stack (§2) -------------------------------------------------------- */

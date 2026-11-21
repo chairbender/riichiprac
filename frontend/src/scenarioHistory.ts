@@ -3,7 +3,7 @@
  *
  * Every dealt hand becomes one history entry. The entry carries a full
  * {@link ScenarioSnapshot} in `history.state`: the table JSON, how it was drawn,
- * and the answer state (submitted answer, verdict, peek, armed toggles). The URL
+ * and the answer state (submitted answer, verdict, peek). The URL
  * is left alone, so this is session-level navigation rather than a shareable
  * deep link; see `scenario-history-plan.md` for why deep linking is not part of
  * this change.
@@ -49,10 +49,6 @@ export interface ScenarioSnapshot {
   dualGrade: DualGrade | null;
   /** Whether Mortal's line was revealed before answering. */
   peekedBeforeAnswer: boolean;
-  /** Armed Riichi declaration, when the player hadn't answered yet. */
-  callRiichi: boolean;
-  /** Armed Kan call, when the player hadn't answered yet. */
-  callKan: boolean;
   /** Mortal's ranking for this table, when it had been computed. */
   evaluation: AiEvaluation | null;
   /** Agreement-filter report for a hand dealt through the filter. */
@@ -86,8 +82,6 @@ export function withoutAnswerState(
     submittedAnswer: null,
     dualGrade: null,
     peekedBeforeAnswer: false,
-    callRiichi: false,
-    callKan: false,
     evaluation: null,
   };
 }
@@ -135,14 +129,8 @@ export function readScenarioSnapshot(state: unknown): ScenarioSnapshot | null {
   const dualGrade = readObjectOrNull(raw.dualGrade);
   if (dualGrade === undefined) return null;
 
-  const callRiichi = raw.callRiichi;
-  const callKan = raw.callKan;
   const peekedBeforeAnswer = raw.peekedBeforeAnswer;
-  if (
-    typeof callRiichi !== 'boolean' ||
-    typeof callKan !== 'boolean' ||
-    typeof peekedBeforeAnswer !== 'boolean'
-  ) {
+  if (typeof peekedBeforeAnswer !== 'boolean') {
     return null;
   }
 
@@ -165,8 +153,6 @@ export function readScenarioSnapshot(state: unknown): ScenarioSnapshot | null {
     requireAgreement,
     submittedAnswer,
     dualGrade: dualGrade as DualGrade | null,
-    callRiichi,
-    callKan,
     peekedBeforeAnswer,
     evaluation: evaluation as AiEvaluation | null,
     mortalAgreement: mortalAgreement as MortalAgreementReport | null,
@@ -224,10 +210,10 @@ export class ScenarioHistory {
    * Keep the current entry in step with the on-screen hand.
    *
    * Called whenever the answer state changes (answer submitted, verdict arrived,
-   * toggle armed, description typed), so the entry always describes the same
-   * hand and its export note. The answer state recorded here is not restored:
-   * Back/Forward strips it (`withoutAnswerState`), so returning to this hand
-   * shows it unanswered.
+   * description typed), so the entry always describes the same hand and its
+   * export note. The answer state recorded here is not restored: Back/Forward
+   * strips it (`withoutAnswerState`), so returning to this hand shows it
+   * unanswered.
    * A no-op before the first commit, after navigating to a foreign entry, and for
    * a snapshot of a different table: that one belongs to a deal or import that is
    * about to `commit` itself, and writing it here would overwrite the entry Back

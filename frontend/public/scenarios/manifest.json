@@ -91,6 +91,37 @@
       "data_commercial_use": false
     },
     {
+      "id": "replay.ch8-completion.2026-11",
+      "path": "replay.ch8-completion.2026-11-5d5ba61a4538.json.gz",
+      "sha256": "5d5ba61a45383cf03a4f08ea8c1931f01ea5ea6fed8d2345d2e3864330afd184",
+      "bytes": 330933,
+      "scenario_count": 386,
+      "lesson_ids": [
+        "defense_stuck_heuristic",
+        "kabe_double_one_chance",
+        "kabe_no_chance",
+        "kabe_one_chance",
+        "kabe_suji_defense",
+        "open_hand_defense"
+      ],
+      "lesson_counts": {
+        "defense_stuck_heuristic": 151,
+        "kabe_double_one_chance": 36,
+        "kabe_no_chance": 129,
+        "kabe_one_chance": 39,
+        "kabe_suji_defense": 27,
+        "open_hand_defense": 4
+      },
+      "book_sections": [
+        "ch8.2",
+        "ch8.3",
+        "ch8.4"
+      ],
+      "licence": "CC-BY-4.0",
+      "requires_model": false,
+      "data_commercial_use": false
+    },
+    {
       "id": "replay.ch8-defense-multi-threat.2026-11",
       "path": "replay.ch8-defense-multi-threat.2026-11-15fe519c65df.json.gz",
       "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",

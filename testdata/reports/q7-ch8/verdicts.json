@@ -1,0 +1,1607 @@
+{
+  "note": "q2r2/q7 mechanical review: stable ch8 book label, legal answer, unique visible state, clean walk; a ready hand is out of shape except for suji_trap_riichi",
+  "schema": "riichiprac.review-verdicts",
+  "verdicts": [
+    {
+      "queue_id": "replay.ch8-completion.2026-11-001",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-002",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-003",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-004",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-005",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-006",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-007",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-008",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-009",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-010",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-011",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-012",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-013",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-014",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-015",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-016",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-017",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-018",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-019",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-020",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-021",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-022",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-023",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-024",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-025",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-026",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-027",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-028",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-029",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-030",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-031",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-032",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-033",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-034",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-035",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-036",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-037",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-038",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-039",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-040",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-041",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-042",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-043",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-044",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-045",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-046",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-047",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-048",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-049",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-050",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-051",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-052",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-053",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-054",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-055",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-056",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-057",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-058",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-059",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-060",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-061",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-062",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-063",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-064",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-065",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-066",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-067",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-068",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-069",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-070",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-071",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-072",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-073",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-074",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-075",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-076",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-077",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-078",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-079",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-080",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-081",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-082",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-083",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-084",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-085",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-086",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-087",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-088",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-089",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-090",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-091",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-092",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-093",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-094",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-095",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-096",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-097",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-098",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-099",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-100",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-101",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-102",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-103",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-104",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-105",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-106",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-107",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-108",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-109",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-110",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-111",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-112",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-113",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-114",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-115",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-116",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-117",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-118",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-119",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-120",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-121",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-122",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-123",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-124",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-125",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-126",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-127",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-128",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-129",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-130",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-131",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-132",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-133",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-134",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-135",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-136",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-137",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-138",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-139",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-140",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-141",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-142",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-143",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-144",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-145",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-146",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-147",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-148",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-149",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-150",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-151",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-152",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-153",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-154",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-155",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-156",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-157",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-158",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-159",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-160",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-161",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-162",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-163",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-164",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-165",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-166",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-167",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-168",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-169",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-170",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-171",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-172",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-173",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-174",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-175",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-176",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-177",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-178",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-179",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-180",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-181",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-182",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-183",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-184",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-185",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-186",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-187",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-188",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-189",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-190",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-191",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-192",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-193",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-194",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-195",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-196",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-197",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-198",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-199",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-200",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-201",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-202",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-203",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-204",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-205",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-206",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-207",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-208",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-209",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-210",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-211",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-212",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-213",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-214",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-215",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-216",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-217",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-218",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-219",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-220",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-221",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-222",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-223",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-224",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-225",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-226",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-227",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-228",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-229",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-230",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-231",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-232",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-233",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-234",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-235",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-236",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-237",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-238",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-239",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-240",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-241",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-242",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-243",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-244",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-245",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-246",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-247",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-248",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-249",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-250",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-251",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-252",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-253",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-254",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-255",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-256",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-257",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-258",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-259",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-260",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-261",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-262",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-263",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-264",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-265",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-266",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-267",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-268",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-269",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-270",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-271",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-272",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-273",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-274",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-275",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-276",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-277",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-278",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-279",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-280",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-281",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-282",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-283",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-284",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-285",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-286",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-287",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-288",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-289",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-290",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-291",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-292",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-293",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-294",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-295",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-296",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-297",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-298",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-299",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-300",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-301",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-302",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-303",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-304",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-305",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-306",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-307",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-308",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-309",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-310",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-311",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-312",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-313",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-314",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-315",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-316",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-317",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-318",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-319",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-320",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-321",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-322",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-323",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-324",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-325",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-326",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-327",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-328",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-329",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-330",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-331",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-332",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-333",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-334",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-335",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-336",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-337",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-338",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-339",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-340",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-341",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-342",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-343",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-344",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-345",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-346",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-347",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-348",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-349",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-350",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-351",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-352",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-353",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-354",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-355",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-356",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-357",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-358",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-359",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-360",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-361",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-362",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-363",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-364",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-365",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-366",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-367",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-368",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-369",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-370",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-371",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-372",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-373",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-374",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-375",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-376",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-377",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-378",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-379",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-380",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-381",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-382",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-383",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-384",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-385",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-386",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-387",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-388",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-389",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-390",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-391",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-392",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-393",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-394",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-395",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-396",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-397",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-398",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-399",
+      "verdict": "accepted"
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-400",
+      "verdict": "accepted"
+    }
+  ],
+  "version": 1
+}

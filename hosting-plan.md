@@ -435,23 +435,26 @@ No mirror URL is a normal skipped run (exit 0). **Google Drive is a
 corpus/DB backup only** (rclone `copy` + SQLite snapshots + `rclone check`) and
 is never in the browser's pack chain.
 
-**Committed packs.** The Pages artifact now ships six curated packs:
+**Committed packs.** The Pages artifact now ships seven curated packs:
 `replay.ch8-defense.2026-11` (2,211 bases, 2,260,809 body bytes),
 `replay.ch8-defense-multi-threat.2026-11` (764 bases, 591,096 bytes),
+`replay.ch8-completion.2026-11` (386 bases, 330,933 bytes),
 `replay.ch7-riichi-dama.2026-11` (2,846 bases, 2,176,750 bytes),
 `replay.ch5-values.2026-11` (1,670 bases, 1,176,300 bytes),
 `replay.ch9-seating-calls.2026-11` (629 bases, 363,061 bytes) and
 `replay.ch34-shapes.2026-11` (822 bases, 724,376 bytes), with a
-4,670-byte manifest (7,292,392 body bytes in total). `scripts/check-ch8-pack.mjs
+5,560-byte manifest (7,623,325 body bytes in total). `scripts/check-ch8-pack.mjs
 --allow-no-variants` checks each pack's content (`--chapter ch7`,
 `--chapter ch5`, `--chapter ch9` and `--chapter ch34` select the ch. 7, ch. 5,
 ch. 9 and ch. 3/4 lesson
-sets) and `scripts/check-pack-hosting.mjs` checks the hosting envelope
+sets, and `--pack replay.ch8-completion.2026-11` selects the completion pack)
+and `scripts/check-pack-hosting.mjs` checks the hosting envelope
 for the whole set. The replay-first rollout
 ([`replay-first-rollout.md`](replay-first-rollout.md)) shipped its default on
-2026-11-20: replay is the default source for the 22 hosted lessons at or above
-the 40-review-base floor and the remaining lessons keep generated. Each new
-section pack raises its lessons' counts and flips those lessons automatically;
+2026-11-20: replay is the default source for the 26 of 28 lesson ids at or
+above the 40-review-base floor and the remaining lessons keep generated. Each
+new section pack raises its lessons' counts and flips those lessons
+automatically;
 the 50 MB same-origin budget and the mirror threshold are unchanged, so the same
 manifest-plus-lazy-bodies model scales to the section packs. The generated-first
 rollback is documented in the rollout doc. The Q1 fixture is still reproducible
