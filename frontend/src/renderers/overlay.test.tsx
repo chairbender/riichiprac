@@ -536,24 +536,13 @@ describe('3D overlay: compass (3D-09)', () => {
       expect(`${lead}${tail}`).toBe(score.dataset.score);
       expect(tail).toBe('00');
     }
-    /*
-     * The centre group: the state must match, but the 3D compass prints the
-     * round wind as a character (`南3`) where the 2D plan spells it (`South3`),
-     * by user request (2026-11-21). Compare the count exactly and the round
-     * through the character map.
-     */
-    const sceneWallText = sceneCompass
-      .querySelector('.renderer-3d-compass-wall')
-      ?.textContent?.replace(/\s+/g, '');
-    const planRound = (planWallText ?? '').replace(/(\d+)$/, '');
-    const planCount = (planWallText ?? '').replace(planRound, '');
-    const roundGlyph: Record<string, string> = {
-      East: '東',
-      South: '南',
-      West: '西',
-      North: '北',
-    };
-    expect(sceneWallText).toBe(`${roundGlyph[planRound] ?? planRound}${planCount}`);
+    // The default (desktop) compass prints the round exactly as the 2D plan
+    // does; the mobile composition uses the wind character (checked below).
+    const sceneWallText = () =>
+      sceneCompass
+        .querySelector('.renderer-3d-compass-wall')
+        ?.textContent?.replace(/\s+/g, '');
+    expect(sceneWallText()).toBe(planWallText);
     // No stick icon in the 3D compass: the 3D models on the felt are the
     // markers, and the corner names below still announce the declaration.
     expect(sceneCompass.querySelectorAll('.renderer-3d-compass-stick')).toHaveLength(
@@ -569,6 +558,29 @@ describe('3D overlay: compass (3D-09)', () => {
       accessibleNames(sceneCompass).filter((name) => name.includes(', riichi')),
     ).toHaveLength(planSticks);
     expect(accessibleNames(sceneCompass).join(' ')).not.toContain('5 sticks');
+
+    // Mobile (2026-11-21): the same state, the round as a wind character.
+    cleanup();
+    const mobileView = render(
+      <TableCompass snapshot={table} rect={rect} profile="mobile" />,
+    );
+    const mobileCompass = mobileView.container.firstElementChild;
+    if (!mobileCompass) throw new Error('the mobile compass did not render');
+    const planRound = (planWallText ?? '').replace(/(\d+)$/, '');
+    const planCount = (planWallText ?? '').replace(planRound, '');
+    const roundGlyph: Record<string, string> = {
+      East: '東',
+      South: '南',
+      West: '西',
+      North: '北',
+    };
+    expect(
+      mobileCompass
+        .querySelector('.renderer-3d-compass-wall')
+        ?.textContent?.replace(/\s+/g, ''),
+    ).toBe(`${roundGlyph[planRound] ?? planRound}${planCount}`);
+    // The accessible names are unchanged: only the printed round differs.
+    expect(accessibleNames(mobileCompass)).toEqual(planNames);
   });
 
   it('sits on the projected well and keeps the well’s own centre', () => {

@@ -63,15 +63,20 @@ export interface CompassPlate {
  * X lays it on the felt (+Z becomes +Y), and the translation puts the lowest
  * point — the bevel, not the face — exactly at y = 0.
  */
-export function createCompassPlate(): CompassPlate {
-  const geometry = new ExtrudeGeometry(compassPlateShape(), {
+export function createCompassPlate(
+  sizeUnits: number = COMPASS_PLATE.sizeUnits,
+): CompassPlate {
+  const geometry = new ExtrudeGeometry(
+    compassPlateShape(sizeUnits, COMPASS_PLATE.cornerRadiusUnits),
+    {
     depth: COMPASS_PLATE.thicknessUnits,
     bevelEnabled: true,
     bevelThickness: COMPASS_PLATE.bevelUnits,
     bevelSize: COMPASS_PLATE.bevelUnits,
-    bevelSegments: 2,
-    curveSegments: 10,
-  });
+      bevelSegments: 2,
+      curveSegments: 10,
+    },
+  );
   geometry.rotateX(-Math.PI / 2);
   geometry.computeBoundingBox();
   const bottom = geometry.boundingBox?.min.y ?? 0;

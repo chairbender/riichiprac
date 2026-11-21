@@ -29,6 +29,7 @@ import {
   readTierEnvironment,
   readThreeFallback,
   rememberThreeFallback,
+  layoutProfileFor,
   resolveQualityTier,
   threeViewUnavailableReason,
 } from './capabilities';
@@ -619,6 +620,12 @@ export function RendererHost({
   // mid-session downgrade is the frame-time monitor's job.
   const environment = useMemo(() => readTierEnvironment(), []);
   const storedTier = useMemo(() => readStoredQualityTier(), []);
+  /*
+   * The board composition (2026-11-21): every change the phone work made is
+   * mobile-only, so the same one answer goes to the scene and to the DOM
+   * compass. `high` quality is the one decision that applies to every device.
+   */
+  const layoutProfile = useMemo(() => layoutProfileFor(environment), [environment]);
   const tierResolution = useMemo(
     () =>
       resolveQualityTier({
@@ -910,7 +917,11 @@ export function RendererHost({
           />
         )}
         {status.state === 'ready' && debug !== 'hero' && (
-          <TableCompass snapshot={snapshot} rect={compassRect} />
+          <TableCompass
+            snapshot={snapshot}
+            rect={compassRect}
+            profile={layoutProfile}
+          />
         )}
         {showFallback && fallback}
         {debug === 'hero' && status.state === 'ready' && (

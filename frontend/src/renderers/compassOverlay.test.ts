@@ -17,6 +17,7 @@ import {
   COMPASS_SIDES,
   COMPASS_SIDE_LABELS,
   MIN_COMPASS_PX,
+  MIN_COMPASS_PX_MOBILE,
   compassBox,
   compassFontPx,
   compassView,
@@ -80,9 +81,9 @@ describe('compass model', () => {
       'West wind, 27000 points, riichi',
       'North wind, 28000 points',
     ]);
-    // The visible round is the wind character (2026-11-21); the accessible
-    // name keeps the spelled-out word, which is what the drift test compares.
-    expect(view.round).toBe('南3');
+    // Desktop is the default profile: the round keeps its spelled word. The
+    // mobile composition prints the wind character instead (below).
+    expect(view.round).toBe('South 3');
     expect(view.tilesRemaining).toBe(42);
     expect(view.label).toBe('Round South 3, 42 tiles remaining');
     // Tenhou's split plate, lossless: lead + tail is the score.
@@ -131,24 +132,30 @@ describe('compass model', () => {
     expect(formatCompassScore(Number.NaN)).toEqual({ lead: '000', tail: '00' });
   });
 
-  it('sizes the DOM box from the well, per axis, centred on it', () => {
-    const box = compassBox({
+  it('sizes the DOM box from the well, centred on it', () => {
+    const rect = {
       left: 100,
       top: 40,
       width: 300,
       height: 180,
       centreX: 250,
       centreY: 130,
-    });
-    // The projected plate is a trapezoid, so its box is wider than tall and the
-    // readout follows it (2026-11-21): the left and right corners are the ones
-    // that run out of room first.
-    expect(box).toEqual({ left: 100, top: 40, width: 300, height: 180 });
-    expect(box.left + box.width / 2).toBe(250);
-    expect(box.top + box.height / 2).toBe(130);
+    };
+    // Desktop (the default) keeps the committed square: the well's shorter
+    // side. Mobile follows the plate's rectangle per axis (2026-11-21), because
+    // its score corners are what run out of room first.
+    const box = compassBox(rect);
+    expect(box).toEqual({ left: 160, top: 40, width: 180, height: 180 });
+    const mobile = compassBox(rect, 'mobile');
+    expect(mobile).toEqual({ left: 100, top: 40, width: 300, height: 180 });
+    expect(mobile.left + mobile.width / 2).toBe(250);
+    expect(mobile.top + mobile.height / 2).toBe(130);
     // The type follows the shorter axis, inside a legible pair of bounds.
     expect(compassFontPx(box)).toBeCloseTo(180 * 0.08, 9);
-    expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(9);
+    expect(compassFontPx(mobile)).toBeCloseTo(180 * 0.08, 9);
+    // The floor is 11 px on desktop and 9 px in the mobile box.
+    expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(11);
+    expect(compassFontPx({ ...box, width: 20, height: 20 }, 'mobile')).toBe(9);
     expect(compassFontPx({ ...box, width: 2000, height: 2000 })).toBe(30);
 
     // A stage whose well projects below the floor keeps a legible box, still
@@ -165,6 +172,13 @@ describe('compass model', () => {
     expect(tiny.height).toBe(MIN_COMPASS_PX);
     expect(tiny.left + tiny.width / 2).toBe(195);
     expect(tiny.top + tiny.height / 2).toBe(418);
+    // The mobile box has its own, smaller floor and follows the well's axes.
+    const tinyMobile = compassBox(
+      { left: 156, top: 384, width: 78, height: 68, centreX: 195, centreY: 418 },
+      'mobile',
+    );
+    expect(tinyMobile.width).toBe(MIN_COMPASS_PX_MOBILE);
+    expect(tinyMobile.height).toBe(MIN_COMPASS_PX_MOBILE);
   });
 });
 
@@ -212,29 +226,38 @@ describe('compass projection', () => {
       expect(origin.y, viewport.name).toBeGreaterThanOrEqual(box.top);
       expect(origin.y, viewport.name).toBeLessThanOrEqual(box.top + box.height);
 
-      // The box follows the well's rectangle — each axis independent, because
-      // the projected plate is wider than tall — and clamps to the legibility
-      // floor per axis. Above the floor it never spills past the well.
+      // Desktop keeps the committed square: the well's shorter side, floored.
+      const wellMin = Math.min(well.width, well.height);
       expect(box.width, viewport.name).toBeCloseTo(
-        Math.max(well.width, MIN_COMPASS_PX),
+        Math.max(wellMin, MIN_COMPASS_PX),
         6,
       );
       expect(box.height, viewport.name).toBeCloseTo(
-        Math.max(well.height, MIN_COMPASS_PX),
+        Math.max(wellMin, MIN_COMPASS_PX),
         6,
       );
-      if (well.width >= MIN_COMPASS_PX) {
+      if (wellMin >= MIN_COMPASS_PX) {
         expect(box.left, viewport.name).toBeGreaterThanOrEqual(well.left - 1e-6);
+        expect(box.top, viewport.name).toBeGreaterThanOrEqual(well.top - 1e-6);
         expect(box.left + box.width, viewport.name).toBeLessThanOrEqual(
           well.left + well.width + 1e-6,
         );
-      }
-      if (well.height >= MIN_COMPASS_PX) {
-        expect(box.top, viewport.name).toBeGreaterThanOrEqual(well.top - 1e-6);
         expect(box.top + box.height, viewport.name).toBeLessThanOrEqual(
           well.top + well.height + 1e-6,
         );
       }
+
+      // The mobile box follows the well's rectangle per axis, with its own
+      // smaller floor (2026-11-21).
+      const mobile = compassBox(well, 'mobile');
+      expect(mobile.width, viewport.name).toBeCloseTo(
+        Math.max(well.width, MIN_COMPASS_PX_MOBILE),
+        6,
+      );
+      expect(mobile.height, viewport.name).toBeCloseTo(
+        Math.max(well.height, MIN_COMPASS_PX_MOBILE),
+        6,
+      );
 
       // And it stays on stage.
       expect(box.left, viewport.name).toBeGreaterThanOrEqual(0);

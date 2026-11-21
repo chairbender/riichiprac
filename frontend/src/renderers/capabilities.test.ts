@@ -22,6 +22,7 @@ import {
   readThreeFallback,
   readTierEnvironment,
   rememberThreeFallback,
+  layoutProfileFor,
   resolveQualityTier,
   resolveQualityTierFromInputs,
   storeQualityTier,
@@ -577,5 +578,32 @@ describe('the unavailable explanation (3D-11)', () => {
         unavailable: null,
       }),
     ).toMatch(/not supported in this browser/);
+  });
+});
+
+describe('the mobile layout profile (2026-11-21)', () => {
+  it('is mobile only for a coarse pointer on a short-sided stage', () => {
+    expect(
+      layoutProfileFor(
+        environment({ touchPrimary: true, viewport: { width: 844, height: 390 } }),
+      ),
+    ).toBe('mobile');
+    expect(
+      layoutProfileFor(
+        environment({ touchPrimary: true, viewport: { width: 412, height: 915 } }),
+      ),
+    ).toBe('mobile');
+    // A tablet is not a phone: the original board stays.
+    expect(
+      layoutProfileFor(
+        environment({ touchPrimary: true, viewport: { width: 1024, height: 768 } }),
+      ),
+    ).toBe('desktop');
+    // Nor is a desktop window with a mouse.
+    expect(
+      layoutProfileFor(
+        environment({ viewport: { width: 412, height: 915 } }),
+      ),
+    ).toBe('desktop');
   });
 });

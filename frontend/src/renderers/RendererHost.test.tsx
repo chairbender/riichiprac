@@ -742,12 +742,12 @@ describe('RendererHost compass overlay (3D-09)', () => {
     await waitFor(() => expect(hostMock.state.live).toBe(1));
 
     const compass = await screen.findByRole('group', { name: 'Compass' });
-    // The readout follows the well's rectangle per axis (2026-11-21): the
-    // projected plate is wider than tall, and the side score corners are what
-    // need the room. Centred on the well's projected centre.
-    expect(compass.style.left).toBe('300px');
+    // jsdom is a desktop environment, so the committed square applies: the
+    // well's shorter side, centred on its projected centre. The mobile box
+    // follows the well's rectangle per axis (2026-11-21).
+    expect(compass.style.left).toBe('330px');
     expect(compass.style.top).toBe('200px');
-    expect(compass.style.width).toBe('240px');
+    expect(compass.style.width).toBe('180px');
     expect(compass.style.height).toBe('180px');
     expect(compass.getAttribute('data-centre-x')).toBe('420');
     expect(compass.getAttribute('data-centre-y')).toBe('290');

@@ -86,12 +86,12 @@ describe('the hero attitudes are the board attitudes', () => {
       (tile) =>
         tile.zone === 'river' &&
         tile.seat === 0 &&
-        Math.abs(tile.pose.position[2] - POND.rowRadiiUnits[POND.overflowRow]) < 1e-9,
+        Math.abs(tile.pose.position[2] - POND.desktopRowRadiiUnits[POND.overflowRow]) < 1e-9,
     );
     if (!boardPond) throw new Error('the fixture has no nearest-row pond tile');
     expect(pond.pose.tiltDeg).toBe(-90);
     expect(pond.pose.position[1]).toBeCloseTo(TILE.thicknessUnits / 2, 12);
-    expect(pond.pose.position[2]).toBeCloseTo(POND.rowRadiiUnits[POND.overflowRow], 12);
+    expect(pond.pose.position[2]).toBeCloseTo(POND.desktopRowRadiiUnits[POND.overflowRow], 12);
   });
 
   it('puts the dora tile on the far wall top tier, oriented to the human', () => {

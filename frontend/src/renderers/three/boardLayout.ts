@@ -81,7 +81,9 @@ import {
   TABLE,
   TILE,
   WALL,
+  pondRadiiFor,
 } from '../layoutConstants';
+import type { LayoutProfile } from '../layoutConstants';
 import { decodeWallSlot, isDeadWallSlot } from '../wall';
 
 /** A point or vector in world space, in tile units. */
@@ -585,6 +587,7 @@ function placeSeatRow(
   radius: number,
   isHuman: boolean,
   cornerShiftUnits: number,
+  tangentialShiftUnits = 0,
 ): BoardTile[] {
   const melds = seatState.melds;
   const handWidth = seatState.concealed.length * HAND.pitchUnits;
@@ -600,8 +603,10 @@ function placeSeatRow(
   // absorb all of the extra span (which would push a side hand's end toward the
   // camera and cost a little of the solved distance back at portrait aspects).
   const left =
-    rowAnchorUnits(seatState.draw !== null) + growth / 2 -
-    (handWidth + drawWidth + meldBlock);
+    rowAnchorUnits(seatState.draw !== null) +
+    growth / 2 -
+    (handWidth + drawWidth + meldBlock) +
+    tangentialShiftUnits;
   const meldRowRadius = meldRadius(radius, isHuman);
 
   const placed: BoardTile[] = [];
@@ -722,7 +727,10 @@ function pondRows(
  *   indicators, which no legal game can reveal: a board that cannot be drawn
  *   honestly fails here rather than silently overlapping the wall.
  */
-export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
+export function layoutBoard(
+  snapshot: TableSnapshot,
+  profile: LayoutProfile = 'desktop',
+): BoardLayout {
   if (snapshot.dora.length > DORA.maxIndicators) {
     throw new Error(
       `3D board layout: ${snapshot.dora.length} dora indicators exceeds the ${DORA.maxIndicators} a game can reveal`,
@@ -821,6 +829,16 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
     // to make room; both keep the minimum clearance.
     const horizontalRow = Math.abs(seatBasis(seat).right[0]) > 0.5;
     const hasCornerRoom = horizontalRow && radius === HAND.endSeatRadiusUnits;
+    /*
+     * The left player's whole row (hand, draw and melds) slides a tile width
+     * along their own left axis on a mobile stage (user request 2026-11-21):
+     * the asymmetric mobile board leaves it crowding the bottom-left corner.
+     * "Their left" is the seat's own `-right`, which is screen-up for the seat
+     * on the viewer's left.
+     */
+    const isLeftSeat = seat === ((humanSeat + 3) % SEATS.count);
+    const tangentialShift =
+      profile === 'mobile' && isLeftSeat ? -HAND.mobileLeftSeatShiftUnits : 0;
     tiles.push(
       ...placeSeatRow(
         seatState,
@@ -828,6 +846,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
         radius,
         seat === humanSeat,
         hasCornerRoom ? MELD.rowShiftUnits : 0,
+        tangentialShift,
       ),
     );
 
@@ -836,10 +855,10 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
      * compass; the left and right ones stack horizontally and sit half a tile
      * further out, so the in-running rows can overhang the plate's sides.
      */
-    const pondRadii =
-      Math.abs(seatBasis(seat).right[0]) > 0.5
-        ? POND.rowRadiiUnits
-        : POND.sideRowRadiiUnits;
+    const pondRadii = pondRadiiFor(
+      profile,
+      Math.abs(seatBasis(seat).right[0]) > 0.5,
+    );
     for (const pondRow of pondRows(seatState.river)) {
       const u = pondRadii[pondRow.row];
       const centres = placeRow(pondRow.tiles);

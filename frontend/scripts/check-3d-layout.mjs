@@ -195,15 +195,16 @@ async function main() {
     ['row gap / bevel', `${formatNumber(C.TILE.gapUnits, 4)} / ${formatNumber(C.TILE.bevelUnits)}`],
     ['mat / compass well', `${C.TABLE.matSizeUnits} / ${C.TABLE.compassWellUnits}`],
     ['compass plate size / top', `${formatNumber(C.COMPASS_PLATE.sizeUnits, 4)} / ${formatNumber(C.COMPASS_PLATE.topUnits, 4)}`],
-    ['plate edge to innermost discard', formatNumber((C.POND.rowRadiiUnits[C.POND.rows - 1] - C.TILE.heightUnits / 2) - (C.COMPASS_PLATE.sizeUnits / 2 + C.COMPASS_PLATE.bevelUnits), 4)],
+    ['plate edge to innermost discard', formatNumber((C.POND.desktopRowRadiiUnits[C.POND.rows - 1] - C.TILE.heightUnits / 2) - (C.COMPASS_PLATE.sizeUnits / 2 + C.COMPASS_PLATE.bevelUnits), 4)],
     ['wall runs x stacks x tiers', `${C.WALL.runs} x ${C.WALL.stacksPerRun} x ${C.WALL.tiers}`],
     ['wall ring radius / end-run radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.endRunRadiusUnits, 6)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
     ['wall draw end (slot, seat right)', `${C.WALL.drawEndSlot} (${C.WALL.drawEndIsSeatRight})`],
     ['live wall (stacks / tiles / max in a state)', `${C.WALL.liveWallStacks} / ${C.WALL.liveWallTiles} / ${C.WALL.maxDecisionLiveTiles}`],
     ['dead wall (stacks / tiles / first stack / gap)', `${C.WALL.deadWallStacks} / ${C.WALL.deadWallTiles} / ${C.WALL.deadWallStartStack} / ${formatNumber(C.WALL.deadWallGapUnits, 4)}`],
     ['pond rows x columns (+overflow)', `${C.POND.rows} x ${C.POND.columns} (+${C.POND.overflowColumns})`],
-    ['pond radii, ends (nearest first)', formatMatrix3(C.POND.rowRadiiUnits)],
-    ['pond radii, sides (nearest first)', formatMatrix3(C.POND.sideRowRadiiUnits)],
+    ['pond radii, desktop (nearest first)', formatMatrix3(C.POND.desktopRowRadiiUnits)],
+    ['pond radii, mobile ends (nearest first)', formatMatrix3(C.POND.rowRadiiUnits)],
+    ['pond radii, mobile sides (nearest first)', formatMatrix3(C.POND.sideRowRadiiUnits)],
     ['pond column pitch / centre offset', `${formatNumber(C.POND.columnPitchUnits, 6)} / ${formatNumber(C.POND.columnCentreOffsetUnits, 6)}`],
     ['hand tiles / pitch / back radius', `${C.HAND.concealedCount} / ${formatNumber(C.HAND.pitchUnits, 6)} / ${formatNumber(C.HAND.backRadiusUnits)}`],
     ['hand recline / band / face-to-view max', `${C.HAND.reclineDeg}° / ${C.HAND.reclineBandDeg.join('–')}° / ${C.HAND.maxFaceToViewDeg}°`],
@@ -572,10 +573,10 @@ async function main() {
     tile.pose.position[2] * outwardHuman[2];
   const pondOk = (() => {
     if (river.length < 22) return 'fixture river is shorter than the overflow';
-    if (!close(radial(river[0]), C.POND.rowRadiiUnits[2])) return 'first discard is not on the far row';
-    if (!close(radial(river[6]), C.POND.rowRadiiUnits[1])) return 'seventh discard is not on the middle row';
-    if (!close(radial(river[12]), C.POND.rowRadiiUnits[0])) return 'thirteenth discard is not on the near row';
-    if (!close(radial(river[18]), C.POND.rowRadiiUnits[C.POND.overflowRow])) return 'overflow is not on the near row';
+    if (!close(radial(river[0]), C.POND.desktopRowRadiiUnits[2])) return 'first discard is not on the far row';
+    if (!close(radial(river[6]), C.POND.desktopRowRadiiUnits[1])) return 'seventh discard is not on the middle row';
+    if (!close(radial(river[12]), C.POND.desktopRowRadiiUnits[0])) return 'thirteenth discard is not on the near row';
+    if (!close(radial(river[18]), C.POND.desktopRowRadiiUnits[C.POND.overflowRow])) return 'overflow is not on the near row';
     if (!(river[18].pose.position[0] > river[17].pose.position[0])) return 'overflow does not extend the row';
     return null;
   })();
@@ -592,13 +593,6 @@ async function main() {
     'roll -90°',
   );
 
-  /*
-   * 2026-11-21: the board is no longer four-fold symmetric. The top and bottom
-   * ponds moved in with the smaller compass and the left and right ponds moved
-   * half a tile further out, so seats 0 and 2 are exact rotations of each other
-   * and seats 1 and 3 are exact rotations of each other — the two axes differ by
-   * design, and each is checked against its own opposite.
-   */
   const rotationOf = (from, to) => {
     const a = board.foreground.find(
       (tile) => tile.seat === from && tile.zone === 'river' && tile.slot === 0,
@@ -616,22 +610,9 @@ async function main() {
     );
   };
   check(
-    'each axis is an exact two-fold rotation (0/2 and 1/3)',
-    rotationOf(0, 2) && rotationOf(1, 3),
-    'yaw 180° per pair',
-  );
-  const axisGap =
-    C.POND.sideRowRadiiUnits[C.POND.overflowRow] -
-    C.POND.rowRadiiUnits[C.POND.overflowRow];
-  check(
-    'the side ponds sit further out than the end ponds by the committed shift',
-    // Half a tile out for the sides, and the end ponds' net shrink (a tile
-    // width in, a tile thickness back out) on top of it.
-    close(
-      axisGap,
-      C.TILE.widthUnits / 2 + (C.TILE.widthUnits - C.TILE.thicknessUnits),
-    ),
-    `${formatNumber(axisGap, 4)} units`,
+    'the four seats are exact rotations of each other (desktop)',
+    rotationOf(0, 1) && rotationOf(1, 2) && rotationOf(2, 3),
+    'yaw 0/90/180/270°',
   );
 
   const declarers = fixture.seats.filter((seat) => seat.riichi);
@@ -798,6 +779,65 @@ async function main() {
     `${formatNumber(referenceHandBottom * 100, 2)} %`,
   );
 
+  /* ---------------------- the mobile board --------------------------- */
+  /*
+   * 2026-11-21: every board change the phone work made is mobile only. The
+   * mobile board is checked separately: the smaller plate, the end ponds run
+   * in to it, the side ponds out, each axis pair a two-fold rotation, and the
+   * left player's row shifted a tile width along their own left.
+   */
+  console.log('\nmobile board (2026-11-21)');
+  const mobileFixture = F.boardFixture({});
+  const mobileBoard = L.layoutBoard(mobileFixture, 'mobile');
+  const mobileSeat = mobileBoard.humanSeat;
+  const leftSeat = (mobileSeat + 3) % 4;
+  const rowOf = (b, seat) =>
+    b.foreground.filter((tile) => tile.seat === seat && tile.zone === 'hand');
+  const handRow = (b, seat) => {
+    const tiles = rowOf(b, seat);
+    const xs = tiles.map((tile) => tile.pose.position[0]);
+    const zs = tiles.map((tile) => tile.pose.position[2]);
+    return { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
+  };
+  const desktopBoard = L.layoutBoard(mobileFixture);
+  const shift = (() => {
+    const left = rowOf(mobileBoard, leftSeat);
+    const before = rowOf(desktopBoard, leftSeat);
+    // The left seat's own left axis is its `-right`, which is Z for that seat:
+    // compare the mean Z of the row, which a constant shift moves exactly.
+    const meanZ = (tiles) =>
+      tiles.reduce((sum, tile) => sum + tile.pose.position[2], 0) / tiles.length;
+    return meanZ(left) - meanZ(before);
+  })();
+  check(
+    'the mobile left player row shifted a tile width along their own left',
+    close(Math.abs(shift), C.TILE.widthUnits, 1e-6),
+    `${formatNumber(shift, 4)} units`,
+  );
+  const mobileEndRadii = C.POND.rowRadiiUnits;
+  const mobileSideRadii = C.POND.sideRowRadiiUnits;
+  check(
+    'the mobile end ponds run in and the side ponds sit further out',
+    mobileEndRadii[C.POND.overflowRow] <
+      C.POND.desktopRowRadiiUnits[C.POND.overflowRow] &&
+      mobileSideRadii[C.POND.overflowRow] >
+        C.POND.desktopRowRadiiUnits[C.POND.overflowRow],
+    `ends ${formatNumber(mobileEndRadii[C.POND.overflowRow], 3)} / sides ${formatNumber(mobileSideRadii[C.POND.overflowRow], 3)} vs desktop ${formatNumber(C.POND.desktopRowRadiiUnits[C.POND.overflowRow], 3)}`,
+  );
+  check(
+    'the mobile plate touches the mobile end ponds and is smaller than the desktop one',
+    // The chamfer stops half the committed gap short of the discard, exactly as
+    // the desktop plate does.
+    close(
+      mobileEndRadii[C.POND.rows - 1] -
+        C.TILE.heightUnits / 2 -
+        (C.COMPASS_PLATE.mobileSizeUnits / 2 + C.COMPASS_PLATE.bevelUnits),
+      0.004,
+      1e-9,
+    ) && C.COMPASS_PLATE.mobileSizeUnits < C.COMPASS_PLATE.sizeUnits,
+    `${formatNumber(C.COMPASS_PLATE.mobileSizeUnits, 4)} vs ${formatNumber(C.COMPASS_PLATE.sizeUnits, 4)}`,
+  );
+
   /* ------------------------- the hand band --------------------------- */
   /*
    * The shipped view lifts the human's hand off the mat into a screen-space
@@ -818,8 +858,12 @@ async function main() {
   let bandOk = true;
   let bandBottomOk = true;
   for (const [label, width, height] of bandViewports) {
-    // A meld-free hand is the nominal 14 tiles the fractions were measured on.
-    const source = L.layoutBoard(F.boardFixture({ meldCounts: [0, 0, 0, 0] }));
+    // A meld-free hand is the nominal 14 tiles the fractions were measured on,
+    // on the mobile board (the band is a phone-only composition).
+    const source = L.layoutBoard(
+      F.boardFixture({ meldCounts: [0, 0, 0, 0] }),
+      'mobile',
+    );
     const shippedFrame = L.frameForAspect(
       width / height,
       L.withoutHandBandTiles(source),

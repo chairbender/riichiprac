@@ -131,6 +131,27 @@ export const STICK = {
   radiusUnits: 0.98,
 } as const;
 
+/**
+ * A seat's pond radii for a profile: the ends use the mobile rows and the sides
+ * the further-out ones; a desktop board uses the original square.
+ */
+export function pondRadiiFor(
+  profile: LayoutProfile,
+  horizontalRow: boolean,
+): readonly number[] {
+  if (profile === 'desktop') return POND.desktopRowRadiiUnits;
+  return horizontalRow ? POND.rowRadiiUnits : POND.sideRowRadiiUnits;
+}
+
+/** The compass plate's side length for a profile. */
+export function compassPlateSizeUnits(
+  profile: LayoutProfile = 'desktop',
+): number {
+  return profile === 'mobile'
+    ? COMPASS_PLATE.mobileSizeUnits
+    : COMPASS_PLATE.sizeUnits;
+}
+
 /** Seats around the table, in turn order from the human. */
 export const SEATS = {
   count: 4,
@@ -303,6 +324,17 @@ export const DORA = {
 } as const;
 
 /**
+ * Which composition the board is laid out for (2026-11-21).
+ *
+ * Everything the phone work changed — the smaller compass, the end ponds
+ * running in, the side ponds out, the left player's row shift and the
+ * screen-space hand — is **mobile only**. A desktop or tablet stage keeps the
+ * board exactly as it was; `high` quality is the one decision that applies
+ * everywhere.
+ */
+export type LayoutProfile = 'desktop' | 'mobile';
+
+/**
  * The nearest pond row's centre-line radius, as it was before the compass
  * shrank. The two further rows are one tile height inside it each, so the three
  * rows touch.
@@ -373,6 +405,15 @@ export const POND = {
     POND_NEAREST_ROW_RADIUS_UNITS - TILE.heightUnits + POND_SIDE_SHIFT_UNITS,
     POND_NEAREST_ROW_RADIUS_UNITS - 2 * TILE.heightUnits + POND_SIDE_SHIFT_UNITS,
   ],
+  /**
+   * The desktop board's radii: the original square, the same on all four sides
+   * (2026-11-21 — the mobile composition above is what phones get).
+   */
+  desktopRowRadiiUnits: [
+    POND_NEAREST_ROW_RADIUS_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS - TILE.heightUnits,
+    POND_NEAREST_ROW_RADIUS_UNITS - 2 * TILE.heightUnits,
+  ],
   /** Half of a 6-column row (2.5 pitches), measured from the seat's centre line. */
   columnCentreOffsetUnits: 2.5 * TILE.widthUnits,
   /** Extra anchors on the nearest row, at columns 6..9. */
@@ -404,9 +445,13 @@ export const POND = {
 const COMPASS_PLATE_GAP_UNITS = 0.008;
 const COMPASS_PLATE_BEVEL_UNITS = 0.015;
 const COMPASS_PLATE_THICKNESS_UNITS = 0.08;
-/** The innermost pond row's edge, which the plate's chamfer must not cross. */
+/**
+ * The innermost pond row's edge, which the plate's chamfer must not cross. The
+ * desktop plate is sized from the desktop ponds; the mobile plate has its own
+ * size below.
+ */
 const POND_INNER_EDGE_UNITS =
-  POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
+  POND.desktopRowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
 
 export const COMPASS_PLATE = {
   /**
@@ -418,6 +463,17 @@ export const COMPASS_PLATE = {
    */
   sizeUnits:
     2 * (POND_INNER_EDGE_UNITS - COMPASS_PLATE_BEVEL_UNITS) -
+    COMPASS_PLATE_GAP_UNITS,
+  /**
+   * The mobile plate (2026-11-21): a tile width off each side, a tile thickness
+   * back, so the end ponds can run in and the discards get their vertical room.
+   * Sized from the mobile end ponds, so the plate still touches them.
+   */
+  mobileSizeUnits:
+    2 *
+      (POND.rowRadiiUnits[POND.rows - 1] -
+        TILE.heightUnits / 2 -
+        COMPASS_PLATE_BEVEL_UNITS) -
     COMPASS_PLATE_GAP_UNITS,
   /** Rounded corners, so it reads as a finished panel rather than a cut slab. */
   cornerRadiusUnits: 0.28,
@@ -461,6 +517,12 @@ export const HAND = {
   pitchUnits: TILE.widthUnits,
   /** The intentional tsumogiri gap between the hand row and the drawn tile. */
   drawGapUnits: 0.2625,
+  /**
+   * How far the **left player's** whole row (hand, draw and melds) slides along
+   * their own left axis on a mobile stage (user request 2026-11-21). The mobile
+   * board's asymmetry leaves that row crowding the bottom-left of the screen.
+   */
+  mobileLeftSeatShiftUnits: TILE.widthUnits,
   /**
    * The drawn tile's centre offset from the seat's centre line: six pitches plus
    * half a tile to the row's right edge, the tsumogiri gap, then half a tile.

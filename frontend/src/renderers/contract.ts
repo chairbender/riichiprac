@@ -205,6 +205,12 @@ export interface RendererOptions {
    * see the plan's §2.6 note and the seam gate's numbers.
    */
   readonly antialias: boolean;
+  /**
+   * The board composition (2026-11-21): the smaller compass, the mobile pond
+   * radii, the left player's row shift and the screen-space hand are `mobile`
+   * only. Desktop and tablet stages keep the committed board.
+   */
+  readonly layoutProfile?: 'desktop' | 'mobile';
 }
 
 /** Reserved for a future live/replay source. Not called in v1. */

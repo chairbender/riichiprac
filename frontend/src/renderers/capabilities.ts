@@ -16,6 +16,7 @@
  */
 
 import type { DebugMode, QualityTier, RendererCapabilities } from './contract';
+import type { LayoutProfile } from './layoutConstants';
 
 /**
  * Whether the 3D view is offered from the persistent View control.
@@ -408,6 +409,31 @@ export function readTierEnvironment(
     deviceMemoryGb: finiteOrNull(navigator?.deviceMemory),
     hardwareConcurrency: finiteOrNull(navigator?.hardwareConcurrency),
   };
+}
+
+/** The short side at or below which a coarse-pointer stage uses the mobile board. */
+export const MOBILE_LAYOUT_MAX_SHORT_SIDE = 500;
+
+/**
+ * The board's layout profile for an environment (2026-11-21).
+ *
+ * Everything the phone work changed — the smaller compass, the end ponds
+ * running in, the side ponds out, the left player's row shift and the
+ * screen-space hand — applies to **mobile only**. The rule is the same one the
+ * hand strip uses: a coarse pointer on a stage whose short side is at most
+ * {@link MOBILE_LAYOUT_MAX_SHORT_SIDE}. A tablet in either orientation, and
+ * every desktop window, keep the original board.
+ */
+export function layoutProfileFor(environment: TierEnvironment): LayoutProfile {
+  const shortSide = Math.min(
+    environment.viewport.width,
+    environment.viewport.height,
+  );
+  return environment.touchPrimary &&
+    shortSide > 0 &&
+    shortSide <= MOBILE_LAYOUT_MAX_SHORT_SIDE
+    ? 'mobile'
+    : 'desktop';
 }
 
 /** A viewport narrower than this (or shorter than the height below) is "small". */

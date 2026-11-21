@@ -245,15 +245,15 @@ describe('3D board layout: the pond', () => {
 
     // Discards 0-5 land in the far row (radius 2.7886), 6-11 in the middle
     // row, 12-17 in the near row.
-    expect(radius(river[0])).toBeCloseTo(POND.rowRadiiUnits[2], 9);
-    expect(radius(river[5])).toBeCloseTo(POND.rowRadiiUnits[2], 9);
-    expect(radius(river[6])).toBeCloseTo(POND.rowRadiiUnits[1], 9);
-    expect(radius(river[11])).toBeCloseTo(POND.rowRadiiUnits[1], 9);
-    expect(radius(river[12])).toBeCloseTo(POND.rowRadiiUnits[0], 9);
-    expect(radius(river[17])).toBeCloseTo(POND.rowRadiiUnits[0], 9);
+    expect(radius(river[0])).toBeCloseTo(POND.desktopRowRadiiUnits[2], 9);
+    expect(radius(river[5])).toBeCloseTo(POND.desktopRowRadiiUnits[2], 9);
+    expect(radius(river[6])).toBeCloseTo(POND.desktopRowRadiiUnits[1], 9);
+    expect(radius(river[11])).toBeCloseTo(POND.desktopRowRadiiUnits[1], 9);
+    expect(radius(river[12])).toBeCloseTo(POND.desktopRowRadiiUnits[0], 9);
+    expect(radius(river[17])).toBeCloseTo(POND.desktopRowRadiiUnits[0], 9);
     // The overflow cells extend the nearest row, past column 5.
-    expect(radius(river[18])).toBeCloseTo(POND.rowRadiiUnits[POND.overflowRow], 9);
-    expect(radius(river[21])).toBeCloseTo(POND.rowRadiiUnits[POND.overflowRow], 9);
+    expect(radius(river[18])).toBeCloseTo(POND.desktopRowRadiiUnits[POND.overflowRow], 9);
+    expect(radius(river[21])).toBeCloseTo(POND.desktopRowRadiiUnits[POND.overflowRow], 9);
     expect(river[18].pose.position[0]).toBeGreaterThan(
       river[17].pose.position[0] + POND.columnPitchUnits * 0.9,
     );
@@ -634,7 +634,7 @@ describe('3D board layout: wall, dora and sticks', () => {
         COMPASS_PLATE.sizeUnits / 2,
       );
       expect(COMPASS_PLATE.sizeUnits / 2).toBeLessThan(
-        POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2,
+        POND.desktopRowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2,
       );
 
       // Sticks never intersect a tile, at their own seat's yaw.

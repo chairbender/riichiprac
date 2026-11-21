@@ -46,6 +46,7 @@ import type { PendingCall } from '../callChoices';
 import { handTileLabel } from '../handTileLabel';
 import { hitRectKey } from './contract';
 import type { CompassRect, HitRect, TableSnapshot } from './contract';
+import type { LayoutProfile } from './layoutConstants';
 import {
   COMPASS_SIDE_LABELS,
   compassBox,
@@ -264,6 +265,12 @@ export interface TableCompassProps {
   readonly snapshot: TableSnapshot;
   /** The renderer's projected compass well, or null before the board exists. */
   readonly rect: CompassRect | null;
+  /**
+   * The board profile (2026-11-21): the smaller box, the wind-character round
+   * and the 9 px floor are the mobile composition. Desktop keeps the committed
+   * square, the spelled round and 11 px.
+   */
+  readonly profile?: LayoutProfile;
 }
 
 /**
@@ -282,12 +289,19 @@ export interface TableCompassProps {
  * the user wants the 3D model alone (2026-11-19) — while the accessible name
  * still says ", riichi" for each declarer, exactly as `PhysicalTable` does.
  */
-export function TableCompass({ snapshot, rect }: TableCompassProps) {
-  const view = useMemo(() => compassView(snapshot), [snapshot]);
+export function TableCompass({
+  snapshot,
+  rect,
+  profile = 'desktop',
+}: TableCompassProps) {
+  const view = useMemo(
+    () => compassView(snapshot, profile),
+    [snapshot, profile],
+  );
   if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
 
-  const box = compassBox(rect);
-  const fontPx = compassFontPx(box);
+  const box = compassBox(rect, profile);
+  const fontPx = compassFontPx(box, profile);
 
   return (
     <div

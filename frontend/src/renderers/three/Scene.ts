@@ -83,7 +83,8 @@ import {
   HERO_READY_EVENT,
   QUALITY_CHANGED_EVENT,
 } from '../contract';
-import { CAMERA, LIGHT } from '../layoutConstants';
+import { CAMERA, LIGHT, compassPlateSizeUnits } from '../layoutConstants';
+import type { LayoutProfile } from '../layoutConstants';
 import {
   frameForAspect,
   layoutBoard,
@@ -327,6 +328,8 @@ export class TableScene implements TableRenderer {
    * time. With the HUD off this is false and the 3D-11 bounded window stands.
    */
   private readonly perfHud: boolean;
+  /** The board composition this mount uses (2026-11-21): mobile or desktop. */
+  private readonly profile: LayoutProfile;
   /** Reused by `measure()` so a HUD poll allocates no Vector2 per read. */
   private readonly drawingBufferSize = new Vector2();
   /** The latest devicePixelRatio the host reported (setSize). */
@@ -351,6 +354,7 @@ export class TableScene implements TableRenderer {
     this.canvas = canvas;
     this.reducedMotion = options.reducedMotion;
     this.heroView = options.debug === 'hero';
+    this.profile = options.layoutProfile === 'mobile' ? 'mobile' : 'desktop';
     this.dealIn = new DealInMotion(clock, options.reducedMotion);
     this.perf = new FrameTimeMonitor(options.tier);
 
@@ -432,7 +436,7 @@ export class TableScene implements TableRenderer {
     const isCut = this.dealIn.cut(snapshot.revision);
     this.revision = snapshot.revision;
     this.locked = snapshot.locked;
-    this.sourceLayout = layoutBoard(snapshot);
+    this.sourceLayout = layoutBoard(snapshot, this.profile);
     // A deeper river or a taller hand can move the solved camera, so the frame
     // and the felt follow the layout, not only the viewport. `reframe` also
     // places the hand band, so the buffers must be written after it.
@@ -601,10 +605,11 @@ export class TableScene implements TableRenderer {
    */
   compassRect(): CompassRect | null {
     if (this.disposed || !this.layout) return null;
-    return compassPlateRect(this.frame, {
-      widthPx: this.cssWidth,
-      heightPx: this.cssHeight,
-    });
+    return compassPlateRect(
+      this.frame,
+      { widthPx: this.cssWidth, heightPx: this.cssHeight },
+      this.profile,
+    );
   }
 
   /**
@@ -1177,6 +1182,7 @@ export class TableScene implements TableRenderer {
     const bandable =
       source !== null &&
       !this.heroView &&
+      this.profile === 'mobile' &&
       viewport.widthPx > 0 &&
       viewport.heightPx > 0;
     this.layout = source && bandable
@@ -1388,7 +1394,7 @@ export class TableScene implements TableRenderer {
     const sticks = createStickMesh(layout?.sticks ?? []);
     // The compass square is table furniture (3D-09): real geometry in
     // perspective, with only its numbers as screen-space DOM over it.
-    const plate = createCompassPlate();
+    const plate = createCompassPlate(compassPlateSizeUnits(this.profile));
 
     this.scene.add(plate.mesh);
     this.scene.add(shadows.mesh);

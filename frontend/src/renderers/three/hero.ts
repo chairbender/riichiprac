@@ -150,7 +150,9 @@ export const HERO_SLOTS: readonly HeroSlot[] = [
     faceUp: true,
     pose: lyingHeroPose(
       0,
-      POND.rowRadiiUnits[POND.overflowRow],
+      // The hero is a fixed debug macro shot of the committed board, so it uses
+      // the desktop radii whatever profile the mount is (2026-11-21).
+      POND.desktopRowRadiiUnits[POND.overflowRow],
       TILE.thicknessUnits / 2,
     ),
   },

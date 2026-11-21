@@ -29,7 +29,12 @@
  */
 
 import type { BandRect, CompassRect, HitRect } from '../contract';
-import { COMPASS_PLATE, HAND, TILE } from '../layoutConstants';
+import {
+  HAND,
+  TILE,
+  compassPlateSizeUnits,
+} from '../layoutConstants';
+import type { LayoutProfile } from '../layoutConstants';
 import {
   orientedBox,
   orientedBoxCorners,
@@ -355,8 +360,10 @@ function projectHandTargets(
  * Exported so a test can project the plate independently of the rect helper
  * and compare, the same way 3D-08's drift test re-projects the hand's OBBs.
  */
-export function compassPlateCorners(): readonly Vec3[] {
-  const half = COMPASS_PLATE.sizeUnits / 2;
+export function compassPlateCorners(
+  profile: LayoutProfile = 'desktop',
+): readonly Vec3[] {
+  const half = compassPlateSizeUnits(profile) / 2;
   return [
     [-half, 0, -half],
     [half, 0, -half],
@@ -377,6 +384,7 @@ export function compassPlateCorners(): readonly Vec3[] {
 export function compassPlateRect(
   frame: CameraFrame,
   viewport: HitTestViewport,
+  profile: LayoutProfile = 'desktop',
 ): CompassRect | null {
   if (!(viewport.widthPx > 0) || !(viewport.heightPx > 0)) return null;
 
@@ -384,7 +392,7 @@ export function compassPlateRect(
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
-  for (const corner of compassPlateCorners()) {
+  for (const corner of compassPlateCorners(profile)) {
     if (!(projectPoint(corner, frame).depth > 0)) return null;
     const pixel = projectToPixels(
       corner,

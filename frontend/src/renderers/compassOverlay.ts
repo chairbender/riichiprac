@@ -19,6 +19,7 @@
  */
 
 import type { Seat, TableSnapshot } from './contract';
+import type { LayoutProfile } from './layoutConstants';
 import type { Wind } from '../types/game';
 
 /** Where a seat sits as the human reads the screen, in turn order from them. */
@@ -136,7 +137,10 @@ export interface CompassView {
  * seat in turn order the right edge, and so on. That is
  * `tablePlacements`' own rule, restated against the snapshot's absolute seats.
  */
-export function compassView(snapshot: TableSnapshot): CompassView {
+export function compassView(
+  snapshot: TableSnapshot,
+  profile: LayoutProfile = 'desktop',
+): CompassView {
   const seats = snapshot.seats.map((seatState): CompassSeatView => {
     const step = (seatState.seat - snapshot.humanSeat + 4) % 4;
     const side = COMPASS_SIDES[step];
@@ -165,7 +169,11 @@ export function compassView(snapshot: TableSnapshot): CompassView {
   const { roundWind, handNumber, tilesRemaining } = snapshot.compass;
   return {
     seats,
-    round: `${ROUND_WIND_GLYPH[roundWind]}${handNumber}`,
+    // Mobile prints the wind character (2026-11-21); desktop keeps the word.
+    round:
+      profile === 'mobile'
+        ? `${ROUND_WIND_GLYPH[roundWind]}${handNumber}`
+        : `${roundWind} ${handNumber}`,
     tilesRemaining,
     label: `Round ${roundWind} ${handNumber}, ${tilesRemaining} tiles remaining`,
   };
@@ -194,7 +202,10 @@ export interface CompassBox {
  * so the square now sits just over its corners instead of a third larger than
  * them.
  */
-export const MIN_COMPASS_PX = 84;
+export const MIN_COMPASS_PX = 132;
+
+/** The mobile floor (2026-11-21): the smaller plate's readout still has to fit. */
+export const MIN_COMPASS_PX_MOBILE = 84;
 
 /**
  * The DOM compass box, centred on the projected plate.
@@ -210,21 +221,35 @@ export const MIN_COMPASS_PX = 84;
  * The 3×3 grid inside is unchanged, and the box stays centred on the plate's
  * centre, so the table's centre remains the middle of the display.
  */
-export function compassBox(rect: {
-  readonly left: number;
-  readonly top: number;
-  readonly width: number;
-  readonly height: number;
-  readonly centreX: number;
-  readonly centreY: number;
-}): CompassBox {
-  const width = Math.max(rect.width, MIN_COMPASS_PX);
-  const height = Math.max(rect.height, MIN_COMPASS_PX);
+export function compassBox(
+  rect: {
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+    readonly centreX: number;
+    readonly centreY: number;
+  },
+  profile: LayoutProfile = 'desktop',
+): CompassBox {
+  if (profile === 'mobile') {
+    // The phone readout follows the plate's rectangle and its own floor.
+    const width = Math.max(rect.width, MIN_COMPASS_PX_MOBILE);
+    const height = Math.max(rect.height, MIN_COMPASS_PX_MOBILE);
+    return {
+      left: rect.centreX - width / 2,
+      top: rect.centreY - height / 2,
+      width,
+      height,
+    };
+  }
+  // Desktop keeps the committed square: the plate's shorter side, floored.
+  const size = Math.max(Math.min(rect.width, rect.height), MIN_COMPASS_PX);
   return {
-    left: rect.centreX - width / 2,
-    top: rect.centreY - height / 2,
-    width,
-    height,
+    left: rect.centreX - size / 2,
+    top: rect.centreY - size / 2,
+    width: size,
+    height: size,
   };
 }
 
@@ -239,12 +264,17 @@ export function compassBox(rect: {
  * keeps the smallest supported stage legible; the ceiling keeps a very large
  * stage from turning the centre of the table into a billboard.
  */
-export function compassFontPx(box: CompassBox): number {
+export function compassFontPx(
+  box: CompassBox,
+  profile: LayoutProfile = 'desktop',
+): number {
   /*
    * The *shorter* axis drives the type, because the rows and the score corners
    * both have to fit: a wide, short box must not print type a tall one could
-   * not. The floor dropped to 9 px with the smaller compass (2026-11-21), which
-   * is what keeps the score digits and the round character distinct.
+   * not. The mobile floor is 9 px (2026-11-21), which is what keeps the score
+   * digits and the round character distinct in the smaller box; desktop keeps
+   * the committed 11 px.
    */
-  return Math.min(30, Math.max(9, Math.min(box.width, box.height) * 0.08));
+  const floor = profile === 'mobile' ? 9 : 11;
+  return Math.min(30, Math.max(floor, Math.min(box.width, box.height) * 0.08));
 }

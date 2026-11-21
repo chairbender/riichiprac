@@ -149,6 +149,7 @@ describe('3D layout constants: pond', () => {
       TILE.heightUnits,
       12,
     );
+    expect(POND.desktopRowRadiiUnits[0]).toBeCloseTo(4.81, 12);
     expect(POND.sideRowRadiiUnits[0]).toBeCloseTo(4.81 + TILE.widthUnits / 2, 12);
     expect(POND.sideRowRadiiUnits[0] - POND.sideRowRadiiUnits[1]).toBeCloseTo(
       TILE.heightUnits,
@@ -311,10 +312,10 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
   });
 
   it('stretches the compass plate to touch the innermost end discard row', () => {
-    // The plate is sized from the top/bottom ponds, which are the ones that run
-    // in to it; the side ponds now stand clear of its edges by design.
+    // The desktop plate is sized from the desktop pond square; the mobile plate
+    // has its own size from the mobile end ponds (2026-11-21).
     const pondInnerEdge =
-      POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
+      POND.desktopRowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
     const physicalHalf = COMPASS_PLATE.sizeUnits / 2 + COMPASS_PLATE.bevelUnits;
     // Touching, not overlapping: the chamfer stops a hair short of a discard.
     expect(physicalHalf).toBeLessThan(pondInnerEdge);

@@ -30,6 +30,7 @@ import {
   placeHandBand,
   withoutHandBandTiles,
 } from '../three/boardLayout';
+import type { LayoutProfile } from '../layoutConstants';
 import { compassPlateRect, handBandRect, hitRects } from '../three/hitTest';
 import {
   HUD_ACTION_RAIL_HEIGHT,
@@ -102,34 +103,38 @@ interface Scene {
 /** One hand at one stage size, projected exactly as the renderer projects it. */
 const SCENES = new Map<string, Scene>();
 
-function sceneFor(stage: StageSize, options: FixtureOptions): Scene {
+function sceneFor(
+  stage: StageSize,
+  options: FixtureOptions,
+  profile: LayoutProfile = 'desktop',
+): Scene {
   // The matrix asks the same boards for every state; the projection is a pure
-  // function of (fixture, stage), so measure it once.
-  const key = `${stage.width}x${stage.height}|${JSON.stringify(options)}`;
+  // function of (fixture, stage, profile), so measure it once.
+  const key = `${stage.width}x${stage.height}|${JSON.stringify(options)}|${profile}`;
   const cached = SCENES.get(key);
   if (cached) return cached;
 
-  const board = layoutBoard(boardFixture(options));
+  const mobile = profile === 'mobile';
+  const board = layoutBoard(boardFixture(options), profile);
   const viewport = { widthPx: stage.width, heightPx: stage.height };
   /*
-   * The shipped projection: the camera is solved for the table without the
-   * human's hand, and the hand is then placed in its screen-space band. Both
-   * the HUD's hand anchor and the hand buttons come from that band, so the
-   * composition the test measures is the one the phone draws.
+   * Desktop is the committed board: the hand is on the mat and the camera
+   * frames it. Mobile solves the frame for the table without the hand, then
+   * places the hand in its screen-space band — which is where the HUD's own
+   * anchor and the hand buttons come from.
    */
-  const frame = frameForAspect(
-    stage.width / stage.height,
-    withoutHandBandTiles(board),
-  );
-  const banded = placeHandBand(board, frame, viewport);
-  const compass = compassPlateRect(frame, viewport);
+  const frame = mobile
+    ? frameForAspect(stage.width / stage.height, withoutHandBandTiles(board))
+    : frameForAspect(stage.width / stage.height, board);
+  const placed = mobile ? placeHandBand(board, frame, viewport) : board;
+  const compass = compassPlateRect(frame, viewport, profile);
   const scene: Scene = {
     anchors: {
-      handBand: handBandRect(banded, frame, viewport),
+      handBand: handBandRect(placed, frame, viewport),
       compass,
     },
-    targets: hitRects(banded, frame, viewport),
-    compassBox: compass ? compassBox(compass) : null,
+    targets: hitRects(placed, frame, viewport),
+    compassBox: compass ? compassBox(compass, profile) : null,
   };
   SCENES.set(key, scene);
   return scene;
@@ -292,11 +297,12 @@ describe('HUD layout: the collision matrix (3d_hud.md §7.5)', () => {
 
 describe('HUD layout: the published composition (§5, §7.4)', () => {
   /*
-   * The reference hand (one meld per seat), CSS px, DPR 1. These are the values
-   * in 3d_hud.md after the 2026-11-21 change, re-measured after task 261120-2225
-   * brought the board and hand band closer: the right-aligned call row's top, the
-   * post-answer panel and result card, where the sheet now reaches, and the
-   * compass clearance the gate measures.
+   * The reference hand (one meld per seat), CSS px, DPR 1, on the **mobile**
+   * board. These are the values in 3d_hud.md after the 2026-11-21 change,
+   * re-measured after task 261120-2225 brought the board and hand band closer
+   * and after the smaller compass moved the readout: the right-aligned call
+   * row's top, the post-answer panel and result card, where the sheet now
+   * reaches, and the compass clearance the gate measures.
    */
   const GOLDEN = [
     { stage: GATE_STAGES[0], callBar: 836, result: 776, sheetBottom: 880, clearance: 154 },
@@ -311,7 +317,9 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
 
   for (const golden of GOLDEN) {
     it(`reproduces ${golden.stage.label}'s call row, result card, sheet and clearance`, () => {
-      const scene = sceneFor(golden.stage, {});
+      // The published composition is the mobile one: the screen-space hand is
+      // a phone-only change, so these are the numbers that ship on a phone.
+      const scene = sceneFor(golden.stage, {}, 'mobile');
       const actions = layoutFor(golden.stage, scene, {
         slot: 'actions',
         sheet: false,

@@ -60,7 +60,7 @@ describe('the compass plate', () => {
     // (within a hair of felt) on all four sides.
     expect(box.max.y).toBeLessThan(TILE.thicknessUnits);
     const pondInnerEdge =
-      POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
+      POND.desktopRowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
     expect(box.max.x).toBeLessThan(pondInnerEdge);
     expect(pondInnerEdge - box.max.x).toBeGreaterThan(0);
     expect(pondInnerEdge - box.max.x).toBeLessThan(0.01);
