@@ -86,7 +86,6 @@ import {
 import { CAMERA, LIGHT } from '../layoutConstants';
 import {
   frameForAspect,
-  handBandSpecFor,
   layoutBoard,
   placeHandBand,
   withoutHandBandTiles,
@@ -1181,7 +1180,7 @@ export class TableScene implements TableRenderer {
       viewport.widthPx > 0 &&
       viewport.heightPx > 0;
     this.layout = source && bandable
-      ? placeHandBand(source, this.frame, viewport, handBandSpecFor(viewport))
+      ? placeHandBand(source, this.frame, viewport)
       : source;
     this.handBandActive = bandable && this.layout !== source;
     applyFrameToCamera(this.camera, this.frame);

@@ -1006,6 +1006,39 @@
   background-color: #0b1116;
 }
 
+/*
+ * Landscape-only (user decision 2026-11-21). A phone held in portrait gets the
+ * landscape stage, turned a quarter turn: the shell is laid out at the window's
+ * swapped dimensions and rotated about its top-left corner, so every fixed
+ * child inside it — the stage, the HUD layer, the sheets — sees a landscape box
+ * and the player turns the phone to read it. Portrait is what the stacked and
+ * top-down views are for.
+ *
+ * `rotate(90deg)` maps the box's top-left to (0, 0) and its extent to
+ * `x ∈ (-h, 0]`, so the translate by one swapped width brings it back over the
+ * screen. The rotation origin is the top-left, not the centre, so the translate
+ * and the size are both the raw swapped values.
+ */
+.app-shell--3d[data-forced-landscape='true'] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vh;
+  width: 100dvh;
+  height: 100vw;
+  transform-origin: top left;
+  transform: translateX(100vw) rotate(90deg);
+}
+
+/*
+ * Inside the turned shell `dvh`/`vw` still describe the physical window, so the
+ * HUD layer must fill its containing block (the rotated shell) instead of the
+ * viewport. `inset: 0` already does that; the explicit height would override it.
+ */
+.app-shell--3d[data-forced-landscape='true'] .hud-root {
+  height: 100%;
+}
+
 /* The 3D stage is the whole viewport, not a row in a column. */
 .app-shell--3d > .table-3d {
   position: fixed;

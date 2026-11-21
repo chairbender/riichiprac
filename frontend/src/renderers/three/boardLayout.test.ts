@@ -1114,12 +1114,17 @@ describe('the hand band (screen-space hand, 2026-11-21)', () => {
     expect(meldedBand.rowFraction).toBeLessThan(fullBand.rowFraction);
   });
 
-  it('takes nearly the whole width on a portrait stage', () => {
-    const band = banded(full, 390, 844);
-    expect(band.rowFraction).toBeGreaterThan(0.9);
-    expect(band.bottomFraction).toBeLessThan(0.03);
-    expect(band.depth).toBeLessThan(band.tableDepth);
-    expect(handBandSpecFor({ widthPx: 390, heightPx: 844 }).widthFraction).toBe(0.96);
+  it('is landscape-only: even a portrait viewport gets the landscape spec', () => {
+    // The shell is turned a quarter turn on a portrait phone, so the stage this
+    // runs against is always landscape. The band does not grow a portrait
+    // branch: the same fractions produce the same row, and the small tile is
+    // the consequence of a 390 px-wide stage the shipped view never has.
+    expect(handBandSpecFor().widthFraction).toBe(HAND_BAND.widthFraction);
+    const portrait = banded(full, 390, 844);
+    expect(portrait.rowFraction).toBeCloseTo(HAND_BAND.widthFraction, 1);
+    expect(portrait.bottomFraction).toBeLessThan(0.03);
+    const landscape = banded(full, 844, 390);
+    expect(portrait.rowFraction).toBeCloseTo(landscape.rowFraction, 1);
   });
 
   it('turns every banded tile to face the camera', () => {

@@ -1240,18 +1240,12 @@ export const HAND_BAND_FACE_TO_VIEW_DEG = 10;
 /**
  * The band for a viewport.
  *
- * A portrait phone cannot honour the 66 % row: 14 tiles at a legible size are
- * wider than the screen, so the row takes (nearly) the whole width instead and
- * the tiles are as large as that allows. Landscape is the orientation the
- * fractions were measured in, and it uses them as given.
+ * The 3D view is landscape-only: on a phone held in portrait the shell is
+ * rotated a quarter turn (see `useForcedLandscape`), so the stage this is called
+ * with is always a landscape box. Portrait is what the 2D views are for.
  */
-export function handBandSpecFor(viewport: {
-  readonly widthPx: number;
-  readonly heightPx: number;
-}): HandBandSpec {
-  return viewport.heightPx > viewport.widthPx
-    ? { ...HAND_BAND, widthFraction: 0.96 }
-    : HAND_BAND;
+export function handBandSpecFor(): HandBandSpec {
+  return HAND_BAND;
 }
 
 /** The human's hand + draw tiles, in hand-row order (concealed, then the draw). */
@@ -1289,7 +1283,7 @@ export function placeHandBand(
   layout: BoardLayout,
   frame: CameraFrame,
   viewport: { readonly widthPx: number; readonly heightPx: number },
-  spec: HandBandSpec = handBandSpecFor(viewport),
+  spec: HandBandSpec = HAND_BAND,
 ): BoardLayout {
   const row = handRowTiles(layout);
   if (row.length === 0) return layout;

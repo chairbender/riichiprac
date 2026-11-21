@@ -785,7 +785,10 @@ async function main() {
     ['landscape 844x390', 844, 390],
     ['landscape 932x430', 932, 430],
     ['reference 1920x1080', 1920, 1080],
-    ['portrait 390x844', 390, 844],
+    // Portrait is not a supported 3D shape (user decision 2026-11-21): a phone
+    // held upright gets the turned landscape shell, so the smallest stage this
+    // gate needs is a landscape one.
+    ['small landscape 640x360', 640, 360],
   ];
   let bandOk = true;
   let bandBottomOk = true;
@@ -834,12 +837,11 @@ async function main() {
     // Landscape is the orientation the 66 % target was measured in; portrait
     // takes the whole width because 14 legible tiles do not fit two-thirds of a
     // narrow screen.
-    const target = height > width ? 0.96 : 0.66;
-    if (Math.abs(rowFraction - target) > 0.02) bandOk = false;
+    if (Math.abs(rowFraction - 0.66) > 0.02) bandOk = false;
     if (bottomFraction > 0.03) bandBottomOk = false;
     if (!(handDepth < tableDepth)) bandOk = false;
   }
-  check('the hand row is its committed width fraction', bandOk, '66 % landscape / 96 % portrait');
+  check('the hand row is its committed width fraction', bandOk, '66 %');
   check('the hand row sits within 3 % of the frame bottom', bandBottomOk);
 
   /* --------------------- meld framing stability ---------------------- */

@@ -32,6 +32,7 @@ import { ActionRail } from './renderers/hud/ActionRail';
 import { actionRailVisible } from './renderers/hud/actionRail';
 import type { ActionRailModel } from './renderers/hud/actionRail';
 import { HudLayer } from './renderers/hud/HudLayer';
+import { useForcedLandscape } from './renderers/useForcedLandscape';
 import type { HudSheetContent } from './renderers/hud/HudLayer';
 import { ResultCard } from './renderers/hud/ResultCard';
 import { SetupSheet, SetupTrigger } from './renderers/hud/SetupSheet';
@@ -271,6 +272,12 @@ export const App = () => {
    */
   const threeShellRef = useRef<HTMLDivElement>(null);
   const threeStageRef = useRef<HTMLElement>(null);
+  /**
+   * 2026-11-21: the 3D table is landscape-only. A phone held in portrait gets a
+   * quarter-turn shell (see `useForcedLandscape`) instead of a portrait layout;
+   * a player who wants portrait uses the stacked or top-down view.
+   */
+  const forcedLandscape = useForcedLandscape();
   /** The parsed WASM catalogue, so a repeat deal does not re-parse it. */
   const wasmCatalogRef = useRef<ScenarioOption[] | null>(null);
   /**
@@ -1439,7 +1446,11 @@ export const App = () => {
    */
   if (tableMount.kind === 'three') {
     return (
-      <div className="app-shell app-shell--3d" ref={threeShellRef}>
+      <div
+        className="app-shell app-shell--3d"
+        ref={threeShellRef}
+        data-forced-landscape={forcedLandscape ? 'true' : undefined}
+      >
         <HudLayer
           shellRef={threeShellRef}
           stageRef={threeStageRef}
