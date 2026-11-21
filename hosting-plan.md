@@ -448,22 +448,32 @@ is never in the browser's pack chain.
 ch. 9 and ch. 3/4 lesson
 sets) and `scripts/check-pack-hosting.mjs` checks the hosting envelope
 for the whole set. The replay-first rollout
-([`replay-first-rollout.md`](replay-first-rollout.md)) adds one pack per remaining
-book section; the 50 MB same-origin budget and the mirror threshold are unchanged,
-so the same manifest-plus-lazy-bodies model scales to the section packs. The Q1
-fixture is still reproducible from the data root for the harness.
+([`replay-first-rollout.md`](replay-first-rollout.md)) shipped its default on
+2026-11-20: replay is the default source for the 22 hosted lessons at or above
+the 40-review-base floor and the remaining lessons keep generated. Each new
+section pack raises its lessons' counts and flips those lessons automatically;
+the 50 MB same-origin budget and the mirror threshold are unchanged, so the same
+manifest-plus-lazy-bodies model scales to the section packs. The generated-first
+rollback is documented in the rollout doc. The Q1 fixture is still reproducible
+from the data root for the harness.
 
-**Runtime loader (P3, 2026-11-17).** `frontend/src/services/packLoader.ts` fetches
-only `scenarios/manifest.json` at launch, validates it against the schema, and
-fetches a content-addressed body the first time a replay lesson is picked. The
-body is rejected unless its byte count and SHA-256 match the manifest, then
-gunzipped and checked for pack id/count/lesson/book/licence agreement before any
-scenario is handed to the app. Verified bytes live in IndexedDB
+**Runtime loader (P3, 2026-11-17; replay-first default since RF2/RF4).**
+`frontend/src/services/packLoader.ts` fetches `scenarios/manifest.json` at
+launch, validates it against the schema, and fetches a content-addressed body
+when a covered deal or a picked replay row needs it. The body is rejected unless
+its byte count and SHA-256 match the manifest, then gunzipped and checked for
+pack id/count/lesson/book/licence agreement before any scenario is handed to
+the app. Verified bytes live in IndexedDB
 (`riichiprac-packs`, key `<pack-id>@<sha256>@<cache-version>`), so a reload with
 the same content address downloads nothing; a corrupt or evicted entry is
-re-fetched and a cache failure is ignored. Replay lessons appear as opt-in
-picker entries (REPLAY badge, `all` excludes them, so the startup download is the
-manifest only). Details and evidence: P3 in `replay-implementation-plan.md`.
+re-fetched and a cache failure is ignored. Replay is the **default source** for
+a lesson at or above the coverage floor, so `all` deals its replay row — on the
+first deal (RF4 fetches the best-covered section body under a 2.5 s budget and
+falls back to generated) and on every later one. The **REPLAY** badge remains on
+the row, the generated drill is the **GENERATED** opt-in, and
+`preferReplay: false` (the Generated filter) makes the launch download the
+manifest only. Details and evidence: P3 in `replay-implementation-plan.md`; the
+flip and its rollback in [`replay-first-rollout.md`](replay-first-rollout.md).
 
 **Manual setup for a mirror or a Release copy** (needs credentials):
 

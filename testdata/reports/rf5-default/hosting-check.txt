@@ -1,0 +1,9 @@
+pack hosting: /home/kylehipke/workspaces/riichiprac-261119-2340/frontend/public/scenarios
+  replay.ch34-shapes.2026-11 · 724376 B · 822 scenario(s) · sha256:1e7f3266ea8f
+  replay.ch5-values.2026-11 · 1176300 B · 1670 scenario(s) · sha256:5d0b01e6badb
+  replay.ch7-riichi-dama.2026-11 · 2176750 B · 2846 scenario(s) · sha256:08cbeacac15f
+  replay.ch8-defense-multi-threat.2026-11 · 591096 B · 764 scenario(s) · sha256:15fe519c65df
+  replay.ch8-defense.2026-11 · 2260809 B · 2211 scenario(s) · sha256:6ae2c924e80c
+  replay.ch9-seating-calls.2026-11 · 363061 B · 629 scenario(s) · sha256:3deda6140a90
+  6 pack(s), 7292392 body bytes of 50000000 allowed, 4670 byte manifest
+  PASS (215 checks)

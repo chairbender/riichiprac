@@ -1,8 +1,10 @@
 # Replay-first scenario rollout
 
-Status: **approved 2026-11-19**. Wave-1 tasks are in the command center; the
-later waves are scheduled as the earlier packs land. This file is the durable
-plan; the command-center task ids are recorded in the slicing table at the end.
+Status: **approved 2026-11-19; shipped 2026-11-20**. RF1–RF5 have landed and the
+build defaults to replay for every lesson at or above the coverage floor (22 of
+the 25 hosted lessons). The generated drill stays one filter away, and the
+rollback to generated-first is documented below. This file is the durable plan;
+the command-center task ids are recorded in the slicing table at the end.
 
 ## Goal
 
@@ -470,6 +472,26 @@ includes its recogniser tests and a label-yield pass.
   setting and a documented rollback; update README/hosting/picker docs.
 - Accept: replay-default for every covered lesson; generated default for the
   rest; a user can force generated; sign-off on the picker.
+- **Landed 2026-11-20.** The default was already wired on by RF2
+  (`DEFAULT_PREFER_REPLAY = true`, `DEFAULT_SOURCE_FILTER = 'both'`) and RF4 made
+  the first deal replay-first, so RF5 is the acceptance/rollout pass: it confirms
+  the shipped behaviour, records the rollback and updates the docs. Measured
+  against the committed manifest: **22 of 25 hosted lessons are replay-default**
+  at the 40-base floor, 8,942 reviewed bases across six packs. The three below
+  the floor (`defense_stuck_heuristic` 32, `kabe_one_chance` 17,
+  `kabe_double_one_chance` 13) keep the generated default with their thin replay
+  rows opt-in; `shouminkan_decision`, `daiminkan_decision`, `meld_or_not` and
+  `sanshoku_pursuit` have no replay row and are generated-only. The acceptance
+  tests pin the whole surface: a covered lesson deals its replay row from
+  `all` on the first and later deals, an uncovered lesson stays generated, the
+  Generated filter persists `preferReplay: false` and stops the first-deal body
+  fetch, and no manifest leaves the pool exactly generated. Evidence:
+  `testdata/reports/rf5-default/`; regenerate the table with
+  `node scripts/replay-coverage-report.mjs --json`.
+- User sign-off on the picker and the default: **approved 2026-11-20**. The
+  user reviewed the live picker and the shipped default per AGENTS.md §6 and
+  approved both; the hand-off and the numbers checked are in
+  `testdata/reports/rf5-default/report.md`.
 
 **D1 — Real-game source evaluation** (research, `none` or scratch)
 - Licensing/format/rule-profile review for a human corpus; compare to AI
@@ -488,8 +510,9 @@ C9 ─────────────────────────�
 D1 ────────────────────────── independent research
 ```
 
-RF1–RF4 have landed (RF4 on 2026-11-19); RF5 flips the build's default only
-once coverage is sufficient.
+RF1–RF5 have landed (RF4 on 2026-11-19, RF5 on 2026-11-20). The flip is
+coverage-aware, not a switch for every lesson: a lesson below the floor keeps
+the generated default until `C9` or a later pack raises its count.
 
 B4 is the first task because three of the later packs depend on it; RF1/RF2 can
 run in parallel because they need no new classifier. Create wave 1 now (B4, RF1,
@@ -506,6 +529,46 @@ per the plan's own "create the current wave" rule.
 - Manifest carries `lesson_counts`; the picker shows the replay row; the
   coverage report names which lessons are replay-default.
 - No regression for generated lessons; the app still works with no manifest.
+
+## Rolling back to generated-first
+
+The flip is reversible at two levels, and neither one deletes a pack or a
+lesson. Packs, the manifest and the coverage model can stay in place: a
+generated-first build simply never selects a replay row unless the user asks for
+one.
+
+**1. Per user or session (no deploy).** Setup → **Scenario pool** → **Source** →
+**Generated**, or untick the replay row and tick the lesson's **GENERATED** row.
+The Generated filter writes `preferReplay: false` to
+`riichiprac.settings`, so the choice survives a reload; `all` then deals the
+generated lessons and the RF4 first-deal path requests no pack body. Replay or
+Both turns the default back on, and a replay row stays listed one filter away.
+To reset a browser by hand, delete the `preferReplay` field from that
+`localStorage` blob (or the whole key); the on-by-default value applies again.
+
+**2. Build-wide default (one constant).** Change
+`DEFAULT_PREFER_REPLAY = true` to `false` in
+`frontend/src/store/useSettingsStore.ts`. That is the only place the shipped
+default is set: `lessonReplayCoverage`, `allScenarioIds`, `selectionPool` and
+`firstDealReplayOption` already treat `preferReplay: false` as "generated pool,
+no replay default", and the picker already opens on Generated for that value.
+Stored users are not migrated by that change — anyone who previously chose
+Replay/Both keeps `preferReplay: true`. A genuinely fresh generated-first
+default for existing browsers needs the stored value ignored or migrated (bump
+`SETTINGS_VERSION` in the same store, or treat a stored `true` as the pre-flip
+default and write the new value on load); decide that explicitly rather than
+leaving a stale blob in charge.
+
+What a rollback does **not** need: changing the manifest schema or
+`lesson_counts`, rebuilding packs, removing the Replay/Generated/Both filter,
+or removing the `RF4` bootstrap code. With the setting off, the bootstrap
+returns before it fetches a body; the filter and REPLAY/GENERATED badges still
+describe rows a user can pick by name. If the whole source model is ever retired
+rather than defaulted off, the touch points are `allScenarioIds`/
+`defaultScenarioIds` (drop the replay substitution), the bootstrap branch in
+`App.tsx`'s `loadPuzzle`, the picker's source filter, and the docs listed in the
+next section; keep `mergePackLessons` if the replay rows are meant to remain
+pickable.
 
 ## Open questions for the user
 
@@ -525,20 +588,21 @@ per the plan's own "create the current wave" rule.
 7. **Rollout order**: ch7 first (recommended, highest yield and core decision)
    vs ch5/honitsu next.
 
-## Docs to update when this is approved
+## Docs updated for the shipped default
 
-- `replay-implementation-plan.md`: add this rollout as §11, extend §0 scope and
-  §9's definition of done from "first pack" to "replay-first catalogue".
+- `replay-implementation-plan.md`: this rollout as §11, §0 scope and §9's
+  definition of done extended from "first pack" to "replay-first catalogue".
 - `replay-strategy.md`: product policy (replay-first, coverage floor, generated
   fallback), the four classifier gaps, and the AI-vs-human distinction.
 - `replay-miner-operations.md`: manifest `lesson_counts`, per-section packs,
   coverage reporting, per-lesson floors, and the classifier-version bump rule
   for new recognisers.
 - `hosting-plan.md` §7: multiple packs, budget as sections accumulate, mirror
-  threshold.
-- `README.md`: scenario sources, default behaviour, how to choose generated.
-- `AGENTS.md` §4: state that replay is the default source when covered and
-  generated is the fallback/opt-in (once RF5 lands).
+  threshold, and the replay-first default (no longer "opt-in picker entries").
+- `README.md`: scenario sources, the shipped default, the first deal, and how to
+  choose generated.
+- `AGENTS.md` §4: replay is the default source when covered and generated is the
+  fallback/opt-in, with a pointer to the rollback below.
 
 ## Command-center slicing (proposed)
 
@@ -553,8 +617,10 @@ Create the current wave only:
 | `Replay Q3: ch7 riichi/dama pack` | `261119-171935` | worktree `riichiprac` | B4 |
 
 Later waves, as captured on 2026-11-19: RF4 `261119-2159` (landed), Q4
-`261119-2335`, Q5 `261119-2336`, C9 `261119-233553`, RF5 `261119-2340`. Q6, Q7
-and D1 are not captured yet; create them when the current coverage lands.
+`261119-2335` (landed), Q5 `261119-2336` (landed), C9 `261119-233553`, RF5
+`261119-2340` (landed 2026-11-20), Q6 `261120-1609` (landed), Q7 `261120-2158`
+(captured 2026-11-20). D1 is not captured yet; create it when the real-game
+source question is taken up.
 
 ## Expected end state
 

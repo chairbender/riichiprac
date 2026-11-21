@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ALL_SCENARIOS,
@@ -1002,5 +1003,66 @@ describe('defaultScenarioIds (picker All expansion)', () => {
     expect(defaultScenarioIds(merged)).toEqual(
       allScenarioIds(merged, { manifest: coveredManifest }),
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Shipped default (RF5)                                                      */
+/* -------------------------------------------------------------------------- */
+
+describe('committed pack manifest and the shipped replay-first default', () => {
+  // Read the manifest the app actually serves, so the acceptance rule is
+  // checked against the shipped coverage rather than only a fixture. The test
+  // derives the split from `lesson_counts`; adding bases or a pack (C9, Q7)
+  // changes the numbers without rewriting it.
+  const manifest = JSON.parse(
+    readFileSync(
+      new URL('../public/scenarios/manifest.json', import.meta.url),
+      'utf8',
+    ),
+  ) as PackManifest;
+
+  const lessonIds = [
+    ...new Set(manifest.packs.flatMap((pack) => pack.lesson_ids)),
+  ];
+  const catalogue = lessonIds.map((id) =>
+    scenario(id, false, 'book_and_mortal'),
+  );
+  const merged = mergePackLessons(catalogue, manifest);
+  const coverage = lessonReplayCoverage(manifest);
+  const pool = allScenarioIds(merged, { manifest });
+
+  it('carries a counted lesson_counts map for every hosted pack', () => {
+    expect(manifest.packs.length).toBeGreaterThan(0);
+    for (const pack of manifest.packs) {
+      expect(pack.lesson_counts, pack.id).toBeTruthy();
+      for (const lessonId of pack.lesson_ids) {
+        expect(
+          typeof pack.lesson_counts?.[lessonId],
+          `${pack.id}/${lessonId}`,
+        ).toBe('number');
+      }
+    }
+  });
+
+  it('deals a covered lesson from replay and a thin lesson from the generator', () => {
+    expect(lessonIds.length).toBeGreaterThan(0);
+    for (const lessonId of lessonIds) {
+      const row = coverage.get(lessonId);
+      expect(row, lessonId).toBeDefined();
+      const replayId = packScenarioId(row!.packId, lessonId);
+      const expected = row!.covered ? replayId : lessonId;
+      expect(pool, lessonId).toContain(expected);
+      // The other source is reachable, but never the default.
+      expect(pool, lessonId).not.toContain(row!.covered ? lessonId : replayId);
+    }
+  });
+
+  it('opens a launch on a covered replay lesson', () => {
+    const first = firstDealReplayOption(merged, { manifest });
+    expect(first?.pack).toBeTruthy();
+    // The first deal only ever picks a lesson at or above the floor, so a
+    // thin row can never become the launch hand.
+    expect(coverage.get(first!.pack!.lessonId)?.covered).toBe(true);
   });
 });
