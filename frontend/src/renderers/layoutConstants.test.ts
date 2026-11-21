@@ -98,13 +98,26 @@ describe('3D layout constants: wall', () => {
     expect(WALL.endRunRadiusUnits).toBeLessThan(WALL.radiusUnits);
   });
 
-  it('omits each run\u2019s draw-end top tile', () => {
+  it('reserves a 7-stack dead wall on the far run\u2019s draw-end half', () => {
     expect(WALL.drawEndSlot).toBe(16);
-    expect(WALL.drawEndTiers).toBe(1);
-    expect(WALL.tileCount).toBe(132);
-    expect(WALL.tileCount).toBe(
-      WALL.runs * (WALL.stacksPerRun * WALL.tiers - 1),
+    expect(WALL.deadWallStacks).toBe(7);
+    expect(WALL.deadWallStartStack).toBe(10);
+    expect(WALL.deadWallTiles).toBe(14);
+    // A deliberate break, wider than the layout gate's 1.4 mm slot threshold.
+    expect(WALL.deadWallGapUnits).toBeCloseTo(0.3, 12);
+    expect(WALL.deadWallGapUnits).toBeGreaterThan(0.05);
+  });
+
+  it('leaves 61 live stacks (122 tiles) beside the 14 dead ones', () => {
+    expect(WALL.liveWallStacks).toBe(61);
+    expect(WALL.liveWallStacks).toBe(
+      WALL.runs * WALL.stacksPerRun - WALL.deadWallStacks,
     );
+    expect(WALL.liveWallTiles).toBe(122);
+    expect(WALL.liveWallTiles + WALL.deadWallTiles).toBe(136);
+    // The deal is off the wall before any decision exists.
+    expect(WALL.maxDecisionLiveTiles).toBe(70);
+    expect(WALL.maxDecisionLiveTiles).toBeLessThan(WALL.liveWallTiles);
   });
 });
 

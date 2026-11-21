@@ -36,7 +36,7 @@ import type {
   TableSnapshot,
   Zone,
 } from './contract';
-import { WALL } from './layoutConstants';
+import { wallSlotId, wallSlots } from './wall';
 
 /** Narrow an engine seat number to a {@link Seat}, or null when out of range. */
 function seatIndex(value: unknown): Seat | null {
@@ -244,27 +244,22 @@ function buildSeat(
 }
 
 /**
- * The fixed decorative wall: four runs of two tiers, minus every run's
- * draw-end top tile. Face ids stay `blank` because the tiles are face-down.
+ * The wall at a decision: the fixed 14-tile dead wall plus the live wall's
+ * remaining tiles, from the published live count.
+ *
+ * Face ids stay `blank` because the tiles are face-down. `renderers/wall.ts`
+ * owns which slots exist; this adapter only maps them to snapshot tiles, so the
+ * 3D layout can never disagree with the count the compass shows.
  */
-function buildWall(): SnapshotTile[] {
-  const wall: SnapshotTile[] = [];
-  for (let run = 0; run < WALL.runs; run += 1) {
-    for (let stack = 0; stack < WALL.stacksPerRun; stack += 1) {
-      for (let tier = 0; tier < WALL.tiers; tier += 1) {
-        if (stack === WALL.drawEndSlot && tier >= WALL.drawEndTiers) continue;
-        wall.push(
-          tile({
-            face: 'blank',
-            zone: 'wall',
-            slot: run * WALL.slotsPerRun + stack * WALL.tiers + tier,
-            faceUp: false,
-          }),
-        );
-      }
-    }
-  }
-  return wall;
+function buildWall(tilesRemaining: number, humanSeat: Seat): SnapshotTile[] {
+  return wallSlots(tilesRemaining, humanSeat).map(({ run, stack, tier }) =>
+    tile({
+      face: 'blank',
+      zone: 'wall',
+      slot: wallSlotId(run, stack, tier),
+      faceUp: false,
+    }),
+  );
 }
 
 /** Recursively freeze a snapshot in development, so no view can mutate it. */
@@ -354,7 +349,7 @@ export function snapshotFromGameState(
     revision,
     humanSeat,
     seats,
-    wall: buildWall(),
+    wall: buildWall(state.tiles_remaining, humanSeat),
     dora: state.dora_indicators.map((code, index) =>
       tile({
         face: faceIdForTile(code),

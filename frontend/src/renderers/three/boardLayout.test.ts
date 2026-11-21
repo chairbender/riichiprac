@@ -34,6 +34,7 @@ import {
   type BoardTile,
 } from './boardLayout';
 import { boardFixture } from './boardFixture';
+import { decodeWallSlot, isDeadWallSlot, liveWallSlots } from '../wall';
 
 const fixture = boardFixture();
 const board = layoutBoard(fixture);
@@ -90,10 +91,13 @@ const riverOf = (
   source.foreground.filter((tile) => tile.seat === seat && tile.zone === 'river');
 
 describe('3D board layout: every zone is produced', () => {
-  it('draws the full decorative wall minus the dora-covered tiles', () => {
-    expect(WALL.tileCount).toBe(132);
-    expect(fixture.wall).toHaveLength(WALL.tileCount);
-    expect(board.wall).toHaveLength(WALL.tileCount - fixture.dora.length);
+  it('draws the dead wall and the live wall left by tiles_remaining', () => {
+    // The default fixture publishes 69 live tiles and 14 dead ones.
+    expect(fixture.compass.tilesRemaining).toBe(69);
+    expect(fixture.wall).toHaveLength(WALL.deadWallTiles + 69);
+    expect(board.wall).toHaveLength(
+      WALL.deadWallTiles + 69 - fixture.dora.length,
+    );
     for (const tile of board.wall) {
       expect(tile.zone).toBe('wall');
       expect(tile.faceUp).toBe(false);
@@ -326,26 +330,104 @@ describe('3D board layout: melds', () => {
 });
 
 describe('3D board layout: wall, dora and sticks', () => {
-  it('puts every run\u2019s draw end at its own seat\u2019s right', () => {
-    for (let run = 0; run < WALL.runs; run += 1) {
-      const runTiles = board.wall.filter(
-        (tile) => Math.floor(tile.slot / WALL.slotsPerRun) === run,
+  it('places the intact dead wall on the far run, shifted clear of the live wall', () => {
+    const farSeat = ((fixture.humanSeat + 2) % 4) as Seat;
+    const dead = board.wall.filter((tile) => isDeadWallSlot(tile.slot, fixture.humanSeat));
+    expect(dead).toHaveLength(WALL.deadWallTiles - fixture.dora.length);
+    const right = seatPoint(farSeat, 1, 0, 0);
+    const w = (tile: BoardTile): number =>
+      tile.pose.position[0] * right[0] + tile.pose.position[2] * right[2];
+
+    const stacks = new Set(
+      dead.map((tile) => Math.floor((tile.slot % WALL.slotsPerRun) / WALL.tiers)),
+    );
+    expect(stacks.size).toBe(WALL.deadWallStacks);
+    for (const stack of stacks) {
+      expect(stack).toBeGreaterThanOrEqual(WALL.deadWallStartStack);
+    }
+    // Every dead tile is at the far run's radius and shifted by the committed
+    // break, so the block is visibly separated from the live wall.
+    for (const tile of dead) {
+      expect(radialUnits(farSeat, tile.pose.position)).toBeCloseTo(
+        wallRunRadius(farSeat, fixture.humanSeat),
+        9,
       );
-      // Slot 16 keeps only its bottom tier.
-      const drawEnd = runTiles.filter(
-        (tile) => (tile.slot % WALL.slotsPerRun) >> 1 === WALL.drawEndSlot,
+      const stack = Math.floor((tile.slot % WALL.slotsPerRun) / WALL.tiers);
+      expect(w(tile)).toBeCloseTo(
+        (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits +
+          WALL.deadWallGapUnits,
+        9,
       );
-      expect(drawEnd).toHaveLength(1);
-      const basis = seatPoint(run as Seat, 1, 0, 0);
-      const along = drawEnd[0].pose.position[0] * basis[0] +
-        drawEnd[0].pose.position[2] * basis[2];
-      expect(along).toBeGreaterThan(0);
-      // Nothing in the run sits further toward the seat's right.
-      for (const tile of runTiles) {
-        const w =
-          tile.pose.position[0] * basis[0] + tile.pose.position[2] * basis[2];
-        expect(w).toBeLessThanOrEqual(along + 1e-9);
+    }
+
+    // The nearest live wall tile is at least the committed felt break away.
+    const live = board.wall.filter(
+      (tile) => !isDeadWallSlot(tile.slot, fixture.humanSeat),
+    );
+    let nearest = Number.POSITIVE_INFINITY;
+    for (const deadTile of dead) {
+      for (const liveTile of live) {
+        nearest = Math.min(
+          nearest,
+          Math.hypot(
+            deadTile.pose.position[0] - liveTile.pose.position[0],
+            deadTile.pose.position[1] - liveTile.pose.position[1],
+            deadTile.pose.position[2] - liveTile.pose.position[2],
+          ),
+        );
       }
+    }
+    expect(nearest).toBeGreaterThanOrEqual(WALL.deadWallGapUnits - 1e-9);
+  });
+
+  it('draws exactly the live tiles the count publishes', () => {
+    const live = board.wall.filter(
+      (tile) => !isDeadWallSlot(tile.slot, fixture.humanSeat),
+    );
+    expect(live).toHaveLength(fixture.compass.tilesRemaining);
+    // The count is odd, so exactly one stack at the draw edge keeps only its
+    // bottom tile (the draw order takes the top first).
+    const perStack = new Map<string, number[]>();
+    for (const tile of live) {
+      const decoded = decodeWallSlot(tile.slot);
+      if (!decoded) throw new Error('bad slot');
+      const key = `${decoded.run}:${decoded.stack}`;
+      perStack.set(key, [...(perStack.get(key) ?? []), decoded.tier]);
+    }
+    const partial = [...perStack.values()].filter(
+      (tiers) => tiers.length === 1,
+    );
+    expect(partial).toHaveLength(1);
+    expect(partial[0]).toEqual([0]);
+    expect(liveWallSlots(fixture.compass.tilesRemaining, fixture.humanSeat)).toHaveLength(
+      fixture.compass.tilesRemaining,
+    );
+  });
+
+  it('keeps the dead wall intact at a late-hand count', () => {
+    const late = layoutBoard(
+      boardFixture({ tilesRemaining: 12, doraCount: 5 }),
+    );
+    const dead = late.wall.filter((tile) =>
+      isDeadWallSlot(tile.slot, late.humanSeat),
+    );
+    // 14 tiles, minus the 5 face-down tiles the indicators cover.
+    expect(dead).toHaveLength(WALL.deadWallTiles - 5);
+    const live = late.wall.filter(
+      (tile) => !isDeadWallSlot(tile.slot, late.humanSeat),
+    );
+    expect(live).toHaveLength(12);
+    // No live tile survives on the empty (dealt) side of the ring.
+    for (const tile of live) {
+      const decoded = decodeWallSlot(tile.slot);
+      if (!decoded) throw new Error('bad slot');
+      const index = liveWallSlots(12, late.humanSeat).findIndex(
+        (slot) =>
+          slot.run === decoded.run &&
+          slot.stack === decoded.stack &&
+          slot.tier === decoded.tier,
+      );
+      expect(index).toBeGreaterThanOrEqual(0);
     }
   });
 
@@ -416,7 +498,8 @@ describe('3D board layout: wall, dora and sticks', () => {
         tile.pose.position[0] * right[0] + tile.pose.position[2] * right[2];
       expect(w).toBeCloseTo(
         (WALL.drawEndSlot - 1 - index - (WALL.stacksPerRun - 1) / 2) *
-          WALL.stackPitchUnits,
+          WALL.stackPitchUnits +
+          WALL.deadWallGapUnits,
         9,
       );
       // The revealed glyph reads from the human's side: its top points away
