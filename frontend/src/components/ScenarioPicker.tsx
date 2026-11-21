@@ -58,7 +58,7 @@ const SOURCE_FILTERS: Array<{
   {
     id: 'replay',
     label: 'Replay',
-    hint: 'Replay rows where a lesson has a pack. A lesson with no replay row keeps its generated row so it stays reachable.',
+    hint: 'Replay rows only: the real audited hands shipped for a lesson. A lesson with no replay row is listed under Generated or Both.',
   },
   {
     id: 'generated',
@@ -82,9 +82,11 @@ const SOURCE_FILTERS: Array<{
  *
  * The panel also carries the replay-first source model (RF3): a Source filter
  * (Replay/Generated/Both) plus per-row source labels. A covered lesson leads
- * with its replay row and trails its generated drill as the **GENERATED**
+ * with its **REPLAY** row and trails its generated drill as the **GENERATED**
  * opt-in; the Generated filter also switches the default pool to generated
- * drills. Filtering changes the rows listed, never the ticks already made.
+ * drills. The Replay filter is exclusive — it lists replay rows only, and a
+ * lesson without one is reachable under Generated or Both. Filtering changes
+ * the rows listed, never the ticks already made.
  *
  * Edits are staged in `draft` and only handed to the app when the user deals:
  * ticking six boxes should not generate six tables (or six Mortal forward
@@ -206,6 +208,18 @@ export const ScenarioPicker = ({
 
   const selectedCount = draft.kind === 'all' ? null : draft.ids.length;
   const canDeal = draft.kind === 'all' || draft.ids.length > 0;
+  /**
+   * The Replay filter is exclusive, so a deployment with no published replay
+   * rows lists nothing there. The empty state says why and points at the
+   * filters that do list rows, rather than leaving a blank group list.
+   */
+  const emptySourceNote =
+    rows.length > 0
+      ? null
+      : sourceFilter === 'replay'
+        ? 'No replay rows are published yet. Pick Generated to drill generated scenarios, or Both to list every row.'
+        : 'No scenarios are published for this source yet.';
+
   const poolSummary =
     draft.kind === 'all'
       ? 'Pool: every scenario, drawn at random'
@@ -219,12 +233,12 @@ export const ScenarioPicker = ({
    * Pack/source status line.
    *
    * It explains the RF3 source model: replay is the default where a lesson has
-   * enough reviewed bases, PACK rows deal that audited hand, the GENERATED row
-   * drills the same lesson, and the filter only changes which rows are listed.
-   * A failure note from a body that could not be delivered is appended.
+   * enough reviewed bases, REPLAY rows deal that audited hand, the GENERATED
+   * row drills the same lesson, and the filter only changes which rows are
+   * listed. A failure note from a body that could not be delivered is appended.
    */
   const sourceNote =
-    'PACK rows deal a real audited replay hand; GENERATED rows drill the same lesson with the generator. Replay is the default where a lesson has enough reviewed bases, and a launch’s first hand may fetch one replay body before it draws. Filtering changes the rows listed, not the ticks you already made.';
+    'REPLAY rows deal a real audited replay hand; GENERATED rows drill the same lesson with the generator. Replay is the default where a lesson has enough reviewed bases, and a launch’s first hand may fetch one replay body before it draws. Filtering changes the rows listed, not the ticks you already made.';
   const knownPackNote =
     packCount === 1
       ? `Replay pack: ${sourceNote}`
@@ -322,6 +336,9 @@ export const ScenarioPicker = ({
           </label>
 
           <div className="scenario-group-list">
+            {emptySourceNote && (
+              <p className="scenario-picker-empty">{emptySourceNote}</p>
+            )}
             {groups.map((group) => {
               const groupIds = group.scenarios.map((scenario) => scenario.id);
               const checkedCount = group.scenarios.filter((scenario) =>
@@ -394,7 +411,7 @@ export const ScenarioPicker = ({
                                     : ''
                                 }`}
                               >
-                                PACK
+                                REPLAY
                               </span>
                             )}
                             {row?.generatedAlternative && (

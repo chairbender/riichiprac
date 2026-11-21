@@ -2271,6 +2271,11 @@ only).
 > the agent: the picker's new pack note/badge styling is handed to the user as a
 > dev URL (AGENTS.md §6). **User sign-off 2026-11-17:** the pack note and the
 > PACK badge row read fine at `http://127.0.0.1:5199/`.
+>
+> **Renamed 2026-11-20 (task 261120-1718):** the row badge now reads **REPLAY**
+> (the user kept "Replay" as the one user-facing term) and the Replay source
+> filter lists replay rows only. See `replay-first-rollout.md` ("Update
+> (2026-11-20)").
 
 #### Phase 8 — Validation and first ship
 

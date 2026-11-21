@@ -120,7 +120,7 @@ unchanged), **DROPPED**, **2D ONLY**.
 | 6 | Pack note (`role="status"`, pack loading/error/empty) | panel | **SETUP SHEET** | H4 |
 | 7 | "All scenarios (random)" checkbox | panel | **SETUP SHEET** | H4 |
 | 8 | Section tri-state checkbox + label + count | panel | **SETUP SHEET** | H4 |
-| 9 | Lesson checkbox + label + AI/PACK badges | panel | **SETUP SHEET** | H4 |
+| 9 | Lesson checkbox + label + AI/REPLAY badges | panel | **SETUP SHEET** | H4 |
 | 10 | Per-lesson "Only" / "Setup" button | panel | **SETUP SHEET** | H4 |
 | 11 | Pool summary (`aria-live`) | panel | **SETUP SHEET** | H4 |
 | 12 | Cancel / "Deal from pool" | panel | **SETUP SHEET**; a deal closes the sheet | H4 |
