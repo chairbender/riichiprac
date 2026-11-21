@@ -1150,13 +1150,13 @@ trigger. This is what remains for 3D-15/16 and what the chain may build on.
   every size.
 - **Not done here.** 3D-15 runs the stress-fixture matrix and the handoff
   screenshots; 3D-16 records the chain.
-- **Composition handoff (AGENTS.md §6): pending the user's verdict.** Run the
-  dev server (`cd frontend && npm run dev`) and open
-  `http://localhost:5173/?renderer=3d`, tap **Setup** in the top-left, walk the
-  pool (open it, tick a lesson, deal), the AI Hotseat form, both settings, the
-  import/export block and **Table info**, then close it with Escape and with the
-  Close button. The numbers above are the scripted checks; the look is the
-  user's call.
+- **User verdict (2026-11-20): accepted.** The user reviewed the running dev
+  server — the setup sheet's four sections, the pool opened and ticked, the
+  inline hotseat form, both settings, the position/table blocks — and the top
+  bar with the app's name above the Setup trigger, and accepted the composition
+  ("this task looks good now"). The brand line (added at the same time, 78 px
+  bar) is part of that accepted composition. The numbers above are the scripted
+  checks; the look was the user's call.
 
 ---
 
