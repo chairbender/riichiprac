@@ -26,20 +26,20 @@
  * the one modal, so it renders the shared body inline.
  */
 
-import { useId, useState } from 'react';
-import type { ChangeEvent, ReactNode } from 'react';
-import { AgreementToggle } from '../../components/AgreementToggle';
-import { ExportImportControls } from '../../components/ExportImportControls';
-import type { ExportImportControlsProps } from '../../components/ExportImportControls';
-import { HotseatCardBody } from '../../components/HotseatCard';
-import { ScenarioPicker } from '../../components/ScenarioPicker';
-import { ViewPicker } from '../../components/ViewPicker';
-import type { HotseatOptions } from '../../hotseat';
-import type { ScenarioOption, ScenarioSelection } from '../../scenarios';
-import type { PackManifestStatus } from '../../services/packLoader';
-import type { TableView } from '../../store/useSettingsStore';
-import type { AiStatus } from '../../types/ai';
-import { NESTED_LAYER_ATTRIBUTE } from './Sheet';
+import { useId, useState } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+import { AgreementToggle } from "../../components/AgreementToggle";
+import { ExportImportControls } from "../../components/ExportImportControls";
+import type { ExportImportControlsProps } from "../../components/ExportImportControls";
+import { HotseatCardBody } from "../../components/HotseatCard";
+import { ScenarioPicker } from "../../components/ScenarioPicker";
+import { selectionLabel } from "../../scenarios";
+import { ViewPicker } from "../../components/ViewPicker";
+import type { HotseatOptions } from "../../hotseat";
+import type { ScenarioOption, ScenarioSelection } from "../../scenarios";
+import type { PackManifestStatus } from "../../services/packLoader";
+import type { TableView } from "../../store/useSettingsStore";
+import type { AiStatus } from "../../types/ai";
 
 /** The top bar's setup trigger: the one front door to the sheet (§3, row 3). */
 export interface SetupTriggerProps {
@@ -111,6 +111,16 @@ export interface SetupSheetProps {
   readonly notes?: ReactNode;
   /** The imported position's full description card, when present. */
   readonly positionNote?: ReactNode;
+  /**
+   * Which page of the sheet is showing (2026-11-21). `settings` is the list of
+   * sections; `pool` gives the scenario picker the whole pane. The host owns the
+   * value so Escape and a scrim tap can step back one page before closing.
+   */
+  readonly page?: "settings" | "pool";
+  /** Open the pool page (the Scenario row). */
+  readonly onNavigatePool?: () => void;
+  /** Leave the pool page for the settings page (Back, Escape, scrim). */
+  readonly onBackToSettings?: () => void;
 }
 
 export function SetupSheet({
@@ -138,6 +148,9 @@ export function SetupSheet({
   tableInfo,
   notes,
   positionNote,
+  page = "settings",
+  onNavigatePool,
+  onBackToSettings,
 }: SetupSheetProps) {
   const poolHeadingId = useId();
   const settingsHeadingId = useId();
@@ -151,25 +164,28 @@ export function SetupSheet({
 
   const hasTableSection = Boolean(tableInfo || notes || positionNote);
 
-  return (
-    <div className="hud-setup-sheet">
-      <section className="hud-setup-section" aria-labelledby={poolHeadingId}>
-        <h3 className="hud-setup-section-heading" id={poolHeadingId}>
-          Scenario
-        </h3>
+  /*
+   * The scenario pool is a **page**, not a dropdown (user request 2026-11-21):
+   * its list needs the whole pane to scroll, and a 300 px popover inside a
+   * 296 px sheet could not give it that. The sheet navigates: settings -> pool,
+   * and Back (or Escape, or a scrim tap) returns to settings before the next one
+   * closes the sheet.
+   */
+  if (page === "pool") {
+    return (
+      <div className="hud-setup-sheet hud-setup-sheet--pool">
         <ScenarioPicker
+          variant="page"
           scenarios={scenarios}
           selection={selection}
           onChange={onSelectionChange}
-          // The AI Hotseat lesson is configured before it is dealt, not drawn
-          // from defaults: the picker's "Setup" row opens the form in place.
           onConfigureHotseat={() => setHotseatOpen(true)}
+          onCancel={onBackToSettings}
           packStatus={packStatus}
           packCount={packCount}
           packError={packError}
           preferReplay={preferReplay}
           onPreferReplayChange={onPreferReplayChange}
-          nestedLayerAttribute={NESTED_LAYER_ATTRIBUTE}
         />
         {hotseatOpen && (
           <section
@@ -180,16 +196,47 @@ export function SetupSheet({
               initialOptions={hotseatOptions}
               busy={hotseatBusy}
               onGenerate={onGenerateHotseat}
-              // Cancelling returns to the pool; the sheet itself stays open.
               onCancel={() => setHotseatOpen(false)}
               titleId={hotseatTitleId}
               titleAs="h3"
             />
           </section>
         )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="hud-setup-sheet">
+      <section className="hud-setup-section" aria-labelledby={poolHeadingId}>
+        <h3 className="hud-setup-section-heading" id={poolHeadingId}>
+          Scenario
+        </h3>
+        <button
+          type="button"
+          className="hud-setup-scenario-row"
+          onClick={onNavigatePool}
+          // The same title the 2D header's pool control carries, so the two
+          // shells name the control identically; its text is the selection.
+          title="Choose one lesson, all scenarios, or a pool to randomise between"
+        >
+          <span className="hud-setup-scenario-value">
+            {selectionLabel(selection, scenarios)}
+          </span>
+          <span className="hud-setup-scenario-go" aria-hidden="true">
+            Change ▸
+          </span>
+        </button>
+        <p className="hud-setup-hint">
+          Pick one lesson, a whole book section, or any mix to randomise
+          between. The AI Hotseat is set up from its own row.
+        </p>
       </section>
 
-      <section className="hud-setup-section" aria-labelledby={settingsHeadingId}>
+      <section
+        className="hud-setup-section"
+        aria-labelledby={settingsHeadingId}
+      >
         <h3 className="hud-setup-section-heading" id={settingsHeadingId}>
           Settings
         </h3>
@@ -220,7 +267,10 @@ export function SetupSheet({
         </div>
       </section>
 
-      <section className="hud-setup-section" aria-labelledby={positionHeadingId}>
+      <section
+        className="hud-setup-section"
+        aria-labelledby={positionHeadingId}
+      >
         <h3 className="hud-setup-section-heading" id={positionHeadingId}>
           Position
         </h3>

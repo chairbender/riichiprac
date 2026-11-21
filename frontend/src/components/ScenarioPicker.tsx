@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { HOTSEAT_SCENARIO_ID, isHotseatOnly } from '../hotseat';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { HOTSEAT_SCENARIO_ID, isHotseatOnly } from "../hotseat";
 import {
   ALL_SCENARIOS,
   DEFAULT_SOURCE_FILTER,
@@ -9,14 +9,14 @@ import {
   selectionLabel,
   setScenariosSelected,
   toggleScenario,
-} from '../scenarios';
+} from "../scenarios";
 import type {
   ScenarioId,
   ScenarioOption,
   ScenarioSelection,
   ScenarioSourceFilter,
-} from '../scenarios';
-import type { PackManifestStatus } from '../services/packLoader';
+} from "../scenarios";
+import type { PackManifestStatus } from "../services/packLoader";
 
 interface ScenarioPickerProps {
   scenarios: ScenarioOption[];
@@ -42,9 +42,20 @@ interface ScenarioPickerProps {
    * header passes nothing, so its output is unchanged.
    */
   nestedLayerAttribute?: string;
+  /**
+   * `popover` (default) is the 2D header's trigger plus a floating panel.
+   * `page` renders the panel's content **on its own**, for a host that gives it
+   * a whole pane (the 3D setup sheet, 2026-11-21): no trigger, no open state and
+   * no outside-click/Escape handling — the host mounts it when it navigates to
+   * the page and unmounts it on the way back, which is what gives the list the
+   * full height and a working scroll.
+   */
+  variant?: "popover" | "page";
+  /** The page variant's Cancel: return to the host's previous page. */
+  onCancel?: () => void;
 }
 
-const PANEL_ID = 'scenario-pool-panel';
+const PANEL_ID = "scenario-pool-panel";
 
 /**
  * The source filter's three states, in the order the rollout plan names them.
@@ -56,19 +67,19 @@ const SOURCE_FILTERS: Array<{
   hint: string;
 }> = [
   {
-    id: 'replay',
-    label: 'Replay',
-    hint: 'Replay rows only: the real audited hands shipped for a lesson. A lesson with no replay row is listed under Generated or Both.',
+    id: "replay",
+    label: "Replay",
+    hint: "Replay rows only: the real audited hands shipped for a lesson. A lesson with no replay row is listed under Generated or Both.",
   },
   {
-    id: 'generated',
-    label: 'Generated',
-    hint: 'Generated drills only, and the default pool deals them. Covered lessons keep a replay row one filter away.',
+    id: "generated",
+    label: "Generated",
+    hint: "Generated drills only, and the default pool deals them. Covered lessons keep a replay row one filter away.",
   },
   {
-    id: 'both',
-    label: 'Both',
-    hint: 'Every row: a covered lesson leads with its replay position and the generated drill follows as the opt-in alternative.',
+    id: "both",
+    label: "Both",
+    hint: "Every row: a covered lesson leads with its replay position and the generated drill follows as the opt-in alternative.",
   },
 ];
 
@@ -103,7 +114,10 @@ export const ScenarioPicker = ({
   preferReplay,
   onPreferReplayChange,
   nestedLayerAttribute,
+  variant = "popover",
+  onCancel,
 }: ScenarioPickerProps) => {
+  const isPage = variant === "page";
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ScenarioSelection>(selection);
   /**
@@ -113,7 +127,7 @@ export const ScenarioPicker = ({
    * the pool it produces.
    */
   const [sourceFilter, setSourceFilter] = useState<ScenarioSourceFilter>(
-    preferReplay ? DEFAULT_SOURCE_FILTER : 'generated',
+    preferReplay ? DEFAULT_SOURCE_FILTER : "generated",
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -126,10 +140,7 @@ export const ScenarioPicker = ({
     () => new Map(rows.map((row) => [row.option.id, row])),
     [rows],
   );
-  const visibleScenarios = useMemo(
-    () => rows.map((row) => row.option),
-    [rows],
-  );
+  const visibleScenarios = useMemo(() => rows.map((row) => row.option), [rows]);
   const groups = useMemo(
     () => groupScenarios(visibleScenarios),
     [visibleScenarios],
@@ -154,17 +165,17 @@ export const ScenarioPicker = ({
       }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         setOpen(false);
         triggerRef.current?.focus();
       }
     };
 
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
 
@@ -203,11 +214,11 @@ export const ScenarioPicker = ({
    */
   const changeSourceFilter = (next: ScenarioSourceFilter) => {
     setSourceFilter(next);
-    onPreferReplayChange(next !== 'generated');
+    onPreferReplayChange(next !== "generated");
   };
 
-  const selectedCount = draft.kind === 'all' ? null : draft.ids.length;
-  const canDeal = draft.kind === 'all' || draft.ids.length > 0;
+  const selectedCount = draft.kind === "all" ? null : draft.ids.length;
+  const canDeal = draft.kind === "all" || draft.ids.length > 0;
   /**
    * The Replay filter is exclusive, so a deployment with no published replay
    * rows lists nothing there. The empty state says why and points at the
@@ -216,18 +227,18 @@ export const ScenarioPicker = ({
   const emptySourceNote =
     rows.length > 0
       ? null
-      : sourceFilter === 'replay'
-        ? 'No replay rows are published yet. Pick Generated to drill generated scenarios, or Both to list every row.'
-        : 'No scenarios are published for this source yet.';
+      : sourceFilter === "replay"
+        ? "No replay rows are published yet. Pick Generated to drill generated scenarios, or Both to list every row."
+        : "No scenarios are published for this source yet.";
 
   const poolSummary =
-    draft.kind === 'all'
-      ? 'Pool: every scenario, drawn at random'
+    draft.kind === "all"
+      ? "Pool: every scenario, drawn at random"
       : draft.ids.length === 0
-        ? 'Pick at least one scenario to deal'
+        ? "Pick at least one scenario to deal"
         : `Pool: ${draft.ids.length} scenario${
-            draft.ids.length === 1 ? '' : 's'
-          } · ${draftGroupCount} section${draftGroupCount === 1 ? '' : 's'}`;
+            draft.ids.length === 1 ? "" : "s"
+          } · ${draftGroupCount} section${draftGroupCount === 1 ? "" : "s"}`;
 
   /**
    * Pack/source status line.
@@ -238,22 +249,226 @@ export const ScenarioPicker = ({
    * listed. A failure note from a body that could not be delivered is appended.
    */
   const sourceNote =
-    'REPLAY rows deal a real audited replay hand; GENERATED rows drill the same lesson with the generator. Replay is the default where a lesson has enough reviewed bases, and a launch’s first hand may fetch one replay body before it draws. Filtering changes the rows listed, not the ticks you already made.';
+    "REPLAY rows deal a real audited replay hand; GENERATED rows drill the same lesson with the generator. Replay is the default where a lesson has enough reviewed bases, and a launch’s first hand may fetch one replay body before it draws. Filtering changes the rows listed, not the ticks you already made.";
   const knownPackNote =
     packCount === 1
       ? `Replay pack: ${sourceNote}`
       : `${packCount} replay packs: ${sourceNote}`;
 
   const packNote =
-    packStatus === 'loading'
-      ? 'Loading replay packs…'
-      : packStatus === 'error'
-        ? `Replay packs unavailable: ${packError ?? 'unknown error'}`
-        : packStatus === 'empty'
-          ? 'No replay packs are published yet, so every lesson stays generated.'
+    packStatus === "loading"
+      ? "Loading replay packs…"
+      : packStatus === "error"
+        ? `Replay packs unavailable: ${packError ?? "unknown error"}`
+        : packStatus === "empty"
+          ? "No replay packs are published yet, so every lesson stays generated."
           : packError
             ? `${knownPackNote} ${packError}`
             : knownPackNote;
+
+  const panel = (
+    <div
+      className="scenario-picker-panel"
+      id={PANEL_ID}
+      // A floating panel is a dialog; a page is a region inside the host's one
+      // modal, so it must not nest a second dialog.
+      role={isPage ? "group" : "dialog"}
+      aria-label="Scenario pool"
+      // A host modal (the 3D setup sheet) consumes Escape only when no nested
+      // layer is open; a page is not a nested layer.
+      {...(nestedLayerAttribute && !isPage
+        ? { [nestedLayerAttribute]: "open" }
+        : {})}
+    >
+      <div className="scenario-picker-panel-head">
+        <div className="scenario-picker-heading">Scenario pool</div>
+        <p className="scenario-picker-hint">
+          Pick one, a whole book section, or any mix to randomise between.
+        </p>
+        <p className="scenario-picker-pack-note" role="status">
+          {packNote}
+        </p>
+      </div>
+
+      <fieldset className="scenario-picker-source">
+        <legend className="scenario-picker-source-legend">Source</legend>
+        <div className="scenario-picker-source-options">
+          {SOURCE_FILTERS.map((filter) => (
+            <label
+              className="scenario-picker-source-option"
+              key={filter.id}
+              title={filter.hint}
+            >
+              <input
+                type="radio"
+                name="scenario-source-filter"
+                value={filter.id}
+                checked={sourceFilter === filter.id}
+                onChange={() => changeSourceFilter(filter.id)}
+              />
+              <span>{filter.label}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <label className="scenario-picker-all">
+        <input
+          type="checkbox"
+          checked={draft.kind === "all"}
+          onChange={(event) =>
+            setDraft(
+              event.target.checked
+                ? ALL_SCENARIOS
+                : { kind: "selected", ids: [] },
+            )
+          }
+        />
+        <span>All scenarios (random)</span>
+      </label>
+
+      <div className="scenario-group-list">
+        {emptySourceNote && (
+          <p className="scenario-picker-empty">{emptySourceNote}</p>
+        )}
+        {groups.map((group) => {
+          const groupIds = group.scenarios.map((scenario) => scenario.id);
+          const checkedCount = group.scenarios.filter((scenario) =>
+            draftIds.has(scenario.id),
+          ).length;
+          const allChecked = checkedCount === group.scenarios.length;
+          const partial = checkedCount > 0 && !allChecked;
+
+          return (
+            <div className="scenario-group" key={group.key}>
+              <label className="scenario-group-head">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  ref={(input) => {
+                    if (input) input.indeterminate = partial;
+                  }}
+                  onChange={(event) =>
+                    toggleGroup(groupIds, event.target.checked)
+                  }
+                  aria-label={`Select all in ${group.label}`}
+                />
+                <span className="scenario-group-label">{group.label}</span>
+                <span className="scenario-group-count">
+                  {checkedCount}/{group.scenarios.length}
+                </span>
+              </label>
+
+              <ul className="scenario-group-items">
+                {group.scenarios.map((scenario) => {
+                  const row = rowById.get(scenario.id);
+                  const className = row?.generatedAlternative
+                    ? "scenario-item scenario-item-generated-alt"
+                    : "scenario-item";
+                  return (
+                    <li className={className} key={scenario.id}>
+                      <label className="scenario-item-label">
+                        <input
+                          type="checkbox"
+                          checked={draftIds.has(scenario.id)}
+                          onChange={() =>
+                            setDraft(
+                              toggleScenario(
+                                scenarios,
+                                draft,
+                                scenario.id,
+                                preferReplay,
+                              ),
+                            )
+                          }
+                        />
+                        <span
+                          className="scenario-item-name"
+                          title={scenario.description}
+                        >
+                          {scenario.label}
+                        </span>
+                        {scenario.requires_ai && (
+                          <span className="scenario-item-badge">AI</span>
+                        )}
+                        {scenario.pack && (
+                          <span
+                            className="scenario-item-badge"
+                            title={`Replay pack ${scenario.pack.packId}${
+                              scenario.pack.bases > 0
+                                ? ` · ${scenario.pack.bases} reviewed base${
+                                    scenario.pack.bases === 1 ? "" : "s"
+                                  }`
+                                : ""
+                            }`}
+                          >
+                            REPLAY
+                          </span>
+                        )}
+                        {row?.generatedAlternative && (
+                          <span
+                            className="scenario-item-badge scenario-item-badge-generated"
+                            title="Generated drill: the opt-in alternative to this lesson's replay position."
+                          >
+                            GENERATED
+                          </span>
+                        )}
+                      </label>
+                      <button
+                        type="button"
+                        className="scenario-item-only"
+                        onClick={() =>
+                          deal({ kind: "selected", ids: [scenario.id] })
+                        }
+                        title={
+                          scenario.id === HOTSEAT_SCENARIO_ID
+                            ? "Choose the AI Hotseat starting conditions"
+                            : `Deal only ${scenario.label}`
+                        }
+                      >
+                        {scenario.id === HOTSEAT_SCENARIO_ID ? "Setup" : "Only"}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="scenario-picker-footer">
+        <span className="scenario-picker-pool" aria-live="polite">
+          {poolSummary}
+        </span>
+        <div className="scenario-picker-actions">
+          <button
+            type="button"
+            className="scenario-picker-cancel"
+            onClick={() => (isPage ? onCancel?.() : setOpen(false))}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="scenario-picker-deal"
+            disabled={!canDeal}
+            onClick={() => deal(draft)}
+          >
+            {selectedCount === 1 ? "Deal this lesson" : "Deal from pool"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isPage) {
+    return (
+      <div className="scenario-picker scenario-picker--page" ref={containerRef}>
+        {panel}
+      </div>
+    );
+  }
 
   return (
     <div className="scenario-picker" ref={containerRef}>
@@ -277,201 +492,7 @@ export const ScenarioPicker = ({
           ▾
         </span>
       </button>
-
-      {open && (
-        <div
-          className="scenario-picker-panel"
-          id={PANEL_ID}
-          role="dialog"
-          aria-label="Scenario pool"
-          // A host modal (the 3D setup sheet) consumes Escape only when no
-          // nested layer is open; this marks that state.
-          {...(nestedLayerAttribute ? { [nestedLayerAttribute]: 'open' } : {})}
-        >
-          <div className="scenario-picker-panel-head">
-            <div className="scenario-picker-heading">Scenario pool</div>
-            <p className="scenario-picker-hint">
-              Pick one, a whole book section, or any mix to randomise between.
-            </p>
-            <p className="scenario-picker-pack-note" role="status">
-              {packNote}
-            </p>
-          </div>
-
-          <fieldset className="scenario-picker-source">
-            <legend className="scenario-picker-source-legend">Source</legend>
-            <div className="scenario-picker-source-options">
-              {SOURCE_FILTERS.map((filter) => (
-                <label
-                  className="scenario-picker-source-option"
-                  key={filter.id}
-                  title={filter.hint}
-                >
-                  <input
-                    type="radio"
-                    name="scenario-source-filter"
-                    value={filter.id}
-                    checked={sourceFilter === filter.id}
-                    onChange={() => changeSourceFilter(filter.id)}
-                  />
-                  <span>{filter.label}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="scenario-picker-all">
-            <input
-              type="checkbox"
-              checked={draft.kind === 'all'}
-              onChange={(event) =>
-                setDraft(
-                  event.target.checked
-                    ? ALL_SCENARIOS
-                    : { kind: 'selected', ids: [] },
-                )
-              }
-            />
-            <span>All scenarios (random)</span>
-          </label>
-
-          <div className="scenario-group-list">
-            {emptySourceNote && (
-              <p className="scenario-picker-empty">{emptySourceNote}</p>
-            )}
-            {groups.map((group) => {
-              const groupIds = group.scenarios.map((scenario) => scenario.id);
-              const checkedCount = group.scenarios.filter((scenario) =>
-                draftIds.has(scenario.id),
-              ).length;
-              const allChecked = checkedCount === group.scenarios.length;
-              const partial = checkedCount > 0 && !allChecked;
-
-              return (
-                <div className="scenario-group" key={group.key}>
-                  <label className="scenario-group-head">
-                    <input
-                      type="checkbox"
-                      checked={allChecked}
-                      ref={(input) => {
-                        if (input) input.indeterminate = partial;
-                      }}
-                      onChange={(event) =>
-                        toggleGroup(groupIds, event.target.checked)
-                      }
-                      aria-label={`Select all in ${group.label}`}
-                    />
-                    <span className="scenario-group-label">{group.label}</span>
-                    <span className="scenario-group-count">
-                      {checkedCount}/{group.scenarios.length}
-                    </span>
-                  </label>
-
-                  <ul className="scenario-group-items">
-                    {group.scenarios.map((scenario) => {
-                      const row = rowById.get(scenario.id);
-                      const className =
-                        row?.generatedAlternative
-                          ? 'scenario-item scenario-item-generated-alt'
-                          : 'scenario-item';
-                      return (
-                        <li className={className} key={scenario.id}>
-                          <label className="scenario-item-label">
-                            <input
-                              type="checkbox"
-                              checked={draftIds.has(scenario.id)}
-                              onChange={() =>
-                                setDraft(
-                                  toggleScenario(
-                                    scenarios,
-                                    draft,
-                                    scenario.id,
-                                    preferReplay,
-                                  ),
-                                )
-                              }
-                            />
-                            <span
-                              className="scenario-item-name"
-                              title={scenario.description}
-                            >
-                              {scenario.label}
-                            </span>
-                            {scenario.requires_ai && (
-                              <span className="scenario-item-badge">AI</span>
-                            )}
-                            {scenario.pack && (
-                              <span
-                                className="scenario-item-badge"
-                                title={`Replay pack ${scenario.pack.packId}${
-                                  scenario.pack.bases > 0
-                                    ? ` · ${scenario.pack.bases} reviewed base${
-                                        scenario.pack.bases === 1 ? '' : 's'
-                                      }`
-                                    : ''
-                                }`}
-                              >
-                                REPLAY
-                              </span>
-                            )}
-                            {row?.generatedAlternative && (
-                              <span
-                                className="scenario-item-badge scenario-item-badge-generated"
-                                title="Generated drill: the opt-in alternative to this lesson's replay position."
-                              >
-                                GENERATED
-                              </span>
-                            )}
-                          </label>
-                          <button
-                            type="button"
-                            className="scenario-item-only"
-                            onClick={() =>
-                              deal({ kind: 'selected', ids: [scenario.id] })
-                            }
-                            title={
-                              scenario.id === HOTSEAT_SCENARIO_ID
-                                ? 'Choose the AI Hotseat starting conditions'
-                                : `Deal only ${scenario.label}`
-                            }
-                          >
-                            {scenario.id === HOTSEAT_SCENARIO_ID
-                              ? 'Setup'
-                              : 'Only'}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="scenario-picker-footer">
-            <span className="scenario-picker-pool" aria-live="polite">
-              {poolSummary}
-            </span>
-            <div className="scenario-picker-actions">
-              <button
-                type="button"
-                className="scenario-picker-cancel"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="scenario-picker-deal"
-                disabled={!canDeal}
-                onClick={() => deal(draft)}
-              >
-                {selectedCount === 1 ? 'Deal this lesson' : 'Deal from pool'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {open && panel}
     </div>
   );
 };

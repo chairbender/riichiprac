@@ -1,62 +1,62 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
-import { generate_puzzle, list_scenarios } from 'riichiprac';
-import { isCallDecision } from './actions';
-import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
+import { generate_puzzle, list_scenarios } from "riichiprac";
+import { isCallDecision } from "./actions";
+import { AGREEMENT_OPTIONS, formatAgreementNotice } from "./agreement";
 import {
   CALL_DEMO_CASES,
   callDemoStartIndex,
   nextCallDemoIndex,
-} from './callDemo';
+} from "./callDemo";
 import {
   callButtonsFor,
   callContextFor,
   isCallActionType,
   NO_CALL_BUTTONS,
-} from './callChoices';
-import { ActionBar } from './components/ActionBar';
-import { AppControls } from './components/AppControls';
-import { ExportImportControls } from './components/ExportImportControls';
-import type { ExportImportControlsProps } from './components/ExportImportControls';
-import { HandDock } from './components/HandDock';
-import { HotseatCard } from './components/HotseatCard';
-import { NextScenarioButton } from './components/NextScenarioButton';
-import { PhysicalTable } from './components/PhysicalTable';
-import { PlayerRow } from './components/PlayerRow';
-import { PositionDescriptionCard } from './components/PositionDescriptionCard';
-import { TableInfo } from './components/TableInfo';
-import { VerdictPanel } from './components/VerdictPanel';
-import { liftedHandRefs } from './renderers/handOverlay';
-import { RendererHost } from './renderers/RendererHost';
-import { ActionRail } from './renderers/hud/ActionRail';
-import { actionRailVisible } from './renderers/hud/actionRail';
-import type { ActionRailModel } from './renderers/hud/actionRail';
-import { HudLayer } from './renderers/hud/HudLayer';
-import { useMobileLayout } from './renderers/hud/useMobileLayout';
-import { useForcedLandscape } from './renderers/useForcedLandscape';
-import type { HudSheetContent } from './renderers/hud/HudLayer';
-import { ResultCard } from './renderers/hud/ResultCard';
-import { SetupSheet, SetupTrigger } from './renderers/hud/SetupSheet';
-import { HudToastStack } from './renderers/hud/ToastStack';
-import { VerdictSheet } from './renderers/hud/VerdictSheet';
-import { buildHudToasts } from './renderers/hud/toastModel';
+} from "./callChoices";
+import { ActionBar } from "./components/ActionBar";
+import { AppControls } from "./components/AppControls";
+import { ExportImportControls } from "./components/ExportImportControls";
+import type { ExportImportControlsProps } from "./components/ExportImportControls";
+import { HandDock } from "./components/HandDock";
+import { HotseatCard } from "./components/HotseatCard";
+import { NextScenarioButton } from "./components/NextScenarioButton";
+import { PhysicalTable } from "./components/PhysicalTable";
+import { PlayerRow } from "./components/PlayerRow";
+import { PositionDescriptionCard } from "./components/PositionDescriptionCard";
+import { TableInfo } from "./components/TableInfo";
+import { VerdictPanel } from "./components/VerdictPanel";
+import { liftedHandRefs } from "./renderers/handOverlay";
+import { RendererHost } from "./renderers/RendererHost";
+import { ActionRail } from "./renderers/hud/ActionRail";
+import { actionRailVisible } from "./renderers/hud/actionRail";
+import type { ActionRailModel } from "./renderers/hud/actionRail";
+import { HudLayer } from "./renderers/hud/HudLayer";
+import { useMobileLayout } from "./renderers/hud/useMobileLayout";
+import { useForcedLandscape } from "./renderers/useForcedLandscape";
+import type { HudSheetContent } from "./renderers/hud/HudLayer";
+import { ResultCard } from "./renderers/hud/ResultCard";
+import { SetupSheet, SetupTrigger } from "./renderers/hud/SetupSheet";
+import { HudToastStack } from "./renderers/hud/ToastStack";
+import { VerdictSheet } from "./renderers/hud/VerdictSheet";
+import { buildHudToasts } from "./renderers/hud/toastModel";
 import {
   RENDERED3D_EXPOSED,
   probeCapabilities,
   threeViewUnavailableReason,
-} from './renderers/capabilities';
-import { resolveTableMount } from './renderers/resolveTableMount';
-import { snapshotFromGameState, withPreviewRiichi } from './renderers/snapshot';
-import { exitFullscreenIfActive } from './fullscreen';
+} from "./renderers/capabilities";
+import { resolveTableMount } from "./renderers/resolveTableMount";
+import { snapshotFromGameState, withPreviewRiichi } from "./renderers/snapshot";
+import { exitFullscreenIfActive } from "./fullscreen";
 import {
   DEFAULT_HOTSEAT_OPTIONS,
   HOTSEAT_SCENARIO_ID,
   hotseatOptionsJson,
   hotseatProgressLabel,
   isHotseatOnly,
-} from './hotseat';
-import type { HotseatOptions, HotseatProgress } from './hotseat';
-import { downloadJson, readStateFile, serializeState } from './stateFile';
+} from "./hotseat";
+import type { HotseatOptions, HotseatProgress } from "./hotseat";
+import { downloadJson, readStateFile, serializeState } from "./stateFile";
 import {
   ALL_SCENARIOS,
   FALLBACK_SCENARIOS,
@@ -64,38 +64,38 @@ import {
   mergePackLessons,
   parseScenarioManifest,
   selectionPool,
-} from './scenarios';
+} from "./scenarios";
 import type {
   PackLessonSource,
   ScenarioOption,
   ScenarioSelection,
-} from './scenarios';
+} from "./scenarios";
 import {
   FIRST_DEAL_BUDGET_MS,
   fetchPackManifest,
   loadPack,
   pickUnseenPackScenario,
   withDeadline,
-} from './services/packLoader';
+} from "./services/packLoader";
 import type {
   PackManifest,
   PackManifestStatus,
   PackScenario,
-} from './services/packLoader';
+} from "./services/packLoader";
 import {
   SCENARIO_HISTORY_VERSION,
   ScenarioHistory,
   withoutAnswerState,
-} from './scenarioHistory';
-import type { ScenarioSnapshot } from './scenarioHistory';
-import { stackOrder } from './seatOrder';
-import { pickUnseen } from './session';
-import { useGameStore } from './store/useGameStore';
-import { isTableView, useSettingsStore } from './store/useSettingsStore';
-import { outcomeTone } from './types/verdict';
-import { answerAnnouncement } from './verdictText';
-import { ensureWasmReady } from './wasm';
-import './App.css';
+} from "./scenarioHistory";
+import type { ScenarioSnapshot } from "./scenarioHistory";
+import { stackOrder } from "./seatOrder";
+import { pickUnseen } from "./session";
+import { useGameStore } from "./store/useGameStore";
+import { isTableView, useSettingsStore } from "./store/useSettingsStore";
+import { outcomeTone } from "./types/verdict";
+import { answerAnnouncement } from "./verdictText";
+import { ensureWasmReady } from "./wasm";
+import "./App.css";
 
 /**
  * Whether the Mortal-agreement filter starts enabled. Kept as a named constant
@@ -169,7 +169,9 @@ export const App = () => {
   const evaluateWithAi = useGameStore((state) => state.evaluateWithAi);
   const fileError = useGameStore((state) => state.fileError);
   const fileNotice = useGameStore((state) => state.fileNotice);
-  const positionDescription = useGameStore((state) => state.positionDescription);
+  const positionDescription = useGameStore(
+    (state) => state.positionDescription,
+  );
   const importState = useGameStore((state) => state.importState);
   const setFileError = useGameStore((state) => state.setFileError);
   const setFileNotice = useGameStore((state) => state.setFileNotice);
@@ -188,8 +190,7 @@ export const App = () => {
   const [wasmScenarios, setWasmScenarios] =
     useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
   const [packManifest, setPackManifest] = useState<PackManifest | null>(null);
-  const [packStatus, setPackStatus] =
-    useState<PackManifestStatus>('loading');
+  const [packStatus, setPackStatus] = useState<PackManifestStatus>("loading");
   const [packError, setPackError] = useState<string | null>(null);
   const [packLoading, setPackLoading] = useState(false);
   /**
@@ -201,9 +202,8 @@ export const App = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [agreementLoading, setAgreementLoading] = useState(false);
   const [hotseatLoading, setHotseatLoading] = useState(false);
-  const [hotseatProgress, setHotseatProgress] = useState<HotseatProgress | null>(
-    null,
-  );
+  const [hotseatProgress, setHotseatProgress] =
+    useState<HotseatProgress | null>(null);
   /**
    * The last AI Hotseat card choice. Kept in a ref as well as state: the
    * generator reads it without making `loadPuzzle` depend on it, so changing
@@ -240,7 +240,7 @@ export const App = () => {
    */
   const preferReplay = useSettingsStore((state) => state.preferReplay);
   const setPreferReplay = useSettingsStore((state) => state.setPreferReplay);
-  const [exportDescription, setExportDescription] = useState('');
+  const [exportDescription, setExportDescription] = useState("");
   /**
    * 3D-11: the notice the 3D host handed back when it degraded. Keeping it in
    * App means it survives the switch back to the standard table; the host's own
@@ -264,8 +264,21 @@ export const App = () => {
    * opening or closing one never re-deals and never re-grades, a new hand
    * closes it, and at most one sheet exists at a time (`3d_hud.md` §6.5.8).
    */
-  const [hudSheet, setHudSheet] = useState<'setup' | 'verdict' | null>(null);
-  const closeHudSheet = useCallback(() => setHudSheet(null), []);
+  const [hudSheet, setHudSheet] = useState<"setup" | "verdict" | null>(null);
+  /*
+   * The setup sheet has two pages (2026-11-21): the settings list, and the
+   * scenario pool, which needs the whole pane. Escape, a scrim tap or the
+   * header's close step back one page before closing the sheet.
+   */
+  const [setupPage, setSetupPage] = useState<"settings" | "pool">("settings");
+  const closeHudSheet = useCallback(() => {
+    // Step back to the settings page first; the next close closes the sheet.
+    if (hudSheet === "setup" && setupPage === "pool") {
+      setSetupPage("settings");
+      return;
+    }
+    setHudSheet(null);
+  }, [hudSheet, setupPage]);
   /**
    * 3D-H2: the shell (the full-screen element, so the HUD travels with the
    * scene) and the fixed stage (made `inert` while a HUD sheet is open). Both
@@ -295,7 +308,9 @@ export const App = () => {
    * reads {@link packManifestRef} instead, so nothing waits on the network
    * mid-session.
    */
-  const packManifestPromiseRef = useRef<Promise<PackManifest | null> | null>(null);
+  const packManifestPromiseRef = useRef<Promise<PackManifest | null> | null>(
+    null,
+  );
   /**
    * Lesson/scenario ids already dealt this page session. Generated lessons and
    * each pack lesson get their own pool; an exhausted pool starts a new cycle
@@ -397,7 +412,7 @@ export const App = () => {
       setFirstDealLoading(false);
       setHotseatProgress(null);
       // A description belongs to the position it was written for.
-      updateExportDescription('');
+      updateExportDescription("");
 
       // What the hand about to load is drawn under. The agreement filter can
       // switch itself off below when Mortal is unavailable; the snapshot has to
@@ -468,7 +483,7 @@ export const App = () => {
         let bootstrapOption: ScenarioOption | null = null;
         if (
           dealOptions?.bootstrap &&
-          scenarioSelection.kind === 'all' &&
+          scenarioSelection.kind === "all" &&
           replayDefaults.preferReplay
         ) {
           setFirstDealLoading(true);
@@ -478,7 +493,7 @@ export const App = () => {
               (await withDeadline(
                 packManifestPromiseRef.current ?? Promise.resolve(null),
                 FIRST_DEAL_BUDGET_MS,
-                'the replay pack manifest',
+                "the replay pack manifest",
               ));
             if (requestId !== loadRequestId.current) return;
             if (manifest) replayDefaults.manifest = manifest;
@@ -517,7 +532,7 @@ export const App = () => {
             selectionPool(
               options,
               scenarioSelection,
-              useGameStore.getState().aiStatus === 'ready',
+              useGameStore.getState().aiStatus === "ready",
               replayDefaults,
             ),
             (entry) => entry.id,
@@ -553,7 +568,7 @@ export const App = () => {
               ? await withDeadline(
                   replayLoad,
                   FIRST_DEAL_BUDGET_MS,
-                  'the first replay hand',
+                  "the first replay hand",
                 )
               : await replayLoad;
             if (requestId !== loadRequestId.current) return;
@@ -598,7 +613,7 @@ export const App = () => {
             if (!mortal) {
               throw new Error(
                 useGameStore.getState().aiError ??
-                  'Mortal AI is unavailable; cannot generate this scenario.',
+                  "Mortal AI is unavailable; cannot generate this scenario.",
               );
             }
             // Let the loading state paint before the worker starts.
@@ -730,8 +745,8 @@ export const App = () => {
       restoreHistoryRef.current(snapshot);
     };
 
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   /**
@@ -768,7 +783,7 @@ export const App = () => {
    */
   useEffect(() => {
     let cancelled = false;
-    setPackStatus('loading');
+    setPackStatus("loading");
 
     const manifestLoad = fetchPackManifest()
       .then((manifest) => {
@@ -776,7 +791,7 @@ export const App = () => {
           packManifestRef.current = manifest;
           setPackManifest(manifest);
           setPackError(null);
-          setPackStatus(manifest.packs.length > 0 ? 'ready' : 'empty');
+          setPackStatus(manifest.packs.length > 0 ? "ready" : "empty");
         }
         return manifest;
       })
@@ -787,7 +802,7 @@ export const App = () => {
           packManifestRef.current = null;
           setPackManifest(null);
           setPackError(err instanceof Error ? err.message : String(err));
-          setPackStatus('error');
+          setPackStatus("error");
         }
         return null;
       });
@@ -855,7 +870,7 @@ export const App = () => {
     setHotseatOptions(options);
     setHotseatOpen(false);
     const next: ScenarioSelection = {
-      kind: 'selected',
+      kind: "selected",
       ids: [HOTSEAT_SCENARIO_ID],
     };
     setSelection(next);
@@ -880,20 +895,20 @@ export const App = () => {
     // 3D-14: an explicit 3D choice is a fresh request, so it clears the
     // session close a degrade left behind instead of being silently ignored.
     // The host still refuses to *auto*-retry a degraded tier (3D-11).
-    if (next === 'rendered3d') setThreeClosed(false);
+    if (next === "rendered3d") setThreeClosed(false);
   };
 
   const showVerdict = useCallback(() => {
-    const panel = document.getElementById('verdict-panel');
+    const panel = document.getElementById("verdict-panel");
     if (!panel) return;
     // The header is sticky and its height follows the type scale and the width
     // at which its controls wrap, so offset by the height measured right now: a
     // fixed scroll margin hid the top of the panel behind it on phones.
-    const header = document.querySelector<HTMLElement>('.app-header');
+    const header = document.querySelector<HTMLElement>(".app-header");
     const offset = (header?.offsetHeight ?? 0) + 12;
     window.scrollTo({
       top: panel.getBoundingClientRect().top + window.scrollY - offset,
-      behavior: 'smooth',
+      behavior: "smooth",
     });
     panel.focus({ preventScroll: true });
   }, []);
@@ -924,7 +939,7 @@ export const App = () => {
       const imported = useGameStore.getState();
       if (!imported.fileError) {
         // Seed the export field so re-exporting keeps the file's description.
-        updateExportDescription(imported.positionDescription ?? '');
+        updateExportDescription(imported.positionDescription ?? "");
         // An imported position is a hand like any other: it gets its own entry,
         // so Back returns to the hand it replaced.
         commitHistory();
@@ -944,17 +959,17 @@ export const App = () => {
 
   const aiDecision = gameState?.ai_decision ?? null;
   const availableActions = aiDecision?.actions ?? [];
-  const isDrill = gameState?.correct_action.type === 'best';
+  const isDrill = gameState?.correct_action.type === "best";
   // A book call lesson answers through its call/Pass buttons, never a discard.
   const isCallLesson = gameState ? isCallDecision(gameState) : false;
   const canDiscard = isCallLesson
     ? false
     : isDrill
-      ? availableActions.some((action) => action.type === 'discard')
+      ? availableActions.some((action) => action.type === "discard")
       : true;
   const decision = gameState?.decision;
   const claimedFrom =
-    decision?.kind === 'react_to_discard' ? decision.from : null;
+    decision?.kind === "react_to_discard" ? decision.from : null;
 
   /*
    * 3D-H3: the hand's call state, derived once for both shells.
@@ -1009,7 +1024,7 @@ export const App = () => {
    * next capable load opens 3D again.
    */
   const tableMount = resolveTableMount(
-    threeClosed ? '' : window.location.search,
+    threeClosed ? "" : window.location.search,
     tableView,
     {
       allowThreeView: !threeClosed && threeUnavailableReason === null,
@@ -1023,7 +1038,7 @@ export const App = () => {
    * restoring a session. Leaving the 3D view therefore always leaves full
    * screen, so the user is never stranded in a full-screen 2D layout.
    */
-  const showingThree = tableMount.kind === 'three';
+  const showingThree = tableMount.kind === "three";
   const wasShowingThree = useRef(false);
   useEffect(() => {
     if (wasShowingThree.current && !showingThree) exitFullscreenIfActive();
@@ -1058,8 +1073,8 @@ export const App = () => {
     setThreeClosed(true);
     try {
       const url = new URL(window.location.href);
-      url.searchParams.delete('renderer');
-      window.history.replaceState(window.history.state, '', url);
+      url.searchParams.delete("renderer");
+      window.history.replaceState(window.history.state, "", url);
     } catch {
       // A browser that refuses history still gets the notice and the session
       // memo; `threeClosed` keeps this session on the standard view.
@@ -1081,7 +1096,7 @@ export const App = () => {
   useEffect(() => {
     // Only the opt-in 3D view pays for this: the standard views never read a
     // revision, so they must not re-render because of one.
-    if (!gameState || tableMount.kind !== 'three') return;
+    if (!gameState || tableMount.kind !== "three") return;
     bumpThreeRevision();
   }, [gameState, tableMount.kind, bumpThreeRevision]);
 
@@ -1097,10 +1112,10 @@ export const App = () => {
    * away without a query flag (task note 2026-11-19T21:29).
    */
   const previewSticks =
-    tableMount.kind === 'three' && tableMount.query.preview === 'sticks';
+    tableMount.kind === "three" && tableMount.query.preview === "sticks";
 
   const threeSnapshot = useMemo(() => {
-    if (!gameState || tableMount.kind !== 'three') return null;
+    if (!gameState || tableMount.kind !== "three") return null;
     try {
       const snapshot = snapshotFromGameState(
         gameState,
@@ -1113,7 +1128,13 @@ export const App = () => {
       // standard view still renders below, so nothing takes the app down.
       return null;
     }
-  }, [gameState, tableMount.kind, threeRevision, submittedAnswer, previewSticks]);
+  }, [
+    gameState,
+    tableMount.kind,
+    threeRevision,
+    submittedAnswer,
+    previewSticks,
+  ]);
 
   /*
    * 2026-11-21: the call preview (hover/focus on a call button) or the open
@@ -1128,27 +1149,27 @@ export const App = () => {
   );
 
   const agreementHint =
-    aiStatus === 'ready'
-      ? 'Deal book-graded hands only when the embedded Mortal model plays the book answer. AI drills have no book answer, so they are dealt as usual and graded by Mortal alone. Each agreeing hand may need several forward passes.'
-      : aiStatus === 'error'
-        ? 'Mortal is unavailable, so this filter cannot run.'
-        : 'Waiting for the Mortal model to load…';
+    aiStatus === "ready"
+      ? "Deal book-graded hands only when the embedded Mortal model plays the book answer. AI drills have no book answer, so they are dealt as usual and graded by Mortal alone. Each agreeing hand may need several forward passes."
+      : aiStatus === "error"
+        ? "Mortal is unavailable, so this filter cannot run."
+        : "Waiting for the Mortal model to load…";
 
   const viewHint =
-    'How to draw the table. 3D is the full-window table and the default; stacked is the mobile-first four-row layout and top-down is the flat plan view. Switching redraws the same hand; leaving the 3D view also leaves full screen.';
+    "How to draw the table. 3D is the full-window table and the default; stacked is the mobile-first four-row layout and top-down is the flat plan view. Switching redraws the same hand; leaving the 3D view also leaves full screen.";
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)
     : firstDealLoading
-      ? 'Loading a replay position…'
+      ? "Loading a replay position…"
       : agreementLoading
-        ? 'Finding a hand Mortal agrees with…'
+        ? "Finding a hand Mortal agrees with…"
         : aiLoading
-          ? 'Asking Mortal…'
+          ? "Asking Mortal…"
           : packLoading
-            ? 'Loading replay pack…'
+            ? "Loading replay pack…"
             : isLoading
-              ? 'Loading table…'
+              ? "Loading table…"
               : null;
 
   /*
@@ -1167,7 +1188,7 @@ export const App = () => {
     evaluation,
     revealMortal,
     onBeginCall: beginCall,
-    onPass: () => submitAction({ action: 'Pass' }),
+    onPass: () => submitAction({ action: "Pass" }),
     onCancelCall: cancelCall,
     onPreviewCall: previewCall,
     onAction: submitAction,
@@ -1190,7 +1211,7 @@ export const App = () => {
       <ResultCard
         grade={dualGrade}
         state={gameState}
-        onDetails={() => setHudSheet('verdict')}
+        onDetails={() => setHudSheet("verdict")}
         onNext={handleNextScenario}
         nextDisabled={isLoading}
         onReset={resetAnswer}
@@ -1208,9 +1229,9 @@ export const App = () => {
    * not a deal and not a re-evaluation.
    */
   const hudVerdictSheet: HudSheetContent | null =
-    hudSheet === 'verdict' && gameState
+    hudSheet === "verdict" && gameState
       ? {
-          title: 'Verdict',
+          title: "Verdict",
           body: (
             <VerdictSheet
               state={gameState}
@@ -1249,7 +1270,8 @@ export const App = () => {
    * so this string changes once when the answer lands; the card coming and
    * going with the sheet does not re-announce it.
    */
-  const hudAnnouncement = answered && dualGrade ? answerAnnouncement(dualGrade) : '';
+  const hudAnnouncement =
+    answered && dualGrade ? answerAnnouncement(dualGrade) : "";
 
   const hudToasts = buildHudToasts({
     statusMessage,
@@ -1260,7 +1282,7 @@ export const App = () => {
     onDismissNotice: clearFileNotice,
     onDismissDescription: clearPositionDescription,
     // The toast carries the first line; the sheet holds the full text (§3, 32).
-    onOpenPositionDescription: () => setHudSheet('setup'),
+    onOpenPositionDescription: () => setHudSheet("setup"),
   });
 
   // The header controls, built once so the stacked and top-down layouts cannot
@@ -1345,11 +1367,14 @@ export const App = () => {
    * on the table, nothing re-deals, and the scene is never unmounted.
    */
   const hudSetupSheet: HudSheetContent | null =
-    hudSheet === 'setup'
+    hudSheet === "setup"
       ? {
-          title: 'Setup',
+          title: setupPage === "pool" ? "Scenario pool" : "Setup",
           body: (
             <SetupSheet
+              page={setupPage}
+              onNavigatePool={() => setSetupPage("pool")}
+              onBackToSettings={() => setSetupPage("settings")}
               scenarios={scenarios}
               selection={selection}
               onSelectionChange={handleSelectionChange}
@@ -1387,7 +1412,7 @@ export const App = () => {
       : null;
 
   /** The one open sheet: at most one exists at a time (§6.5.8). */
-  const hudOpenSheet = hudSheet === 'verdict' ? hudVerdictSheet : hudSetupSheet;
+  const hudOpenSheet = hudSheet === "verdict" ? hudVerdictSheet : hudSetupSheet;
 
   const verdictPanel = gameState ? (
     <VerdictPanel
@@ -1411,10 +1436,10 @@ export const App = () => {
    * actually drawn (3D-14).
    */
   const twoDimensionalView =
-    tableMount.kind === '2d' ? tableMount.view : tableView;
+    tableMount.kind === "2d" ? tableMount.view : tableView;
 
   const standardTable =
-    twoDimensionalView === 'topdown' && gameState ? (
+    twoDimensionalView === "topdown" && gameState ? (
       <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
     ) : (
       orderedPlayers.map((player) => (
@@ -1432,8 +1457,8 @@ export const App = () => {
    * like the user's setting was thrown away (it is not rewritten).
    */
   const rendered3dFallbackNotice =
-    tableView === 'rendered3d' &&
-    tableMount.kind === '2d' &&
+    tableView === "rendered3d" &&
+    tableMount.kind === "2d" &&
     threeUnavailableReason !== null
       ? `${threeUnavailableReason} The standard table is shown and your 3D view choice is kept.`
       : null;
@@ -1447,12 +1472,12 @@ export const App = () => {
    * (3D-H3…H5). No header, cards, action bar or hand dock are rendered around
    * the scene.
    */
-  if (tableMount.kind === 'three') {
+  if (tableMount.kind === "three") {
     return (
       <div
         className="app-shell app-shell--3d"
         ref={threeShellRef}
-        data-forced-landscape={forcedLandscape ? 'true' : undefined}
+        data-forced-landscape={forcedLandscape ? "true" : undefined}
       >
         <HudLayer
           shellRef={threeShellRef}
@@ -1462,8 +1487,11 @@ export const App = () => {
           nextDisabled={isLoading}
           setupTrigger={
             <SetupTrigger
-              onOpen={() => setHudSheet('setup')}
-              expanded={hudSheet === 'setup'}
+              onOpen={() => {
+                setSetupPage("settings");
+                setHudSheet("setup");
+              }}
+              expanded={hudSheet === "setup"}
             />
           }
           actionRows={actionRows}
@@ -1474,7 +1502,9 @@ export const App = () => {
           onCloseSheet={closeHudSheet}
           announcement={hudAnnouncement}
           toasts={
-            hudToasts.length > 0 ? <HudToastStack toasts={hudToasts} /> : undefined
+            hudToasts.length > 0 ? (
+              <HudToastStack toasts={hudToasts} />
+            ) : undefined
           }
           toastCount={hudToasts.length}
         />
@@ -1551,7 +1581,7 @@ export const App = () => {
 
       <main
         className={
-          twoDimensionalView === 'stacked' ? 'table-stack' : 'table-physical'
+          twoDimensionalView === "stacked" ? "table-stack" : "table-physical"
         }
       >
         {statusMessage && (
@@ -1600,7 +1630,7 @@ export const App = () => {
           onShowVerdict={showVerdict}
           previewTiles={callPreview}
           onBeginCall={beginCall}
-          onPass={() => submitAction({ action: 'Pass' })}
+          onPass={() => submitAction({ action: "Pass" })}
           onCancelCall={cancelCall}
           onPreviewCall={previewCall}
           onSelectTile={selectTile}

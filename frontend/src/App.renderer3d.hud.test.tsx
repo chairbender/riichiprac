@@ -489,7 +489,11 @@ describe('App 3D setup sheet (3D-H4)', () => {
    * state — the comparable part of "every control matches the 2D header".
    */
   function setupControls(root: ParentNode): SetupControls {
-    const pool = root.querySelector('.scenario-picker-trigger');
+    // The 2D header's pool control is a trigger; the 3D sheet's is the row that
+    // navigates to the pool page (2026-11-21). Same label, text and title.
+    const pool = root.querySelector(
+      '.scenario-picker-trigger, .hud-setup-scenario-row',
+    );
     const agreement = root.querySelector<HTMLInputElement>(
       '.app-toggle input[type="checkbox"]',
     );
@@ -504,7 +508,10 @@ describe('App 3D setup sheet (3D-H4)', () => {
     return {
       pool: {
         label: pool.getAttribute('aria-label') ?? '',
-        text: pool.querySelector('.scenario-picker-trigger-label')?.textContent ?? null,
+        text:
+          pool.querySelector(
+            '.scenario-picker-trigger-label, .hud-setup-scenario-value',
+          )?.textContent ?? null,
         checked: null,
         disabled: null,
         title: pool.getAttribute('title'),
