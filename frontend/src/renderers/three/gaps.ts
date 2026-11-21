@@ -9,8 +9,8 @@
  *
  * One number per pair: the surface-to-surface separation along the pair's least
  * separated axis. For faces that should touch it is exactly 0; for the deliberate
- * separations (the tsumogiri draw gap, meld rows, pond-to-wall felt, different
- * zones) it is large. The layout gate asserts that nothing sits *between*: no
+ * separations (the tsumogiri draw gap, the meld line's own felt, pond-to-wall
+ * felt, different zones) it is large. The layout gate asserts that nothing sits *between*: no
  * pair may be closer than {@link GAP.maxTouchingGapUnits} without actually
  * touching, which is the statement "there is no slot narrower than 1.4 mm that
  * is not intended".

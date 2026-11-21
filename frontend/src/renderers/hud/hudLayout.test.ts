@@ -276,19 +276,20 @@ describe('HUD layout: the collision matrix (3d_hud.md §7.5)', () => {
 describe('HUD layout: the published composition (§5, §7.4)', () => {
   /*
    * The reference hand (one meld per seat), CSS px, DPR 1. These are the values
-   * in 3d_hud.md after the 2026-11-21 change: the right-aligned call row's top,
-   * the post-answer panel and result card, where the sheet now reaches, and the
+   * in 3d_hud.md after the 2026-11-21 change, re-measured after task 261120-2225
+   * brought the board and hand band closer: the right-aligned call row's top, the
+   * post-answer panel and result card, where the sheet now reaches, and the
    * compass clearance the gate measures.
    */
   const GOLDEN = [
-    { stage: GATE_STAGES[0], callBar: 866, result: 806, sheetBottom: 910, clearance: 211 },
-    { stage: GATE_STAGES[1], callBar: 862, result: 802, sheetBottom: 906, clearance: 219 },
-    { stage: GATE_STAGES[2], callBar: 758, result: 698, sheetBottom: 802, clearance: 194 },
-    { stage: GATE_STAGES[3], callBar: 753, result: 693, sheetBottom: 797, clearance: 174 },
-    { stage: GATE_STAGES[4], callBar: 702, result: 642, sheetBottom: 746, clearance: 124 },
-    { stage: GATE_STAGES[5], callBar: 822, result: 762, sheetBottom: 866, clearance: 140 },
+    { stage: GATE_STAGES[0], callBar: 909, result: 849, sheetBottom: 918, clearance: 226 },
+    { stage: GATE_STAGES[1], callBar: 906, result: 846, sheetBottom: 918, clearance: 235 },
+    { stage: GATE_STAGES[2], callBar: 797, result: 737, sheetBottom: 835, clearance: 209 },
+    { stage: GATE_STAGES[3], callBar: 767, result: 707, sheetBottom: 811, clearance: 183 },
+    { stage: GATE_STAGES[4], callBar: 713, result: 653, sheetBottom: 757, clearance: 132 },
+    { stage: GATE_STAGES[5], callBar: 828, result: 768, sheetBottom: 872, clearance: 145 },
     // 9:16: the stage-height cap binds the sheet; the hand is the closest bound.
-    { stage: GATE_STAGES[6], callBar: 914, result: 854, sheetBottom: 918, clearance: 121 },
+    { stage: GATE_STAGES[6], callBar: 920, result: 860, sheetBottom: 918, clearance: 125 },
   ] as const;
 
   for (const golden of GOLDEN) {
@@ -337,12 +338,16 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
     const scene = sceneFor(stage, HAND_STATES[5].options);
     const actions = layoutFor(stage, scene, { slot: 'actions', sheet: false, toasts: 0 });
     const result = layoutFor(stage, scene, { slot: 'result', sheet: false, toasts: 0 });
-    expect(actions.callBarCompassClearance ?? 0).toBeGreaterThanOrEqual(32 - 1);
-    expect(result.panelCompassClearance ?? 0).toBeGreaterThanOrEqual(12 - 1);
+    // Re-measured after 261120-2225 (123/63); the old H2 floor was 32/12.
+    expect(actions.callBarCompassClearance ?? 0).toBeGreaterThanOrEqual(123 - 1);
+    expect(result.panelCompassClearance ?? 0).toBeGreaterThanOrEqual(63 - 1);
   });
 
   it('hides the call row behind an open sheet and bounds the sheet by the hand', () => {
-    const stage = GATE_STAGES[1];
+    // 1:1 is a stage where the hand, not the sheet's stage-height cap, is the
+    // binding bottom edge (since 261120-2225 the closer board makes the cap bind
+    // at 16:9).
+    const stage = GATE_STAGES[4];
     const scene = sceneFor(stage, {});
     const open = layoutFor(stage, scene, {
       slot: 'actions',
