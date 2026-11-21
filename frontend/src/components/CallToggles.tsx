@@ -22,6 +22,10 @@ export interface CallTogglesProps {
   readonly evaluation?: AiEvaluation | null;
   /** Whether Mortal's probability may be shown (answered, or deliberately peeked). */
   readonly revealMortal?: boolean;
+  /** Whether the Kan probability badge is drawn (§5 hides it on square/portrait). */
+  readonly showProbability?: boolean;
+  /** Whether the ON/OFF words are drawn (§5's portrait band is labels only). */
+  readonly showState?: boolean;
   readonly onToggleRiichi: () => void;
   readonly onToggleKan: () => void;
 }
@@ -37,6 +41,10 @@ export interface CallTogglesProps {
  *
  * Arming is the whole interaction: the next hand-tile click (the dock's tile
  * button or 3D-08's projected one) submits the armed declaration with that tile.
+ *
+ * `showProbability`/`showState` are the 3D HUD's §5 collapse hooks. They default
+ * to `true`, so the 2D dock is unchanged; the accessible name and `aria-pressed`
+ * always carry the state the collapsed visuals drop.
  */
 export function CallToggles({
   canRiichi,
@@ -46,6 +54,8 @@ export function CallToggles({
   disabled = false,
   evaluation = null,
   revealMortal = false,
+  showProbability = true,
+  showState = true,
   onToggleRiichi,
   onToggleKan,
 }: CallTogglesProps) {
@@ -54,7 +64,7 @@ export function CallToggles({
   // The Call Kan toggle is a decision in its own right: surface Mortal's
   // probability for the kan rather than only the discard badges on the tiles.
   const kanProbability =
-    kanTile && revealMortal
+    showProbability && kanTile && revealMortal
       ? evaluation?.evaluations.find((action) => action.action === 'Kan')
           ?.probability
       : undefined;
@@ -72,7 +82,11 @@ export function CallToggles({
         >
           <RiichiStick className="riichi-toggle-stick" />
           <span className="riichi-toggle-label">Call Riichi</span>
-          <span className="riichi-toggle-state">{callRiichi ? 'ON' : 'OFF'}</span>
+          {showState && (
+            <span className="riichi-toggle-state">
+              {callRiichi ? 'ON' : 'OFF'}
+            </span>
+          )}
         </button>
       )}
 
@@ -98,7 +112,11 @@ export function CallToggles({
               {formatProbability(kanProbability)}
             </span>
           )}
-          <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
+          {showState && (
+            <span className="kan-toggle-state">
+              {callKan ? 'ON' : 'OFF'}
+            </span>
+          )}
         </button>
       )}
     </div>

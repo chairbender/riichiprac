@@ -31,6 +31,7 @@ import {
   railRowsForHeight,
 } from './actionRail';
 import type { ActionRailModel } from './actionRail';
+import { useHudCollapse } from './hudBand';
 
 export interface ActionRailProps {
   readonly model: ActionRailModel;
@@ -46,6 +47,12 @@ export interface ActionRailProps {
  */
 export function ActionRail({ model, onRowsChange }: ActionRailProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  /*
+   * §5's decorations are the band's, not the rail's own choice: square hides
+   * the probability badges, portrait draws labels only. The `aria-pressed`
+   * state and the accessible names are unaffected.
+   */
+  const { actionProbabilities, actionStates } = useHudCollapse();
 
   const measure = useCallback(() => {
     const element = contentRef.current;
@@ -78,6 +85,8 @@ export function ActionRail({ model, onRowsChange }: ActionRailProps) {
           riichiArmed={model.callRiichi}
           evaluation={model.evaluation ?? null}
           revealMortal={model.revealMortal ?? false}
+          showProbability={actionProbabilities}
+          showState={actionStates}
           onToggleRiichi={model.onToggleRiichi}
           onAction={model.onAction}
         />
@@ -91,6 +100,8 @@ export function ActionRail({ model, onRowsChange }: ActionRailProps) {
           disabled={model.answered}
           evaluation={model.evaluation ?? null}
           revealMortal={model.revealMortal ?? false}
+          showProbability={actionProbabilities}
+          showState={actionStates}
           onToggleRiichi={model.onToggleRiichi}
           onToggleKan={model.onToggleKan}
         />

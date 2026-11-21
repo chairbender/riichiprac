@@ -27,6 +27,7 @@ import {
   railRowsForHeight,
 } from './actionRail';
 import type { ActionRailModel } from './actionRail';
+import { HudBandContext } from './hudBand';
 
 // The SVG tile/Kan/Riichi art is irrelevant here; the controls are the subject.
 vi.mock('../../components/Tile', () => ({ Tile: () => null }));
@@ -230,6 +231,65 @@ describe('3D action rail: the same controls as the 2D dock', () => {
     ]);
     fireEvent.click(actionButtons[1]);
     expect(onAction).toHaveBeenCalledWith(PASS);
+  });
+});
+
+describe('3D action rail: §5’s collapsed forms (3D-H6)', () => {
+  /** The rail as one band draws it, with every decoration available. */
+  function railInBand(band: 'wide' | 'square' | 'portrait') {
+    return render(
+      <HudBandContext.Provider value={band}>
+        <ActionRail
+          model={model({
+            actions: [CHI, PASS],
+            evaluation: EVALUATION,
+            revealMortal: true,
+            callRiichi: true,
+          })}
+        />
+      </HudBandContext.Provider>,
+    );
+  }
+
+  it('draws labels, probabilities and ON/OFF at wide', () => {
+    const { container } = railInBand('wide');
+    expect(container.querySelector('.action-button-probability')).not.toBeNull();
+    expect(container.querySelector('.kan-toggle-probability')).not.toBeNull();
+    expect(container.querySelectorAll('.riichi-toggle-state')).toHaveLength(1);
+    expect(container.querySelectorAll('.kan-toggle-state')).toHaveLength(1);
+    expect(container.querySelector('.riichi-toggle-label')?.textContent).toBe(
+      'Call Riichi',
+    );
+  });
+
+  it('hides the probability badges at square, keeping labels and ON/OFF', () => {
+    const { container } = railInBand('square');
+    // The verdict sheet carries the numbers instead.
+    expect(container.querySelector('.action-button-probability')).toBeNull();
+    expect(container.querySelector('.kan-toggle-probability')).toBeNull();
+    expect(container.querySelectorAll('.riichi-toggle-state')).toHaveLength(1);
+    expect(container.querySelectorAll('.kan-toggle-state')).toHaveLength(1);
+    expect(controls(container, '.call-toggles button')[0].text).toBe(
+      'Call RiichiON',
+    );
+  });
+
+  it('draws labels only at portrait, while aria-pressed keeps the state', () => {
+    const { container } = railInBand('portrait');
+    expect(container.querySelector('.action-button-probability')).toBeNull();
+    expect(container.querySelector('.kan-toggle-probability')).toBeNull();
+    // No ON/OFF words, but the pressed state and accessible name stay.
+    expect(container.querySelectorAll('.riichi-toggle-state')).toHaveLength(0);
+    expect(container.querySelectorAll('.kan-toggle-state')).toHaveLength(0);
+    const [riichi, kan] = controls(container, '.call-toggles button');
+    expect(riichi.pressed).toBe('true');
+    expect(riichi.label).toBe('Call Riichi toggle, currently on');
+    expect(riichi.text).toBe('Call Riichi');
+    expect(kan.pressed).toBe('false');
+    expect(kan.label).toBe('Call Kan toggle for 1m, currently off');
+    expect(kan.text).toBe('Call Kan1m');
+    // Every control is still there: collapse removes decoration only.
+    expect(within(container).getAllByRole('button')).toHaveLength(4);
   });
 });
 

@@ -11,12 +11,16 @@
  */
 
 import type { AiStatus } from '../../types/ai';
+import type { HudChipWording } from './hudLayout';
 
 /** Mortal's pre-answer condition, as the chip words it. */
 export interface MortalChip {
   /** A stable hook for tests and styling, independent of the wording. */
   readonly state: 'loading' | 'thinking' | 'unavailable' | 'ready' | 'revealed';
+  /** The full wording: the wordmark and its condition. */
   readonly text: string;
+  /** The condition alone, for §5's square band ("ready", not "Mortal ready"). */
+  readonly shortText: string;
   readonly tone: 'loading' | 'ready' | 'bad';
 }
 
@@ -48,19 +52,63 @@ export function mortalChip({
 }: MortalChipInput): MortalChip | null {
   if (answered) return null;
   if (aiStatus === 'error') {
-    return { state: 'unavailable', text: 'Mortal unavailable', tone: 'bad' };
+    return {
+      state: 'unavailable',
+      text: 'Mortal unavailable',
+      shortText: 'Unavailable',
+      tone: 'bad',
+    };
   }
   if (isEvaluating) {
-    return { state: 'thinking', text: 'Mortal thinking…', tone: 'loading' };
+    return {
+      state: 'thinking',
+      text: 'Mortal thinking…',
+      shortText: 'Thinking…',
+      tone: 'loading',
+    };
   }
   if (aiStatus === 'idle' || aiStatus === 'loading') {
-    return { state: 'loading', text: 'Mortal loading…', tone: 'loading' };
+    return {
+      state: 'loading',
+      text: 'Mortal loading…',
+      shortText: 'Loading…',
+      tone: 'loading',
+    };
   }
   if (peeked) {
-    return { state: 'revealed', text: 'Mortal revealed', tone: 'ready' };
+    return {
+      state: 'revealed',
+      text: 'Mortal revealed',
+      shortText: 'Revealed',
+      tone: 'ready',
+    };
   }
   if (hasEvaluation) {
-    return { state: 'ready', text: 'Mortal ready', tone: 'ready' };
+    return {
+      state: 'ready',
+      text: 'Mortal ready',
+      shortText: 'Ready',
+      tone: 'ready',
+    };
   }
-  return { state: 'loading', text: 'Mortal waiting', tone: 'loading' };
+  return {
+    state: 'loading',
+    text: 'Mortal waiting',
+    shortText: 'Waiting',
+    tone: 'loading',
+  };
+}
+
+/**
+ * The chip's visible wording for one of §5's bands.
+ *
+ * The wordmark and the condition are the chip's only decoration: square drops
+ * the wordmark (its state word is enough beside the hint), portrait keeps the
+ * wordmark alone ("Mortal"). The full `text` stays the accessible name and the
+ * sheet trigger's `aria-label` at every band.
+ */
+export function chipTextFor(chip: MortalChip, wording: HudChipWording): string {
+  if (wording === 'full') return chip.text;
+  if (wording === 'wordmark') return 'Mortal';
+  return chip.shortText;
 }

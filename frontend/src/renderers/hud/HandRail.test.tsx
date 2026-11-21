@@ -15,7 +15,8 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HandRail } from './HandRail';
-import { mortalChip } from './handRail';
+import { HudBandContext } from './hudBand';
+import { chipTextFor, mortalChip } from './handRail';
 import type { HandRailProps } from './HandRail';
 
 function rail(overrides: Partial<HandRailProps> = {}) {
@@ -71,6 +72,89 @@ describe('3D hand rail: the hint row', () => {
     expect(
       screen.getByText('Riichi selected - tap a tile to discard'),
     ).toBeTruthy();
+  });
+});
+
+describe('3D hand rail: §5’s collapsed chip (3D-H6)', () => {
+  const ready = mortalChip({
+    aiStatus: 'ready',
+    isEvaluating: false,
+    hasEvaluation: true,
+    peeked: false,
+    answered: false,
+  })!;
+
+  it('words the chip per band without losing its meaning', () => {
+    expect(chipTextFor(ready, 'full')).toBe('Mortal ready');
+    // Square drops the wordmark, portrait keeps only it.
+    expect(chipTextFor(ready, 'state')).toBe('Ready');
+    expect(chipTextFor(ready, 'wordmark')).toBe('Mortal');
+    // The full wording is still what assistive tech hears.
+  });
+
+  it('renders the shortened wording while keeping the full name', () => {
+    const { container, rerender } = render(
+      <HudBandContext.Provider value="square">
+        <HandRail
+          hint="Tap a tile to discard"
+          aiStatus="ready"
+          isEvaluating={false}
+          hasEvaluation
+          peeked={false}
+          answered={false}
+        />
+      </HudBandContext.Provider>,
+    );
+    let chip = container.querySelector('.hud-mortal-chip') as HTMLElement;
+    expect(chip.textContent).toBe('ReadyMortal ready');
+    expect(chip.querySelector('[aria-hidden="true"]')?.textContent).toBe('Ready');
+    expect(chip.querySelector('.hud-visually-hidden')?.textContent).toBe(
+      'Mortal ready',
+    );
+
+    rerender(
+      <HudBandContext.Provider value="portrait">
+        <HandRail
+          hint="Tap a tile to discard"
+          aiStatus="ready"
+          isEvaluating={false}
+          hasEvaluation
+          peeked={false}
+          answered={false}
+        />
+      </HudBandContext.Provider>,
+    );
+    chip = container.querySelector('.hud-mortal-chip') as HTMLElement;
+    expect(chip.querySelector('[aria-hidden="true"]')?.textContent).toBe('Mortal');
+    expect(chip.querySelector('.hud-visually-hidden')?.textContent).toBe(
+      'Mortal ready',
+    );
+  });
+
+  it('keeps the trigger’s full accessible name at every band', () => {
+    for (const band of ['wide', 'square', 'portrait'] as const) {
+      const { unmount } = render(
+        <HudBandContext.Provider value={band}>
+          <HandRail
+            hint="Tap a tile to discard"
+            aiStatus="ready"
+            isEvaluating={false}
+            hasEvaluation
+            peeked={false}
+            answered={false}
+            onOpenVerdict={() => undefined}
+          />
+        </HudBandContext.Provider>,
+      );
+      // One trigger, named with the full condition, whatever the visible word.
+      expect(
+        screen.getByRole('button', {
+          name: 'Mortal ready: open the verdict',
+        }),
+        band,
+      ).toBeTruthy();
+      unmount();
+    }
   });
 });
 

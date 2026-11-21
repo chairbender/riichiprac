@@ -19,10 +19,16 @@
  * the pre-answer status line live in that sheet (`3d_hud.md` §3 rows 33–36).
  * The chip is the only pointer to it, and the sheet is the only place a peek
  * happens. Post-answer the chip is gone (the result card owns the marks).
+ *
+ * §5 collapses the chip's *decoration*, never its meaning: `chipTextFor()` keeps
+ * the full wording for `wide`, the state word for `square` and "Mortal" for
+ * `portrait`, while the trigger's `aria-label` (or the informational chip's
+ * visually hidden copy) always says the full condition.
  */
 
 import type { AiStatus } from '../../types/ai';
-import { mortalChip } from './handRail';
+import { useHudCollapse } from './hudBand';
+import { chipTextFor, mortalChip } from './handRail';
 
 export interface HandRailProps {
   /** The hand's live-region instruction (`handHintFor`). */
@@ -57,6 +63,7 @@ export function HandRail({
   onOpenVerdict,
   announceHint = true,
 }: HandRailProps) {
+  const { chipWording } = useHudCollapse();
   const chip = mortalChip({
     aiStatus,
     isEvaluating,
@@ -68,6 +75,10 @@ export function HandRail({
     'data-state': chip?.state,
     'data-tone': chip?.tone,
   };
+  // §5: square drops the wordmark, portrait shows "Mortal" alone. The full
+  // wording is still the accessible name below, so collapse loses no meaning.
+  const visibleChipText = chip ? chipTextFor(chip, chipWording) : '';
+  const chipShortened = chip !== null && visibleChipText !== chip.text;
 
   return (
     <div className="hud-hand-rail-row">
@@ -87,11 +98,18 @@ export function HandRail({
             aria-label={`${chip.text}: open the verdict`}
             onClick={onOpenVerdict}
           >
-            {chip.text}
+            {visibleChipText}
           </button>
         ) : (
           <span className="hud-mortal-chip" {...chipState}>
-            {chip.text}
+            {chipShortened ? (
+              <>
+                <span aria-hidden="true">{visibleChipText}</span>
+                <span className="hud-visually-hidden">{chip.text}</span>
+              </>
+            ) : (
+              chip.text
+            )}
           </span>
         ))}
     </div>

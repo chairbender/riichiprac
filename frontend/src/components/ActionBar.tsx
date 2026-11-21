@@ -9,6 +9,17 @@ interface ActionBarProps {
   evaluation?: AiEvaluation | null;
   /** Whether Mortal's probabilities may be shown. */
   revealMortal?: boolean;
+  /**
+   * Whether the probability badges are drawn. §5 hides them on square and
+   * portrait stages (the verdict sheet still carries them); the button's label
+   * is unchanged either way.
+   */
+  showProbability?: boolean;
+  /**
+   * Whether the Riichi ON/OFF word is drawn. §5's portrait band draws labels
+   * only; `aria-pressed` still carries the state.
+   */
+  showState?: boolean;
   onToggleRiichi: () => void;
   onAction: (action: AiActionInfo) => void;
 }
@@ -23,6 +34,8 @@ export function ActionBar({
   riichiArmed,
   evaluation,
   revealMortal = false,
+  showProbability = true,
+  showState = true,
   onToggleRiichi,
   onAction,
 }: ActionBarProps) {
@@ -34,11 +47,12 @@ export function ActionBar({
       {visible.map((action) => {
         const isRiichi = action.action === 'Riichi';
         const active = isRiichi && riichiArmed;
-        const probability = revealMortal
-          ? evaluation?.evaluations.find(
-              (scored) => scored.action === action.action,
-            )?.probability
-          : undefined;
+        const probability =
+          showProbability && revealMortal
+            ? evaluation?.evaluations.find(
+                (scored) => scored.action === action.action,
+              )?.probability
+            : undefined;
         return (
           <button
             key={action.action}
@@ -58,7 +72,7 @@ export function ActionBar({
                 {formatProbability(probability)}
               </span>
             )}
-            {isRiichi && (
+            {isRiichi && showState && (
               <span className="action-button-state">
                 {riichiArmed ? 'ON' : 'OFF'}
               </span>

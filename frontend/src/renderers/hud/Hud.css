@@ -131,12 +131,40 @@
  * the setup sheet. Its box is the layout's reserved `HUD_SETUP_TRIGGER_WIDTH`
  * (`hudLayout.ts`): 96 px wide at tap height, so the collision gate checks the
  * button that is actually painted.
+ *
+ * On portrait §5 collapses its label and the same control becomes the tap-sized
+ * icon button (`HUD_SETUP_TRIGGER_WIDTH_PORTRAIT`); the rules below are that
+ * second size of the same rect, not a second control.
  */
 .hud-top-bar__setup {
   box-sizing: border-box;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 96px;
   min-height: var(--hud-tap);
   font-weight: 600;
+}
+
+/* The sliders icon: decorative, and only drawn in the collapsed portrait form. */
+.hud-top-bar__setup-icon {
+  display: none;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+}
+
+.hud-root[data-band='portrait'] .hud-top-bar__setup-icon {
+  display: block;
+}
+
+.hud-root[data-band='portrait'] .hud-top-bar__setup {
+  /* 20 px icon + 2 x 10 px padding + the 1 px borders = the tap square. */
+  min-width: 44px;
+  padding-right: 10px;
+  padding-left: 10px;
 }
 
 .hud-top-bar button:focus-visible,
