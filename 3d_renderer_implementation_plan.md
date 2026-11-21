@@ -62,6 +62,9 @@ persistent View control is 3D-15's decision**, not 3D-14's.
   flow around it**, and the app's UI is planned as a floating layer over the
   scene (user guidance, 2026-11-18; §9 decision 7), with an optional full-screen
   toggle;
+  *(Superseded in part, 2026-11-20: 3D is now the **default** view, not opt-in,
+  and the 2.5D chain it was to sit beside has been retired — see §9 decision 1
+  and AGENTS.md §4.)*
 - the same board information the top-down view shows: four seats with concealed
   hands, the human's drawn tile, four discard rivers, open melds, the wall,
   dora indicators, riichi declarations and sticks, wind/score/round compass;
@@ -1103,7 +1106,9 @@ who does not ask for it.
 - `webglcontextlost` is prevented, one restore is attempted, a second loss
   disposes and reports `failed` with a message over the stage.
 - Precedence is explicit and tested: explicit query param > stored view >
-  default (`stacked`).
+  default (`stacked`). *(Update 2026-11-20: the default is now `rendered3d`, the
+  3D table; the precedence itself is unchanged. A browser without WebGL2 draws
+  the stacked fallback without rewriting the stored choice.)*
 - Framing numbers at 16:9 match the reference within 1 px for the mat corners
   (printed by `check-3d-layout.mjs` in 3D-06; this unit prints them from the
   camera rig).

@@ -70,14 +70,18 @@ book only, the Mortal column says so, and no answer is labelled wrong.
 
 ## Table views
 
-The header's **View** select switches the same hand between two mobile-first
-portrait renderings; it never re-deals, so the answer and any submitted grade
-stay put. The choice is persisted in `localStorage`; an old stored value the app
-no longer understands (including the removed experimental view) falls back to
-the default on load.
+The header's **View** select offers three renderings of the same hand: the 3D
+table, the stacked layout and the top-down plan. Switching never re-deals, so
+the answer and any submitted grade stay put. **3D is the default**, taking the
+whole browser window, with the two 2D layouts beside it in the View control.
 
-- **Stacked** (default): four player rows in turn order, with the human's row
-  directly above the docked hand.
+- **3D** (default): the real-time three.js table, drawn with the committed tile
+  proportions and carved faces, **filling the whole window**. No UI panel sits
+  above or below the canvas in the document flow: the status cards, action
+  rail, hand dock, compass and header controls float over the scene as a HUD.
+- **Stacked**: four player rows in turn order, with the human's row
+  directly above the docked hand. This is also the accessible fallback drawn
+  when the browser cannot run 3D.
 - **Top-down**: a flat plan view of the table. The human's seat is the bottom edge
   (the hand stays in the dock below it), shimocha is on the right, toimen at the
   top, and kamicha on the left. Each river starts at the corner nearest the
@@ -97,6 +101,17 @@ lengthways against the edge nearest whoever declared it. Opponents' hands stay h
 (only their melds and rivers are drawn, exactly as in the stacked view), and the
 whole plan is rotated onto the human's seat so an imported report that puts them
 on another seat still reads with their own side at the bottom.
+
+The pick is remembered in `localStorage` under its own key,
+`riichiprac.table-view` — separate from the settings blob (`riichiprac.settings`,
+which holds the replay-source preference) — so a browser with no stored choice
+opens 3D. A browser that cannot run 3D (no WebGL2, or the session closed it after
+a performance degrade) draws the stacked table and says why, **without
+rewriting the stored choice**: the next capable browser, or a later launch after
+a fixed driver, opens 3D again. An old stored value the app no longer understands
+(including the removed experimental view) falls back to the default on load.
+`?renderer=3d` still forces the 3D table for review links, whatever the stored
+choice; drop the parameter to go back to the stored view.
 
 ## Choosing scenarios
 
