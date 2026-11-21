@@ -1194,3 +1194,204 @@ export function handTileToEyeDeg(tile: BoardTile, frame: CameraFrame): number {
   const cosine = Math.min(1, Math.max(-1, dot(normal, unit)));
   return Math.acos(cosine) / DEG;
 }
+
+/* -------------------------------------------------------------------------- */
+/* The hand band (screen-space hand)                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Where the human's hand sits when it is lifted off the table.
+ *
+ * The hand used to be a row of tiles on the mat's south edge, projected by the
+ * table camera, which made it ~17 px wide on a phone. On a phone the hand is now
+ * a row held up in front of the viewer at the bottom of the frame: still the
+ * same carved 3D tiles, still lit and shadowed by the same rig, but placed in
+ * **screen space** so their size is a fraction of the viewport instead of a
+ * consequence of the camera's distance.
+ *
+ * The two fractions cannot both hold exactly for a 3:4 tile — a projected tile
+ * is always at least `height/width = 28/21` tall — so the row width is the
+ * target and the tile height is what a 3:4 tile gives at that width. Both are
+ * reported by the layout gate.
+ */
+export interface HandBandSpec {
+  /** The concealed hand + draw row, as a fraction of the viewport width. */
+  readonly widthFraction: number;
+  /** One tile's projected height, as a fraction of the viewport height. */
+  readonly heightFraction: number;
+  /** The row's bottom edge, as a fraction of the viewport height above the bottom. */
+  readonly bottomFraction: number;
+}
+
+/** The band's committed numbers (user request 2026-11-21). */
+export const HAND_BAND: HandBandSpec = {
+  widthFraction: 0.66,
+  heightFraction: 1 / 8,
+  bottomFraction: 0.02,
+};
+
+/**
+ * How far a banded tile is turned away from square-on to the camera, in
+ * degrees. Small enough to keep the projected height near the tile's 28/21
+ * ratio, large enough that the top face still catches the key light.
+ */
+export const HAND_BAND_FACE_TO_VIEW_DEG = 10;
+
+/**
+ * The band for a viewport.
+ *
+ * A portrait phone cannot honour the 66 % row: 14 tiles at a legible size are
+ * wider than the screen, so the row takes (nearly) the whole width instead and
+ * the tiles are as large as that allows. Landscape is the orientation the
+ * fractions were measured in, and it uses them as given.
+ */
+export function handBandSpecFor(viewport: {
+  readonly widthPx: number;
+  readonly heightPx: number;
+}): HandBandSpec {
+  return viewport.heightPx > viewport.widthPx
+    ? { ...HAND_BAND, widthFraction: 0.96 }
+    : HAND_BAND;
+}
+
+/** The human's hand + draw tiles, in hand-row order (concealed, then the draw). */
+function handRowTiles(layout: BoardLayout): BoardTile[] {
+  return layout.tiles
+    .filter(
+      (tile) =>
+        tile.seat === layout.humanSeat &&
+        (tile.zone === 'hand' || tile.zone === 'draw'),
+    )
+    .sort((left, right) =>
+      left.zone === right.zone
+        ? left.slot - right.slot
+        : left.zone === 'hand'
+          ? -1
+          : 1,
+    );
+}
+
+/**
+ * Re-pose the human's concealed hand and draw into a screen-space band at the
+ * bottom of the frame.
+ *
+ * Pure: it returns a new layout and never touches the camera. The tiles keep
+ * their own geometry, material and orientation convention — only their world
+ * position moves, to a plane `depth` in front of the eye where the row is
+ * `widthFraction` of the viewport wide and its bottom edge is
+ * `bottomFraction` above the frame's bottom.
+ *
+ * `frame` must be the frame solved for the *table* (the band tiles excluded from
+ * the framing target), or the camera would reserve room for a hand that is no
+ * longer on the mat.
+ */
+export function placeHandBand(
+  layout: BoardLayout,
+  frame: CameraFrame,
+  viewport: { readonly widthPx: number; readonly heightPx: number },
+  spec: HandBandSpec = handBandSpecFor(viewport),
+): BoardLayout {
+  const row = handRowTiles(layout);
+  if (row.length === 0) return layout;
+  if (!(viewport.widthPx > 0) || !(viewport.heightPx > 0)) return layout;
+
+  /*
+   * The row is sized for a **full 14-tile hand** (`HAND.concealedCount` + the
+   * draw), whatever this hand actually holds. Sizing it to the tiles in hand
+   * would grow every tile when a meld takes three away, and the hand would jump
+   * size on a call. A shorter hand sits centred in the same pitch.
+   */
+  const nominalTiles = HAND.concealedCount + 1;
+  const rowUnits =
+    (nominalTiles - 1) * HAND.pitchUnits + TILE.widthUnits + HAND.drawGapUnits;
+  const pxPerUnit = (spec.widthFraction * viewport.widthPx) / rowUnits;
+  /*
+   * `pxPerUnit = H / (2 · depth · tanHalfVertical)` for a length perpendicular
+   * to the view axis, which is what a tile width and height both are once the
+   * tile is turned to face the camera.
+   */
+  const depth = viewport.heightPx / (2 * pxPerUnit * frame.tanHalfVertical);
+  if (!(depth > CAMERA.clipStartUnits * 2)) return layout;
+
+  const { right, up, forward } = cameraAxes(frame);
+  const planeCentre = add(frame.eye, mul(forward, depth));
+
+  // The row's tile centres along `right`, centred on the frame.
+  const offsets: number[] = [];
+  let cursor = -rowUnits / 2;
+  for (const tile of row) {
+    if (tile.zone === 'draw') cursor += HAND.drawGapUnits;
+    offsets.push(cursor + TILE.widthUnits / 2);
+    cursor += TILE.widthUnits;
+  }
+
+  const poseAt = (offset: number): TilePose => ({
+    position: add(planeCentre, mul(right, offset)),
+    yawDeg: 0,
+    /*
+     * The tile faces the camera, less {@link HAND_BAND_FACE_TO_VIEW_DEG} so the
+     * top edge stays visible and it still reads as a body rather than a decal.
+     * Turning it by the rest of the pitch would flatten its projected height
+     * (and hide the top face), which is the one thing that would let a 3:4 tile
+     * get closer to the 1/8 height the numbers ask for.
+     */
+    tiltDeg: -(frame.pitchDeg - HAND_BAND_FACE_TO_VIEW_DEG),
+    rollDeg: 0,
+    sizeUnits: TILE_SIZE,
+  });
+
+  /*
+   * Vertical placement: project one probe tile at the plane and move the whole
+   * row along `up` until its lowest corner sits `bottomFraction` above the
+   * frame's bottom. The shift is exact because `up` is perpendicular to the view
+   * axis, so a shift moves every corner's NDC y by the same amount.
+   */
+  const probe = orientedBoxCorners(orientedBox(poseAt(0)));
+  let lowestPx = Number.NEGATIVE_INFINITY;
+  for (const corner of probe) {
+    lowestPx = Math.max(lowestPx, projectToPixels(corner, frame, viewport.widthPx, viewport.heightPx).y);
+  }
+  const targetPx = viewport.heightPx * (1 - spec.bottomFraction);
+  const shiftPx = targetPx - lowestPx;
+  const upUnits = (-shiftPx * 2 * depth * frame.tanHalfVertical) / viewport.heightPx;
+  const lift = mul(up, upUnits);
+
+  const newPoses = new Map<string, TilePose>();
+  row.forEach((tile, index) => {
+    const pose = poseAt(offsets[index]);
+    newPoses.set(tile.id, { ...pose, position: add(pose.position, lift) });
+  });
+
+  const tiles = layout.tiles.map((tile) => {
+    const pose = newPoses.get(tile.id);
+    return pose ? { ...tile, pose } : tile;
+  });
+  return {
+    ...layout,
+    tiles,
+    foreground: tiles.filter((tile) => tile.zone !== 'wall'),
+  };
+}
+
+/**
+ * The layout without the human's concealed hand and draw.
+ *
+ * Used twice: as the camera's framing target (the hand is in the band, not on
+ * the mat, so the solved distance must not reserve room for it) and as the
+ * shadow source (a hand held up in front of the viewer has no contact shadow on
+ * the felt).
+ */
+export function withoutHandBandTiles(layout: BoardLayout): BoardLayout {
+  const tiles = layout.tiles.filter(
+    (tile) =>
+      !(
+        tile.seat === layout.humanSeat &&
+        (tile.zone === 'hand' || tile.zone === 'draw')
+      ),
+  );
+  return {
+    ...layout,
+    tiles,
+    foreground: tiles.filter((tile) => tile.zone !== 'wall'),
+  };
+}

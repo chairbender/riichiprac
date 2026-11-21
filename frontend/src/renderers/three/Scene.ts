@@ -84,7 +84,14 @@ import {
   QUALITY_CHANGED_EVENT,
 } from '../contract';
 import { CAMERA, LIGHT } from '../layoutConstants';
-import { frameForAspect, layoutBoard, poseAxes } from './boardLayout';
+import {
+  frameForAspect,
+  handBandSpecFor,
+  layoutBoard,
+  placeHandBand,
+  withoutHandBandTiles,
+  poseAxes,
+} from './boardLayout';
 import type { BoardLayout, CameraFrame } from './boardLayout';
 import {
   buildBoardInstances,
@@ -275,7 +282,17 @@ export class TableScene implements TableRenderer {
   private heroStarted = false;
   private board: BoardView | null = null;
   private boardStarted = false;
+  /**
+   * The board as `layoutBoard()` placed it: the table's own arrangement, with
+   * the human's hand still on the mat. {@link layout} is the **applied** one,
+   * which lifts that hand into the screen-space band whenever the viewport
+   * allows it; the source is kept so a resize can re-place the band without
+   * re-laying the board.
+   */
+  private sourceLayout: BoardLayout | null = null;
   private layout: BoardLayout | null = null;
+  /** True while the human's hand is in the screen-space band, not on the mat. */
+  private handBandActive = false;
   private frame: CameraFrame;
   private tier: QualityTier;
   /** The debug view the host asked for; the glint probe restores it. */
@@ -416,12 +433,12 @@ export class TableScene implements TableRenderer {
     const isCut = this.dealIn.cut(snapshot.revision);
     this.revision = snapshot.revision;
     this.locked = snapshot.locked;
-    const layout = layoutBoard(snapshot);
-    this.layout = layout;
-    this.syncBoard(layout);
+    this.sourceLayout = layoutBoard(snapshot);
     // A deeper river or a taller hand can move the solved camera, so the frame
-    // and the felt follow the layout, not only the viewport.
+    // and the felt follow the layout, not only the viewport. `reframe` also
+    // places the hand band, so the buffers must be written after it.
     this.reframe();
+    if (this.layout) this.syncBoard(this.layout);
     if (isCut) {
       // The hero view is a fixed macro shot of four tiles, not a deal: no
       // deal-in there, and no frame loop to run one.
@@ -448,6 +465,9 @@ export class TableScene implements TableRenderer {
     this.applyBackingStore();
     this.aspect = cssWidth / cssHeight;
     this.reframe();
+    // The band's size is a fraction of the viewport, so a resize re-places the
+    // hand and rewrites the buffers before the frame is drawn.
+    if (this.layout) this.syncBoard(this.layout);
     // Draw now rather than on the next frame: the host reveals the canvas as
     // soon as this returns, and a resize is a discrete change, not a loop.
     this.draw();
@@ -1140,11 +1160,30 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * Re-solve the camera and the felt for the current aspect and layout. The only
-   * place this class touches the frame, so no second framing can appear.
+   * Re-solve the camera and the felt for the current aspect and layout, then
+   * place the human's hand in the screen-space band. The only place this class
+   * touches the frame, so no second framing can appear.
    */
   private reframe(): void {
-    this.frame = frameForAspect(this.aspect, this.layout ?? undefined);
+    const source = this.sourceLayout;
+    /*
+     * The band lifts the hand off the mat, so the camera must not frame it
+     * there: the framing target is the table with the banded hand removed.
+     * Otherwise the solved distance would still reserve room for a row that is
+     * no longer on the table and the board would shrink for nothing.
+     */
+    const framing = source ? withoutHandBandTiles(source) : undefined;
+    this.frame = frameForAspect(this.aspect, framing);
+    const viewport = { widthPx: this.cssWidth, heightPx: this.cssHeight };
+    const bandable =
+      source !== null &&
+      !this.heroView &&
+      viewport.widthPx > 0 &&
+      viewport.heightPx > 0;
+    this.layout = source && bandable
+      ? placeHandBand(source, this.frame, viewport, handBandSpecFor(viewport))
+      : source;
+    this.handBandActive = bandable && this.layout !== source;
     applyFrameToCamera(this.camera, this.frame);
     // The felt is a square that reaches the top and bottom edges, so it is
     // re-sized with the framing; it is never stretched to the aspect.
@@ -1156,7 +1195,15 @@ export class TableScene implements TableRenderer {
     const board = this.board;
     if (!board) return;
     this.syncTiles(layout);
-    board.shadows.sync(shadowInstances(layout));
+    /*
+     * A hand held up in front of the viewer casts no contact shadow on the
+     * felt, and its quad would be drawn from a pose 20 units off the mat. The
+     * banded hand is therefore left out of the shadow pass; an un-banded hand
+     * keeps the shadow it has always had.
+     */
+    board.shadows.sync(
+      shadowInstances(this.handBandActive ? withoutHandBandTiles(layout) : layout),
+    );
     board.sticks.sync(layout.sticks);
   }
 

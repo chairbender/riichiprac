@@ -768,10 +768,79 @@ async function main() {
   // Melds no longer take the near corners (task 261120-2225), so the human hand
   // is the board's nearest content and sits on the 2 % safe-area edge.
   check(
-    'the human hand sits within 3 % of the frame bottom at 16:9',
+    'the un-banded hand sits within 3 % of the frame bottom at 16:9',
     referenceHandBottom <= 0.03 + 1e-9,
     `${formatNumber(referenceHandBottom * 100, 2)} %`,
   );
+
+  /* ------------------------- the hand band --------------------------- */
+  /*
+   * The shipped view lifts the human's hand off the mat into a screen-space
+   * band (user request 2026-11-21): the row is a fraction of the viewport's
+   * width and the tiles are sized from that, with the camera solved for the
+   * table alone. These are the numbers the user asked for, measured.
+   */
+  console.log('\nhand band (screen-space hand)');
+  const bandViewports = [
+    ['landscape 844x390', 844, 390],
+    ['landscape 932x430', 932, 430],
+    ['reference 1920x1080', 1920, 1080],
+    ['portrait 390x844', 390, 844],
+  ];
+  let bandOk = true;
+  let bandBottomOk = true;
+  for (const [label, width, height] of bandViewports) {
+    // A meld-free hand is the nominal 14 tiles the fractions were measured on.
+    const source = L.layoutBoard(F.boardFixture({ meldCounts: [0, 0, 0, 0] }));
+    const shippedFrame = L.frameForAspect(
+      width / height,
+      L.withoutHandBandTiles(source),
+    );
+    const band = L.placeHandBand(source, shippedFrame, {
+      widthPx: width,
+      heightPx: height,
+    });
+    const row = band.tiles.filter(
+      (tile) =>
+        tile.seat === band.humanSeat &&
+        (tile.zone === 'hand' || tile.zone === 'draw'),
+    );
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    let handDepth = Infinity;
+    for (const tile of row) {
+      for (const corner of L.orientedBoxCorners(L.orientedBox(tile.pose))) {
+        const pixel = L.projectToPixels(corner, shippedFrame, width, height);
+        left = Math.min(left, pixel.x);
+        right = Math.max(right, pixel.x);
+        top = Math.min(top, pixel.y);
+        bottom = Math.max(bottom, pixel.y);
+        handDepth = Math.min(handDepth, L.projectPoint(corner, shippedFrame).depth);
+      }
+    }
+    const rowFraction = (right - left) / width;
+    const heightFraction = (bottom - top) / height;
+    const bottomFraction = (height - bottom) / height;
+    const tableDepth = L.projectPoint([0, 0, 0], shippedFrame).depth;
+    console.log(
+      `  ${label.padEnd(22)}  row ${(rowFraction * 100).toFixed(1).padStart(5)} % W` +
+        `  tile ${((right - left) / row.length).toFixed(1).padStart(6)} px` +
+        `  height ${(heightFraction * 100).toFixed(1).padStart(5)} % H` +
+        `  bottom gap ${(bottomFraction * 100).toFixed(1).padStart(4)} %` +
+        `  depth ${handDepth.toFixed(1)} vs table ${tableDepth.toFixed(1)}`,
+    );
+    // Landscape is the orientation the 66 % target was measured in; portrait
+    // takes the whole width because 14 legible tiles do not fit two-thirds of a
+    // narrow screen.
+    const target = height > width ? 0.96 : 0.66;
+    if (Math.abs(rowFraction - target) > 0.02) bandOk = false;
+    if (bottomFraction > 0.03) bandBottomOk = false;
+    if (!(handDepth < tableDepth)) bandOk = false;
+  }
+  check('the hand row is its committed width fraction', bandOk, '66 % landscape / 96 % portrait');
+  check('the hand row sits within 3 % of the frame bottom', bandBottomOk);
 
   /* --------------------- meld framing stability ---------------------- */
   // The acceptance for 261120-2225: declaring melds must not move the camera.

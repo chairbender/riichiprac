@@ -13,8 +13,12 @@ import {
   WALL,
 } from '../layoutConstants';
 import {
+  HAND_BAND,
   committedShiftNdcY,
   frameForAspect,
+  handBandSpecFor,
+  placeHandBand,
+  withoutHandBandTiles,
   handTileToEyeDeg,
   handFaceToViewDeg,
   handRadius,
@@ -1016,5 +1020,159 @@ describe('3D board layout: snapshot edge cases', () => {
       ]),
     ].reduce((sum, count) => sum + count, 0);
     expect(board.foreground).toHaveLength(tileCount + fixture.dora.length);
+  });
+});
+
+describe('the hand band (screen-space hand, 2026-11-21)', () => {
+  /** A meld-free hand: the nominal 14 tiles the fractions were measured on. */
+  const full = layoutBoard(boardFixture({ meldCounts: [0, 0, 0, 0] }));
+
+  function banded(
+    layout: typeof full,
+    width: number,
+    height: number,
+  ) {
+    const frame = frameForAspect(width / height, withoutHandBandTiles(layout));
+    const placed = placeHandBand(layout, frame, { widthPx: width, heightPx: height });
+    const row = placed.tiles.filter(
+      (tile) =>
+        tile.seat === placed.humanSeat &&
+        (tile.zone === 'hand' || tile.zone === 'draw'),
+    );
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    let depth = Infinity;
+    for (const tile of row) {
+      for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+        const pixel = projectToPixels(corner, frame, width, height);
+        left = Math.min(left, pixel.x);
+        right = Math.max(right, pixel.x);
+        top = Math.min(top, pixel.y);
+        bottom = Math.max(bottom, pixel.y);
+        depth = Math.min(depth, projectPoint(corner, frame).depth);
+      }
+    }
+    return {
+      frame,
+      row,
+      left,
+      right,
+      top,
+      bottom,
+      depth,
+      rowFraction: (right - left) / width,
+      heightFraction: (bottom - top) / height,
+      bottomFraction: (height - bottom) / height,
+      tableDepth: projectPoint([0, 0, 0], frame).depth,
+    };
+  }
+
+  it('spans 66 % of a landscape viewport and sits at the bottom edge', () => {
+    for (const [width, height] of [
+      [844, 390],
+      [932, 430],
+      [1920, 1080],
+    ] as const) {
+      const band = banded(full, width, height);
+      expect(band.row, `${width}x${height}`).toHaveLength(14);
+      // The row's committed fraction, within the 2 % the gate allows.
+      expect(band.rowFraction).toBeCloseTo(HAND_BAND.widthFraction, 1);
+      expect(Math.abs(band.rowFraction - HAND_BAND.widthFraction)).toBeLessThan(0.02);
+      // The bottom edge: `bottomFraction` above the frame's bottom.
+      expect(band.bottomFraction).toBeLessThan(0.03);
+      expect(band.bottomFraction).toBeGreaterThan(0);
+      // The hand is held in front of the table, not on it.
+      expect(band.depth).toBeLessThan(band.tableDepth);
+      // Every tile is inside the frame.
+      expect(band.left).toBeGreaterThanOrEqual(0);
+      expect(band.right).toBeLessThanOrEqual(width);
+      expect(band.top).toBeGreaterThanOrEqual(0);
+      expect(band.bottom).toBeLessThanOrEqual(height);
+    }
+  });
+
+  it('gives a 3:4 tile ~1/8 of the frame height, the closest the aspect allows', () => {
+    // 66 % of the width for 14 tiles is 40 px wide at 844 x 390, and a tile body
+    // can never be shorter than 28/21 of its width. The height therefore lands
+    // just over 1/8 rather than exactly on it; this pins the measured value so
+    // a change to the band cannot drift silently.
+    const band = banded(full, 844, 390);
+    expect(band.heightFraction).toBeGreaterThan(0.12);
+    expect(band.heightFraction).toBeLessThan(0.16);
+  });
+
+  it('keeps the tile size fixed when a meld takes three tiles away', () => {
+    const oneMeld = layoutBoard(boardFixture({}));
+    const fullBand = banded(full, 844, 390);
+    const meldedBand = banded(oneMeld, 844, 390);
+    const tileWidth = (band: ReturnType<typeof banded>) =>
+      (band.right - band.left) / band.row.length;
+    // Same pitch, so a melded hand does not grow its tiles; the row is shorter.
+    expect(Math.abs(tileWidth(fullBand) - tileWidth(meldedBand))).toBeLessThan(1.5);
+    expect(meldedBand.rowFraction).toBeLessThan(fullBand.rowFraction);
+  });
+
+  it('takes nearly the whole width on a portrait stage', () => {
+    const band = banded(full, 390, 844);
+    expect(band.rowFraction).toBeGreaterThan(0.9);
+    expect(band.bottomFraction).toBeLessThan(0.03);
+    expect(band.depth).toBeLessThan(band.tableDepth);
+    expect(handBandSpecFor({ widthPx: 390, heightPx: 844 }).widthFraction).toBe(0.96);
+  });
+
+  it('turns every banded tile to face the camera', () => {
+    const band = banded(full, 844, 390);
+    for (const tile of band.row) {
+      // Same relationship the table hand has: 10° off the view direction.
+      expect(Math.abs(tile.pose.tiltDeg + (band.frame.pitchDeg - 10))).toBeLessThan(1e-6);
+      expect(tile.pose.yawDeg).toBe(0);
+    }
+  });
+
+  it('leaves the opponents and the melds on the table', () => {
+    const withMelds = layoutBoard(boardFixture({}));
+    const stripped = withoutHandBandTiles(withMelds);
+    const humanHand = (layout: typeof withMelds) =>
+      layout.tiles.filter(
+        (tile) =>
+          tile.seat === layout.humanSeat &&
+          (tile.zone === 'hand' || tile.zone === 'draw'),
+      );
+    expect(humanHand(withMelds).length).toBe(11);
+    expect(humanHand(stripped)).toHaveLength(0);
+    const melds = (layout: typeof withMelds) =>
+      layout.tiles.filter((tile) => tile.zone === 'meld');
+    expect(melds(stripped).length).toBeGreaterThan(0);
+    // The other three hands stay: only the human's leaves the mat.
+    const opponents = (layout: typeof withMelds) =>
+      layout.tiles.filter(
+        (tile) => tile.seat !== layout.humanSeat && tile.zone === 'hand',
+      );
+    expect(opponents(stripped).length).toBeGreaterThan(0);
+  });
+
+  it('is a no-op when the hand is empty', () => {
+    const empty = layoutBoard(
+      boardFixture({
+        meldCounts: [4, 4, 4, 4],
+        kan: true,
+      }),
+    );
+    // Four melds leave one concealed tile and a draw, so the band still has
+    // tiles to place; an actually empty row returns the layout untouched.
+    const none = {
+      ...empty,
+      tiles: empty.tiles.filter(
+        (tile) =>
+          !(
+            tile.seat === empty.humanSeat &&
+            (tile.zone === 'hand' || tile.zone === 'draw')
+          ),
+      ),
+    };
+    const frame = frameForAspect(844 / 390, withoutHandBandTiles(empty));
+    expect(placeHandBand(none, frame, { widthPx: 844, heightPx: 390 })).toBe(none);
   });
 });
