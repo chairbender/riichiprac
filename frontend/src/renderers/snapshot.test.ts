@@ -7,6 +7,12 @@ import type {
 } from '../types/game';
 import { WALL } from './layoutConstants';
 import { snapshotFromGameState, withPreviewRiichi } from './snapshot';
+import {
+  decodeWallSlot,
+  isDeadWallSlot,
+  liveWallSlots,
+  wallSlotId,
+} from './wall';
 
 const HAND_13 = [
   '1m',
@@ -674,26 +680,73 @@ describe('snapshotFromGameState: dora and wall', () => {
     ]);
   });
 
-  it('draws the fixed decorative wall: four runs, two tiers, one missing draw end each', () => {
+  it('draws the fixed dead wall plus the live wall left by tiles_remaining', () => {
+    // The test state publishes 70 live tiles and the human is seat 0.
     const snapshot = snapshotFromGameState(game(), 0, false);
 
-    expect(snapshot.wall).toHaveLength(WALL.tileCount);
-    expect(WALL.tileCount).toBe(132);
+    expect(WALL.deadWallTiles).toBe(14);
+    expect(snapshot.wall).toHaveLength(WALL.deadWallTiles + 70);
     expect(snapshot.wall.every((tile) => tile.zone === 'wall')).toBe(true);
     expect(snapshot.wall.every((tile) => tile.face === 'blank')).toBe(true);
     expect(snapshot.wall.every((tile) => !tile.faceUp)).toBe(true);
 
-    const slots = snapshot.wall.map((tile) => tile.slot);
-    expect(new Set(slots).size).toBe(WALL.tileCount);
-    // The last drawn slot is the last run's stack 16 bottom tier: its top is
-    // the omitted draw end, so 135 never appears.
-    expect(Math.max(...slots)).toBe(
-      WALL.runs * WALL.slotsPerRun - 1 - 1,
+    const dead = snapshot.wall.filter((tile) =>
+      isDeadWallSlot(tile.slot, 0),
     );
-    // Slot 33 of every run is stack 16, top tier: the draw end is not drawn.
-    expect(slots).not.toContain(33);
-    expect(slots).not.toContain(33 + WALL.slotsPerRun);
-    expect(slots.some((slot) => slot % WALL.slotsPerRun === 33)).toBe(false);
+    expect(dead).toHaveLength(WALL.deadWallTiles);
+    // Seven stacks x two tiers on the far run's draw-end half, and nothing else.
+    const farSeat = 2;
+    const deadByStack = new Map<string, number[]>();
+    for (const tile of dead) {
+      const decoded = decodeWallSlot(tile.slot);
+      if (!decoded) throw new Error('bad slot');
+      expect(decoded.run).toBe(farSeat);
+      expect(decoded.stack).toBeGreaterThanOrEqual(WALL.deadWallStartStack);
+      const key = `${decoded.run}:${decoded.stack}`;
+      deadByStack.set(key, [...(deadByStack.get(key) ?? []), decoded.tier]);
+    }
+    expect(deadByStack.size).toBe(WALL.deadWallStacks);
+    // Every dead stack carries both tiers (the adapter emits the face-down tile
+    // even where a dora indicator will cover it; the layout omits that one).
+    for (const tiers of deadByStack.values()) {
+      expect(tiers.sort((left, right) => left - right)).toEqual([0, 1]);
+    }
+
+    // The live wall is exactly the model's slot set, with no overlap.
+    const liveSlots = snapshot.wall
+      .filter((tile) => !isDeadWallSlot(tile.slot, 0))
+      .map((tile) => tile.slot);
+    expect(liveSlots).toHaveLength(70);
+    expect(new Set(liveSlots).size).toBe(70);
+    expect([...liveSlots].sort((left, right) => left - right)).toEqual(
+      liveWallSlots(70, 0)
+        .map((slot) => wallSlotId(slot.run, slot.stack, slot.tier))
+        .sort((left, right) => left - right),
+    );
+  });
+
+  it('leaves a lone bottom tile at the draw edge for an odd live count', () => {
+    const snapshot = snapshotFromGameState(game({ tiles_remaining: 69 }), 0, false);
+    const live = snapshot.wall.filter((tile) => !isDeadWallSlot(tile.slot, 0));
+    expect(live).toHaveLength(69);
+
+    const perStack = new Map<string, number[]>();
+    for (const tile of live) {
+      const decoded = decodeWallSlot(tile.slot);
+      if (!decoded) throw new Error('bad slot');
+      const key = `${decoded.run}:${decoded.stack}`;
+      perStack.set(key, [...(perStack.get(key) ?? []), decoded.tier]);
+    }
+    const partial = [...perStack.entries()].filter(
+      ([, tiers]) => tiers.length === 1,
+    );
+    expect(partial).toHaveLength(1);
+    // The partial stack keeps its bottom tile (the top was drawn first), and it
+    // is the model's draw edge.
+    expect(partial[0][1]).toEqual([0]);
+    const edge = liveWallSlots(69, 0)[0];
+    expect(partial[0][0]).toBe(`${edge.run}:${edge.stack}`);
+    expect(edge.tier).toBe(0);
   });
 
   it('fails loudly on an unknown dora or discard code', () => {

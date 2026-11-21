@@ -96,6 +96,9 @@ async function loadModules() {
       gaps: await server.ssrLoadModule(
         '/src/renderers/three/gaps.ts',
       ),
+      wall: await server.ssrLoadModule(
+        '/src/renderers/wall.ts',
+      ),
     };
   } finally {
     await server.close();
@@ -164,7 +167,7 @@ function widestFixture(fixture) {
 }
 
 async function main() {
-  const { constants: C, layout: L, fixture: F, gaps: G } = await loadModules();
+  const { constants: C, layout: L, fixture: F, gaps: G, wall: W } = await loadModules();
 
   const fixture = F.boardFixture();
   const board = L.layoutBoard(fixture);
@@ -193,7 +196,9 @@ async function main() {
     ['plate edge to innermost discard', formatNumber((C.POND.rowRadiiUnits[C.POND.rows - 1] - C.TILE.heightUnits / 2) - (C.COMPASS_PLATE.sizeUnits / 2 + C.COMPASS_PLATE.bevelUnits), 4)],
     ['wall runs x stacks x tiers', `${C.WALL.runs} x ${C.WALL.stacksPerRun} x ${C.WALL.tiers}`],
     ['wall ring radius / end-run radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.endRunRadiusUnits, 6)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
-    ['wall draw end (slot, tiers at seat right)', `${C.WALL.drawEndSlot}, ${C.WALL.drawEndTiers} (${C.WALL.drawEndIsSeatRight})`],
+    ['wall draw end (slot, seat right)', `${C.WALL.drawEndSlot} (${C.WALL.drawEndIsSeatRight})`],
+    ['live wall (stacks / tiles / max in a state)', `${C.WALL.liveWallStacks} / ${C.WALL.liveWallTiles} / ${C.WALL.maxDecisionLiveTiles}`],
+    ['dead wall (stacks / tiles / first stack / gap)', `${C.WALL.deadWallStacks} / ${C.WALL.deadWallTiles} / ${C.WALL.deadWallStartStack} / ${formatNumber(C.WALL.deadWallGapUnits, 4)}`],
     ['pond rows x columns (+overflow)', `${C.POND.rows} x ${C.POND.columns} (+${C.POND.overflowColumns})`],
     ['pond radii (nearest first)', formatMatrix3(C.POND.rowRadiiUnits)],
     ['pond column pitch / centre offset', `${formatNumber(C.POND.columnPitchUnits, 6)} / ${formatNumber(C.POND.columnCentreOffsetUnits, 6)}`],
@@ -262,10 +267,40 @@ async function main() {
     widestCollisions.length ? widestCollisions.slice(0, 3).join('; ') : `${widest.tiles.length} tiles`,
   );
 
+  const farSeat = (humanSeat + 2) % C.SEATS.count;
+  const isDead = (tile) => W.isDeadWallSlot(tile.slot, humanSeat);
+  const liveTiles = board.wall.filter((tile) => !isDead(tile));
+  const deadTiles = board.wall.filter(isDead);
+  const liveCount = Math.min(
+    fixture.compass.tilesRemaining,
+    C.WALL.maxDecisionLiveTiles,
+  );
   check(
-    'wall is the fixed decorative set minus the dora-covered tiles',
-    board.wall.length === C.WALL.tileCount - fixture.dora.length,
-    `${board.wall.length} = ${C.WALL.tileCount} - ${fixture.dora.length}`,
+    'live wall holds exactly the published tiles_remaining tiles',
+    liveTiles.length === liveCount,
+    `${liveTiles.length} = ${liveCount}`,
+  );
+
+  const decoded = (tile) => W.decodeWallSlot(tile.slot);
+  const stackOf = (tile) => decoded(tile).stack;
+  const deadStacks = new Set(deadTiles.map(stackOf));
+  const coveredStacks = new Set(
+    fixture.dora.map(
+      (_tile, index) =>
+        C.WALL.drawEndSlot - C.DORA.firstStackFromDrawEnd - index,
+    ),
+  );
+  const deadIntact =
+    deadStacks.size === C.WALL.deadWallStacks &&
+    [...deadStacks].every(
+      (stack) =>
+        stack >= C.WALL.deadWallStartStack && stack <= C.WALL.drawEndSlot,
+    ) &&
+    deadTiles.length + fixture.dora.length === C.WALL.deadWallTiles;
+  check(
+    'dead wall is intact: 7 stacks x 2 tiers, 14 tiles, dora on its top tier',
+    deadIntact,
+    `${deadTiles.length} face-down + ${fixture.dora.length} indicators = ${C.WALL.deadWallTiles}`,
   );
 
   const runRadiusOk = [0, 1, 2, 3].every((run) => {
@@ -294,46 +329,116 @@ async function main() {
     `${formatNumber(C.WALL.runHalfLengthUnits, 6)} units`,
   );
 
-  const farSeat = (humanSeat + 2) % C.SEATS.count;
+  const deadRight = L.seatPoint(farSeat, 1, 0, 0);
+  const deadW = (tile) =>
+    tile.pose.position[0] * deadRight[0] + tile.pose.position[2] * deadRight[2];
+  const deadShifted = deadTiles.every((tile) =>
+    close(
+      deadW(tile),
+      (stackOf(tile) - (C.WALL.stacksPerRun - 1) / 2) *
+        C.WALL.stackPitchUnits +
+        C.WALL.deadWallGapUnits,
+      1e-9,
+    ),
+  );
+  check(
+    'the dead wall is nudged clear of the live wall by the committed felt break',
+    deadShifted,
+    `${formatNumber(C.WALL.deadWallGapUnits, 3)} units = ${formatNumber(C.WALL.deadWallGapUnits * C.UNIT_MM, 1)} mm`,
+  );
+
+  const wallGaps = G.tileGaps(board.tiles, { withinUnits: 1.5 });
+  const byId = new Map(board.tiles.map((tile) => [tile.id, tile]));
+  const deadLiveGaps = wallGaps.filter((pair) => {
+    const a = byId.get(pair.aId);
+    const b = byId.get(pair.bId);
+    // Wall tiles only: a dora indicator's slot is an indicator index, not a ring
+    // slot, and it belongs to the dead block anyway.
+    if (!a || !b || a.zone !== 'wall' || b.zone !== 'wall') return false;
+    return isDead(a) !== isDead(b);
+  });
+  const nearestDeadLive = deadLiveGaps.length
+    ? Math.min(...deadLiveGaps.map((pair) => pair.gapUnits))
+    : Number.POSITIVE_INFINITY;
+  check(
+    'no dead-wall tile touches the live wall',
+    nearestDeadLive + 1e-9 >= C.WALL.deadWallGapUnits,
+    `${formatNumber(nearestDeadLive, 4)} units minimum`,
+  );
+
+  const modelSlots = W.liveWallSlots(
+    fixture.compass.tilesRemaining,
+    humanSeat,
+  )
+    .map((slot) => W.wallSlotId(slot.run, slot.stack, slot.tier))
+    .sort((left, right) => left - right);
+  const liveSlots = liveTiles
+    .map((tile) => tile.slot)
+    .sort((left, right) => left - right);
+  check(
+    'the live wall is exactly the arc suffix the draw order implies',
+    JSON.stringify(liveSlots) === JSON.stringify(modelSlots),
+    `${liveSlots.length} slots`,
+  );
+
+  const partialStacks = (() => {
+    const byStack = new Map();
+    for (const tile of liveTiles) {
+      const { run, stack, tier } = decoded(tile);
+      const key = `${run}:${stack}`;
+      byStack.set(key, [...(byStack.get(key) ?? []), tier]);
+    }
+    return [...byStack.entries()].filter(([, tiers]) => tiers.length === 1);
+  })();
+  const expectPartial = liveCount % 2 === 1;
+  check(
+    'an odd live count leaves one bottom-only stack at the draw edge',
+    partialStacks.length === (expectPartial ? 1 : 0) &&
+      (!expectPartial || partialStacks[0][1][0] === 0),
+    `${partialStacks.length} partial stack(s) at ${liveCount} tiles`,
+  );
+
   const doraTiles = board.foreground.filter((tile) => tile.zone === 'dora');
   check(
-    'dora indicators sit on the far wall\u2019s top tier',
-    doraTiles.every((tile) => {
+    'dora indicators sit on the dead wall\u2019s top tier, on the block',
+    doraTiles.every((tile, index) => {
       const outward = L.seatPoint(farSeat, 0, 1, 0);
       const radius =
         tile.pose.position[0] * outward[0] + tile.pose.position[2] * outward[2];
       return (
         close(radius, L.wallRunRadius(farSeat, humanSeat)) &&
         close(tile.pose.position[1], L.wallTierHeightUnits(1)) &&
+        close(
+          deadW(tile),
+          (C.WALL.drawEndSlot -
+            C.DORA.firstStackFromDrawEnd -
+            index -
+            (C.WALL.stacksPerRun - 1) / 2) *
+            C.WALL.stackPitchUnits +
+            C.WALL.deadWallGapUnits,
+          1e-9,
+        ) &&
         tile.pose.tiltDeg === -90
       );
     }),
     `${doraTiles.length} indicators`,
   );
 
-  const drawEndOk = (() => {
-    for (let run = 0; run < C.WALL.runs; run += 1) {
-      const right = L.seatPoint(run, 1, 0, 0);
-      const along = (tile) =>
-        tile.pose.position[0] * right[0] + tile.pose.position[2] * right[2];
-      const runTiles = board.wall.filter(
-        (tile) => Math.floor(tile.slot / C.WALL.slotsPerRun) === run,
-      );
-      const drawEnd = runTiles.filter(
-        (tile) => (tile.slot % C.WALL.slotsPerRun) >> 1 === C.WALL.drawEndSlot,
-      );
-      if (drawEnd.length !== 1) return `run ${run}: ${drawEnd.length} draw-end tiles`;
-      const end = along(drawEnd[0]);
-      if (runTiles.some((tile) => along(tile) > end + 1e-9)) {
-        return `run ${run}: a tile sits past the draw end`;
-      }
-    }
-    return null;
-  })();
+  // A late hand: the live wall is nearly empty, the dead wall is still 14 tiles
+  // and still clear of the live wall and of everything else.
+  const late = L.layoutBoard(F.boardFixture({ tilesRemaining: 12, doraCount: 5 }));
+  const lateDead = late.wall.filter((tile) =>
+    W.isDeadWallSlot(tile.slot, late.humanSeat),
+  );
+  const lateLive = late.wall.filter(
+    (tile) => !W.isDeadWallSlot(tile.slot, late.humanSeat),
+  );
   check(
-    'every run\u2019s draw end is at its seat\u2019s right',
-    drawEndOk === null,
-    drawEndOk ?? '4 runs',
+    'a late-hand board keeps the dead wall intact and draws only the live count',
+    lateLive.length === 12 &&
+      lateDead.length + 5 === C.WALL.deadWallTiles &&
+      overlaps(late, L).length === 0,
+    `${lateLive.length} live + ${lateDead.length} face-down dead + 5 dora`,
   );
 
   const humanHand = board.foreground

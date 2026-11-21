@@ -88,6 +88,13 @@ it renders.
   (`TABLE`, `CAMERA`, `WALL`, hands, ponds, melds, dead wall, compass well) and
   `three/boardLayout.ts`, which solve the transforms and the one-point camera.
   The user approved the table model and anchor bank on 2026-11-17.
+  Since task 261120-2112 the wall follows state: the 136-tile wall is
+  **122 live + 14 dead**, the live wall is one contiguous arc depleted from the
+  break (top tier first) by `GameState.tiles_remaining` (at most 70 at a
+  decision), and the dead wall is the far run's intact 7×2 block, nudged
+  0.3 units (8.4 mm) clear of the live wall. `frontend/src/renderers/wall.ts` is
+  the one model that turns the count into slots; do not re-derive occupancy in
+  another module. Plan §2.4a and §9 R6 record the decision.
 * **The carve** — the approved engraving look is baked into the 3D channel atlas
   by `frontend/tools/relief3d/bake-relief3d.mjs`: the glyph area pushed in by
   0.495 mm through a 0.3 mm Bézier transition, with the wall **inside** the
