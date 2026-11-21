@@ -241,6 +241,14 @@ action row or result card is hidden, so the sheet can use the freed band and no
 visible control is inert. The sheet's bottom is that collapsed panel's top
 minus `8 px`.
 
+**Projection note (2026-11-21, task 261120-2225).** The meld lines now sit
+inside each hand's row (§2.4b of the plan), so the camera no longer pulls back
+when a player declares a meld. The board solves closer (16:9: `52.73 → 50.26`),
+which moves the hand band and every panel below it down the screen. **The numbers
+under each stage are re-measured and authoritative; the schematic drawings show
+the structure, not the exact rows.** The new positions are an AGENTS.md §6
+handoff: they are pending the user's verdict.
+
 Every aspect below is drawn on the same rule set:
 
 - top bar: full width, `78 px` at inset `0` — a `18 px` brand line, a `4 px` gap,
@@ -258,10 +266,11 @@ panel and the hand is under one cell at several sizes, so the boxes can touch in
 a drawing while the numbers below them keep the gap.
 
 **The diagrams are the reference hand**: the board fixture's default one meld
-per seat (10 concealed + the draw). The projected band moves with the hand
-(§7.4): a no-meld 14-tile hand sits lower, a four-meld hand higher, and the
-camera fit moves the compass with it. The panel follows the band, which is why
-the gate runs every state rather than one fixture.
+per seat (10 concealed + the draw). The projected band used to move visibly with
+the hand; since 261120-2225 it is fixed across meld states (§7.4): at 16:9 the
+compass and the band are identical with none, one or four melds, and at 9:16 they
+move by at most `3 px`. The panel follows the band, which is why the gate runs
+every state rather than one fixture.
 
 ### 21:9 — 2520 × 1080
 
@@ -287,9 +296,9 @@ the gate runs every state rather than one fixture.
                                                                         
 ```
 
-compass `1126,387–1394,654` · hand band `950,918–1654,1010` (`704 px` wide) ·
-panel `826–910` (`171 px` above the compass) · result card `806–910` ·
-sheet `64–862` (`798 px`). Nothing collapses.
+compass `1120,403–1400,683` · hand band `818,961–1559,1058` (`741 px` wide) ·
+panel `869–953` (`186 px` above the compass) · result card `849–953` ·
+sheet `86–905` (`819 px`). Nothing collapses.
 
 ### 16:9 — 1920 × 1080 (reference aspect)
 
@@ -314,8 +323,8 @@ sheet `64–862` (`798 px`). Nothing collapses.
                                                                 
 ```
 
-compass `827,376–1093,643` · hand band `643,914–1362,1009` (`719 px`) · panel
-`822–906` (`179 px`) · result card `802–906` · sheet `64–858` (`794 px`).
+compass `820,392–1100,671` · hand band `508,958–1266,1058` (`759 px`) · panel
+`866–950` (`195 px`) · result card `846–950` · sheet `86–902` (`816 px`).
 
 ### 3:2 — 1440 × 960
 
@@ -340,8 +349,8 @@ compass `827,376–1093,643` · hand band `643,914–1362,1009` (`719 px`) · pa
                                                         
 ```
 
-compass `602,328–838,563` · hand band `434,810–1084,896` (`650 px`) · panel
-`718–802` (`154 px`) · result card `698–802` · sheet `64–754` (`690 px`).
+compass `596,341–844,588` · hand band `311,849–997,941` (`687 px`) · panel
+`757–841` (`169 px`) · result card `737–841` · sheet `86–793` (`707 px`).
 
 ### 4:3 — 1280 × 960
 
@@ -366,8 +375,8 @@ compass `602,328–838,563` · hand band `434,810–1084,896` (`650 px`) · pane
                                                     
 ```
 
-compass `533,364–747,579` · hand band `378,805–973,884` (`595 px`) · panel
-`713–797` (`134 px`) · result card `693–797` · sheet `64–749` (`685 px`).
+compass `529,361–751,584` · hand band `270,819–890,902` (`620 px`) · panel
+`727–811` (`143 px`) · result card `707–811` · sheet `86–763` (`677 px`).
 
 ### 1:1 — 1000 × 1000
 
@@ -394,8 +403,8 @@ compass `533,364–747,579` · hand band `378,805–973,884` (`595 px`) · panel
                                             
 ```
 
-compass `416,410–584,577` · hand band `295,754–760,816` (`465 px`) · panel
-`662–746` (`84 px`) · result card `642–746` · sheet `64–698` (`634 px`).
+compass `413,407–587,581` · hand band `211,765–696,830` (`484 px`) · panel
+`673–757` (`92 px`) · result card `653–757` · sheet `86–709` (`623 px`).
 
 ### 3:4 — 900 × 1200
 
@@ -426,8 +435,8 @@ compass `416,410–584,577` · hand band `295,754–760,816` (`465 px`) · panel
                                         
 ```
 
-compass `360,502–540,681` · hand band `264,874–687,931` (`422 px`) · panel
-`782–866` (`100 px`) · result card `762–866` · sheet `64–818` (`754 px`).
+compass `358,500–542,683` · hand band `193,880–625,939` (`433 px`) · panel
+`788–872` (`105 px`) · result card `768–872` · sheet `86–824` (`738 px`).
 
 ### 9:16 — 810 × 1440
 
@@ -465,11 +474,11 @@ compass `360,502–540,681` · hand band `264,874–687,931` (`422 px`) · panel
                                     
 ```
 
-compass `324,632–486,793` · hand band `238,966–620,1018` (`382 px`) · panel
-`874–958` (`81 px`) · result card `854–958` · sheet `64–896` (`832 px`, the cap binds). A
-four-meld hand raises the band to `900–938`: the panel moves with it, the rail
-clearance becomes `32 px` and the card's `12 px` — both legal, and the result
-card's fixed `104 px` shape is what keeps them so.
+compass `323,630–487,795` · hand band `174,972–565,1025` (`391 px`) · panel
+`880–964` (`85 px`) · result card `860–964` · sheet `86–916` (`830 px`; the
+collapsed hint panel's top binds, not the `832 px` cap). A four-meld hand moves
+the band by under `4 px` (`969–1022`), so the panel and both clearances barely
+move (`83 px` and `63 px`).
 
 ### 9:16 with the sheet open
 
@@ -518,8 +527,8 @@ Its body scrolls internally; the page does not scroll.
 
 | Stage | panel | reason |
 | --- | --- | --- |
-| 390 × 844 | **below** the hand: `574–658` | the gap above the hand is `484 → 541 = 57 px`; the panel needs `92 px` |
-| 320 × 568 | **below** the hand: `410–494` | the gap is `34 px`, and the hand band is only `152 px` wide |
+| 390 × 844 | **below** the hand: `577–661` | the gap above the hand is `484 → 544 = 60 px`; the panel needs `92 px` |
+| 320 × 568 | **below** the hand: `413–497` | the gap is `37 px`, and the hand band is only `156 px` wide |
 
 The fallback is one rule, not a second layout: when
 `handBand.top − 8 − panelHeight < compassBox.bottom + 8`, the panel docks
@@ -552,11 +561,11 @@ sheetWidth  = min(832, stageW − 16)
 On the phone fallback rows the panel is below the hand, so `panelTop` is
 `handBand.bottom + 8` and the same formula holds.
 
-At 21:9 this is `86 → 862` (`776 px`); 16:9 `86 → 858` (`772 px`); 3:2
-`86 → 754` (`668 px`); 4:3 `86 → 749` (`663 px`); 1:1 `86 → 698` (`612 px`);
-3:4 `86 → 818` (`732 px`); 9:16 `86 → 910` (`824 px`, the collapsed hint panel
-binds, not the `832 px` cap, because the brand line made the bar taller);
-390 × 844 `86 → 566` (`480 px`); 320 × 568 `86 → 402` (`316 px`). The hand
+At 21:9 this is `86 → 905` (`819 px`); 16:9 `86 → 902` (`816 px`); 3:2
+`86 → 793` (`707 px`); 4:3 `86 → 763` (`677 px`); 1:1 `86 → 709` (`623 px`);
+3:4 `86 → 824` (`738 px`); 9:16 `86 → 916` (`830 px`, the collapsed hint panel
+binds, not the `832 px` cap);
+390 × 844 `86 → 488` (`402 px`); 320 × 568 `86 → 405` (`319 px`). The hand
 panel, the hand and the felt under it all stay below the sheet at every size.
 
 ---
@@ -756,45 +765,49 @@ the reference hand, at the gate aspects:
 
 | Aspect | compass bottom | panel top | clearance | result card |
 | --- | --- | --- | --- | --- |
-| 21:9 | 654 | 826 | 171 px | 151 px |
-| 16:9 | 643 | 822 | 179 px | 159 px |
-| 3:2 | 563 | 718 | 154 px | 135 px |
-| 4:3 | 579 | 713 | 134 px | 114 px |
-| 1:1 | 577 | 662 | 84 px | 65 px |
-| 3:4 | 681 | 782 | 100 px | 81 px |
-| 9:16 | 793 | 874 | 81 px | 61 px |
-| 390 × 844 | 484 | 574 (below) | 90 px, belt and braces | — |
-| 320 × 568 | 347 | 410 (below) | 63 px | — |
+| 21:9 | 683 | 869 | 186 px | 166 px |
+| 16:9 | 671 | 866 | 195 px | 175 px |
+| 3:2 | 588 | 757 | 169 px | 149 px |
+| 4:3 | 584 | 727 | 143 px | 123 px |
+| 1:1 | 581 | 673 | 92 px | 72 px |
+| 3:4 | 683 | 788 | 105 px | 85 px |
+| 9:16 | 795 | 880 | 85 px | 65 px |
+| 390 × 844 | 484 | 577 (below) | 90 px, belt and braces | — |
+| 320 × 568 | 347 | 413 (below) | 63 px | — |
 
 The band is **not at a fixed screen position**, and neither is the compass: the
-camera fits the board, so a hand with more melds pulls the whole projection in.
-At 16:9 the compass's bottom edge moves from `671 px` (no melds) to `627 px`
-(four melds including a kan), and the hand band's top from `958 px` to `876 px`.
-That is why the anchor is the live projection, and why the gate runs every hand
-state rather than one fixture.
+camera fits the board, so the aspect changes the projection. What changed on
+2026-11-21 (task 261120-2225) is that the **meld state no longer moves it**: the
+meld lines sit inside each hand's row, so at 16:9 the compass's bottom edge
+(`671 px`) and the hand band's top (`958 px`) are identical with no melds, one
+meld per seat, or four melds per seat including a kan; at 9:16 the band moves by
+at most `3 px`. The anchor is still the live projection, and the gate still runs
+every hand state rather than one fixture.
 
 At 9:16, the tightest gate aspect, the panel clearance by hand state is:
 
 | Human hand | buttons | panel clearance | result-card clearance |
 | --- | --- | --- | --- |
 | 13 + draw (no melds) | 14 | 84 px | 64 px |
-| 10 + draw (one meld) | 11 | 81 px | 61 px |
-| 7 + draw (two melds) | 8 | 45 px | 25 px |
-| 4 + draw (three melds) | 5 | 45 px | 25 px |
-| 1 + draw (four melds) | 2 | 43 px | 23 px |
-| 1 + draw (four melds, one a kan) | 2 | 32 px | 12 px |
+| 10 + draw (one meld) | 11 | 85 px | 65 px |
+| 7 + draw (two melds) | 8 | 85 px | 65 px |
+| 4 + draw (three melds) | 5 | 85 px | 65 px |
+| 1 + draw (four melds) | 2 | 84 px | 64 px |
+| 1 + draw (four melds, one a kan) | 2 | 83 px | 63 px |
 
 Across all seven gate aspects and all six states, the worst panel clearance is
-`32 px` and the worst result-card clearance is `12 px`, both at 9:16 with a
+`83 px` and the worst result-card clearance is `63 px`, both at 9:16 with a
 four-meld kan hand. Both are legal against the `8 px` rule, and they are the
 numbers the gate must beat. They are also why the result card has a **fixed
 shape**: a headline, one clamped detail line and the chips, capped at `104 px`
 — a card that grew with its text would break the contract at 9:16.
 
-A **wrapped** action row (`128 px`) at 9:16 with a four-meld hand does not fit
-above the hand (`900 − 8 − 128 = 764` against a compass bottom of `776`), so the
-fallback moves the panel below the hand, where there are `496 px`. That is the
-fallback doing its job, not an exception: the gate asserts whichever anchor is
+A **wrapped** action row (`128 px`) at a phone-sized 9:16 stage (`450 × 800`) with
+a four-meld hand does not fit above the hand, so the fallback moves the panel
+below the hand. On the `810 × 1440` gate stage it now does fit above (the
+2026-11-21 camera change brought the board in), so that stage exercises the
+`above` branch and the phone-sized one keeps the `below` branch covered. That is
+the fallback doing its job, not an exception: the gate asserts whichever anchor is
 chosen.
 
 The top bar ends at `78 px`; the compass's top edge is never above `328 px` in
@@ -1023,9 +1036,9 @@ The playing state is in the floating panel. This is what the next units build on
   rows × six hand states × answered/unanswered × `none`/`hint`/`actions ×1`/
   `actions ×2`/`result`, on the real projection, with 2 toasts at rest. Every
   row is at least `8 px` clear of the hand band and the compass, and the wrapped
-  rail still docks below the hand at 9:16 with a four-meld kan hand. The
-  hint-only panel's compass clearance is the one-row panel's plus `44 px`, so it
-  cannot be worse than the `32 px` H2 measured.
+  rail still docks below the hand on the phone-sized 9:16 stage with a four-meld
+  kan hand. The hint-only panel's compass clearance is the one-row panel's plus
+  `44 px`, so it cannot be worse than the `83 px` §7.4 now measures.
 - **Not done here.** The verdict sheet and result card (H5) and the setup sheet
   (H4). The rail's chip has no action until H5; nothing else in the rail is
   inert.
@@ -1093,7 +1106,7 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   aspects and two phone rows × six hand states × answered/unanswered ×
   `none`/`hint`/`actions ×1`/`actions ×2`/`result`, including the individual
   projected targets; every row is at least `8 px` clear, and the worst
-  result-card clearance remains the `12 px` published in §7.4.
+  result-card clearance is the `63 px` published in §7.4.
 - **Not done here.** The setup sheet (H4). 3D-15 runs the stress-fixture matrix
   and the handoff screenshots, and 3D-16 records the chain.
 - **Composition handoff (AGENTS.md §6): pending the user's verdict.** Run the
@@ -1211,7 +1224,7 @@ document makes; each can be changed in this file before H2 starts.
    sheet opens from a corner), or is this reading right?
 2. **One bottom panel.** The hint row, the action row and the result card are
    rows of a single `36rem` panel directly above the hand (worst clearance
-   `32 px` at 9:16 with a four-meld hand), falling below it on phones. The
+   `83 px` at 9:16 with a four-meld hand), falling below it on phones. The
    alternative is a fixed bottom-left panel that never moves. Which do you want?
 3. **Mortal chip.** Pre-answer, the hint row carries a one-line Mortal chip
    that opens the verdict sheet (so Peek survives). Alternatively the chip moves

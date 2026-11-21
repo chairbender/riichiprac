@@ -363,10 +363,12 @@ and they supersede the reference values above where they differ.
   instead of 24 mm in front of the mat edge. That is the floor: a side run
   occupies the band beside every seat's hand, so the hand cannot come further in
   without the two overlapping (the layout gate caught exactly that during the
-  wall-ring change). `MELD.rowRadiusUnits` follows the hand, and extra meld rows
+  wall-ring change). ~~`MELD.rowRadiusUnits` follows the hand, and extra meld rows
   now step **toward the player** (`+index * rowPitch`) — the doc always said
   "nearer the player", the code stepped inward, and with the hand at 8.225 that
-  would put rows 2–3 inside the wall ring (the overlap the change surfaced).
+  would put rows 2–3 inside the wall ring (the overlap the change surfaced).~~
+  **Superseded by §2.4b (261120-2225):** there is one meld line on the hand's row
+  and no second row at all.
 - **The player's and the across player's hands sit a tile thickness closer.**
   `HAND.endSeatRadiusUnits` (7.6357) is one 16.5 mm thickness inside
   `HAND.backRadiusUnits` (8.225), and `boardLayout.handRadius(seat, humanSeat)`
@@ -378,6 +380,8 @@ and they supersede the reference values above where they differ.
   bottom margin is 6.59 % in the all-melds fixture because a left/right seat's
   meld row runs along the near corner at its side radius and is therefore the
   board's nearest content — the hand cannot be lower while those stay in frame.
+  *(Superseded by §2.4b: the melds are inside the hand's row, the hand sits on the
+  2 % edge and 16:9 solves at 50.26.)*
 - **The wall ring is squared.** The front and back runs (the human's own edge and
   the far edge) sit at **`WALL.endRunRadiusUnits` 5.875**, so their outer face is
   flush with a side run's end tile at `WALL.runHalfLengthUnits` 6.375 — "their
@@ -386,9 +390,11 @@ and they supersede the reference values above where they differ.
   6.875`), which is what makes the corners shared edges rather than 1.1 mm slots.
   All four cannot share one radius: a 17-stack run already spans its whole side
   of the ring, so a smaller square would overlap two stacks at every corner. Consequence for the framing: the
-  board's vertical extremes are the **hands** (z ±8.94) and the side players'
-  meld rows, not the walls, so the camera stays at 55.56 at 16:9 — the wall move
-  is composition, not extra zoom. `wallRunRadius(run, humanSeat)` is the one rule
+  board's vertical extremes are the **hands** (z ±8.94) and, before 261120-2225,
+  the side players' meld rows; since §2.4b the melds are inside the hand's
+  footprint, so only the hands set the vertical band. The camera stays at 55.56 at
+  16:9 in that 2026-11-18 measurement — the wall move is composition, not extra
+  zoom. `wallRunRadius(run, humanSeat)` is the one rule
   (the inset follows the human, so it also moves when the human seat changes),
   and the dora indicators ride the far run's inset radius.
 - **The fit subject is the board, not the mat.** `framingPoints` is the tile
@@ -403,9 +409,11 @@ and they supersede the reference values above where they differ.
   above the bottom edge, and every tile still inside the 2 % safe area. Other
   aspects: 72.64 at 21:9, 47.05 at 3:2, 44.14 at 4:3 and 1:1, 42.67 in portrait.
   `check-3d-layout.mjs` prints all of it and gates the hand's bottom sliver.
-- **Side effect, accepted:** the frame is solved against the actual tiles, so a
-  meld-heavy board (which reaches further to the player's right) solves slightly
-  further back. A typical board is stable.
+- **Side effect, accepted on 2026-11-18, removed on 2026-11-21:** the frame is
+  solved against the actual tiles, so a meld-heavy board used to solve slightly
+  (then, with four melds and a kan, a lot) further back. §2.4b makes the meld line
+  part of the hand's row and the 16:9 solve is now identical with or without
+  melds; the gate measures it per seat.
 
 ### 2.4a The wall model (261120-2112, user decisions 2026-11-20)
 
@@ -448,7 +456,88 @@ fixture:
   wall break, the bottom-only draw-edge stack and the asymmetric thinning all
   accepted.
 
-### 2.5 Assets: reuse Task 4B, do not bake twice
+### 2.4b The meld line stays inside the hand's row (261120-2225)
+
+The user's rule (2026-11-21) replaces the old "meld row outside the hand" model:
+
+> When a meld is called, it goes on the corner to the right of the calling
+> player, in the current viewport — still physically on the table, but positioned
+> so it shows up there on screen. The hand shifts left to give the meld a little
+> more space. As additional melds are called, they extend in a line towards the
+> hand and the hand shifts over again. The camera stays fixed; the layout
+> accommodates the space the melds take instead of widening the framed board.
+
+**Screen corners.** "To the right of the calling player" is resolved in each
+seat's own frame and then through its yaw, which is the same as rotating the
+viewport so that caller sits at the bottom and taking *its* bottom-right corner.
+With the human at the bottom the four callers' melds therefore land clockwise:
+
+| caller | seat yaw | on screen | corner their melds take |
+| --- | --- | --- | --- |
+| human | 0° | bottom edge | bottom-right |
+| next (right edge) | 90° | right edge, facing left | top-right |
+| across | 180° | top edge | top-left |
+| last (left edge) | 270° | left edge, facing right | bottom-left |
+
+The hand always slides toward its owner's **left**, which on screen is left for
+the human, up-screen for the left-edge player and down-screen for the right-edge
+player. This is the standard clockwise mahjong arrangement; it is recorded here
+because the rotation is the part that is easy to get wrong.
+
+**The layout rule** (`boardLayout.placeSeatRow`, `rowAnchorUnits`,
+`meldRadius`):
+
+- A seat's concealed hand, drawn tile and every meld form **one contiguous line**
+  at that seat's hand radius, in that order. Tiles in a meld touch; the draw
+  keeps its 7.35 mm tsumogiri gap; the first meld clears the draw by 4.2 mm and
+  two melds clear each other by 2.8 mm (`MELD`). There is no second row and no
+  wrapping.
+- The line is aligned to the **meld-free right edge** — the right edge a full
+  13-tile hand plus its draw occupies (`HAND.drawOffsetUnits + tileWidth / 2`) —
+  plus **half** of the row's growth. A meld replaces three concealed tiles and is
+  about 2.5 tiles wide, so the whole line grows by only 0.35 units per pon
+  (1.4 units for four pons, 2.2 with a kan); splitting that growth means the
+  melds take the row's right end, the concealed hand slides left, and neither end
+  has to absorb the whole extra span.
+- The reclined human hand's melds sit **one tile height in** from the hand radius,
+  so the flat meld's outer-bottom edge is flush with the hand's front face. A
+  lying meld is flat and its lowest projected point is that outer edge; without
+  the inset the human's own melds would become the board's nearest tile and the
+  framing solver would move back by about 2 %. Upright opponent hands already
+  reach half a tile thickness past their radius, so their melds stay on the hand
+  radius. The inset leaves 7.3 mm of felt between the meld line's near edge and
+  the human's inset end run (the hand itself keeps its committed 36 mm).
+
+**Why this stops the zoom-out.** The old row started at a fixed tangential
+position and ran to `MELD.maxRowUnits` 12.4, so a side seat's melds reached the
+near/far corner as the board's nearest tile. Measured on the widest fixture
+(4 melds/seat, kans) before the change: the solved distance grew by **28.2 units
+at 21:9 and 21.6 units at 16:9** (65.7 → 93.9 and 50.3 → 71.9). With the line
+inside the hand's row, the melds are inside the meld-free board's world extents
+(the gate asserts every meld corner against the x/z envelope) and the camera
+holds:
+
+| fixture | 16:9 (all four human seats) | worst delta over all 7 aspects |
+| --- | --- | --- |
+| one meld/seat | **0.000 units** (identical solve) | −0.656 units (1.68 %), 9:16, human seat 1 |
+| four melds/seat + kan | **0.000 units** (identical solve) | +0.707 units (1.80 %), 1:1, human seat 3 |
+
+The residual is the hand's own half-shift moving a side hand's end 0.7 units
+toward the camera on the narrowest frames; it is not the meld line, and it is two
+orders of magnitude below the old zoom-out. `check-3d-layout.mjs` prints the
+per-seat table and gates both the 16:9 identity and a 2 % / 0.75-unit bound.
+
+**Shipped projection.** With melds no longer taking the near corner the default
+fixture (one meld per seat) solves at **50.26** at 16:9 instead of 52.73, the hand
+long axis grows from 7.49 % to **7.89 %** of the frame height, and the human hand
+now sits on the 2 % safe-area edge (6.59 % before). The hand band and every HUD
+panel derived from it moved with the board; `3d_hud.md` §5/§7.4 carries the
+re-measured pixel table, and the composition is an AGENTS.md §6 handoff.
+
+**User handoff (pending, 2026-11-21).** The numeric gate is green; the composition
+itself (which screen corner each seat's melds take, the half-shift, and the HUD
+panels' new positions) is the user's call in the live `?renderer=3d` view.
+
 
 **Read AGENTS.md §3b first.** The 2.5D workspace already models the tile body and
 the whole table in 3D (`shell-spec.json` + `bake_shells.py`,
@@ -1501,8 +1590,9 @@ the committed table geometry.
 **Acceptance criteria**
 
 - Every zone is produced: 4 walls × 17 stacks × 2 tiers, four ponds in 3 × 6
-  rows with the overflow extending the near row, melds right of each hand with
-  the called tile sideways, the human hand reclined 40° (band 30–45°) with a
+  rows with the overflow extending the near row, every meld in one line at the
+  right of its hand with the called tile sideways (inside the meld-free hand's
+  footprint, §2.4b), the human hand reclined 40° (band 30–45°) with a
   separate draw slot, opponent hands upright and face-down, dora indicators
   face-up on the dead wall's top tier (one per indicator, from the draw end),
   riichi sticks near the centre.
@@ -1666,8 +1756,9 @@ landed here: the wall's top tier sits on the bottom tier (the thickness was
 counted twice, so the top row floated), the hands moved from radius 10.6 to 8.225
 (and meld rows step toward the player so they clear the wall), the camera frames
 the board rather than the mat with the 76-unit floor deleted — 16:9 solves to
-52.73 after 3D-20 closed the pitches (55.56 before that), the tiles are ~37 %
-larger and the human hand sits 6.59 % above the bottom edge — the front/back wall
+52.73 after 3D-20 closed the pitches (55.56 before that; **50.26 since §2.4b**),
+the tiles are ~37 % larger and the human hand sits 6.59 % above the bottom edge
+(**2.00 % since §2.4b**) — the front/back wall
 runs are inset to 5.875 so the ring's front and back edges line up with the side
 runs' end tiles, and the human's and the across player's hands then move a tile
 thickness closer to those end runs (`HAND.endSeatRadiusUnits` 7.6357), which lets
@@ -2751,8 +2842,8 @@ runs were hard-coded to radius 7 and their inner faces to 6.5000 — a 0.0393-un
   6.875) so an end run's outer face and a side run's inner face are the same
   plane and the corner tiles share a 0.75 × 16.5 mm face instead of a slot;
 - the *deliberate* separations stay and are documented as such: the 7.35 mm
-  tsumogiri draw gap, the 4.2 mm between the draw and the meld row, the 2.8 mm
-  between meld rows, the felt between zones.
+  tsumogiri draw gap, the 4.2 mm between the draw and the first meld, the 2.8 mm
+  between two melds in the line, the felt between zones.
 
 Result, measured by the same instrument: the fixture board has **520 touching
 pairs and 0 slots**, the widest board (4 melds/seat, kans, 22 discards, 5 dora)
