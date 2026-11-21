@@ -24,7 +24,7 @@
 
 import { useEffect, useRef } from 'react';
 import { AnswerSummary } from '../../components/AnswerSummary';
-import { NextScenarioButton } from '../../components/NextScenarioButton';
+import { PostAnswerControls } from '../../components/PostAnswerControls';
 import type { GameState } from '../../types/game';
 import type { DualGrade } from '../../types/verdict';
 import { verdictPicksLine } from '../../verdictText';
@@ -44,6 +44,13 @@ export interface ResultCardProps {
    * corner. The sheet header carries a third one for the same reason.
    */
   readonly onNext: () => void;
+  /**
+   * Return this hand to its unanswered state (user request 2026-11-20).
+   *
+   * Paired with Next through the shared `PostAnswerControls`, so the 2D dock
+   * and this card offer the same two controls.
+   */
+  readonly onReset: () => void;
   /** True while the next hand is being generated. */
   readonly nextDisabled?: boolean;
 }
@@ -64,6 +71,7 @@ export function ResultCard({
   state,
   onDetails,
   onNext,
+  onReset,
   nextDisabled = false,
 }: ResultCardProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -82,7 +90,11 @@ export function ResultCard({
       <AnswerSummary grade={grade} onDetails={onDetails} live={false} />
       <div className="hud-result-card-actions">
         {picks && <p className="hud-result-card__picks">{picks}</p>}
-        <NextScenarioButton onClick={onNext} disabled={nextDisabled} />
+        <PostAnswerControls
+          onNext={onNext}
+          nextDisabled={nextDisabled}
+          onReset={onReset}
+        />
       </div>
     </div>
   );

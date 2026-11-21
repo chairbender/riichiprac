@@ -522,14 +522,70 @@
 }
 
 /*
- * Bottom placement: inside the pinned hand dock, shown only after answering so
- * the player can continue without scrolling back up to the header.
+ * Bottom placement: the primary half of the pinned hand dock's post-answer pair,
+ * shown only after answering so the player can continue without scrolling back
+ * up to the header.
  */
 .new-hand-button--dock {
   width: 100%;
   padding: 12px 16px;
   border-color: #3b5bdb;
   background-color: #1c2b52;
+  font-size: 0.84rem;
+  letter-spacing: 0.02em;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * The post-answer pair (Reset beside Next). One row so Reset never pushes the
+ * primary control off screen; Next keeps its full-width dock styling by taking
+ * the row's remaining space.
+ */
+.post-answer-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.post-answer-controls--dock > .new-hand-button--dock {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.reset-answer-button {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 1px solid #495057;
+  border-radius: 8px;
+  background-color: transparent;
+  color: #ced4da;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reset-answer-button:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.reset-answer-button:active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.reset-answer-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.reset-answer-button:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+.reset-answer-button--dock {
+  padding: 12px 16px;
   font-size: 0.84rem;
   letter-spacing: 0.02em;
   touch-action: manipulation;

@@ -8,8 +8,10 @@ decide whether deep linking should ship as part of that.
 **Ship session-level Back/Forward history. Do not deep link in this change.**
 
 Every hand the app deals becomes one browser history entry. The entry carries the
-complete table plus the answer state, so Back and Forward restore the hand the
-player actually saw, verdict included. The URL is left untouched.
+complete table plus the answer state, so the entry always describes the hand the
+player saw. **Restoring that entry shows the hand unanswered**: Back/Forward is
+navigation between tables, not a way to re-open a finished answer (task
+261120-2319). The URL is left untouched.
 
 Deep linking was evaluated and deferred: a seed in the URL cannot reproduce a hand
 on this build at all (the WASM RNG is unseedable), and embedding the table in the
@@ -31,17 +33,22 @@ wiring; `useGameStore.restoreSnapshot` puts a stored hand back.
   the agreement report, and the two description fields (imported position card and
   export note). All of it lives in `history.state`, which is structured-cloned and
   has no URL length limit.
-- **Answers are restored, not reset.** Going Back to an answered hand shows the
-  same verdict it showed before; it does not clear the answer or re-deal. The
-  entry is refreshed whenever the answer state changes (`ScenarioHistory.update`),
-  so answering and then pressing Back immediately still stores the verdict for
-  Forward. A refresh only lands on an entry that still records the same table, so
-  a deal or import already on its way in cannot have its state written into the
-  hand the player is about to leave.
+- **Answers are not restored.** Going Back to an answered hand shows the same
+  table **unanswered**: the snapshot's submitted answer, verdict, peek flag,
+  armed toggles and Mortal evaluation are stripped by
+  `withoutAnswerState` before the store restores the hand. Nothing is re-dealt
+  or regenerated, and the same choice can be made again (or walked through).
+  The entry is still refreshed whenever the answer state changes
+  (`ScenarioHistory.update`), so it keeps describing the hand on screen and its
+  export note; a refresh only lands on an entry that still records the same
+  table, so a deal or import already on its way in cannot have its state written
+  into the hand the player is about to leave.
 - **Restores do not regenerate.** A restored hand is loaded from the stored JSON
-  through the same validation as a fresh payload, and a stored evaluation is
-  reused, so going back is instant and never costs another Mortal forward pass.
-  The generator changing between releases cannot make an old entry invalid.
+  through the same validation as a fresh payload. The stripped evaluation means
+  a book lesson asks Mortal again for that table (and an AI drill re-seeds its
+  own `ai_decision`), so no result computed while the answer was visible rides
+  along with the restored hand. The generator changing between releases cannot
+  make an old entry invalid.
 - **Failures and foreign entries.** A deal that fails leaves the current entry's
   snapshot alone (pressing Back still lands on a real hand). An entry this app did
   not write is ignored and adopted as "unclaimed", so the next deal replaces it
@@ -126,12 +133,19 @@ session started.
 - `frontend/src/scenarioHistory.test.ts` covers the encoding (round trip, answer
   state, unknown fields dropped), rejection of foreign/future/malformed entries,
   first-entry replace vs push, duplicate-table suppression, refreshing an entry
-  in place, and adopting a foreign entry.
+  in place, adopting a foreign entry, and `withoutAnswerState` (answer, verdict,
+  peek, toggles and evaluation cleared; the table and descriptions kept).
+- `frontend/src/App.resetAnswer.test.tsx` covers both flows: Back/Forward to an
+  answered hand lands on the same table unanswered with no re-deal and no
+  verdict/peek/evaluation, and the dock's Reset returns the hand to unanswered
+  where the second answer grades normally.
 - Manual/browser check (Chrome): first hand recorded by replacing the launch
   entry; header and dock "Next Scenario" each push exactly one entry; answering
-  stores the answer and verdict in the entry; Back restores the previous table and
-  its verdict; Back again reaches the unanswered first hand with its tiles
-  enabled; Forward walks both hands again with the verdict intact; the URL never
-  changes. Importing a position pushes its own entry (and Back returns to the
-  dealt hand before it), and editing the export note refreshes the current entry
-  in place.
+  stores the answer and verdict in the entry; Back restores the previous table
+  unanswered (no verdict, no Reveal-Mortal content, tiles enabled); Back again
+  reaches the first hand the same way; Forward walks both hands unanswered; the
+  URL never changes. Importing a position pushes its own entry (and Back returns
+  to the dealt hand before it), and editing the export note refreshes the current
+  entry in place. After answering, Reset beside Next returns the same table to
+  unanswered and the second answer grades normally; in 3D the same Reset is on
+  the result card.

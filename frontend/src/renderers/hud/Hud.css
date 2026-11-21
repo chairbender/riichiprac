@@ -476,6 +476,41 @@
   outline-offset: 2px;
 }
 
+/* The post-answer pair: Reset is secondary, Next keeps the accent surface. */
+.hud-result-card .post-answer-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: calc(var(--hud-space) / 2);
+}
+
+.hud-result-card .reset-answer-button {
+  flex: 0 0 auto;
+  min-height: var(--hud-tap);
+  margin: 0;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: var(--hud-text-sm);
+  font-weight: 600;
+  color: var(--hud-text-muted);
+  background-color: transparent;
+  border: var(--hud-border);
+  border-radius: var(--hud-radius-control);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hud-result-card .reset-answer-button:hover {
+  color: var(--hud-text);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.hud-result-card .reset-answer-button:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
+}
+
 /* A plain opacity fade, and only when motion is allowed (§6.4). */
 .hud-root[data-reduced-motion='false'] .hud-result-card-content {
   animation: hud-fade-in 120ms ease-out;

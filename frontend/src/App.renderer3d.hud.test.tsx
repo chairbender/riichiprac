@@ -775,6 +775,49 @@ describe('App 3D result card and verdict sheet (3D-H5)', () => {
     expect(announcer.textContent).toBe('');
   }, 60000);
 
+  it('resets the answered hand in place, without a re-deal', async () => {
+    wasmMock.gradedJson = JSON.stringify(GRADE);
+    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+
+    const dealtState = useGameStore.getState().gameState;
+    const dealsBefore = wasmMock.generateCalls;
+    const gradesBefore = wasmMock.gradeCalls;
+
+    await act(async () => {
+      useGameStore.getState().submitAnswer({ action: 'pass', tile: '' });
+    });
+
+    const card = container.querySelector('.hud-result-card') as HTMLElement;
+    const reset = within(card).getByRole('button', {
+      name: 'Reset this answer',
+    });
+    expect(
+      within(card).getByRole('button', { name: 'Next scenario' }),
+    ).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(reset);
+    });
+
+    const store = useGameStore.getState();
+    expect(store.gameState).toBe(dealtState);
+    expect(store.submittedAnswer).toBeNull();
+    expect(store.dualGrade).toBeNull();
+    expect(store.peekedBeforeAnswer).toBe(false);
+    expect(wasmMock.generateCalls).toBe(dealsBefore);
+    // The result card is gone and the pre-answer rail is back.
+    expect(container.querySelector('.hud-result-card')).toBeNull();
+    expect(container.querySelector('.hud-action-rail')).not.toBeNull();
+
+    // The same hand can be answered (and graded) again.
+    await act(async () => {
+      useGameStore.getState().submitAnswer({ action: 'pass', tile: '' });
+    });
+    expect(wasmMock.gradeCalls).toBe(gradesBefore + 2);
+    expect(container.querySelector('.hud-result-card')).not.toBeNull();
+  }, 60000);
+
   it('deals the next hand from the verdict sheet header', async () => {
     wasmMock.gradedJson = JSON.stringify(GRADE);
     const { container } = renderThree(callState());
