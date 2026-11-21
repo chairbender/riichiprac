@@ -3,8 +3,9 @@ interface NextScenarioButtonProps {
   /** True while a puzzle is being generated. */
   disabled?: boolean;
   /**
-   * `header` is the compact control in the app header; `dock` is the
-   * full-width control pinned with the hand dock after answering.
+   * `header` is the compact control in the app header; `dock` is the larger
+   * control pinned with the hand dock after answering, where it shares the row
+   * with Reset through `PostAnswerControls`.
    */
   variant?: 'header' | 'dock';
 }

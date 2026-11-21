@@ -124,6 +124,7 @@ function dock(overrides: Partial<ComponentProps<typeof HandDock>> = {}) {
       canRiichi
       targetAction="Kan"
       onNextScenario={() => undefined}
+      onResetAnswer={() => undefined}
       onShowVerdict={() => undefined}
       onToggleRiichi={() => undefined}
       onToggleKan={() => undefined}

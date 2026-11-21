@@ -104,8 +104,9 @@ interface GameStore {
   /** Parse and store a raw JSON payload returned by the WASM engine. */
   loadFromJson: (json: string) => void;
   /**
-   * Put a hand from a browser history entry back on screen, answer state and
-   * all, without regenerating it or re-running Mortal.
+   * Put a hand on screen without regenerating it, from whatever snapshot the
+   * caller supplies. Back/Forward passes one stripped of its answer state
+   * (`withoutAnswerState`), so the same table comes back unanswered.
    */
   restoreSnapshot: (snapshot: ScenarioSnapshot) => void;
   /**
@@ -129,6 +130,15 @@ interface GameStore {
   regrade: () => void;
   /** Reveal Mortal's line before answering. */
   peekMortal: () => void;
+  /**
+   * Return the current hand to its unanswered state without re-dealing it.
+   *
+   * Clears the submitted answer, the verdict, the peek and the armed call
+   * state, and supersedes any evaluation still running for the answered hand so
+   * it cannot re-grade the reset table. The `GameState` object is untouched, so
+   * the same hand can be answered again (and graded normally the second time).
+   */
+  resetAnswer: () => void;
   /** Clear the current table and answer before loading the next scenario. */
   reset: () => void;
   setError: (error: string) => void;
@@ -421,9 +431,10 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
 
-      // A stored evaluation is reused as-is: it belongs to this exact table and
-      // a fresh forward pass would be slow and could disagree after a model
-      // update, which would make the restored verdict inconsistent.
+      // A stored evaluation is reused when the caller supplies one: it belongs
+      // to this exact table, so a fresh forward pass would be slow and could
+      // disagree after a model update. Back/Forward strips it instead, so a
+      // restored hand starts with no evaluation of its own.
       const evaluation =
         snapshot.evaluation ??
         (parsed.ai_decision
@@ -628,6 +639,45 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     peekMortal: () => set({ peekedBeforeAnswer: true }),
+
+    resetAnswer: () => {
+      const { gameState } = get();
+      if (!gameState) return;
+
+      /*
+       * Supersede the evaluation still running for the answered hand. Its late
+       * result must not populate the reset table's Mortal column or re-grade it;
+       * the fresh request below gets a new id and owns the state from here.
+       */
+      evaluationRequestId += 1;
+      pendingState = null;
+
+      /*
+       * An AI drill's ranking is part of the hand (`ai_decision`), not of the
+       * answer, so it is re-seeded as-is. A book lesson drops the evaluation it
+       * had and asks Mortal again for the same table: the reset hand starts with
+       * no evaluation of its own, exactly as when it was first dealt.
+       */
+      const evaluation = gameState.ai_decision
+        ? evaluationFromDecision(gameState.ai_decision)
+        : null;
+
+      set({
+        submittedAnswer: null,
+        dualGrade: null,
+        peekedBeforeAnswer: false,
+        // The toggles are disabled once answered, so an arm left from before
+        // the answer would otherwise reappear on the unanswered hand.
+        callRiichi: false,
+        callKan: false,
+        evaluation,
+        isEvaluating: false,
+      });
+
+      if (!evaluation) {
+        requestEvaluationFor(gameState);
+      }
+    },
 
     reset: () => {
       pendingState = null;

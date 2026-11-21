@@ -13,7 +13,7 @@ import type { DualGrade } from '../types/verdict';
 import { bookAcceptedTiles, mortalRecommendedTile } from '../types/verdict';
 import { AnswerSummary } from './AnswerSummary';
 import { CallToggles } from './CallToggles';
-import { NextScenarioButton } from './NextScenarioButton';
+import { PostAnswerControls } from './PostAnswerControls';
 import { Tile } from './Tile';
 
 interface HandDockProps {
@@ -44,6 +44,11 @@ interface HandDockProps {
   nextDisabled?: boolean;
   /** Loads the next scenario; shown at the bottom once the hand is answered. */
   onNextScenario: () => void;
+  /**
+   * Returns this hand to its unanswered state (same table, no re-deal); shown
+   * beside Next once the hand is answered.
+   */
+  onResetAnswer: () => void;
   /** Scroll to the full book-vs-Mortal comparison. */
   onShowVerdict: () => void;
   onToggleRiichi: () => void;
@@ -72,6 +77,7 @@ export function HandDock({
   targetAction,
   nextDisabled = false,
   onNextScenario,
+  onResetAnswer,
   onShowVerdict,
   onToggleRiichi,
   onToggleKan,
@@ -209,10 +215,11 @@ export function HandDock({
       </div>
 
       {isAnswered && (
-        <NextScenarioButton
+        <PostAnswerControls
           variant="dock"
-          onClick={onNextScenario}
-          disabled={nextDisabled}
+          onNext={onNextScenario}
+          nextDisabled={nextDisabled}
+          onReset={onResetAnswer}
         />
       )}
     </section>

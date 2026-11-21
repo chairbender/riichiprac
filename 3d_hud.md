@@ -195,6 +195,7 @@ second strip of tiles.
 | Hand + draw tile buttons | **scene** (3D-08) | the projected buttons; the HUD never renders a second hand |
 | `hand` grid + tile images | **scene** (canvas) | drawn in 3D |
 | Dock `NextScenarioButton` | **dropped** | the top bar, the post-answer result card and the verdict sheet each carry Next (user request 2026-11-20); the dock's is not re-mounted |
+| Dock post-answer pair (`Reset` beside `Next`) | **result card** | `PostAnswerControls` is one shared component: the 2D dock renders it after an answer, the 3D card renders the same pair, so Reset and Next cannot drift or duplicate. Reset returns the same hand to unanswered (`resetAnswer`), with no re-deal |
 | Hint row post-answer | **folded into the result card** | "Answer submitted" is redundant beside the result; the outcome is the message |
 
 Consequences the units must honour:
@@ -227,7 +228,7 @@ The bottom of the composition is **one panel**, not three strips:
 | --- | --- | --- |
 | hint row (the hand rail) | `24 px` | always |
 | action row (the action rail: `ActionBar` + Riichi/Kan toggles) | `44 px` + `4 px` gap | pre-answer, when it has content |
-| result card | `104 px` (two `44 px` rows: outcome, then picks + Next) | after an answer (replaces both rows) |
+| result card | `104 px` (two `44 px` rows: outcome, then picks + Reset + Next) | after an answer (replaces both rows) |
 
 So the panel is `84 px` with the action row (`128 px` if the row wraps to two),
 `40 px` with the hint alone, and `104 px` with the result card. It is
@@ -1059,11 +1060,17 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   2026-11-20). It replaces both panel rows and
   never expands on its own; Details is the only way into the sheet. The card's
   two rows are both `44 px` — the outcome row, then the picks line with the
-  card's own **Next Scenario** control on its right (user request 2026-11-20),
-  so dealing again does not require the top bar.
+  card's own post-answer pair on its right: **Reset** beside **Next Scenario**
+  (task 261120-2319; both come from the shared `PostAnswerControls`, as in the
+  2D dock), so dealing again or retrying the same hand does not require the top
+  bar. Reset calls the store's `resetAnswer`: the same `GameState` returns to
+  unanswered (answer, verdict, peek, evaluation and armed calls cleared, no
+  re-deal), and the card unmounts as the hand's pre-answer rail returns.
 - **Next is on the sheet too.** The sheet header carries the same Next control
   beside Close (always visible, no scrolling the body); it closes the sheet and
-  deals. The top bar's Next remains, and the 2D dock still has only its own.
+  deals. The top bar's Next remains, and the 2D dock has the same Reset + Next
+  pair the card does. Reset is not duplicated into the sheet: the card is its one
+  home, and closing the sheet returns to it.
 - **The sheet.** `VerdictSheet` is the 2D `VerdictPanel` unchanged: grade
   columns, `ActionRanking`, `CallReport`, `ScenarioExplanation`, the outcome
   band, the peek card and Retry. Pre-answer the same sheet opens from the hand
