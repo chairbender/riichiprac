@@ -93,6 +93,9 @@ async function loadModules() {
       fixture: await server.ssrLoadModule(
         '/src/renderers/three/boardFixture.ts',
       ),
+      stress: await server.ssrLoadModule(
+        '/src/renderers/three/stressFixture.ts',
+      ),
       gaps: await server.ssrLoadModule(
         '/src/renderers/three/gaps.ts',
       ),
@@ -164,7 +167,7 @@ function widestFixture(fixture) {
 }
 
 async function main() {
-  const { constants: C, layout: L, fixture: F, gaps: G } = await loadModules();
+  const { constants: C, layout: L, fixture: F, gaps: G, stress: S } = await loadModules();
 
   const fixture = F.boardFixture();
   const board = L.layoutBoard(fixture);
@@ -235,6 +238,101 @@ async function main() {
         `   wind ${seat.wind}${seat.seat === humanSeat ? ' (human)' : ''}`,
     );
   }
+  console.log();
+
+  /* -------------------- stress board (3D-15) ------------------------- */
+  /*
+   * The full-board state the exposed view must draw: every zone carrying
+   * content, all 37 faces, four Riichi, a closed kan per seat, 18-discard
+   * (three-row) rivers, a claimed discard, answered and unanswered. `npm test`
+   * asserts the same numbers; this prints them for the unit's report.
+   */
+  console.log('stress board (3D-15)');
+  const stressSnapshot = S.stressSnapshot();
+  const stressBoard = L.layoutBoard(stressSnapshot);
+  const stressZones = zoneCounts(stressBoard);
+  console.log(
+    '  ' +
+      ['wall', 'dora', 'hand', 'draw', 'river', 'meld']
+        .map((zone) => `${zone} ${stressZones.get(zone) ?? 0}`)
+        .join(' · ') +
+      ` · total ${stressBoard.tiles.length}`,
+  );
+  console.log(`  sticks ${stressBoard.sticks.length} · face-up ${stressBoard.foreground.length}`);
+
+  const stressFaces = new Set(stressBoard.foreground.map((tile) => tile.face));
+  const missingFaces = S.STRESS_FACES.filter((face) => !stressFaces.has(face));
+  check(
+    'every one of the 37 faces is on the board',
+    missingFaces.length === 0,
+    missingFaces.length ? `missing ${missingFaces.join(', ')}` : `${stressFaces.size} faces`,
+  );
+  check(
+    'four seats full, four riichi, one closed kan per seat, three-row rivers',
+    stressSnapshot.seats.every(
+      (seat) =>
+        seat.concealed.length === 10 &&
+        seat.draw !== null &&
+        seat.melds.length === 1 &&
+        seat.melds[0].kind === 'Ankan' &&
+        seat.melds[0].tiles.length === 4 &&
+        seat.river.length === S.STRESS_RIVER_LENGTH &&
+        seat.riichi,
+    ) &&
+      stressSnapshot.dora.length === S.STRESS_DORA &&
+      stressBoard.sticks.length === 4 &&
+      S.STRESS_RIVER_LENGTH === C.POND.rows * C.POND.columns,
+    `river ${S.STRESS_RIVER_LENGTH} = ${C.POND.rows} x ${C.POND.columns}`,
+  );
+  const stressHighlighted = stressBoard.foreground.filter((tile) => tile.highlighted);
+  check(
+    'a claimed discard is marked, and only one',
+    stressHighlighted.length === 1 &&
+      stressHighlighted[0].seat === S.CLAIMED_SEAT &&
+      stressHighlighted[0].slot === S.CLAIMED_INDEX &&
+      stressHighlighted[0].face === S.CLAIMED_TILE,
+    stressHighlighted.length === 1
+      ? `seat ${stressHighlighted[0].seat} discard ${stressHighlighted[0].slot} (${stressHighlighted[0].face})`
+      : `${stressHighlighted.length} highlighted`,
+  );
+  const stressCollisions = overlaps(stressBoard, L);
+  check(
+    'the stress board separates every pair of tiles',
+    stressCollisions.length === 0,
+    stressCollisions.length
+      ? stressCollisions.slice(0, 3).join('; ')
+      : `${stressBoard.tiles.length} tiles`,
+  );
+  const stressAnswered = L.layoutBoard(S.stressSnapshot({ answered: true }));
+  check(
+    'answering the stress board changes only the lock flag',
+    JSON.stringify(stressAnswered) === JSON.stringify(stressBoard),
+  );
+
+  let stressFramingOk = true;
+  console.log('  aspect   tile margin   hand face/view');
+  for (const aspect of [...C.CAMERA.supportedAspects].sort((a, b) => b - a)) {
+    const frame = L.frameForAspect(aspect, stressBoard);
+    let margin = 1;
+    for (const tile of stressBoard.tiles) {
+      for (const corner of L.orientedBoxCorners(L.orientedBox(tile.pose))) {
+        const ndc = L.projectPoint(corner, frame);
+        margin = Math.min(
+          margin,
+          (1 - Math.abs(ndc.x)) / 2,
+          (1 - Math.abs(ndc.y)) / 2,
+        );
+      }
+    }
+    const faceToView = L.handFaceToViewDeg(frame);
+    console.log(
+      `  ${aspect.toFixed(3).padStart(6)}  ${(margin * 100).toFixed(2).padStart(9)}%  ` +
+        `${faceToView.toFixed(1).padStart(11)}°`,
+    );
+    if (margin + 1e-9 < C.CAMERA.safeAreaMargin) stressFramingOk = false;
+    if (faceToView > C.HAND.maxFaceToViewDeg + 1e-9) stressFramingOk = false;
+  }
+  check('the stress board keeps the safe area and the hand angle at every aspect', stressFramingOk);
   console.log();
 
   /* --------------------------- invariants ---------------------------- */

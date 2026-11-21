@@ -2441,6 +2441,167 @@ and any conflict is hand-resolved.
 
 **Gate:** all scripts + frontend gate + user verdict recorded.
 
+**Verification report (3D-15, 2026-11-20).**
+
+*Files touched.* New: `frontend/src/renderers/three/stressFixture.ts` and
+`stressFixture.test.ts`, `frontend/src/renderers/hud/stressHud.test.ts`,
+`frontend/src/renderers/stressParity.test.tsx`,
+`frontend/src/renderers/hud/KeyboardPass.test.tsx`. Changed:
+`frontend/scripts/check-3d-layout.mjs` (the stress-board section). Added:
+`frontend/scripts/export-stress-position.mjs` (the handoff artifact writer).
+Also this plan.
+No app code, no Rust, no asset, no 2.5D file. `RENDERED3D_EXPOSED` is already
+`true` and `DEFAULT_TABLE_VIEW` is `rendered3d` (user decision 2026-11-20), so
+this unit verified the exposed default rather than flipping anything.
+
+*The stress state.* `stressFixture.ts` builds a deterministic `GameState`
+through the one snapshot adapter (`snapshotFromGameState`), not a hand-written
+`TableSnapshot`, so the stress board reaches the scene by the same path a dealt
+hand does and the same state can be handed to the 2D views. It is deliberately
+synthetic (rendering coverage, not a legal lesson): every seat has a closed kan
+(`Ankan`, legal under Riichi), all four seats are declared, each river is the
+full 3 x 6 pond with the declaration turned at index 5, a tsumogiri dimmed at
+index 11 and one red-five discard, seat 1's newest discard (`9p`) is the claimed
+tile the human is reacting to, and the five revealed dora are the maximum.
+
+| count | value |
+| --- | --- |
+| wall (snapshot / laid out) | 132 / 127 (`132 - 5` dora-covered) |
+| dora indicators | 5 |
+| hand (concealed) | 40 (10 per seat) |
+| draw | 4 |
+| river | 72 (18 per seat = 3 rows x 6 columns) |
+| meld | 16 (one 4-tile closed kan per seat) |
+| sticks | 4 |
+| foreground / total tiles | 137 / 264 |
+| faces on the board | 37 of 37 (`blank` only on the face-down wall) |
+
+`stressFixture.test.ts` also asserts: no NaN/Infinity in any pose, centre or
+corner; every pair of the 264 oriented boxes separated; the foreground multiset
+has no duplicate id; the answered snapshot differs only in `locked`; the hand
+band and compass do not move when answered; `hitRects` is 11 buttons unanswered
+and 0 answered; and determinism (two calls are structurally identical).
+
+*Framing, exactly as `frameForAspect` solves it (stage height 1000 px).*
+
+| aspect | tile safe-area margin | hand face-to-view |
+| --- | --- | --- |
+| 21:9 | 2.00 % | 10.0° |
+| 16:9 | 2.00 % | 10.0° |
+| 3:2 | 2.00 % | 10.0° |
+| 4:3 | 2.00 % | 10.0° |
+| 1:1 | 2.00 % | 10.0° |
+| 3:4 | 2.00 % | 22.0° |
+| 9:16 | 2.00 % | 22.0° |
+
+The margin is the solver's committed 2 % floor at every aspect and the hand's
+face-to-view angle is inside the 25° gate. At 16:9 the stress hand band is
+inside the stage and every button is at least the 44 px target; at the portrait
+aspects the button is the tile's own cell, as `hitTest` specifies (the hand is
+still 11 separate, non-overlapping targets). The seven aspects are the
+committed `CAMERA.supportedAspects` and cover the five the unit asked for.
+
+*HUD collision gate on the stress board.* Seven aspects x answered/unanswered x
+five panel slots (`none`, `hint`, `actions` x1, `actions` x2, `result`) x 0/3
+toasts = 140 cases, plus the sheet-open state at every aspect and a sheet-open
+column check: all green. The 9:16 panel-to-compass clearance on the stress board
+is **75.9 px**, above the document's 32 px worst-case floor. The panel keeps its
+8 px hand clearance and stays inside the stage at every case.
+
+*Budget numbers (build at `dist/`, `check-3d-budget.mjs` PASS).* Three carve
+atlases, 2,998,080 B (3.00 MB) of PNG payload; GPU atlas 58,490,880 B on
+`high`/`balanced`, 14,622,720 B on `compat`; one tile is 480 triangles; the
+widest legal board is 280 instances (capacity 320) = 134,400 triangles under the
+200,000 ceiling; 5 steady draw calls; entry `index-hvoMGxJT.js` 710,399 B
+(gzip 129,560 B); the one lazy 3D chunk `three-C5gVOtOl.js` 664,854 B (gzip
+179,000 B, under the 200 KB advisory).
+
+*Gates run.*
+
+```text
+cd frontend && npm test          # 78 files passed, 1 skipped; 1690 tests passed, 1 skipped
+cd frontend && npm run build     # tsc -b + vite build, green
+cd frontend && npm run lint      # eslint ., green
+node frontend/scripts/check-3d-layout.mjs   # all invariants pass, including the stress board
+cd frontend && node scripts/check-3d-budget.mjs   # PASS
+cargo fmt --check                # green; no Rust file changed in this unit
+```
+
+*Full screen.* The scripted coverage is H2/H3's: `HudLayer.test.tsx` asserts the
+toggle promotes the **shell** (so the layer travels), reflects
+`fullscreenchange`, and that a sheet does not remount the stage;
+`RendererHost.test.tsx` re-projects on resize; the HUD re-anchors from the
+published projection instead of caching it. 3D-14's view-switch tests assert
+that leaving 3D exits full screen and restores the 2D layout without a re-deal.
+The live enter/resize/leave pass on the user's own display is part of the
+handoff below, since a headless jsdom window cannot exercise the Fullscreen API.
+
+*Accessibility checklist.*
+
+- Keyboard-only pass (`hud/KeyboardPass.test.tsx`): Setup trigger -> sheet ->
+  Escape back to the trigger -> action rail -> projected hand -> Enter on the
+  tile -> result announcement -> tab to Details -> Enter opens Verdict -> Escape
+  -> tab to the top bar's Next -> Enter deals. Focus is asserted at every stop
+  and never lands on `<body>`; the stage is `inert` only while a sheet is open.
+- No flow around the canvas: `App.renderer3d.hud.test.tsx` asserts the HUD is a
+  sibling of the fixed stage with no header/status/action block in the flow, and
+  `HudLayer.test.tsx` asserts the one fixed layer takes only pointer events on
+  its controls. Leaving 3D mounts no HUD (`is not mounted in the 2D views`).
+- Result announced exactly once: one persistent `.hud-announcer` node; its text
+  is the same before and after opening/closing a sheet, and the node identity is
+  unchanged (`HudLayer.test.tsx` and the keyboard pass).
+- Sheet titles are "Setup" and "Verdict" and the table keeps its accessible
+  names: hand group "Your hand", compass "Compass" with per-seat names and the
+  centre line "Round South 4, 14 tiles remaining" (`stressParity.test.tsx`).
+- Every view answers the same state (`stressParity.test.tsx`): the 3D overlay's
+  eleven button names and order equal `HandDock`'s, the same click yields the
+  same `(tile, index, isDraw)` arguments, the compass names/order/scores/wall
+  text equal `PhysicalTable`'s, and all four declarers are named on both
+  compasses. The 3D compass carries no focus stop.
+
+*Findings recorded, not changed here.*
+
+- §6.5.5 says closing a sheet whose opener is gone returns focus to the top bar's
+  **Next hand**; the code focuses the first control in `topBarRef`, which is now
+  the **Setup** trigger H4 added. The result card is unmounted while a sheet is
+  open, so this path is the ordinary verdict→Escape route. Focus is never
+  orphaned and Next is one Tab away; the wording and control choice are left for
+  3D-16 (this unit owns tests and this report). `KeyboardPass.test.tsx` pins the
+  current behaviour explicitly.
+- `check-3d-layout.mjs` prints `row gap / bevel ... undefined`: `TILE.gapUnits`
+  no longer exists after 3D-20 closed the pitches. The displayed row is stale
+  information in the gate's constant table, not a failed invariant; noted for
+  whoever next touches the script.
+
+*User handoff — pending.* The full board cannot be signed off by the agent
+(AGENTS.md §6). Artifact:
+`frontend/scripts/out/stress-position.json` (a `riichiprac.position` envelope,
+14,638 B), written by `node frontend/scripts/export-stress-position.mjs` from
+the committed fixture, and imported from the setup sheet's Position section.
+Open `npm run dev`, import the file, and check the 3D table at 16:9 and 9:16, in
+full screen, with carving on and off. The questions, each with a verdict slot:
+
+1. **Spacing.** Are the pond rows, hands, melds and four felt sticks spaced as
+   the approved table should be on a full board? ___
+2. **Felt.** Is the felt (colour, extent, edge) right under a full board and
+   the floating chrome? ___
+3. **Hand recline.** Is the 40° reclined hand still readable and right at the
+   window's own height at 16:9 and 9:16? ___
+4. **Compass placement.** Is the compass centred, legible and clear of the hand
+   and the panel on the full board? ___
+5. **Chrome over the scene.** Does the floating layer sit as a HUD should — no
+   scenario name or `riichiprac` title in the chrome, next-hand / action rail /
+   hand rail always visible, everything else in sheets? ___
+6. **Carving strength.** With carving on and off, is the engraving depth and
+   edge the approved one? ___
+7. **Result card.** Does it stay a summary until tapped (never auto-expanding),
+   with Details the only way into the full verdict? ___
+8. **2D views unchanged.** Leaving 3D restores the stacked/top-down layout, and
+   no HUD element exists in the document flow around the canvas. ___
+
+Until the user answers, the gate line above stays open and this section's
+verdicts stay blank.
+
 ---
 
 ### 3D-16 — Architecture record and docs
@@ -3200,7 +3361,7 @@ it was right and corrected where the repository or the browser facts disagree.
 | 3D-12 | `frontend/src/renderers/three/motion.ts` (new), `RendererHost.tsx` |
 | 3D-13 | `frontend/scripts/check-3d-budget.mjs`, `three/perf.ts` |
 | 3D-14 | `frontend/src/store/useSettingsStore.ts`, `frontend/src/renderers/{resolveTableMount.ts,capabilities.ts}`, `frontend/src/components/AppControls.tsx`, `frontend/src/fullscreen.ts`, `frontend/src/App.tsx`, `AGENTS.md` §4 |
-| 3D-15 | tests + this plan's verification report |
+| 3D-15 | `frontend/src/renderers/three/stressFixture.ts` (+ `.test.ts`), `renderers/hud/stressHud.test.ts`, `renderers/stressParity.test.tsx`, `renderers/hud/KeyboardPass.test.tsx`, `frontend/scripts/{check-3d-layout.mjs,export-stress-position.mjs}`, this plan's verification report |
 | 3D-16 | `3d_renderer_architecture.md`, `THIRD_PARTY_NOTICES.md`, `README.md`, `AGENTS.md` §4 |
 | 3D-H1 | `3d_hud.md`, this plan (§11, §3D-14, §9 decision 7) |
 | 3D-H2 | `frontend/src/renderers/hud/*` (new), `renderers/{contract,RendererHost}.*`, `renderers/three/{hitTest,Scene}.ts`, `frontend/src/App.tsx` (3D mount seam) |
