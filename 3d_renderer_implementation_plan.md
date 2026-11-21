@@ -313,9 +313,10 @@ Instead:
   snapshot**: a discard/declaration leaves the hand or draw and lands in the
   river (sideways for a declaration, dimmed for tsumogiri); a Chi/Pon/open
   Kan claims the highlighted discard, forms the caller's meld and re-flows the
-  hand; an added Kan grows the Pon; an Ankan forms from four concealed copies;
-  a pass moves no tile. The remaining draw folds back into the hand, the next
-  turn is set, and the call marker clears.
+  hand; an added Kan grows the Pon; an Ankan forms from four concealed copies
+  (its two outer tiles laid face down, the middle two showing); a pass moves no
+  tile. The remaining draw folds back into the hand, the next turn is set, and
+  the call marker clears.
 - The answered snapshot keeps the **same revision** and sets
   `transition: 'answered'`. Every tile carries a stable `uid` (the adapter
   fills it in), and the delta preserves the uid of a tile that moves. The

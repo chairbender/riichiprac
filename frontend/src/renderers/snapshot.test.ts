@@ -547,6 +547,13 @@ describe('snapshotFromGameState: melds', () => {
     const [kan] = snapshot.seats[0].melds;
     expect(kan.calledFrom).toBeNull();
     expect(kan.tiles.every((tile) => !tile.sideways)).toBe(true);
+    // A concealed quad's two outer tiles are face down; the middle two show.
+    expect(kan.tiles.map((tile) => tile.faceUp)).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ]);
   });
 });
 

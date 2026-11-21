@@ -263,14 +263,21 @@ function composeMeld(
   const sideways = calledSlot(kind, ordered.length, calledFrom, caller);
   return {
     kind,
-    tiles: ordered.map((tile, slot) => ({
-      ...tile,
-      zone: 'meld',
-      slot,
-      sideways: sideways === slot,
-      highlighted: false,
-      dimmed: false,
-    })),
+    tiles: ordered.map((tile, slot) => {
+      // A closed kan sets its two outer tiles face down and shows the middle
+      // two; an open kan and every other meld stay face up.
+      const faceUp =
+        kind !== 'Ankan' || (slot > 0 && slot < ordered.length - 1);
+      return {
+        ...tile,
+        zone: 'meld',
+        slot,
+        faceUp,
+        sideways: sideways === slot,
+        highlighted: false,
+        dimmed: false,
+      };
+    }),
     calledFrom,
   };
 }

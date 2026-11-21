@@ -343,6 +343,47 @@ describe('answered board: calls', () => {
     expect(board.currentTurn).toBe(0);
   });
 
+  it('forms the Pon from one picked copy, which is all the pick step names', () => {
+    const state = reacting(1, '5z', {
+      offer: { action: 'Pon', label: 'Pon 5z', tile: '5z' },
+      human: { hand: [...CHI_HAND.slice(0, 11), '5z', '5z'] },
+    });
+    const { board } = answered(
+      state,
+      { action: 'call', tile: '', action_name: 'Pon' },
+      [{ code: '5z', isRed: false }],
+    );
+
+    const meld = board.seats[0].melds[0];
+    expect(meld.kind).toBe('Pon');
+    expect(meld.tiles).toHaveLength(3);
+    expect(board.seats[0].concealed).toHaveLength(11);
+    expect(board.currentTurn).toBe(0);
+  });
+
+  it('uses both fives of a red+plain Pon, keeping the picked red one', () => {
+    const state = reacting(1, '5m', {
+      offer: { action: 'Pon', label: 'Pon 5m', tile: '5m' },
+      human: {
+        hand: ['5m', '5m', ...CHI_HAND.slice(0, 11)],
+        red_fives: ['5m'],
+      },
+    });
+    const { board } = answered(
+      state,
+      { action: 'call', tile: '', action_name: 'Pon' },
+      [{ code: '5m', isRed: true }],
+    );
+
+    const meld = board.seats[0].melds[0];
+    expect(meld.tiles).toHaveLength(3);
+    expect(meld.tiles.map((tile) => tile.face).sort()).toEqual([
+      '5m',
+      '5m',
+      '5mr',
+    ]);
+  });
+
   it('claims an open Kan discard and shows the four-tile meld', () => {    const state = reacting(3, '7z', {
       offer: { action: 'Kan', label: 'Kan 7z', tile: '7z' },
       correctAction: { type: 'kan', tile: '7z' },
@@ -429,6 +470,13 @@ describe('answered board: calls', () => {
     const meld = human.melds[0];
     expect(meld.kind).toBe('Ankan');
     expect(meld.tiles).toHaveLength(4);
+    // A closed kan sets its two outer tiles face down and shows the middle two.
+    expect(meld.tiles.map((tile) => tile.faceUp)).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ]);
     expect(meld.tiles.every((tile) => !tile.sideways)).toBe(true);
     expect(meld.calledFrom).toBeNull();
     expect(board.currentTurn).toBe(0);

@@ -292,7 +292,28 @@ export function callOptionsFor(
   const pool = kind === 'kan' ? display : hand;
   const options: CallOption[] = [];
   for (const source of singleCallSources(state, player, context, kind)) {
-    for (const copy of uniqueCopies(pool.filter((tile) => tile.code === source.calledTile))) {
+    const matching = pool.filter((tile) => tile.code === source.calledTile);
+    /*
+     * A Pon or Kan consumes a fixed number of copies. When the hand holds
+     * exactly those copies, there is nothing to choose: the red five and the
+     * plain one are both used, so the press should complete the call (the red
+     * five Pon of a red+plain pair used to ask which one, a choice that does
+     * not exist). A surplus copy is a real choice and still opens the pick.
+     */
+    const used = copiesConsumed(state, player, kind, source.calledTile);
+    if (matching.length > 0 && matching.length <= used) {
+      options.push({
+        kind,
+        calledTile: source.calledTile,
+        handTiles: matching.map((tile) => ({
+          code: tile.code,
+          isRed: tile.isRed,
+        })),
+        action: source.action,
+      });
+      continue;
+    }
+    for (const copy of uniqueCopies(matching)) {
       options.push({
         kind,
         calledTile: source.calledTile,
@@ -302,6 +323,31 @@ export function callOptionsFor(
     }
   }
   return dedupeOptions(options);
+}
+
+/**
+ * How many hand copies a Pon or Kan consumes.
+ *
+ * - Pon: two.
+ * - Open Kan (daiminkan) on the discarded tile: three from the hand.
+ * - Added Kan on an open Pon: the one fourth copy.
+ * - Concealed quad: all four.
+ */
+function copiesConsumed(
+  state: GameState,
+  player: PlayerState,
+  kind: 'pon' | 'kan',
+  tile: string,
+): number {
+  if (kind === 'pon') return 2;
+  const decision = state.decision;
+  if (decision?.kind === 'react_to_discard' && decision.tile === tile) {
+    return 3;
+  }
+  const added = player.melds.some(
+    (meld) => meld.meld_type === 'Pon' && meld.tiles[0] === tile,
+  );
+  return added ? 1 : 4;
 }
 
 interface CallSource {

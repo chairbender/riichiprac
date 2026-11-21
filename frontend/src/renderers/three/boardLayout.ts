@@ -463,11 +463,17 @@ function lyingPose(
   height: number,
   yawDeg: number,
   rollDeg = 0,
+  /**
+   * A face-down lying tile is turned right over (tilt +90), so the blue back is
+   * what faces up: the shader's blue body is the local -Z half, not a texture
+   * swap. A closed kan's two outer tiles are the case this exists for.
+   */
+  faceUp = true,
 ): TilePose {
   return {
     position: seatPoint(seat, w, u, height),
     yawDeg,
-    tiltDeg: -90,
+    tiltDeg: faceUp ? -90 : 90,
     rollDeg,
     sizeUnits: TILE_SIZE,
   };
@@ -667,6 +673,7 @@ function placeSeatRow(
             TILE.thicknessUnits / 2,
             seatYawDeg(seat),
             tile.sideways ? -90 : 0,
+            tile.faceUp,
           ),
           tile.faceUp,
         ),

@@ -31,6 +31,9 @@ import {
   withVerticalLift,
 } from './motion';
 import { answeredBoard } from '../answeredBoard';
+import { answerPresentationFor } from '../../answerPresentation';
+import { CALL_DEMO_CASES } from '../../callDemo';
+import { snapshotFromGameState } from '../snapshot';
 
 const snapshot = boardFixture();
 const layout = layoutBoard(snapshot);
@@ -376,6 +379,30 @@ describe('261121-1206 answered board motion', () => {
         expect(tile.pose).toEqual(to.tiles[index].pose);
       }
     });
+  });
+
+  it('moves a Pon answer into place, even when the call is the wrong answer', () => {
+    const demo = CALL_DEMO_CASES.find((entry) => entry.id === 'pon-single');
+    expect(demo).toBeDefined();
+    if (!demo) return;
+    // pon-single's book answer is Pass, so calling Pon is an incorrect answer;
+    // the board must still show the call.
+    const base = snapshotFromGameState(demo.state, 1, false);
+    // The pick step names one copy; a Pon consumes both.
+    const action = answerPresentationFor(
+      demo.state,
+      { action: 'call', tile: '', action_name: 'Pon' },
+      [{ code: '5z', isRed: false }],
+    );
+    expect(action.family).toBe('pon');
+    const board = answeredBoard(base, action);
+    expect(board.seats[0].melds).toHaveLength(1);
+    expect(board.seats[0].melds[0].tiles).toHaveLength(3);
+
+    const moves = plannedMoves(layoutBoard(base), layoutBoard(board));
+    expect(moves.length).toBeGreaterThanOrEqual(3);
+    // The two hand tiles and the claimed discard all changed zone.
+    expect(moves.filter((move) => move.arcUnits > 0).length).toBeGreaterThanOrEqual(3);
   });
 
   it('runs for a bounded time and settles from the clock', () => {

@@ -136,6 +136,42 @@ function chiCopies(
   return option ? option.handTiles.map(copyOf) : [];
 }
 
+/**
+ * The physical copies a Pon or open Kan uses: the picked copy first, then the
+ * remaining matching copies up to `count`.
+ *
+ * The pick step names one copy (the red/plain choice among a surplus), but the
+ * call consumes two (Pon) or three (open Kan) copies of the tile. Expanding here
+ * is what lets the answered board form the whole meld; sending only the picked
+ * copy left it short and the board drew nothing.
+ */
+function copiesForCall(
+  human: PlayerState,
+  code: string,
+  count: number,
+  picks: readonly PickedCopyLike[],
+): AnswerTile[] {
+  const matching = displayCopies(human).filter((tile) => tile.code === code);
+  const chosen: DisplayTile[] = [];
+  const used = new Set<DisplayTile>();
+  for (const pick of picks) {
+    if (pick.code !== code) continue;
+    const found = matching.find(
+      (tile) => !used.has(tile) && tile.isRed === pick.isRed,
+    );
+    if (found) {
+      used.add(found);
+      chosen.push(found);
+    }
+  }
+  for (const tile of matching) {
+    if (chosen.length >= count) break;
+    if (used.has(tile)) continue;
+    chosen.push(tile);
+  }
+  return chosen.slice(0, count).map(copyOf);
+}
+
 /** What a call consumes, aside from the claimed discard. */
 function consumedFor(
   state: GameState,
@@ -145,10 +181,12 @@ function consumedFor(
   actionName: string | undefined,
   picks: readonly PickedCopyLike[],
 ): AnswerTile[] {
-  if (picks.length > 0) return picks.map(copyOf);
-  if (kind === 'chi') return chiCopies(state, human, calledCode, actionName);
+  if (kind === 'chi') {
+    if (picks.length >= 2) return picks.slice(0, 2).map(copyOf);
+    return chiCopies(state, human, calledCode, actionName);
+  }
   const count = kind === 'kan' ? 3 : 2;
-  return copiesOf(human, calledCode, count);
+  return copiesForCall(human, calledCode, count, picks);
 }
 
 /** The copy a discard names, resolved against the hand the player saw. */

@@ -224,6 +224,12 @@ function buildSeat(
 
   const melds: SnapshotMeld[] = player.melds.map((meld, meldIndex) => {
     const called = calledTile(meld, player.seat);
+    /*
+     * A closed kan is laid out with its two outer tiles face down and the two
+     * middle tiles showing: that is how a concealed quad is set on the table,
+     * and it is what distinguishes it from an open kan (261121-1206 follow-up).
+     */
+    const closedKan = meld.meld_type === 'Ankan';
     return {
       kind: meld.meld_type,
       tiles: meld.tiles.map((code, index) =>
@@ -232,7 +238,7 @@ function buildSeat(
           zone: 'meld',
           slot: index,
           uid: uid('meld', meldIndex * 4 + index),
-          faceUp: true,
+          faceUp: !closedKan || (index > 0 && index < meld.tiles.length - 1),
           sideways: called?.index === index,
         }),
       ),
