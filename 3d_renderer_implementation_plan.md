@@ -546,9 +546,17 @@ now sits on the 2 % safe-area edge (6.59 % before). The hand band and every HUD
 panel derived from it moved with the board; `3d_hud.md` §5/§7.4 carries the
 re-measured pixel table, and the composition is an AGENTS.md §6 handoff.
 
-**User handoff (pending, 2026-11-21).** The numeric gate is green; the composition
-itself (which screen corner each seat's melds take, the half-shift, and the HUD
-panels' new positions) is the user's call in the live `?renderer=3d` view.
+**User handoff (signed off 2026-11-21).** The numeric gate is green; the
+composition itself (which screen corner each seat's melds take, the half-shift,
+the 2-tile-width corner shift on the bottom/top rows, and the preview) is the
+user's call in the live view. **User verdict:** "This looks good" after reviewing
+`?preview=melds` at four melds per seat and the corner shift. The meld layout is
+accepted.
+
+The HUD panels are unchanged as a composition (the same rules and heights); only
+their derived pixel positions moved with the closer camera, and the re-measured
+table is in `3d_hud.md` §5/§7.4. Those panel positions remain the one live-view
+check the board-only preview cannot show.
 
 **Review preview.** `?preview=melds` swaps the whole app for the deterministic
 layout fixture, so a meld-heavy board can be inspected without dealing one. It

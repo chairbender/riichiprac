@@ -246,8 +246,9 @@ inside each hand's row (§2.4b of the plan), so the camera no longer pulls back
 when a player declares a meld. The board solves closer (16:9: `52.73 → 50.26`),
 which moves the hand band and every panel below it down the screen. **The numbers
 under each stage are re-measured and authoritative; the schematic drawings show
-the structure, not the exact rows.** The new positions are an AGENTS.md §6
-handoff: they are pending the user's verdict.
+the structure, not the exact rows.** The meld board itself was signed off on
+2026-11-21 ("This looks good"); these panel positions are the same composition
+rules at the closer camera, and are the remaining live-view check on a real hand.
 
 Every aspect below is drawn on the same rule set:
 
