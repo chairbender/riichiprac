@@ -440,6 +440,34 @@ includes its recogniser tests and a label-yield pass.
   shouminkan_decision, daiminkan_decision, meld_or_not, suji_trap_riichi,
   kabe_no_chance) and any B4 lesson that lands thin; report stable yield per
   lesson per 100 games.
+- **Landed (2026-11-21).** 1,000 production `mortal_298k` games in a shard root
+  (`c9-below-floor-2026-11`, same corpus id `c8-smoke-2026-11`): M1 500 (seeds
+  20000–20499) in 1 h 42 m and M2 500 (seeds 22000–22499) in 2 h 37 m at 14
+  jobs, then extract (999 replays, 514,898 decisions, 18 m) and label v4
+  (72,996 book labels, 39 m at 14 workers). One M2 replay
+  (`180da97e…`) is `partial` (`reconstruction_skip`); the corpus gate
+  refused it, and it is recorded and excluded — 999 valid games measured, not
+  1,000 silently. No Akochan shard: the 44 Akochan games produced none of the
+  meld/open lessons, and production `base: default` is 5–9 min a game.
+  Measured over the 2,541 labelled games (1,542 baseline + 999), **three
+  lessons clear the floor**: `kabe_no_chance` 253 stable (the v4 precedence fix;
+  this task's diagnosis found that the cell was a strict subset of
+  `suji_kabe_safety` and therefore unreachable, and Q7 landed the same fix),
+  `kabe_suji_defense` 43 (1.69/100) and `perfect_one_away` 47 (1.85/100).
+  `pair_count_open` is 38 (1.50/100; 134 more games for 40), `shouminkan_decision`
+  29 (1.14/100; 964 more), `daiminkan_decision` 8 (0.32/100) and
+  `open_hand_defense` 7 (0.28/100). The rest are not volume problems:
+  `meld_or_not` is agreement-limited (23 labels, **23 contested, Mortal says Pon
+  23/23** at 0.52–0.96) and `suji_trap_riichi`/`sanshoku_pursuit`/
+  `ryankan_break`/`nobetan_keep`/`open_hand_defense` are constructed teaching
+  shapes (0–12 labels in 2,541 games; the open-hand *situation* occurs 25 times
+  per 100 games but the cell and agreement keep 7 stable). Recommendation:
+  grow the constructed shapes with V2 label-preserving variants and spend
+  ~1,000 more Mortal games only on `pair_count_open`/`shouminkan_decision`;
+  give `meld_or_not` dual-verdict contested drills or leave it generated. The
+  shard root exists because the corpus runner pins an app rev at SQLite schema
+  1 while the live root is schema 3; bumping that pin is a follow-up. Evidence:
+  [`docs/c9-below-floor-growth.md`](https://github.com/chairbender/riichiprac-corpus/blob/main/docs/c9-below-floor-growth.md).
 
 ### Wave 3 — coverage completion + default flip
 
