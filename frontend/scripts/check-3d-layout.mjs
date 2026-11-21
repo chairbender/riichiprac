@@ -834,7 +834,13 @@ async function main() {
         (C.COMPASS_PLATE.mobileSizeUnits / 2 + C.COMPASS_PLATE.bevelUnits),
       0.004,
       1e-9,
-    ) && C.COMPASS_PLATE.mobileSizeUnits < C.COMPASS_PLATE.sizeUnits,
+    ) &&
+      // A full tile width smaller per side than the desktop plate.
+      close(
+        C.COMPASS_PLATE.sizeUnits - C.COMPASS_PLATE.mobileSizeUnits,
+        2 * C.TILE.widthUnits,
+        1e-6,
+      ),
     `${formatNumber(C.COMPASS_PLATE.mobileSizeUnits, 4)} vs ${formatNumber(C.COMPASS_PLATE.sizeUnits, 4)}`,
   );
 

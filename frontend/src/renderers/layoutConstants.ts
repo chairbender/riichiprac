@@ -350,14 +350,16 @@ const POND_NEAREST_ROW_RADIUS_UNITS = 4.81;
 const COMPASS_SHRINK_UNITS = TILE.widthUnits;
 
 /**
- * How far the plate was extended back out after the first shrink (user request
- * 2026-11-21: "that's just slightly too cramped, extend the sides out about a
- * tile's thickness"). A tile thickness is the one dimension that is not already
- * a tile's width, so it grows the square without giving back the whole shrink.
+ * The mobile plate's net shrink per side: a full tile width.
+ *
+ * The "extend the sides back out a tile thickness" step (2026-11-21) was meant
+ * to relieve a cramped **readout**, and it left the mobile board only 0.16 units
+ * from the desktop one — invisible on a phone, and it gave back most of the
+ * discard clearance. The readout is now given its width by
+ * `MIN_COMPASS_PX_MOBILE_WIDTH` (a DOM box may overhang the plate), so the plate
+ * keeps the full shrink and the discards keep their room.
  */
-const COMPASS_EXTEND_UNITS = TILE.thicknessUnits;
-
-const COMPASS_NET_SHRINK_UNITS = COMPASS_SHRINK_UNITS - COMPASS_EXTEND_UNITS;
+const COMPASS_NET_SHRINK_UNITS = COMPASS_SHRINK_UNITS;
 
 /**
  * How much further out the left and right ponds sit (user request 2026-11-21:

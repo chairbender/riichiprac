@@ -18,6 +18,7 @@ import {
   COMPASS_SIDE_LABELS,
   MIN_COMPASS_PX,
   MIN_COMPASS_PX_MOBILE,
+  MIN_COMPASS_PX_MOBILE_WIDTH,
   compassBox,
   compassFontPx,
   compassView,
@@ -146,8 +147,16 @@ describe('compass model', () => {
     // its score corners are what run out of room first.
     const box = compassBox(rect);
     expect(box).toEqual({ left: 160, top: 40, width: 180, height: 180 });
+    // Mobile follows the well's rectangle per axis, with its own floors: 118 px
+    // wide (the corner rows need the column) and 84 px tall.
     const mobile = compassBox(rect, 'mobile');
     expect(mobile).toEqual({ left: 100, top: 40, width: 300, height: 180 });
+    const mobileSmall = compassBox(
+      { left: 0, top: 0, width: 91, height: 69, centreX: 50, centreY: 40 },
+      'mobile',
+    );
+    expect(mobileSmall.width).toBe(MIN_COMPASS_PX_MOBILE_WIDTH);
+    expect(mobileSmall.height).toBe(MIN_COMPASS_PX_MOBILE);
     expect(mobile.left + mobile.width / 2).toBe(250);
     expect(mobile.top + mobile.height / 2).toBe(130);
     // The type follows the shorter axis, inside a legible pair of bounds.
@@ -177,7 +186,7 @@ describe('compass model', () => {
       { left: 156, top: 384, width: 78, height: 68, centreX: 195, centreY: 418 },
       'mobile',
     );
-    expect(tinyMobile.width).toBe(MIN_COMPASS_PX_MOBILE);
+    expect(tinyMobile.width).toBe(MIN_COMPASS_PX_MOBILE_WIDTH);
     expect(tinyMobile.height).toBe(MIN_COMPASS_PX_MOBILE);
   });
 });
@@ -251,7 +260,7 @@ describe('compass projection', () => {
       // smaller floor (2026-11-21).
       const mobile = compassBox(well, 'mobile');
       expect(mobile.width, viewport.name).toBeCloseTo(
-        Math.max(well.width, MIN_COMPASS_PX_MOBILE),
+        Math.max(well.width, MIN_COMPASS_PX_MOBILE_WIDTH),
         6,
       );
       expect(mobile.height, viewport.name).toBeCloseTo(

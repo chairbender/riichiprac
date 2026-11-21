@@ -208,6 +208,18 @@ export const MIN_COMPASS_PX = 132;
 export const MIN_COMPASS_PX_MOBILE = 84;
 
 /**
+ * The mobile box's minimum **width**.
+ *
+ * The mobile plate is a tile width smaller per side than the desktop one, which
+ * leaves the left and right score corners 36 px of column at the plate's own
+ * projected width. The DOM box may overhang the plate (it always has), so the
+ * mobile box keeps 118 px of width: two ~50 px columns for the corner rows,
+ * with the same 84 px height floor. This is what replaced "grow the plate back"
+ * as the answer to a cramped readout.
+ */
+export const MIN_COMPASS_PX_MOBILE_WIDTH = 118;
+
+/**
  * The DOM compass box, centred on the projected plate.
  *
  * The projected plate is a trapezoid (a perspective square viewed at a pitch),
@@ -234,7 +246,7 @@ export function compassBox(
 ): CompassBox {
   if (profile === 'mobile') {
     // The phone readout follows the plate's rectangle and its own floor.
-    const width = Math.max(rect.width, MIN_COMPASS_PX_MOBILE);
+    const width = Math.max(rect.width, MIN_COMPASS_PX_MOBILE_WIDTH);
     const height = Math.max(rect.height, MIN_COMPASS_PX_MOBILE);
     return {
       left: rect.centreX - width / 2,
