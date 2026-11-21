@@ -356,6 +356,28 @@ describe('261121-1206 answered board motion', () => {
     expect(settled.some((instance) => instance.id === movedId)).toBe(true);
   });
 
+  it('leaves every unmoved tile exactly at its new pose, even with repeated meld ids', () => {
+    // Two melds per seat make several BoardTile ids repeat (`meld-seat-slot`).
+    // The pose rewrite must key on the tile object, not that id, or an unmoved
+    // meld tile would jump to another meld's pose.
+    const crowded = boardFixture({ meldCounts: [2, 2, 2, 2] });
+    const after = answeredBoard(crowded, {
+      family: 'discard',
+      discard: { code: '1m', isRed: false, fromDraw: false },
+    });
+    const from = layoutBoard(crowded);
+    const to = layoutBoard(after);
+    const moves = plannedMoves(from, to);
+    const moved = new Set(moves.map((move) => move.uid));
+    const middle = withMoveProgress(to, moves, 0.5);
+
+    middle.tiles.forEach((tile, index) => {
+      if (!moved.has(tile.uid)) {
+        expect(tile.pose).toEqual(to.tiles[index].pose);
+      }
+    });
+  });
+
   it('runs for a bounded time and settles from the clock', () => {
     const { clock, advance } = fakeClock();
     const motion = new MoveMotion(clock);

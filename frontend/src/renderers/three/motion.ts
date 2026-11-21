@@ -299,16 +299,24 @@ export function withMoveProgress(
 ): BoardLayout {
   if (moves.length === 0 || progress >= 1) return layout;
   const byUid = new Map(moves.map((move) => [move.uid, move]));
+  // Rebuild the derived views by object identity, not id: meld tiles' ids are
+  // per-meld slots, so two melds can share one and an id map would move the
+  // wrong tile. `wall` and `foreground` hold the very objects `tiles` does.
+  const changed = new Map<BoardTile, BoardTile>();
   const tiles = layout.tiles.map((tile) => {
     const move = byUid.get(tile.uid);
-    return move ? { ...tile, pose: movedPose(move, progress) } : tile;
+    if (!move) return tile;
+    const next = { ...tile, pose: movedPose(move, progress) };
+    changed.set(tile, next);
+    return next;
   });
-  const byId = new Map(tiles.map((tile) => [tile.id, tile]));
+  const remap = (list: readonly BoardTile[]): BoardTile[] =>
+    list.map((tile) => changed.get(tile) ?? tile);
   return {
     ...layout,
     tiles,
-    wall: layout.wall.map((tile) => byId.get(tile.id) ?? tile),
-    foreground: layout.foreground.map((tile) => byId.get(tile.id) ?? tile),
+    wall: remap(layout.wall),
+    foreground: remap(layout.foreground),
   };
 }
 
