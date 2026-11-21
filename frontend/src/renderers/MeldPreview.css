@@ -160,3 +160,24 @@
     min-height: 44px;
   }
 }
+
+/* Always reachable, even with the control panel collapsed. */
+.meld-preview__fullscreen {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+}
+
+.meld-preview__fullscreen button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(14, 19, 25, 0.94);
+  color: #f2eee6;
+  font: 13px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  cursor: pointer;
+}

@@ -13,8 +13,9 @@
  * judging is exactly what the numeric gate measured.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Seat } from './contract';
+import { FullscreenButton } from '../components/FullscreenButton';
 import { RendererHost } from './RendererHost';
 import {
   MAX_MELDS,
@@ -49,6 +50,12 @@ export function MeldPreview() {
    * the board can be seen clean.
    */
   const [controlsOpen, setControlsOpen] = useState(true);
+  /*
+   * The preview is where the composition is judged on a phone, and full screen
+   * is what removes the browser chrome — a fifth of a landscape phone's height.
+   * It is mounted outside the collapsible panel so it is always reachable.
+   */
+  const shellRef = useRef<HTMLDivElement>(null);
 
   // A new options set is a new cut: the fixture alone keeps `revision: 1`.
   useEffect(() => {
@@ -78,6 +85,7 @@ export function MeldPreview() {
   return (
     <div
       className="app-shell app-shell--3d"
+      ref={shellRef}
       data-forced-landscape={forcedLandscape ? 'true' : undefined}
     >
       <main className="table-3d">
@@ -90,6 +98,10 @@ export function MeldPreview() {
           }
         />
       </main>
+
+      <div className="meld-preview__fullscreen">
+        <FullscreenButton target={shellRef} />
+      </div>
 
       {controlsOpen ? (
         <aside className="meld-preview" aria-label="Meld layout preview controls">

@@ -1181,3 +1181,107 @@ describe('the hand band (screen-space hand, 2026-11-21)', () => {
     expect(placeHandBand(none, frame, { widthPx: 844, heightPx: 390 })).toBe(none);
   });
 });
+
+describe('the hand band sits beside the player’s own melds', () => {
+  const frames = (layout: ReturnType<typeof layoutBoard>) =>
+    frameForAspect(844 / 390, withoutHandBandTiles(layout));
+
+  function box(tiles: readonly BoardTile[], frame: ReturnType<typeof frames>) {
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const tile of tiles) {
+      for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+        const pixel = projectToPixels(corner, frame, 844, 390);
+        left = Math.min(left, pixel.x);
+        right = Math.max(right, pixel.x);
+        top = Math.min(top, pixel.y);
+        bottom = Math.max(bottom, pixel.y);
+      }
+    }
+    return tiles.length ? { left, right, top, bottom } : null;
+  }
+
+  const overlaps = (
+    a: { left: number; right: number; top: number; bottom: number } | null,
+    b: { left: number; right: number; top: number; bottom: number } | null,
+  ) =>
+    a !== null &&
+    b !== null &&
+    !(a.right <= b.left || b.right <= a.left) &&
+    !(a.bottom <= b.top || b.bottom <= a.top);
+
+  it('never covers the melds of the player to the left', () => {
+    // The regression the user reported: a two-tile hand hung off the nominal
+    // 14-tile row's left edge and landed on the left player's melds.
+    for (const counts of [
+      [0, 0, 0, 0],
+      [1, 0, 0, 0],
+      [2, 0, 0, 0],
+      [4, 0, 0, 0],
+      [4, 4, 4, 4],
+    ] as const) {
+      const source = layoutBoard(boardFixture({ meldCounts: counts }));
+      const frame = frames(source);
+      const band = placeHandBand(source, frame, { widthPx: 844, heightPx: 390 });
+      const hand = box(
+        band.tiles.filter(
+          (tile) =>
+            tile.seat === band.humanSeat &&
+            (tile.zone === 'hand' || tile.zone === 'draw'),
+        ),
+        frame,
+      );
+      const neighbours = [1, 2, 3].map((seat) =>
+        box(
+          band.tiles.filter((tile) => tile.zone === 'meld' && tile.seat === seat),
+          frame,
+        ),
+      );
+      for (const neighbour of neighbours) {
+        expect(overlaps(hand, neighbour), `melds ${counts.join('/')}`).toBe(false);
+      }
+    }
+  });
+
+  it('sits immediately left of the player’s own meld line', () => {
+    const source = layoutBoard(boardFixture({ meldCounts: [4, 0, 0, 0] }));
+    const frame = frames(source);
+    const band = placeHandBand(source, frame, { widthPx: 844, heightPx: 390 });
+    const hand = box(
+      band.tiles.filter(
+        (tile) =>
+          tile.seat === band.humanSeat &&
+          (tile.zone === 'hand' || tile.zone === 'draw'),
+      ),
+      frame,
+    );
+    const melds = box(
+      band.tiles.filter((tile) => tile.zone === 'meld' && tile.seat === band.humanSeat),
+      frame,
+    );
+    expect(hand).not.toBeNull();
+    expect(melds).not.toBeNull();
+    if (!hand || !melds) return;
+    // The 8 px gutter, then the meld line: adjacent, never overlapping.
+    expect(melds.left - hand.right).toBeGreaterThanOrEqual(7);
+    expect(melds.left - hand.right).toBeLessThanOrEqual(9);
+  });
+
+  it('centres the row when the player has no melds to sit beside', () => {
+    const source = layoutBoard(boardFixture({ meldCounts: [0, 0, 0, 0] }));
+    const frame = frames(source);
+    const band = placeHandBand(source, frame, { widthPx: 844, heightPx: 390 });
+    const hand = box(
+      band.tiles.filter(
+        (tile) =>
+          tile.seat === band.humanSeat &&
+          (tile.zone === 'hand' || tile.zone === 'draw'),
+      ),
+      frame,
+    );
+    if (!hand) throw new Error('no band');
+    expect((hand.left + hand.right) / 2).toBeCloseTo(844 / 2, 0);
+  });
+});

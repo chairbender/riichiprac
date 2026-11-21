@@ -1223,6 +1223,9 @@ export interface HandBandSpec {
   readonly bottomFraction: number;
 }
 
+/** The gap between the banded hand and the meld line it sits beside, in px. */
+const HUD_GAP_PX = 8;
+
 /** The band's committed numbers (user request 2026-11-21). */
 export const HAND_BAND: HandBandSpec = {
   widthFraction: 0.66,
@@ -1296,9 +1299,9 @@ export function placeHandBand(
    * size on a call. A shorter hand sits centred in the same pitch.
    */
   const nominalTiles = HAND.concealedCount + 1;
-  const rowUnits =
+  const nominalUnits =
     (nominalTiles - 1) * HAND.pitchUnits + TILE.widthUnits + HAND.drawGapUnits;
-  const pxPerUnit = (spec.widthFraction * viewport.widthPx) / rowUnits;
+  const pxPerUnit = (spec.widthFraction * viewport.widthPx) / nominalUnits;
   /*
    * `pxPerUnit = H / (2 · depth · tanHalfVertical)` for a length perpendicular
    * to the view axis, which is what a tile width and height both are once the
@@ -1310,7 +1313,16 @@ export function placeHandBand(
   const { right, up, forward } = cameraAxes(frame);
   const planeCentre = add(frame.eye, mul(forward, depth));
 
-  // The row's tile centres along `right`, centred on the frame.
+  /*
+   * The row's tile centres along `right`, centred on the frame for now. The
+   * actual row is centred, not the nominal 14-tile one: a melded hand is
+   * shorter, and hanging it off the nominal row's left edge (the first version)
+   * pushed a two-tile hand over the left player's melds.
+   */
+  const rowUnits =
+    (row.length - 1) * HAND.pitchUnits +
+    TILE.widthUnits +
+    (row.some((tile) => tile.zone === 'draw') ? HAND.drawGapUnits : 0);
   const offsets: number[] = [];
   let cursor = -rowUnits / 2;
   for (const tile of row) {
@@ -1334,6 +1346,51 @@ export function placeHandBand(
     sizeUnits: TILE_SIZE,
   });
 
+  /** The row's projected left and right edges, before any shift. */
+  const rowEdgesPx = (): { left: number; right: number } => {
+    let left = Number.POSITIVE_INFINITY;
+    let rightEdge = Number.NEGATIVE_INFINITY;
+    row.forEach((_, index) => {
+      for (const corner of orientedBoxCorners(orientedBox(poseAt(offsets[index])))) {
+        const pixel = projectToPixels(corner, frame, viewport.widthPx, viewport.heightPx);
+        left = Math.min(left, pixel.x);
+        rightEdge = Math.max(rightEdge, pixel.x);
+      }
+    });
+    return { left, right: rightEdge };
+  };
+
+  /*
+   * Horizontal placement: the hand sits **immediately left of the player's own
+   * meld line**, which is where the table puts it (hand → draw → melds). A
+   * melded hand therefore reads as one row with its melds, and it no longer
+   * reaches across the frame into the left player's melds. With no melds the
+   * row is centred.
+   */
+  const centred = rowEdgesPx();
+  const meldLeftPx = (() => {
+    const melds = layout.tiles.filter(
+      (tile) => tile.seat === layout.humanSeat && tile.zone === 'meld',
+    );
+    if (melds.length === 0) return null;
+    let left = Number.POSITIVE_INFINITY;
+    for (const tile of melds) {
+      for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+        left = Math.min(
+          left,
+          projectToPixels(corner, frame, viewport.widthPx, viewport.heightPx).x,
+        );
+      }
+    }
+    return Number.isFinite(left) ? left : null;
+  })();
+  const targetRightPx =
+    meldLeftPx !== null
+      ? Math.min(meldLeftPx - HUD_GAP_PX, viewport.widthPx - HUD_GAP_PX)
+      : viewport.widthPx / 2 + (centred.right - centred.left) / 2;
+  const shiftPx = targetRightPx - centred.right;
+  const shiftUnits = shiftPx / pxPerUnit;
+
   /*
    * Vertical placement: project one probe tile at the plane and move the whole
    * row along `up` until its lowest corner sits `bottomFraction` above the
@@ -1346,9 +1403,9 @@ export function placeHandBand(
     lowestPx = Math.max(lowestPx, projectToPixels(corner, frame, viewport.widthPx, viewport.heightPx).y);
   }
   const targetPx = viewport.heightPx * (1 - spec.bottomFraction);
-  const shiftPx = targetPx - lowestPx;
-  const upUnits = (-shiftPx * 2 * depth * frame.tanHalfVertical) / viewport.heightPx;
-  const lift = mul(up, upUnits);
+  const risePx = targetPx - lowestPx;
+  const upUnits = (-risePx * 2 * depth * frame.tanHalfVertical) / viewport.heightPx;
+  const lift = add(mul(up, upUnits), mul(right, shiftUnits));
 
   const newPoses = new Map<string, TilePose>();
   row.forEach((tile, index) => {
