@@ -23,6 +23,7 @@ import {
   parseMeldPreviewOptions,
 } from './meldPreview';
 import type { MeldPreviewOptions } from './meldPreview';
+import { useForcedLandscape } from './useForcedLandscape';
 import '../App.css';
 import './MeldPreview.css';
 
@@ -36,6 +37,18 @@ export function MeldPreview() {
     parseMeldPreviewOptions(window.location.search),
   );
   const [revision, setRevision] = useState(1);
+  /*
+   * The 3D view is landscape-only, so the preview is too: on a phone held in
+   * portrait the shell is turned a quarter turn exactly as the app's own stage
+   * is, which is the only way the sizes under review are the shipped ones.
+   */
+  const forcedLandscape = useForcedLandscape();
+  /*
+   * The control panel is review chrome, and it covers a corner of the board. On
+   * a phone that corner is a player's melds, so it collapses to one chip and
+   * the board can be seen clean.
+   */
+  const [controlsOpen, setControlsOpen] = useState(true);
 
   // A new options set is a new cut: the fixture alone keeps `revision: 1`.
   useEffect(() => {
@@ -63,7 +76,10 @@ export function MeldPreview() {
   };
 
   return (
-    <div className="app-shell app-shell--3d">
+    <div
+      className="app-shell app-shell--3d"
+      data-forced-landscape={forcedLandscape ? 'true' : undefined}
+    >
       <main className="table-3d">
         <RendererHost
           snapshot={snapshot}
@@ -75,84 +91,114 @@ export function MeldPreview() {
         />
       </main>
 
-      <aside className="meld-preview" aria-label="Meld layout preview controls">
-        <header className="meld-preview__head">
-          <strong>Meld layout preview</strong>
-          <span>fixture board · not a game hand</span>
-        </header>
+      {controlsOpen ? (
+        <aside className="meld-preview" aria-label="Meld layout preview controls">
+          <header className="meld-preview__head">
+            <strong>Meld layout preview</strong>
+            <span>fixture board · not a game hand</span>
+            <button
+              type="button"
+              className="meld-preview__collapse"
+              onClick={() => setControlsOpen(false)}
+            >
+              hide
+            </button>
+          </header>
 
-        <div className="meld-preview__row">
-          <span className="meld-preview__label">melds per seat</span>
-          {([0, 1, 2, 3] as const).map((seat) => (
-            <label key={seat} className="meld-preview__field">
-              <span>{SEAT_LABELS[seat]}</span>
-              <select
-                value={options.meldCounts[seat] ?? 0}
-                onChange={(event) => setSeatMelds(seat, Number(event.target.value))}
+          <div className="meld-preview__row">
+            <span className="meld-preview__label">melds per seat</span>
+            {([0, 1, 2, 3] as const).map((seat) => (
+              <label key={seat} className="meld-preview__field">
+                <span>{SEAT_LABELS[seat]}</span>
+                <select
+                  value={options.meldCounts[seat] ?? 0}
+                  onChange={(event) =>
+                    setSeatMelds(seat, Number(event.target.value))
+                  }
+                >
+                  {Array.from({ length: MAX_MELDS + 1 }, (_, count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+
+          <div className="meld-preview__row">
+            <span className="meld-preview__label">presets</span>
+            {PRESETS.map((count) => (
+              <button
+                key={count}
+                type="button"
+                onClick={() =>
+                  update({
+                    ...options,
+                    meldCounts: [count, count, count, count],
+                  })
+                }
               >
-                {Array.from({ length: MAX_MELDS + 1 }, (_, count) => (
-                  <option key={count} value={count}>
-                    {count}
+                all {count}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                update({ ...options, meldCounts: [4, 0, 0, 0] })
+              }
+            >
+              human 4
+            </button>
+            <button
+              type="button"
+              aria-pressed={options.kan}
+              onClick={() => update({ ...options, kan: !options.kan })}
+            >
+              kan
+            </button>
+          </div>
+
+          <div className="meld-preview__row">
+            <label className="meld-preview__field">
+              <span>human</span>
+              <select
+                value={options.humanSeat}
+                onChange={(event) =>
+                  update({
+                    ...options,
+                    humanSeat: Number(event.target.value) as Seat,
+                  })
+                }
+              >
+                {SEAT_LABELS.map((label, seat) => (
+                  <option key={label} value={seat}>
+                    {label}
                   </option>
                 ))}
               </select>
             </label>
-          ))}
-        </div>
+            <a className="meld-preview__exit" href="?">
+              exit preview
+            </a>
+          </div>
 
-        <div className="meld-preview__row">
-          <span className="meld-preview__label">every seat</span>
-          {PRESETS.map((count) => (
-            <button
-              key={count}
-              type="button"
-              onClick={() =>
-                update({
-                  ...options,
-                  meldCounts: [count, count, count, count],
-                })
-              }
-            >
-              {count}
-            </button>
-          ))}
-          <button
-            type="button"
-            aria-pressed={options.kan}
-            onClick={() => update({ ...options, kan: !options.kan })}
-          >
-            kan
-          </button>
-        </div>
-
-        <div className="meld-preview__row">
-          <label className="meld-preview__field">
-            <span>human</span>
-            <select
-              value={options.humanSeat}
-              onChange={(event) =>
-                update({ ...options, humanSeat: Number(event.target.value) as Seat })
-              }
-            >
-              {SEAT_LABELS.map((label, seat) => (
-                <option key={label} value={seat}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <a className="meld-preview__exit" href="?">
-            exit preview
-          </a>
-        </div>
-
-        <p className="meld-preview__note">
-          melds {options.meldCounts.join('/')} ·{' '}
-          {options.kan ? 'each first meld is a kan' : 'no kans'} · human{' '}
-          {SEAT_LABELS[options.humanSeat]} · bottom/top melds sit two tile widths
-          toward their corner
-        </p>
-      </aside>
+          <p className="meld-preview__note">
+            melds {options.meldCounts.join('/')} ·{' '}
+            {options.kan ? 'each first meld is a kan' : 'no kans'} · human{' '}
+            {SEAT_LABELS[options.humanSeat]}
+          </p>
+        </aside>
+      ) : (
+        <button
+          type="button"
+          className="meld-preview__chip"
+          onClick={() => setControlsOpen(true)}
+        >
+          melds {options.meldCounts.join('/')}
+          {options.kan ? ' · kan' : ''} · controls
+        </button>
+      )}
     </div>
   );
 }

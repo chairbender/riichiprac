@@ -117,3 +117,46 @@
   background: rgba(14, 19, 25, 0.94);
   color: #f2eee6;
 }
+
+/* The controls collapse to one chip so the board can be seen clean. */
+.meld-preview__collapse {
+  margin-left: auto;
+  min-width: 44px;
+  padding: 6px 10px;
+}
+
+.meld-preview__chip {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 5;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(14, 19, 25, 0.94);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  color: #f2eee6;
+  font: 13px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  cursor: pointer;
+}
+
+/*
+ * A phone's controls are thumb targets: the committed 44 px minimum for the
+ * buttons, and a taller select. The panel is otherwise unchanged.
+ */
+@media (pointer: coarse) {
+  .meld-preview button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .meld-preview select {
+    min-height: 44px;
+    padding: 6px 8px;
+  }
+
+  .meld-preview__chip {
+    min-height: 44px;
+  }
+}
