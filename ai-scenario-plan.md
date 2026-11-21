@@ -1,6 +1,12 @@
 > **Retired.** The AI Best Action scenario has been removed from the app; the
 > AI Hotseat scenario supersedes it. This document is kept as the design record
 > for the Mortal evaluator and observation plumbing.
+>
+> **Provenance and licence.** The observation encoder and single-player solver
+> described here are ports of AGPL-3.0 `libriichi`, and the network mirrors
+> `Equim-chan/Mortal` v4. Those ports make the repository AGPL-3.0-or-later; see
+> [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+> [`docs/licensing.md`](docs/licensing.md).
 
 # AI Best Action Scenario Plan
 

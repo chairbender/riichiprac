@@ -20,7 +20,7 @@ CLI stubs. R1 adds the gzipped mjai reader and the structural replay validator i
 `src/replay/` plus its fixtures. R2 adds `src/replay/walk.rs`: the kyoku walker,
 the seat-normalised `GameState` snapshots, decision enumeration and the
 `tenhou6` reviewer export. L1 adds `src/miner/label/`: native batch inference
-with the app's own MIT Candle port, the per-action Q values the browser drops,
+with the app's own Candle port, the per-action Q values the browser drops,
 the `q_gap_top2`/`q_gap_safe` measurements, the book/Mortal label and the
 `model_labels` cache behind `mine_replays label`. L2 adds the
 `stable`/`contested`/`unresolved` agreement classification, the optional
@@ -68,7 +68,9 @@ cargo run --features miner --bin mine_replays -- --help
 
 `cargo tree --features miner` must contain no `libriichi`. Mortal code and
 weights stay in the separate `riichiprac-corpus` process/repo; the app labels a
-reconstructed `GameState` with its own MIT inference.
+reconstructed `GameState` with its own Candle inference (a port of
+`libriichi`/Mortal, which is why this repository is AGPL-3.0-or-later; see
+`docs/licensing.md`).
 
 Enabling `miner` for `wasm32` is a compile error by design.
 
@@ -358,8 +360,9 @@ allowlist change, not a data-file value.
 `source_url`. Validation rejects an empty/unknown id, an empty attribution, a
 missing URL and a non-http(s) URL.
 
-- Known ids: `CC-BY-4.0`, `CC0-1.0`, `MIT` (data and code), `AGPL-3.0` (Mortal
-  code/weights), `akochan-custom` (Akochan terms).
+- Known ids: `CC-BY-4.0`, `CC0-1.0`, `MIT` (third-party data/code),
+  `AGPL-3.0` (Mortal code/weights and this project's reference policies),
+  `akochan-custom` (Akochan terms).
 - Shipped pack **data** must use one of `CC-BY-4.0`, `CC0-1.0`, `MIT`.
 - `data_commercial_use` for a pack is the logical AND over every contributing
   agent. A pack with any Akochan game is non-commercial even if another agent's
@@ -733,7 +736,7 @@ therefore matches a `--workers 1` run and records the resolved `workers` and
 ## Mortal labeler contract (L1)
 
 Status: implemented. `src/miner/label/` labels a reconstructed `GameState` with
-the app's own MIT Candle port (`src/ai/model.rs`), never `libriichi`. The
+the app's own Candle port (`src/ai/model.rs`), never `libriichi`. The
 checkpoint is parsed and bound once per process (`Labeler::load`) and reused for
 every state in the shard; the forward pass is
 `evaluate_state_with_q_values`, which masks illegal actions exactly like the

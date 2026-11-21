@@ -2,6 +2,7 @@
   "name": "riichiprac-glyph-masters",
   "private": true,
   "version": "1.0.0",
+  "license": "AGPL-3.0-or-later",
   "description": "The retained glyph-master baker (public-domain SVG -> 300x400 PNG) that feeds the 3D carve bake. Not the retired 2.5D render pipeline; never bundled or shipped.",
   "type": "module",
   "scripts": {

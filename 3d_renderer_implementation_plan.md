@@ -129,7 +129,7 @@ made mechanical rather than remembered.
 | D11 | No new committed runtime assets and no new hosting surface. Only new bytes are the lazy JS chunk. | budget script reports the delta | 3D-13 |
 | D12 | Verification is scripted (numbers) or a user handoff. No agent looks at a render and declares it good. | every unit's gate names a command or a handoff | all |
 | D13 | ~~The 3D view is opt-in and never the default~~ — **superseded 2026-11-20:** 3D is exposed and the default; the 2D views are options, the pick is remembered under its own key, and switching views never re-deals. | `TableView` + `RendererHost` + `resolveTableMount` tests | 3D-14 |
-| D14 | MIT stays clean: Three.js is MIT with a notice; Blender-baked assets are unchanged; no AGPL tool is added or linked. | third-party notice + dependency audit | 3D-16 |
+| D14 | Licensing is recorded: this repository is AGPL-3.0-or-later since 2026-11-22 because of its Mortal/libriichi ports (`docs/licensing.md`); Three.js is MIT with a notice; Blender-baked assets are unchanged; no new GPL/AGPL tool is added or linked by the 3D path. | third-party notice + dependency audit | 3D-16 |
 
 Rejected alternatives are named where they matter (WebGPU in D2, glTF in D6,
 shadow maps in D8) so they are not re-opened later as "phases".
@@ -924,15 +924,18 @@ same way, so two runs are comparable:
 
 ### 2.9 Licensing and hosting
 
-- **Three.js is MIT** (`three/MIT`), acceptable for an MIT app. Add its notice
-  to `THIRD_PARTY_NOTICES.md` (new file) and keep the bundler's licence banner.
-  Version pinning is part of D1: no `^`, no range.
+- **Three.js is MIT** (`three/MIT`), compatible with this AGPL-3.0-or-later
+  project. Its notice is in `THIRD_PARTY_NOTICES.md`; keep the bundler's licence
+  banner. Version pinning is part of D1: no `^`, no range.
 - **Blender is GPL, but its output is not.** The 3D path reuses Blender-baked
   PNGs that the 2.5D chain already commits and ships; nothing new is generated
   and no GPL code is linked into the app.
-- **No AGPL tooling anywhere.** No `libriichi`, no Mortal code, no `basisu`
-  (Apache-2.0 would be acceptable if compression is ever needed — that is the
-  sanctioned path), no Draco.
+- **No new AGPL tooling in the 3D path.** This correction (2026-11-22): the
+  repository itself is AGPL-3.0-or-later because the shipped evaluator ports
+  `libriichi` (see `THIRD_PARTY_NOTICES.md`), but the 3D work adds no AGPL
+  dependency: no `libriichi`, no Mortal code, no `basisu` (Apache-2.0 would be
+  acceptable if compression is ever needed — that is the sanctioned path), no
+  Draco.
 - **Hosting is unchanged.** The relief atlases are already in
   `frontend/public/table/relief/` and therefore already in the Pages artifact;
   the only new bytes are the lazy JS chunk (same-origin, no R2/HF, no new CORS
@@ -2691,9 +2694,10 @@ and any conflict is hand-resolved.
 
 - `3d_renderer_architecture.md`: decisions as built, the actual numbers, the
   asset channel table, the tier table, the measurement protocol, known limits.
-- `THIRD_PARTY_NOTICES.md` with the Three.js MIT notice; README's view list and
-  AGENTS.md §4 updated to the four views; this plan marked implemented with
-  deviations listed.
+- `THIRD_PARTY_NOTICES.md` extended with the Three.js MIT notice (the file also
+  covers Mortal/libriichi and the weights); README's view list and AGENTS.md §4
+  updated to the four views; this plan marked implemented with deviations
+  listed.
 - A recorded note on the stale `relief-spec.json` prose (17.92 mm vs 20.89 mm),
   written as information for whoever owns that file. It is not a request and
   nothing in the 3D chain waits for it.
@@ -2703,7 +2707,8 @@ and any conflict is hand-resolved.
 - A new contributor can find, from AGENTS.md, the plan, the architecture record,
   the two scripts and the asset provenance.
 - The record's numbers match the harness output on the landing commit.
-- No AGPL tool mentioned as used; Three.js version recorded exactly.
+- No new AGPL tool used by this path; Three.js version recorded exactly. (The
+  repository as a whole is AGPL-3.0-or-later because of the evaluator ports.)
 
 **Gate:** frontend gate (docs-only diff otherwise).
 
