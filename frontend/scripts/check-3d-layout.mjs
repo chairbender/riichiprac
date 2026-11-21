@@ -625,7 +625,12 @@ async function main() {
     C.POND.rowRadiiUnits[C.POND.overflowRow];
   check(
     'the side ponds sit further out than the end ponds by the committed shift',
-    close(axisGap, C.TILE.widthUnits / 2 + C.TILE.widthUnits),
+    // Half a tile out for the sides, and the end ponds' net shrink (a tile
+    // width in, a tile thickness back out) on top of it.
+    close(
+      axisGap,
+      C.TILE.widthUnits / 2 + (C.TILE.widthUnits - C.TILE.thicknessUnits),
+    ),
     `${formatNumber(axisGap, 4)} units`,
   );
 

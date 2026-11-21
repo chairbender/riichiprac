@@ -318,6 +318,16 @@ const POND_NEAREST_ROW_RADIUS_UNITS = 4.81;
 const COMPASS_SHRINK_UNITS = TILE.widthUnits;
 
 /**
+ * How far the plate was extended back out after the first shrink (user request
+ * 2026-11-21: "that's just slightly too cramped, extend the sides out about a
+ * tile's thickness"). A tile thickness is the one dimension that is not already
+ * a tile's width, so it grows the square without giving back the whole shrink.
+ */
+const COMPASS_EXTEND_UNITS = TILE.thicknessUnits;
+
+const COMPASS_NET_SHRINK_UNITS = COMPASS_SHRINK_UNITS - COMPASS_EXTEND_UNITS;
+
+/**
  * How much further out the left and right ponds sit (user request 2026-11-21:
  * "about a half-tile width"). They move out so the top and bottom rows, which
  * now run in toward the smaller plate, can overhang the plate's left and right
@@ -348,9 +358,11 @@ export const POND = {
    * vertical room back.
    */
   rowRadiiUnits: [
-    POND_NEAREST_ROW_RADIUS_UNITS - COMPASS_SHRINK_UNITS,
-    POND_NEAREST_ROW_RADIUS_UNITS - TILE.heightUnits - COMPASS_SHRINK_UNITS,
-    POND_NEAREST_ROW_RADIUS_UNITS - 2 * TILE.heightUnits - COMPASS_SHRINK_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS - COMPASS_NET_SHRINK_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS - TILE.heightUnits - COMPASS_NET_SHRINK_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS -
+      2 * TILE.heightUnits -
+      COMPASS_NET_SHRINK_UNITS,
   ],
   /**
    * The same three rows for the **left and right** seats, whose rows stack

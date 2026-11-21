@@ -131,7 +131,7 @@ describe('compass model', () => {
     expect(formatCompassScore(Number.NaN)).toEqual({ lead: '000', tail: '00' });
   });
 
-  it('sizes the DOM square from the well, centred on it', () => {
+  it('sizes the DOM box from the well, per axis, centred on it', () => {
     const box = compassBox({
       left: 100,
       top: 40,
@@ -140,16 +140,19 @@ describe('compass model', () => {
       centreX: 250,
       centreY: 130,
     });
-    expect(box).toEqual({ left: 160, top: 40, width: 180, height: 180 });
+    // The projected plate is a trapezoid, so its box is wider than tall and the
+    // readout follows it (2026-11-21): the left and right corners are the ones
+    // that run out of room first.
+    expect(box).toEqual({ left: 100, top: 40, width: 300, height: 180 });
     expect(box.left + box.width / 2).toBe(250);
     expect(box.top + box.height / 2).toBe(130);
-    // The type follows the square, inside a legible pair of bounds.
+    // The type follows the shorter axis, inside a legible pair of bounds.
     expect(compassFontPx(box)).toBeCloseTo(180 * 0.08, 9);
     expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(9);
     expect(compassFontPx({ ...box, width: 2000, height: 2000 })).toBe(30);
 
-    // A stage whose well projects below the floor keeps a legible square,
-    // still centred on the well (a 390 x 844 phone's 78 x 68 well).
+    // A stage whose well projects below the floor keeps a legible box, still
+    // centred on the well (a 390 x 844 phone's 78 x 68 well).
     const tiny = compassBox({
       left: 156,
       top: 384,
@@ -209,20 +212,25 @@ describe('compass projection', () => {
       expect(origin.y, viewport.name).toBeGreaterThanOrEqual(box.top);
       expect(origin.y, viewport.name).toBeLessThanOrEqual(box.top + box.height);
 
-      // The square never spills past the well's rectangle unless the well is
-      // below the legibility floor, in which case it stops shrinking. Either
-      // way it is centred on the well and fully on stage.
-      const wellMin = Math.min(well.width, well.height);
+      // The box follows the well's rectangle — each axis independent, because
+      // the projected plate is wider than tall — and clamps to the legibility
+      // floor per axis. Above the floor it never spills past the well.
       expect(box.width, viewport.name).toBeCloseTo(
-        Math.max(wellMin, MIN_COMPASS_PX),
+        Math.max(well.width, MIN_COMPASS_PX),
         6,
       );
-      if (wellMin >= MIN_COMPASS_PX) {
+      expect(box.height, viewport.name).toBeCloseTo(
+        Math.max(well.height, MIN_COMPASS_PX),
+        6,
+      );
+      if (well.width >= MIN_COMPASS_PX) {
         expect(box.left, viewport.name).toBeGreaterThanOrEqual(well.left - 1e-6);
-        expect(box.top, viewport.name).toBeGreaterThanOrEqual(well.top - 1e-6);
         expect(box.left + box.width, viewport.name).toBeLessThanOrEqual(
           well.left + well.width + 1e-6,
         );
+      }
+      if (well.height >= MIN_COMPASS_PX) {
+        expect(box.top, viewport.name).toBeGreaterThanOrEqual(well.top - 1e-6);
         expect(box.top + box.height, viewport.name).toBeLessThanOrEqual(
           well.top + well.height + 1e-6,
         );

@@ -197,14 +197,18 @@ export interface CompassBox {
 export const MIN_COMPASS_PX = 84;
 
 /**
- * The DOM compass square, centred on the projected plate.
+ * The DOM compass box, centred on the projected plate.
  *
- * The projected plate is a trapezoid (a perspective square), so its stated box
- * is a bounding rectangle. The compass text is square — the same 3×3 grid as
- * `PhysicalTable`'s — and takes the rectangle's **shorter** side, so it cannot
- * spill past the plate on either axis, centred on the rectangle so the table's
- * centre stays at the middle of the display. Below {@link MIN_COMPASS_PX} it
- * stops shrinking rather than becoming unreadable.
+ * The projected plate is a trapezoid (a perspective square viewed at a pitch),
+ * so its stated box is a bounding rectangle — **wider than tall** on a
+ * landscape stage. The readout follows that rectangle rather than being forced
+ * square (2026-11-21): the left and right score corners are what run out of room
+ * first, and the plate's own footprint has the width to give them. Each axis
+ * stops at {@link MIN_COMPASS_PX} rather than shrinking into illegibility, so a
+ * very small plate overhangs the plate's corners equally on both axes.
+ *
+ * The 3×3 grid inside is unchanged, and the box stays centred on the plate's
+ * centre, so the table's centre remains the middle of the display.
  */
 export function compassBox(rect: {
   readonly left: number;
@@ -214,15 +218,13 @@ export function compassBox(rect: {
   readonly centreX: number;
   readonly centreY: number;
 }): CompassBox {
-  const size = Math.max(
-    Math.min(rect.width, rect.height),
-    MIN_COMPASS_PX,
-  );
+  const width = Math.max(rect.width, MIN_COMPASS_PX);
+  const height = Math.max(rect.height, MIN_COMPASS_PX);
   return {
-    left: rect.centreX - size / 2,
-    top: rect.centreY - size / 2,
-    width: size,
-    height: size,
+    left: rect.centreX - width / 2,
+    top: rect.centreY - height / 2,
+    width,
+    height,
   };
 }
 
@@ -238,8 +240,11 @@ export function compassBox(rect: {
  * stage from turning the centre of the table into a billboard.
  */
 export function compassFontPx(box: CompassBox): number {
-  // The floor dropped with the square (2026-11-21): at the phone's 84 px box,
-  // 9 px is what keeps the score digits and the round glyph distinct after the
-  // round became a character instead of a word.
-  return Math.min(30, Math.max(9, box.width * 0.08));
+  /*
+   * The *shorter* axis drives the type, because the rows and the score corners
+   * both have to fit: a wide, short box must not print type a tall one could
+   * not. The floor dropped to 9 px with the smaller compass (2026-11-21), which
+   * is what keeps the score digits and the round character distinct.
+   */
+  return Math.min(30, Math.max(9, Math.min(box.width, box.height) * 0.08));
 }
