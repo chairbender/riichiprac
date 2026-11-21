@@ -98,10 +98,12 @@ function tile(
   zone: SnapshotTile['zone'],
   slot: number,
   index: number,
+  uid: string,
   extra: Partial<SnapshotTile> = {},
 ): SnapshotTile {
   return {
     face: face(index),
+    uid,
     zone,
     slot,
     faceUp: true,
@@ -115,13 +117,17 @@ function tile(
  * remaining slots, exactly as `snapshotFromGameState` builds it.
  */
 function buildWall(tilesRemaining: number, humanSeat: Seat): SnapshotTile[] {
-  return wallSlots(tilesRemaining, humanSeat).map(({ run, stack, tier }) => ({
-    face: 'blank',
-    zone: 'wall',
-    slot: wallSlotId(run, stack, tier),
-    faceUp: false,
-    sideways: false,
-  }));
+  return wallSlots(tilesRemaining, humanSeat).map(({ run, stack, tier }) => {
+    const slot = wallSlotId(run, stack, tier);
+    return {
+      face: 'blank' as const,
+      uid: `wall-${slot}`,
+      zone: 'wall' as const,
+      slot,
+      faceUp: false,
+      sideways: false,
+    };
+  });
 }
 
 /**
@@ -149,7 +155,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
 
     const concealed: SnapshotTile[] = Array.from(
       { length: concealedCount },
-      (_, index) => tile('hand', index, seat * 14 + index),
+      (_, index) => tile('hand', index, seat * 14 + index, `hand-${seat}-${index}`),
     );
 
     const melds: SnapshotMeld[] = Array.from({ length: meldCount }, (_, index) => {
@@ -157,7 +163,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
       return {
         kind: size === 4 ? 'Kan' : 'Pon',
         tiles: Array.from({ length: size }, (_, slot) =>
-          tile('meld', slot, seat * 14 + index * size + slot, {
+          tile('meld', slot, seat * 14 + index * size + slot, `meld-${seat}-${index}-${slot}`, {
             sideways: slot === 1,
           }),
         ),
@@ -171,7 +177,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
     const highlightSeat = riverCounts[0] > 0 ? 0 : -1;
     const highlightIndex = highlightSeat === 0 ? riverCount - 1 : -1;
     const river: SnapshotTile[] = Array.from({ length: riverCount }, (_, index) =>
-      tile('river', index, seat * 14 + index, {
+      tile('river', index, seat * 14 + index, `river-${seat}-${index}`, {
         sideways: index === 5,
         dimmed: index === 11,
         ...(seat === highlightSeat && index === highlightIndex
@@ -189,7 +195,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
       wind: (['East', 'South', 'West', 'North'] as const)[seat],
       score: 25000,
       concealed,
-      draw: draw ? tile('draw', concealed.length, seat * 14 + 13) : null,
+      draw: draw ? tile('draw', concealed.length, seat * 14 + 13, `draw-${seat}`) : null,
       melds,
       river,
       riichi: declaredRiichi,
@@ -203,7 +209,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
     seats: seats as unknown as TableSnapshot['seats'],
     wall: buildWall(tilesRemaining, humanSeat),
     dora: Array.from({ length: doraCount }, (_, index) =>
-      tile('dora', index, 27 + index),
+      tile('dora', index, 27 + index, `dora-${index}`),
     ),
     compass: {
       roundWind: 'East',
@@ -212,6 +218,7 @@ export function boardFixture(options: FixtureOptions = {}): TableSnapshot {
       riichiSticks,
       tilesRemaining,
     },
+    currentTurn: humanSeat,
     highlightDiscard:
       riverCounts[0] > 0 ? { seat: 0, index: riverCounts[0] - 1 } : null,
     locked: false,

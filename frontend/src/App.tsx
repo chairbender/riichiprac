@@ -46,6 +46,7 @@ import {
   threeViewUnavailableReason,
 } from "./renderers/capabilities";
 import { resolveTableMount } from "./renderers/resolveTableMount";
+import { answeredBoard } from "./renderers/answeredBoard";
 import { snapshotFromGameState, withPreviewRiichi } from "./renderers/snapshot";
 import { exitFullscreenIfActive } from "./fullscreen";
 import {
@@ -145,6 +146,7 @@ export const App = () => {
   const callError = useGameStore((state) => state.callError);
   const callPreview = useGameStore((state) => state.callPreview);
   const submittedAnswer = useGameStore((state) => state.submittedAnswer);
+  const answeredAction = useGameStore((state) => state.answeredAction);
   const dualGrade = useGameStore((state) => state.dualGrade);
   const resetAnswer = useGameStore((state) => state.resetAnswer);
   const peekedBeforeAnswer = useGameStore((state) => state.peekedBeforeAnswer);
@@ -1117,12 +1119,20 @@ export const App = () => {
   const threeSnapshot = useMemo(() => {
     if (!gameState || tableMount.kind !== "three") return null;
     try {
-      const snapshot = snapshotFromGameState(
+      const base = snapshotFromGameState(
         gameState,
         threeRevision,
         submittedAnswer !== null,
       );
-      return previewSticks ? withPreviewRiichi(snapshot) : snapshot;
+      /*
+       * 261121-1206: once answered, the 3D board shows the position the answer
+       * produces, at the same revision and with `transition: 'answered'`, so the
+       * renderer pairs the tiles by uid and animates them into place. This is
+       * presentation only: the store's gameState is untouched, Reset falls back
+       * to `base`, and the 2D views keep drawing the decision position.
+       */
+      const posed = answeredAction ? answeredBoard(base, answeredAction) : base;
+      return previewSticks ? withPreviewRiichi(posed) : posed;
     } catch {
       // A state the adapter refuses to describe is not drawn in 3D; the
       // standard view still renders below, so nothing takes the app down.
@@ -1130,6 +1140,7 @@ export const App = () => {
     }
   }, [
     gameState,
+    answeredAction,
     tableMount.kind,
     threeRevision,
     submittedAnswer,

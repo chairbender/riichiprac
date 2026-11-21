@@ -194,6 +194,7 @@ function snapshot(revision = 1): TableSnapshot {
       riichiSticks: 0,
       tilesRemaining: 70,
     },
+    currentTurn: 0,
     highlightDiscard: null,
     locked: false,
   };

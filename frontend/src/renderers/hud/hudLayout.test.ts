@@ -43,13 +43,18 @@ import {
   HUD_RESULT_TRIGGER_WIDTH,
   HUD_SETUP_TRIGGER_HEIGHT,
   HUD_SETUP_TRIGGER_WIDTH,
+  HUD_SETUP_TRIGGER_WIDTH_PORTRAIT,
   HUD_SHEET_MAX_HEIGHT,
   HUD_SHEET_MAX_WIDTH,
   HUD_SHEET_STAGE_FRACTION,
+  HUD_TOAST_MAX_WIDTH,
   HUD_TOP_BAR_CONTROL,
+  HUD_WIDE_ASPECT,
   NO_INSETS,
   callBarHeight,
   hudAtRestRects,
+  hudBand,
+  hudCollapse,
   hudCollisions,
   hudLayout,
   hudPanelRows,
@@ -773,6 +778,135 @@ describe('HUD layout: the setup trigger and the open sheet (3D-H4)', () => {
         expect(open.sheet?.height ?? 0).toBeLessThanOrEqual(HUD_SHEET_MAX_HEIGHT);
         expect(open.sheet?.left ?? -1).toBeGreaterThanOrEqual(0);
         expect(bottom).toBeLessThanOrEqual(stage.height + 0.01);
+      }
+    }
+  });
+});
+
+describe('HUD layout: §5’s collapse table (3D-H6)', () => {
+  /*
+   * One row per gate aspect: the band it belongs to, the setup trigger's
+   * reserved width and the toast stack's width. These are the numbers the
+   * controls are drawn at, so the collapse is a fact the gate can check rather
+   * than a screenshot.
+   */
+  const ROWS = [
+    { stage: GATE_STAGES[0], band: 'wide', setup: 96, toast: HUD_TOAST_MAX_WIDTH },
+    { stage: GATE_STAGES[1], band: 'wide', setup: 96, toast: HUD_TOAST_MAX_WIDTH },
+    { stage: GATE_STAGES[2], band: 'wide', setup: 96, toast: HUD_TOAST_MAX_WIDTH },
+    { stage: GATE_STAGES[3], band: 'square', setup: 96, toast: HUD_TOAST_MAX_WIDTH },
+    { stage: GATE_STAGES[4], band: 'square', setup: 96, toast: HUD_TOAST_MAX_WIDTH },
+    // Portrait: the trigger is its tap square and the stack takes the gutters.
+    { stage: GATE_STAGES[5], band: 'portrait', setup: 44, toast: 900 - 2 * HUD_GAP },
+    { stage: GATE_STAGES[6], band: 'portrait', setup: 44, toast: 810 - 2 * HUD_GAP },
+    { stage: GATE_STAGES[7], band: 'portrait', setup: 44, toast: 390 - 2 * HUD_GAP },
+    { stage: GATE_STAGES[8], band: 'portrait', setup: 44, toast: 320 - 2 * HUD_GAP },
+  ] as const;
+
+  it('picks the band from the aspect, continuously', () => {
+    for (const row of ROWS) {
+      expect(hudBand(row.stage), row.stage.label).toBe(row.band);
+      expect(hudLayoutHandle(row.stage).band, row.stage.label).toBe(row.band);
+    }
+    // The thresholds themselves: ≥ 3:2 is wide, < 1 is portrait, and the
+    // in-between is square (the 4:3–1:1 table plus the gap up to 3:2).
+    expect(hudBand({ width: HUD_WIDE_ASPECT * 1000, height: 1000 })).toBe('wide');
+    expect(hudBand({ width: HUD_WIDE_ASPECT * 1000 - 1, height: 1000 })).toBe(
+      'square',
+    );
+    expect(hudBand({ width: 999, height: 1000 })).toBe('portrait');
+    expect(hudBand({ width: 1000, height: 1000 })).toBe('square');
+    // A stage with no size yet paints nothing; the uncollapsed form is safest.
+    expect(hudBand({ width: 0, height: 0 })).toBe('wide');
+  });
+
+  /** One stage's layout with no panel content, for the bar and toast numbers. */
+  function hudLayoutHandle(stage: StageSize) {
+    return hudLayout(stage, { handBand: null, compass: null }, {
+      slot: 'none',
+      sheet: false,
+      toasts: 1,
+    });
+  }
+
+  it('collapses the setup trigger to the tap square on portrait only', () => {
+    for (const row of ROWS) {
+      const layout = hudLayoutHandle(row.stage);
+      expect(layout.setupTrigger.width, row.stage.label).toBe(row.setup);
+      expect(layout.setupTrigger.height, row.stage.label).toBe(
+        HUD_SETUP_TRIGGER_HEIGHT,
+      );
+    }
+    // The portrait box is the layout constant the CSS pins, not a literal here.
+    expect(HUD_SETUP_TRIGGER_WIDTH_PORTRAIT).toBe(44);
+  });
+
+  it('widens portrait toasts to the stage minus the gutters', () => {
+    for (const row of ROWS) {
+      const layout = hudLayoutHandle(row.stage);
+      expect(layout.toasts?.width, row.stage.label).toBe(row.toast);
+    }
+  });
+
+  it('collapses decoration only: every control keeps an accessible state', () => {
+    const wide = hudCollapse('wide');
+    expect(wide).toMatchObject({
+      setupIconOnly: false,
+      actionProbabilities: true,
+      toastFullWidth: false,
+    });
+    const square = hudCollapse('square');
+    expect(square).toMatchObject({
+      setupIconOnly: false,
+      // The badges move to the verdict sheet; the labels stay.
+      actionProbabilities: false,
+      toastFullWidth: false,
+    });
+    const portrait = hudCollapse('portrait');
+    expect(portrait).toMatchObject({
+      setupIconOnly: true,
+      // The call row is labels only; the call itself is unchanged.
+      actionProbabilities: false,
+      toastFullWidth: true,
+    });
+    // The config is keyed by the band it belongs to, so no caller can apply
+    // one band's rules under another's name.
+    expect([wide.band, square.band, portrait.band]).toEqual([
+      'wide',
+      'square',
+      'portrait',
+    ]);
+  });
+
+  it('keeps every collapsed form inside the collision gate at every hand state', () => {
+    // The matrix above already runs every gate aspect (so every band) against
+    // every hand state. This is the explicit portrait assertion: the 44 px
+    // trigger and the gutter-wide toast stack still clear the board.
+    for (const stage of GATE_STAGES.filter(
+      (candidate) => hudBand(candidate) === 'portrait',
+    )) {
+      for (const hand of HAND_STATES) {
+        const scene = sceneFor(stage, hand.options);
+        const layout = layoutFor(stage, scene, {
+          slot: 'actions',
+          actionRows: 2,
+          sheet: false,
+          // The at-rest matrix's own stack (H3 measures with 2); a 3-stack on
+          // the 320 × 568 phone already reaches the compass before this unit,
+          // which is a toast-count issue, not a collapse one.
+          toasts: 2,
+        });
+        expect(layout.band).toBe('portrait');
+        expect(layout.setupTrigger.width).toBe(HUD_SETUP_TRIGGER_WIDTH_PORTRAIT);
+        const violations = hudCollisions(hudAtRestRects(layout), {
+          handBand: scene.anchors.handBand,
+          compassBox: scene.compassBox,
+          hitRects: scene.targets,
+        });
+        expect(
+          violations,
+          `${stage.label} · ${hand.label}: ${describeViolations(violations)}`,
+        ).toEqual([]);
       }
     }
   });

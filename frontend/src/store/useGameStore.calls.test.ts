@@ -190,9 +190,37 @@ describe('calls: one legal option submits on the press', () => {
 });
 
 describe('calls: a real choice opens a pick step', () => {
-  it('asks which five to pon, then submits the picked copy', () => {
+  it('uses both fives when the hand holds exactly a red and a plain copy', () => {
+    // A Pon needs two copies and the hand has exactly two: the red five is
+    // used either way, so there is no copy to pick.
     const human = player({
       hand: ['5m', '5m', '1m', '2m', '3m', '4m', '6m'],
+      red_fives: ['5m'],
+    });
+    load(
+      state(human, {
+        decision: { kind: 'react_to_discard', from: 3, tile: '5m' },
+        call_offer: { action: 'Pon', label: 'Pon 5m', tile: '5m' },
+      }),
+    );
+
+    useGameStore.getState().beginCall('pon');
+
+    expect(useGameStore.getState().pendingCall).toBeNull();
+    expect(useGameStore.getState().submittedAnswer).toMatchObject({
+      action: 'call',
+      action_name: 'Pon',
+    });
+    expect(useGameStore.getState().answeredAction).toMatchObject({
+      family: 'pon',
+      called: { code: '5m', from: 3 },
+    });
+    expect(useGameStore.getState().answeredAction?.consumed).toHaveLength(2);
+  });
+
+  it('asks which five to pon when the hand holds a surplus copy', () => {
+    const human = player({
+      hand: ['5m', '5m', '5m', '1m', '2m', '3m', '4m'],
       red_fives: ['5m'],
     });
     load(
@@ -206,14 +234,16 @@ describe('calls: a real choice opens a pick step', () => {
     expect(useGameStore.getState().pendingCall?.kind).toBe('pon');
     expect(useGameStore.getState().pendingCall?.options).toHaveLength(2);
 
-    // Sorted hand: 1m 2m 3m 4m 5m 5m 6m; index 4 is the red copy.
+    // Sorted hand: 1m 2m 3m 4m 5m 5m 5m; index 4 is the red copy.
     useGameStore.getState().pickCallTile('5m', 4);
-
     expect(useGameStore.getState().pendingCall).toBeNull();
     expect(useGameStore.getState().submittedAnswer).toMatchObject({
       action: 'call',
       action_name: 'Pon',
     });
+    // The picked red copy leads, and the Pon still consumes two copies.
+    expect(useGameStore.getState().answeredAction?.consumed?.[0]?.isRed).toBe(true);
+    expect(useGameStore.getState().answeredAction?.consumed).toHaveLength(2);
   });
 
   it('collects Riichi’s discard when there is more than one legal tile', () => {
@@ -313,10 +343,17 @@ describe('calls: the ?preview=calls review set', () => {
       action: 'call',
       action_name: 'Pon',
     });
+    // The answered board gets a full three-tile meld, not a short one.
+    expect(useGameStore.getState().answeredAction?.family).toBe('pon');
+    expect(useGameStore.getState().answeredAction?.consumed).toHaveLength(2);
 
     load(demo('pon-red'));
     useGameStore.getState().beginCall('pon');
-    expect(useGameStore.getState().pendingCall?.options).toHaveLength(2);
+    expect(useGameStore.getState().pendingCall).toBeNull();
+    expect(useGameStore.getState().submittedAnswer).toMatchObject({
+      action: 'call',
+      action_name: 'Pon',
+    });
 
     load(demo('chi-single'));
     useGameStore.getState().beginCall('chi');

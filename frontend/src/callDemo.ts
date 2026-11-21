@@ -325,7 +325,7 @@ function demos(): CallDemoCase[] {
 
   return [
     { id: 'pon-single', title: 'Pon, one copy (press completes it)', state: ponSingle },
-    { id: 'pon-red', title: 'Pon 5m with a red five (choose the copy)', state: ponRed },
+    { id: 'pon-red', title: 'Pon 5m with a red five (both copies are used)', state: ponRed },
     { id: 'chi-single', title: 'Chi, one run (press completes it)', state: chiSingle },
     { id: 'chi-multi', title: 'Chi, three runs (pick two; toggle/roll)', state: chiMulti },
     { id: 'kan-single', title: 'Self-turn Kan, four copies (press completes it)', state: kanSingle },

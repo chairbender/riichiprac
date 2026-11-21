@@ -345,6 +345,36 @@ describe('3D board layout: melds', () => {
     );
   });
 
+  it('turns a concealed kan’s outer tiles face down, showing the middle two', () => {
+    const base = boardFixture({ meldCounts: [1, 0, 0, 0], kan: true });
+    const seats = base.seats.map((seat) =>
+      seat.seat !== 0
+        ? seat
+        : {
+            ...seat,
+            melds: seat.melds.map((meld) => ({
+              ...meld,
+              kind: 'Ankan' as const,
+              calledFrom: null,
+              tiles: meld.tiles.map((tile, index) => ({
+                ...tile,
+                sideways: false,
+                faceUp: index > 0 && index < meld.tiles.length - 1,
+              })),
+            })),
+          },
+    ) as unknown as TableSnapshot['seats'];
+    const ankan = layoutBoard({ ...base, seats });
+
+    const meld = ankan.foreground
+      .filter((tile) => tile.seat === 0 && tile.zone === 'meld')
+      .sort((left, right) => left.slot - right.slot);
+    expect(meld.map((tile) => tile.faceUp)).toEqual([false, true, true, false]);
+    // A face-down lying tile is turned right over (tilt +90) so its blue back
+    // is what faces up; the two middle tiles lie face up as usual.
+    expect(meld.map((tile) => tile.pose.tiltDeg)).toEqual([90, -90, -90, 90]);
+  });
+
   it('shifts the concealed hand left as melds take the row’s right end', () => {
     const melded = layoutBoard(boardFixture({ meldCounts: [1, 0, 0, 0] }));
     const plain = layoutBoard(boardFixture({ meldCounts: [0, 0, 0, 0] }));

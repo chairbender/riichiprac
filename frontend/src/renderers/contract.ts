@@ -44,6 +44,15 @@ export interface SnapshotTile {
   readonly face: TileFaceId;
   readonly zone: Zone;
   /**
+   * Stable identity of this physical tile across snapshots (261121-1206).
+   *
+   * The answered transition re-presents the same position after an answer, so
+   * the renderer pairs an old and a new pose by this key and animates between
+   * them instead of cutting. The adapter fills it in; a hand-authored fixture
+   * may omit it, in which case the layout falls back to its position-derived id.
+   */
+  readonly uid?: string;
+  /**
    * Zone-local index: hand slot, the draw's hand slot, river cell (oldest
    * first), position within its own meld, or wall slot
    * (`run * WALL.slotsPerRun + stack * WALL.tiers + tier`; see
@@ -110,6 +119,8 @@ export interface TableSnapshot {
   /**
    * Incremented by the host on every new `GameState`. A new revision is a cut,
    * never a move: the renderer must not animate a diff between two positions.
+   * The one exception is `transition: 'answered'` (261121-1206), which re-presents
+   * the same position at the same revision and pairs tiles by `uid`.
    */
   readonly revision: number;
   readonly humanSeat: Seat;
@@ -145,6 +156,26 @@ export interface TableSnapshot {
     readonly riichiSticks: number;
     readonly tilesRemaining: number;
   };
+  /**
+   * The seat to act next, as the board stands (261121-1206).
+   *
+   * The answered transition advances it (a discard passes play to the next
+   * seat; a call leaves the caller to discard), so the snapshot is the position
+   * after the action rather than only a picture of the decision. Nothing on the
+   * 3D stage draws it yet; it is carried so the answered board is a complete
+   * table fact and can be asserted.
+   */
+  readonly currentTurn: Seat;
+  /**
+   * `answered`: this snapshot is the same position after the player's answer,
+   * with every tile that did not move keeping its `uid` (261121-1206).
+   *
+   * It is the one exception to the cut rule: the renderer pairs the previous
+   * layout's poses with this one and animates each changed tile along a bounded
+   * flight. Absent means a new revision is a cut (and a same-revision update
+   * only changes flags), exactly as before.
+   */
+  readonly transition?: 'answered';
   readonly highlightDiscard: HighlightDiscard | null;
   /** True once the hand is answered: input is locked in every view. */
   readonly locked: boolean;

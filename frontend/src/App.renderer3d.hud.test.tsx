@@ -102,6 +102,7 @@ vi.mock('./renderers/RendererHost', () => ({
 import { App } from './App';
 import { useGameStore } from './store/useGameStore';
 import { clearHudAnchors, publishHudAnchors } from './renderers/hud/hudAnchors';
+import type { TableSnapshot } from './renderers/contract';
 import type { GameState, PlayerState } from './types/game';
 
 const scenariosDir = join(process.cwd(), 'public', 'scenarios');
@@ -690,6 +691,51 @@ describe('App 3D result card and verdict sheet (3D-H5)', () => {
 
   afterEach(() => {
     clearHudAnchors(ANCHOR_OWNER);
+  });
+
+  it('shows the answered board and returns to it on reset', async () => {
+    wasmMock.gradedJson = JSON.stringify(GRADE);
+    const state = callState({
+      category: 'nani_kiru',
+      target_action: 'NaniKiru',
+      correct_action: { type: 'dama', discard: '9p' },
+      call_offer: null,
+      decision: { kind: 'self_turn' },
+      current_turn: 0,
+    });
+    renderThree(state);
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+
+    const before = hostMock.props?.snapshot as TableSnapshot;
+    expect(before.seats[0].river).toHaveLength(0);
+    expect(before.seats[0].draw).not.toBeNull();
+    expect(before.transition).toBeUndefined();
+
+    await act(async () => {
+      useGameStore
+        .getState()
+        .submitAnswer({ action: 'dama', tile: '9p', is_tsumogiri: true });
+    });
+
+    // 261121-1206: the board is the position after the answer, not the frozen
+    // decision position behind the result card.
+    const after = hostMock.props?.snapshot as TableSnapshot;
+    expect(after.transition).toBe('answered');
+    expect(after.locked).toBe(true);
+    expect(after.seats[0].draw).toBeNull();
+    expect(after.seats[0].river).toHaveLength(1);
+    expect(after.seats[0].river[0]).toMatchObject({ face: '9p', dimmed: true });
+    expect(after.currentTurn).toBe(1);
+
+    // Reset returns to the pre-answer board at the same revision.
+    await act(async () => {
+      useGameStore.getState().resetAnswer();
+    });
+    const reset = hostMock.props?.snapshot as TableSnapshot;
+    expect(reset.transition).toBeUndefined();
+    expect(reset.seats[0].river).toHaveLength(0);
+    expect(reset.seats[0].draw).not.toBeNull();
+    expect(reset.currentTurn).toBe(0);
   });
 
   it('answers into a compact card, and only Details opens the sheet', async () => {

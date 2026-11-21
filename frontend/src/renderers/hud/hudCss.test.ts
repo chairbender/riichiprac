@@ -18,7 +18,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { HUD_SETUP_TRIGGER_WIDTH, HUD_TOP_BAR_BRAND, HUD_TOP_BAR_BRAND_GAP } from './hudLayout';
+import {
+  HUD_SETUP_TRIGGER_WIDTH,
+  HUD_SETUP_TRIGGER_WIDTH_PORTRAIT,
+  HUD_TOP_BAR_BRAND,
+  HUD_TOP_BAR_BRAND_GAP,
+} from './hudLayout';
 
 const TOKENS = readFileSync(
   fileURLToPath(new URL('./tokens.css', import.meta.url)),
@@ -246,6 +251,36 @@ describe('HUD stylesheet: the committed visual tokens (3d_hud.md §8)', () => {
     expect(setupDecls.get('min-width')).toBe(`${HUD_SETUP_TRIGGER_WIDTH}px`);
     expect(setupDecls.get('min-height')).toBe('var(--hud-tap)');
     expect(setupDecls.get('box-sizing')).toBe('border-box');
+  });
+
+  it('pins the collapsed setup trigger to the portrait layout number (3D-H6)', () => {
+    // §5's portrait band turns the trigger into its tap square. The layout's
+    // number and the painted `min-width` must be the same box, exactly like the
+    // 96 px wide form above.
+    const [collapsed] = blocksFor(
+      HUD,
+      ".hud-root[data-band='portrait'] .hud-top-bar__setup",
+    );
+    expect(collapsed, 'the portrait setup rule must exist').toBeDefined();
+    const collapsedDecls = declarations(collapsed.body);
+    expect(collapsedDecls.get('min-width')).toBe(
+      `${HUD_SETUP_TRIGGER_WIDTH_PORTRAIT}px`,
+    );
+    // 20 px icon + 2 x 10 px padding + 2 x 1 px border = the 44 px box.
+    expect(collapsedDecls.get('padding-left')).toBe('10px');
+    expect(collapsedDecls.get('padding-right')).toBe('10px');
+
+    // The icon is decoration: hidden everywhere except portrait, so the wide
+    // bar is the accepted label-only control.
+    const [icon] = blocksFor(HUD, '.hud-top-bar__setup-icon');
+    expect(icon).toBeDefined();
+    expect(declarations(icon.body).get('display')).toBe('none');
+    const [portraitIcon] = blocksFor(
+      HUD,
+      ".hud-root[data-band='portrait'] .hud-top-bar__setup-icon",
+    );
+    expect(portraitIcon).toBeDefined();
+    expect(declarations(portraitIcon.body).get('display')).toBe('block');
   });
 
   it('reads the safe-area insets in exactly one probe, with no layout impact', () => {    const [probe] = blocksFor(HUD, '.hud-inset-probe');

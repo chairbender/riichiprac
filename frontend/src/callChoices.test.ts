@@ -216,12 +216,33 @@ describe('pon and kan options', () => {
     expect(callOptionsFor(offer, hand, BOOK, 'pon')).toHaveLength(1);
   });
 
-  it('asks which five to pon when the hand holds a red and a plain copy', () => {
+  it('uses both copies of a red+plain five without asking, because the Pon needs them both', () => {
     const offer = state({
       decision: { kind: 'react_to_discard', from: 3, tile: '5m' },
       call_offer: { action: 'Pon', label: 'Pon 5m', tile: '5m' },
     });
     const hand = player({ hand: ['5m', '5m', '1m', '2m', '3m', '4m', '6m'], red_fives: ['5m'] });
+
+    const options = callOptionsFor(offer, hand, BOOK, 'pon');
+
+    expect(options).toHaveLength(1);
+    expect(options[0].handTiles).toHaveLength(2);
+    expect(options[0].handTiles.map((copy) => copy.isRed).sort()).toEqual([
+      false,
+      true,
+    ]);
+  });
+
+  it('still asks which five to pon when the hand has a surplus copy', () => {
+    // Three fives for a two-tile Pon: the red one can be kept or used.
+    const offer = state({
+      decision: { kind: 'react_to_discard', from: 3, tile: '5m' },
+      call_offer: { action: 'Pon', label: 'Pon 5m', tile: '5m' },
+    });
+    const hand = player({
+      hand: ['5m', '5m', '5m', '1m', '2m', '3m', '4m'],
+      red_fives: ['5m'],
+    });
 
     const options = callOptionsFor(offer, hand, BOOK, 'pon');
 

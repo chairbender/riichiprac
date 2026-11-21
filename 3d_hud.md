@@ -547,9 +547,9 @@ The collision gate checks whichever anchor was chosen.
 | portrait (< 1) | up to two rows; labels only; below the hand on phones | Next labelled, setup icon-only | full width minus gutters |
 | 21:9 | as wide; right-aligned to the hand | unchanged | unchanged |
 
-Collapse never removes a control, only its decoration: probabilities,
-wordmark and the setup label are the only things that disappear. A control that
-would lose its accessible name keeps a visually-hidden one.
+Collapse never removes a control, only its decoration: probabilities and the
+setup label are the only things that disappear. A control that would lose its
+accessible name keeps a visually-hidden one.
 
 ### Sheet geometry, stated once
 
@@ -1190,9 +1190,9 @@ trigger. This is what remains for 3D-15/16 and what the chain may build on.
   container), not an absolutely positioned popover clipped by it. The
   sheet's own sections are exempt from the collision set (§7.6); their bottom is
   still bounded by the collapsed 40 px panel, which the matrix asserts at every
-  aspect. The top bar keeps its labels at every aspect: §5's portrait icon-only
-  collapse is not implemented in H2–H4, so the trigger's 96 px is its box at
-  every size.
+  aspect. The top bar kept its labels at every aspect when H4 landed; §5's
+  portrait icon-only collapse arrived with the table below (2026-11-20) and
+  supersedes that sentence.
 - **Not done here.** 3D-15 runs the stress-fixture matrix and the handoff
   screenshots; 3D-16 records the chain.
 - **User verdict (2026-11-20): accepted.** The user reviewed the running dev
@@ -1202,6 +1202,58 @@ trigger. This is what remains for 3D-15/16 and what the chain may build on.
   ("this task looks good now"). The brand line (added at the same time, 78 px
   bar) is part of that accepted composition. The numbers above are the scripted
   checks; the look was the user's call.
+
+### As built: §5's collapse table (2026-11-20, task 261120-1652)
+
+The "What collapses, and when" table is now implemented as one aspect band per
+stage. This is what a later unit builds on:
+
+- **One band, one threshold set.** `hudBand(stage)` in `hudLayout.ts` derives
+  `wide` (`≥ 3:2`), `square` (`≥ 1 < 3:2`, which contains the table's 4:3 – 1:1
+  rows and the narrow gap up to 3:2) or `portrait` (`< 1`) from the live stage
+  size. `hudCollapse(band)` is the table as data: the setup label's form, the
+  rail's probability badges, and whether the toast stack takes the gutters.
+  `hudLayout()` returns the band and uses it for the two rects that change size.
+  `HudLayer` publishes the band on the root (`data-band`) and through
+  `hud/hudBand.ts`'s context, so the controls `App` builds read the same answer
+  and no component re-derives the aspect.
+- **Portrait: setup is an icon button.** The trigger's reserved box becomes
+  `HUD_SETUP_TRIGGER_WIDTH_PORTRAIT` (`44 px`, the tap square, pinned by the
+  portrait rule in `Hud.css`). The visible label moves behind
+  `.hud-visually-hidden`, the button keeps `aria-label="Setup"` and
+  `aria-haspopup="dialog"`, and a sliders glyph is drawn (`aria-hidden`). The
+  collision matrix runs every hand state at 3:4, 9:16 and both phone rows with
+  the collapsed rect.
+- **Square and portrait: the rail loses its probability badges.** `ActionBar`
+  and `CallControls` gained an optional `showProbability` prop (default `true`,
+  so the 2D dock is unchanged). Both bands hide the badges; every call keeps its
+  label, disabled rule, accessible name and pick flow. The verdict sheet still
+  carries the numbers.
+- **The table's chip and hint rows are moot.** The 2026-11-21 call-row change
+  removed the over-hand panel, the hint line, the Mortal chip and the rail's
+  ON/OFF words, so there is no chip wording or toggle state left to collapse;
+  the pre-answer row is the call bar alone. "Up to two rows" is that row's
+  existing wrap measurement (`44`/`92` px), not a new layout path.
+- **Toasts.** `portrait` takes the stage minus the 8 px gutters; every other
+  band stays capped at `32rem`. The two-line clamp is unchanged (wide's row in
+  the table; the other bands inherit the two lines).
+- **Reading of the square top bar.** The table's square cell says "Next
+  labelled, icons"; only the setup label is a decoration §5 permits to
+  disappear, and the follow-up names portrait as the icon-only band. Square
+  therefore keeps the labelled 96 px trigger; portrait is the one top-bar
+  collapse. If the square bar should collapse too, it is one line in
+  `hudCollapse()` plus its band's number in `hudLayout.test.ts`.
+- **Gates.** `hudLayout.test.ts` adds the per-aspect band, trigger width and
+  toast width, and a portrait × six-hand × two-row matrix; `hudCss.test.ts`
+  pins the portrait `min-width` to the layout constant and the icon's
+  hidden/shown rules; `ActionRail`, `SetupSheet` and `HudLayer` tests drive the
+  context through the real components.
+- **Composition handoff (AGENTS.md §6): pending the user's verdict.** Run
+  `cd frontend && npm run dev` and open `http://localhost:5173/?renderer=3d`,
+  then narrow the window below square (or use a phone emulation, 390 × 844) and
+  look at the top bar's icon trigger and the call row without probability
+  badges. The numbers above are the scripted checks; the look is the user's
+  call.
 
 ---
 
