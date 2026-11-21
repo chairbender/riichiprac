@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import {
   MAX_MANIFEST_BYTES,
+  PACKS_DIRECTORY,
   PACK_MANIFEST_SCHEMA,
   PACK_SCHEMA,
   PACK_SCHEMA_VERSION,
@@ -202,7 +203,11 @@ const ch8CompletionBody = new Uint8Array(
 
 describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
-    expect(packManifestUrl()).toBe('/scenarios/manifest.json');
+    // Base-aware: the deployed site serves under `/riichiprac/`, so the URL is
+    // whatever `import.meta.env.BASE_URL` says. Asserting a literal `/` path
+    // passed locally and failed in CI, where the base is the Pages subpath.
+    expect(packManifestUrl()).toBe(`${PACKS_DIRECTORY}manifest.json`);
+    expect(PACKS_DIRECTORY.startsWith(import.meta.env.BASE_URL)).toBe(true);
     expect(fixtureManifest.packs).toHaveLength(7);
     expect(fixtureManifest.packs.map((pack) => pack.id).sort()).toEqual([
       'replay.ch34-shapes.2026-11',
@@ -423,7 +428,7 @@ describe('committed pack', () => {
       fetchImpl,
     });
 
-    expect(fetched).toEqual([`/scenarios/${fixtureEntry.path}`]);
+    expect(fetched).toEqual([`${PACKS_DIRECTORY}${fixtureEntry.path}`]);
     expect(loaded.fromCache).toBe(false);
     expect(loaded.pack.schema).toBe(PACK_SCHEMA);
     expect(loaded.pack.pack_id).toBe(fixtureEntry.id);
@@ -554,7 +559,7 @@ describe('fetchPackManifest', () => {
   it('reads the same-origin manifest', async () => {
     const fetchImpl = vi.fn(async () => bodyResponse(new TextEncoder().encode(manifestText([okEntry()])), { contentType: 'application/json' }));
     const manifest = await fetchPackManifest(fetchImpl);
-    expect(fetchImpl).toHaveBeenCalledWith('/scenarios/manifest.json');
+    expect(fetchImpl).toHaveBeenCalledWith(`${PACKS_DIRECTORY}manifest.json`);
     expect(manifest.packs).toHaveLength(1);
   });
 
@@ -666,14 +671,14 @@ describe('loadPack integrity', () => {
       fetchImpl: async (input) => {
         const url = String(input);
         seen.push(url);
-        return url.startsWith('/scenarios/')
+        return url.startsWith(PACKS_DIRECTORY)
           ? bodyResponse(new Uint8Array(), { status: 404 })
           : bodyResponse(body);
       },
     });
 
     expect(seen).toEqual([
-      `/scenarios/${entry.path}`,
+      `${PACKS_DIRECTORY}${entry.path}`,
       `https://mirror.example/scenarios/${entry.path}`,
     ]);
     expect(loaded.pack.pack_id).toBe(entry.id);
@@ -707,9 +712,11 @@ describe('loadPack integrity', () => {
 describe('packBodyUrls', () => {
   it('tries same-origin first and adds the mirror once', () => {
     const entry = okEntry();
-    expect(packBodyUrls(entry, undefined)).toEqual([`/scenarios/${entry.path}`]);
+    expect(packBodyUrls(entry, undefined)).toEqual([
+      `${PACKS_DIRECTORY}${entry.path}`,
+    ]);
     expect(packBodyUrls(entry, 'https://mirror.example/scenarios')).toEqual([
-      `/scenarios/${entry.path}`,
+      `${PACKS_DIRECTORY}${entry.path}`,
       `https://mirror.example/scenarios/${entry.path}`,
     ]);
     expect(packBodyUrls(entry, 'https://mirror.example/scenarios/')).toHaveLength(2);

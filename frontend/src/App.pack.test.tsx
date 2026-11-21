@@ -6,6 +6,7 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PACKS_DIRECTORY } from './services/packLoader';
 
 /**
  * End-to-end loader tests for the replay-first launch (RF2–RF4).
@@ -168,8 +169,11 @@ const manifestText = JSON.stringify({
   ],
 });
 
-const PACK_BODY_URL = `/scenarios/${PACK_PATH}`;
-const manifestUrl = '/scenarios/manifest.json';
+// Base-aware (the deployed site serves under `/riichiprac/`): a literal
+// `/scenarios/...` passed locally and failed in CI, where the base is the Pages
+// subpath.
+const PACK_BODY_URL = `${PACKS_DIRECTORY}${PACK_PATH}`;
+const manifestUrl = `${PACKS_DIRECTORY}manifest.json`;
 
 /** Count the pack bodies a test's fetch stub served. */
 function bodyCalls(calls: string[]): string[] {

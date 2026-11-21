@@ -56,10 +56,17 @@ jobs:
       # timing out, add `--no-opt` to the wasm-pack command below and record the
       # reason in hosting-plan.md ("MIME / wasm-opt conclusions"). Do not disable
       # it silently: the optimized module is what ships to browsers.
+      # Pinned, not `latest`: the action resolves `latest` through the GitHub
+      # API and silently falls back to its bundled 0.9.1 default when that call
+      # fails. 0.9.1 ships an old binaryen whose `wasm-opt` cannot parse the
+      # module current rustc emits (`Only 1 table definition allowed in MVP`),
+      # which broke this job intermittently while `deploy` (same command, same
+      # action, but it happened to resolve 0.15.1) kept passing. 0.15.1 ships
+      # binaryen 130 and optimizes the module cleanly.
       - name: Install wasm-pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
-          version: latest
+          version: v0.15.1
 
       # The frontend imports the freshly built ./pkg via `file:../pkg`, so this
       # must run from the repo root before `npm ci` in frontend/.
