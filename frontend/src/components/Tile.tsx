@@ -39,6 +39,7 @@ import {
   RegularHatsuM,
   RegularChunM,
   RegularBlankM,
+  RegularBackM,
 } from 'riichi-mahjong-tiles';
 
 type TileSvg = ComponentType<SVGProps<SVGSVGElement>>;
@@ -111,6 +112,29 @@ export function Tile({ code, className, isRedFive = false }: TileProps) {
       className={className}
       role="img"
       aria-label={label}
+      focusable="false"
+    />
+  );
+}
+
+interface TileBackProps {
+  className?: string;
+}
+
+/**
+ * A face-down tile: the package's merged regular back, so it has the same
+ * 300 × 400 body as `Tile`'s merged faces and sits in the same footprint.
+ *
+ * Only the places that conceal a tile use it — a closed kan's two outer tiles
+ * in the meld list. The hand, river and wall drawing is unchanged, and the
+ * label says the tile is face down rather than naming a face it does not show.
+ */
+export function TileBack({ className }: TileBackProps) {
+  return (
+    <RegularBackM
+      className={className}
+      role="img"
+      aria-label="face-down tile"
       focusable="false"
     />
   );
