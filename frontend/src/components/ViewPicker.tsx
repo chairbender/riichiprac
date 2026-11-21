@@ -43,12 +43,12 @@ export function ViewPicker({
   const rendered3dDisabled = threeUnavailableReason !== null;
 
   return (
-    <label className="app-toggle app-view-picker" title={hint}>
+    <label className="app-toggle app-view-picker" title={hint || undefined}>
       <span>View</span>
       <select
         className="app-view-select"
         value={tableView}
-        aria-describedby={describedBy}
+        aria-describedby={hint ? describedBy : undefined}
         onChange={onViewChange}
       >
         <option value="stacked">Stacked</option>

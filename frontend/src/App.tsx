@@ -1150,13 +1150,17 @@ export const App = () => {
 
   const agreementHint =
     aiStatus === "ready"
-      ? "Deal book-graded hands only when the embedded Mortal model plays the book answer. AI drills have no book answer, so they are dealt as usual and graded by Mortal alone. Each agreeing hand may need several forward passes."
+      ? "Deal book-graded hands only when the embedded Mortal model plays the book answer."
       : aiStatus === "error"
         ? "Mortal is unavailable, so this filter cannot run."
         : "Waiting for the Mortal model to load…";
 
-  const viewHint =
-    "How to draw the table. 3D is the full-window table and the default; stacked is the mobile-first four-row layout and top-down is the flat plan view. Switching redraws the same hand; leaving the 3D view also leaves full screen.";
+  /*
+   * No view explanation (user request 2026-11-22): the choice names itself, and
+   * the paragraphs about how each view draws the table were noise in both
+   * shells. The control keeps its label and its own option names.
+   */
+  const viewHint = "";
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)

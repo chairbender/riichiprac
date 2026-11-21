@@ -227,10 +227,6 @@ export function SetupSheet({
             Change ▸
           </span>
         </button>
-        <p className="hud-setup-hint">
-          Pick one lesson, a whole book section, or any mix to randomise
-          between. The AI Hotseat is set up from its own row.
-        </p>
       </section>
 
       <section
@@ -261,9 +257,11 @@ export function SetupSheet({
             rendered3dExposed={rendered3dExposed}
             threeUnavailableReason={threeUnavailableReason}
           />
-          <p className="hud-setup-hint" id={viewHintId}>
-            {viewHint}
-          </p>
+          {viewHint ? (
+            <p className="hud-setup-hint" id={viewHintId}>
+              {viewHint}
+            </p>
+          ) : null}
         </div>
       </section>
 
