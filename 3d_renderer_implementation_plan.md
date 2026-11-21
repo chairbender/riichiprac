@@ -335,6 +335,19 @@ The base snapshot remains the only picture of a position. The answered board is
 a derived view of it, never a state the app can answer twice or export by
 accident.
 
+**Landed: 261121-1206 (2026-11-21).** The answered board is in for discards,
+Riichi, Chi, Pon, open/added/closed kan and pass, with the bounded move
+(`ANSWER_MOVE_MS` 340 ms) and an instant cut under reduced motion. Follow-up
+fixes from the review pass: a Pon/Kan now expands the pick step's one copy to
+the copies it actually consumes (the missing animation), a red+plain Pon no
+longer asks a choice that does not exist, and a closed kan lays its two outer
+tiles face down (physically flipped, so the blue back faces up; the layout gate
+pins the tilts). The review set `?preview=calls` covers pon/chi/kan and the
+drill. **User visual verdict, 2026-11-21: "These are looking awesome."** Gates
+at landing: the full frontend suite (1541 tests), `tsc`, ESLint, `npm run build`
+and `check-3d-layout.mjs` all green. The 2D `MeldList` still draws ankan faces
+(no back asset there); that is outside this 3D task.
+
 ### 2.4 Camera and layout source
 
 The world-space layout already exists, user-signed-off, in
