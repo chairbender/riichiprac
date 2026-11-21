@@ -576,12 +576,15 @@ function meldRadius(handRadiusUnits: number, isHuman: boolean): number {
  * right end while the concealed hand and the draw slide left (the player's left).
  * Additional melds extend the line toward the hand, never into a second row, and
  * the whole assembly stays inside the board's existing world extents.
+ * `cornerShiftUnits` moves the meld line alone further right, for the near/far
+ * rows whose corners have viewport room; it is zero on the side rows.
  */
 function placeSeatRow(
   seatState: TableSnapshot['seats'][number],
   seat: Seat,
   radius: number,
   isHuman: boolean,
+  cornerShiftUnits: number,
 ): BoardTile[] {
   const melds = seatState.melds;
   const handWidth = seatState.concealed.length * HAND.pitchUnits;
@@ -629,9 +632,15 @@ function placeSeatRow(
   }
 
   // The melds fill the line's right end, starting after the draw with the
-  // committed 4.2 mm clearance and separated from each other by 2.8 mm.
+  // committed clearance plus the player's corner shift, and separated from each
+  // other by 2.8 mm. The hand and draw stay put: only the meld line moves right.
   let cursor =
-    left + handWidth + drawWidth + (melds.length > 0 ? MELD.rowClearanceUnits : 0);
+    left +
+    handWidth +
+    drawWidth +
+    (melds.length > 0
+      ? MELD.rowClearanceUnits + cornerShiftUnits
+      : 0);
   melds.forEach((meld, meldIndex) => {
     if (meldIndex > 0) cursor += MELD.meldGapUnits;
     for (const tile of meld.tiles) {
@@ -804,10 +813,23 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
     const seat = seatState.seat;
     const radius = handRadius(seat, humanSeat);
 
-    // Hand, draw and melds are one right-aligned line: a meld takes the row's
-    // right end and slides the concealed hand left, so the row never grows past
-    // the meld-free hand's footprint.
-    tiles.push(...placeSeatRow(seatState, seat, radius, seat === humanSeat));
+    // Hand, draw and melds are one line: a meld takes the row's right end and
+    // slides the concealed hand left. A near/far row that faces an inset end
+    // run has viewport room toward its corner, so its meld line starts a little
+    // further right. The side rows are already against their vertical screen
+    // edges, and a near/far row on the side radius has no inset wall behind it
+    // to make room; both keep the minimum clearance.
+    const horizontalRow = Math.abs(seatBasis(seat).right[0]) > 0.5;
+    const hasCornerRoom = horizontalRow && radius === HAND.endSeatRadiusUnits;
+    tiles.push(
+      ...placeSeatRow(
+        seatState,
+        seat,
+        radius,
+        seat === humanSeat,
+        hasCornerRoom ? MELD.rowShiftUnits : 0,
+      ),
+    );
 
     for (const pondRow of pondRows(seatState.river)) {
       const u = POND.rowRadiiUnits[pondRow.row];

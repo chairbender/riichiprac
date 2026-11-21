@@ -149,7 +149,8 @@ export function MeldPreview() {
         <p className="meld-preview__note">
           melds {options.meldCounts.join('/')} ·{' '}
           {options.kan ? 'each first meld is a kan' : 'no kans'} · human{' '}
-          {SEAT_LABELS[options.humanSeat]}
+          {SEAT_LABELS[options.humanSeat]} · bottom/top melds sit two tile widths
+          toward their corner
         </p>
       </aside>
     </div>

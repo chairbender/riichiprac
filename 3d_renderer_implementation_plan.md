@@ -499,6 +499,18 @@ because the rotation is the part that is easy to get wrong.
   (1.4 units for four pons, 2.2 with a kan); splitting that growth means the
   melds take the row's right end, the concealed hand slides left, and neither end
   has to absorb the whole extra span.
+- On the **bottom and top rows** — the ones facing an inset end run — the meld
+  line starts a further `MELD.rowShiftUnits` toward that player's corner
+  (2026-11-21 request: the bottom-right corner had about two tile widths of
+  unused viewport space). The shift is two tile widths along the row (1.5 units,
+  42 mm) and moves only the meld line; the concealed hand stays where it was, so
+  the felt between the draw and the first meld is a deliberate 46 mm. The
+  left/right rows keep the minimum clearance: they run down the screen edges with
+  only about one tile width to the safe area, and moving their flat melds would
+  make them the board's near/far extreme and pull the camera back. The gate's
+  framing table is unchanged by the shift (16:9 is still identical, worst other
+  aspect 1.80 %), because the end rows move along the screen's horizontal axis,
+  inside the side hands' existing extent.
 - The reclined human hand's melds sit **one tile height in** from the hand radius,
   so the flat meld's outer-bottom edge is flush with the hand's front face. A
   lying meld is flat and its lowest projected point is that outer edge; without

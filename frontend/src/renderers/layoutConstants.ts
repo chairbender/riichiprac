@@ -475,6 +475,9 @@ export const HAND = {
  * melds extend the line toward the hand instead of starting a second row. The
  * row's small extra width (a meld replaces three concealed tiles) is split
  * either side of that edge so neither end leaves the board's existing extents.
+ * On the bottom/top rows the meld line then starts a further {@link
+ * MELD.rowShiftUnits} toward that player's corner (2026-11-21); the hand stays
+ * where it is, so the felt between the draw and the first meld is wider there.
  *
  * That is what keeps the camera still. A side player's line runs along their own
  * edge on screen; before this rule the row grew past the hand's end and became
@@ -506,6 +509,21 @@ export const MELD = {
   rowClearanceUnits: MELD_ROW_CLEARANCE_UNITS,
   /** The felt between two melds in the line: 2.8 mm. */
   meldGapUnits: MELD_GAP_UNITS,
+  /**
+   * How far a **near/far row's** meld line starts further to the player's right
+   * than the draw's minimum clearance (user request 2026-11-21: the melds can
+   * start "about 2 tile-lengths" further right, toward the viewport corner).
+   *
+   * Two tile widths along the row (1.5 units, 42 mm). Only the bottom and top
+   * rows — the ones that face an inset end run — use it: they have screen room
+   * toward their corners (about 340 px at 16:9), and a flat meld moved along
+   * that row never leaves the board's existing x extent. The left/right rows run
+   * down the screen edges and have only about one tile width of room; moving
+   * them would make their flat meld the board's near/far extreme and pull the
+   * camera back, so they keep the minimum clearance. The concealed hand does not
+   * move with the line in either case.
+   */
+  rowShiftUnits: 2 * TILE.widthUnits,
 } as const;
 
 /**

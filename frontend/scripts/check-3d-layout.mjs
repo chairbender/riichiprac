@@ -208,7 +208,7 @@ async function main() {
     ['hand recline / band / face-to-view max', `${C.HAND.reclineDeg}° / ${C.HAND.reclineBandDeg.join('–')}° / ${C.HAND.maxFaceToViewDeg}°`],
     ['drawn tile offset / tsumogiri gap', `${formatNumber(C.HAND.drawOffsetUnits, 6)} / ${formatNumber(C.HAND.drawGapUnits, 4)}`],
     ['meld line clearance / meld gap / slot gap', `${formatNumber(C.MELD.rowClearanceUnits, 4)} / ${formatNumber(C.MELD.meldGapUnits, 4)} / ${C.MELD.slotGapUnits}`],
-    ['meld upright / sideways pitch', `${formatNumber(C.MELD.uprightPitchUnits, 6)} / ${formatNumber(C.MELD.sidewaysPitchUnits, 6)}`],
+    ['meld corner shift / upright / sideways', `${formatNumber(C.MELD.rowShiftUnits, 4)} / ${formatNumber(C.MELD.uprightPitchUnits, 6)} / ${formatNumber(C.MELD.sidewaysPitchUnits, 6)}`],
     ['dora tier / in from draw end / max', `${C.DORA.tier} / ${C.DORA.firstStackFromDrawEnd} / ${C.DORA.maxIndicators}`],
     ['point stick (l x w x h) / radius', `${formatNumber(C.STICK.lengthUnits)} x ${formatNumber(C.STICK.widthUnits)} x ${formatNumber(C.STICK.heightUnits)} / ${formatNumber(C.STICK.radiusUnits)}`],
     ['camera lens / sensor / fit', `${C.CAMERA.lensMm} mm / ${C.CAMERA.sensorWidthMm} mm / ${C.CAMERA.sensorFit}`],

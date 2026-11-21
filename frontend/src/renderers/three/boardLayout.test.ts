@@ -291,10 +291,32 @@ describe('3D board layout: melds', () => {
       (tile) => tile.seat === 0 && tile.zone === 'draw',
     )!;
     expect(meld).toHaveLength(3);
-    // The first meld starts one deliberate 4.2 mm clearance from the draw.
+    // The first meld starts after the draw's minimum clearance plus the bottom
+    // row's corner shift (user request 2026-11-21).
     const meldLeft = meld[0].pose.position[0] - TILE.widthUnits / 2;
     const drawRight = draw.pose.position[0] + TILE.widthUnits / 2;
-    expect(meldLeft - drawRight).toBeCloseTo(MELD.rowClearanceUnits, 9);
+    expect(meldLeft - drawRight).toBeCloseTo(
+      MELD.rowClearanceUnits + MELD.rowShiftUnits,
+      9,
+    );
+    // The left/right rows are already against their vertical screen edges and
+    // keep only the minimum clearance. Seat 1's row runs along -Z, so compare in
+    // its own tangential coordinate, not world x.
+    const sideDraw = board.foreground.find(
+      (tile) => tile.seat === 1 && tile.zone === 'draw',
+    )!;
+    const sideMeld = board.foreground
+      .filter((tile) => tile.seat === 1 && tile.zone === 'meld')
+      .sort((left, right) => left.slot - right.slot)[0];
+    const sideRight = seatBasis(1).right;
+    const sideW = (position: readonly [number, number, number]): number =>
+      position[0] * sideRight[0] + position[2] * sideRight[2];
+    const sideMeldLeft = sideW(sideMeld.pose.position) - TILE.widthUnits / 2;
+    const sideDrawRight = sideW(sideDraw.pose.position) + TILE.widthUnits / 2;
+    expect(sideMeldLeft - sideDrawRight).toBeCloseTo(
+      MELD.rowClearanceUnits,
+      9,
+    );
     expect(meld[1].sideways).toBe(true);
     expect(meld[1].pose.rollDeg).toBe(-90);
     expect(meld[2].pose.position[0]).toBeGreaterThan(meld[1].pose.position[0]);

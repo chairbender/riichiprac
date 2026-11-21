@@ -262,6 +262,9 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     expect(MELD.meldGapUnits).toBeGreaterThan(0.05);
     expect(MELD.rowClearanceUnits * UNIT_MM).toBeCloseTo(4.2, 9);
     expect(MELD.meldGapUnits * UNIT_MM).toBeCloseTo(2.8, 9);
+    // The corner shift is two tile widths along the row (user request, 2026-11-21).
+    expect(MELD.rowShiftUnits).toBeCloseTo(2 * TILE.widthUnits, 12);
+    expect(MELD.rowShiftUnits * UNIT_MM).toBeCloseTo(42, 9);
 
     // The widest line the fixture builds: a four-tile kan plus three pons, laid
     // end to end, stays on the mat when the meld-free hand's anchor is kept.
@@ -274,10 +277,18 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     const draw = HAND.drawGapUnits + TILE.widthUnits;
     const total = hand + draw + meldBlock;
     const anchor = HAND.drawOffsetUnits + TILE.widthUnits / 2;
+    const meldFree = HAND.concealedCount * HAND.pitchUnits + draw;
+    const growth = total - meldFree;
     // Four melds replace twelve concealed tiles, so the row grows by well under
-    // two tile widths; the melds and the shifted hand both stay on the mat.
+    // two tile widths. The shifted line and the concealed hand both stay on the
+    // mat: the right end is the anchor plus half the growth plus the corner
+    // shift, and the hand's left edge is the anchor plus half the growth minus
+    // the whole row.
     expect(total).toBeLessThan(13);
-    expect(Math.abs(anchor) + total / 2).toBeLessThan(TABLE.matSizeUnits / 2);
+    expect(anchor + growth / 2 + MELD.rowShiftUnits).toBeLessThan(
+      TABLE.matSizeUnits / 2,
+    );
+    expect(anchor + growth / 2 - total).toBeGreaterThan(-TABLE.matSizeUnits / 2);
   });
 
   it('stretches the compass plate to touch the innermost discard row', () => {
