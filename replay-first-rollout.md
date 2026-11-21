@@ -132,8 +132,14 @@ replay row at all (below the floor, corpus growth `C9`), and
 `sanshoku_pursuit` has no row either (2 stable labels, far below the
 floor). The four thin ch3 shape lessons (`perfect_one_away` 25,
 `pair_count_open` 21, `nobetan_keep` 3, `ryankan_break` 1) have no replay row
-either and stay generated until `C9`. Regenerate the table with
-`node scripts/replay-coverage-report.mjs --json`.
+either and stay generated until `C9`. **Q7 (2026-11-20) measured ch. 8's four
+remaining lessons — `open_hand_defense` 4, `suji_trap_riichi` 0,
+`kabe_no_chance` 0 and `kabe_suji_defense` 32 stable labels — and shipped
+nothing:** all four stay generated-only, so the six hosted packs and their
+hashes are unchanged. Regenerate the table with
+`node scripts/replay-coverage-report.mjs --catalogue <lessons.json> --json`
+(the catalogue form names the not-shipped lessons too; see
+[`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md)).
 
 ## Design decisions
 
@@ -425,8 +431,17 @@ includes its recogniser tests and a label-yield pass.
 - Grow the AI self-play corpus for the below-floor lessons (perfect_one_away,
   pair_count_open, nobetan_keep, ryankan_break, kabe_suji_defense,
   shouminkan_decision, daiminkan_decision, meld_or_not, suji_trap_riichi,
-  kabe_no_chance) and any B4 lesson that lands thin; report stable yield per
-  lesson per 100 games.
+  kabe_no_chance, sanshoku_pursuit, open_hand_defense) and any B4 lesson that
+  lands thin; report stable yield per lesson per 100 games.
+- **Q7 measured rates (2026-11-20, 1,542-game corpus).** `kabe_suji_defense`
+  2.075 stable per 100 games (48 games per label; ~630–870 more games for a
+  45–50-label margin), `open_hand_defense` 0.259 (386 games per label;
+  ~15.8k–17.7k more games), and `suji_trap_riichi` / `kabe_no_chance` 0
+  observed in 1,542 games. The last two have no measured rate and even the
+  rule-of-three upper bound (0.195 per 100) implies ~21.5k more games for 45
+  labels, so C9 should target those shapes with a dedicated family or record
+  them as generated-only by decision rather than relying on generic self-play.
+  Details: [`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md).
 
 ### Wave 3 — coverage completion + default flip
 
@@ -453,6 +468,18 @@ includes its recogniser tests and a label-yield pass.
 **Q7 — ch8 completion** (`riichiprac`, worktree)
 - **`open_hand_defense` (B4.4)**, plus `suji_trap_riichi`, `kabe_no_chance`,
   `kabe_suji_defense` as coverage allows; record anything still generated-only.
+- **Measured 2026-11-20 — no pack ships.** Re-measured on the 1,542-game
+  classifier-v3 corpus: `open_hand_defense` 4 stable / 15 contested,
+  `kabe_suji_defense` 32 / 28, `suji_trap_riichi` 0 / 0 and `kabe_no_chance`
+  0 / 0. None reaches 40 reviewed bases, so all four stay generated-only and
+  the six hosted packs and their hashes are unchanged. The ch8 mechanical
+  scope was completed for the future pack (`open_hand_defense` and
+  `suji_trap_riichi` were missing; the ready-hand rule is now lesson-scoped
+  because the suji-trap lesson is a riichi declaration) and the ch8 content
+  check now names all twelve chapter lessons. C9 targets, with measured rates
+  and games-to-floor, are in the C9 entry below. Evidence:
+  `testdata/reports/q7-ch8/` and
+  [`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md).
 
 **RF5 — Flip to replay-first by default** (`riichiprac`, worktree)
 - Turn `preferReplay` on for the build after coverage is sufficient; keep the
@@ -540,10 +567,13 @@ Create the current wave only:
 | `Replay-first RF2: replay-default source model and pool` | `261119-171918` | worktree `riichiprac` | RF1 |
 | `Replay-first RF3: picker source filter and generated opt-in` | `261119-171926` | worktree `riichiprac` | RF2 |
 | `Replay Q3: ch7 riichi/dama pack` | `261119-171935` | worktree `riichiprac` | B4 |
+| `Replay Q6: ch3/4 shape pack` | `261120-1609` | worktree `riichiprac` | B4 |
+| `Replay Q7: ch8 completion` | `261120-1915` | worktree `riichiprac` | B4 |
 
 Later waves, as captured on 2026-11-19: RF4 `261119-2159` (landed), Q4
-`261119-2335`, Q5 `261119-2336`, C9 `261119-233553`, RF5 `261119-2340`. Q6, Q7
-and D1 are not captured yet; create them when the current coverage lands.
+`261119-2335` (landed), Q5 `261119-2336` (landed), C9 `261119-233553`,
+RF5 `261119-2340`. Q6 `261120-1609` (landed) and Q7 `261120-1915` (landed,
+measurement only) were captured on 2026-11-20; D1 is not captured yet.
 
 ## Expected end state
 

@@ -1,0 +1,249 @@
+{
+  "schema": "riichiprac.label-yield",
+  "version": 1,
+  "classifier_version": "3",
+  "lessons": {
+    "ankan_decision": {
+      "stable": 69,
+      "contested": 41,
+      "unresolved": 0,
+      "total": 110
+    },
+    "chiitoi_vs_toitoi": {
+      "stable": 120,
+      "contested": 133,
+      "unresolved": 0,
+      "total": 253
+    },
+    "chiitoitsu_riichi_vs_dama": {
+      "stable": 252,
+      "contested": 2218,
+      "unresolved": 0,
+      "total": 2470
+    },
+    "daiminkan_decision": {
+      "stable": 8,
+      "contested": 1,
+      "unresolved": 0,
+      "total": 9
+    },
+    "dama_bad_wait": {
+      "stable": 2664,
+      "contested": 13067,
+      "unresolved": 0,
+      "total": 15731
+    },
+    "dama_expensive_hand": {
+      "stable": 566,
+      "contested": 52,
+      "unresolved": 0,
+      "total": 618
+    },
+    "dama_genbutsu_wait": {
+      "stable": 494,
+      "contested": 214,
+      "unresolved": 0,
+      "total": 708
+    },
+    "dama_improving_hand": {
+      "stable": 137,
+      "contested": 71,
+      "unresolved": 0,
+      "total": 208
+    },
+    "defense_multi_threat": {
+      "stable": 1153,
+      "contested": 451,
+      "unresolved": 0,
+      "total": 1604
+    },
+    "defense_safety_chart": {
+      "stable": 17190,
+      "contested": 7082,
+      "unresolved": 0,
+      "total": 24272
+    },
+    "defense_stuck_heuristic": {
+      "stable": 211,
+      "contested": 217,
+      "unresolved": 0,
+      "total": 428
+    },
+    "fold_to_riichi": {
+      "stable": 28694,
+      "contested": 5182,
+      "unresolved": 0,
+      "total": 33876
+    },
+    "honitsu_decision": {
+      "stable": 2527,
+      "contested": 3523,
+      "unresolved": 0,
+      "total": 6050
+    },
+    "kabe_double_one_chance": {
+      "stable": 55,
+      "contested": 84,
+      "unresolved": 0,
+      "total": 139
+    },
+    "kabe_one_chance": {
+      "stable": 60,
+      "contested": 88,
+      "unresolved": 0,
+      "total": 148
+    },
+    "kabe_suji_defense": {
+      "stable": 32,
+      "contested": 28,
+      "unresolved": 0,
+      "total": 60
+    },
+    "meld_or_not": {
+      "stable": 0,
+      "contested": 15,
+      "unresolved": 0,
+      "total": 15
+    },
+    "nakabukure_ready": {
+      "stable": 67,
+      "contested": 160,
+      "unresolved": 0,
+      "total": 227
+    },
+    "nobetan_keep": {
+      "stable": 3,
+      "contested": 4,
+      "unresolved": 0,
+      "total": 7
+    },
+    "open_hand_defense": {
+      "stable": 4,
+      "contested": 15,
+      "unresolved": 0,
+      "total": 19
+    },
+    "pair_count": {
+      "stable": 223,
+      "contested": 67,
+      "unresolved": 0,
+      "total": 290
+    },
+    "pair_count_open": {
+      "stable": 21,
+      "contested": 40,
+      "unresolved": 0,
+      "total": 61
+    },
+    "perfect_one_away": {
+      "stable": 25,
+      "contested": 34,
+      "unresolved": 0,
+      "total": 59
+    },
+    "pinfu_head": {
+      "stable": 353,
+      "contested": 1656,
+      "unresolved": 0,
+      "total": 2009
+    },
+    "protorun_plus_one": {
+      "stable": 108,
+      "contested": 35,
+      "unresolved": 0,
+      "total": 143
+    },
+    "protorun_priority": {
+      "stable": 337,
+      "contested": 37,
+      "unresolved": 0,
+      "total": 374
+    },
+    "push_or_fold": {
+      "stable": 4877,
+      "contested": 4020,
+      "unresolved": 0,
+      "total": 8897
+    },
+    "riichi_judgement": {
+      "stable": 3182,
+      "contested": 6139,
+      "unresolved": 0,
+      "total": 9321
+    },
+    "ryankan_break": {
+      "stable": 1,
+      "contested": 3,
+      "unresolved": 0,
+      "total": 4
+    },
+    "ryanmen_protorun": {
+      "stable": 66,
+      "contested": 24,
+      "unresolved": 0,
+      "total": 90
+    },
+    "sanshoku_pursuit": {
+      "stable": 2,
+      "contested": 1,
+      "unresolved": 0,
+      "total": 3
+    },
+    "shouminkan_decision": {
+      "stable": 20,
+      "contested": 26,
+      "unresolved": 0,
+      "total": 46
+    },
+    "skipping_block": {
+      "stable": 166,
+      "contested": 176,
+      "unresolved": 0,
+      "total": 342
+    },
+    "suji_kabe_safety": {
+      "stable": 1755,
+      "contested": 1683,
+      "unresolved": 0,
+      "total": 3438
+    },
+    "wind_discard_order": {
+      "stable": 701,
+      "contested": 364,
+      "unresolved": 0,
+      "total": 1065
+    }
+  },
+  "families": {
+    "akochan_tactics": {
+      "stable": 1166,
+      "contested": 553,
+      "unresolved": 0,
+      "total": 1719
+    },
+    "akochan_vs_mortal": {
+      "stable": 628,
+      "contested": 488,
+      "unresolved": 0,
+      "total": 1116
+    },
+    "heterogeneous_table": {
+      "stable": 1106,
+      "contested": 594,
+      "unresolved": 0,
+      "total": 1700
+    },
+    "mortal_mirror": {
+      "stable": 31487,
+      "contested": 23141,
+      "unresolved": 0,
+      "total": 54628
+    },
+    "mortal_sampling_sweep": {
+      "stable": 31756,
+      "contested": 22175,
+      "unresolved": 0,
+      "total": 53931
+    }
+  }
+}

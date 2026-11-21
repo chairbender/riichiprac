@@ -36,6 +36,12 @@ import { gunzipSync } from 'node:zlib';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CHAPTERS = {
   ch8: {
+    // The complete ch. 8 lesson set (Q7). The four Q7 lessons
+    // (`open_hand_defense`, `suji_trap_riichi`, `kabe_no_chance`,
+    // `kabe_suji_defense`) have no shipped pack yet — they are below the
+    // 40-base floor on the 1,542-game corpus and stay generated-only until
+    // corpus growth C9 — but they are named here so a future ch8 completion
+    // pack is content-gated against the same chapter scope.
     lessons: new Set([
       'fold_to_riichi',
       'defense_safety_chart',
@@ -48,6 +54,7 @@ const CHAPTERS = {
       'defense_multi_threat',
       'push_or_fold',
       'open_hand_defense',
+      'suji_trap_riichi',
     ]),
     sectionPattern: /^ch8\.\d+$/,
     defaultPack: 'replay.ch8-defense.2026-11',

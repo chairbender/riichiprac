@@ -1,0 +1,64 @@
+{
+  "schema": "riichiprac.q7-ch8-pack-hashes",
+  "version": 1,
+  "manifest_bytes": 4670,
+  "manifest_sha256": "9bed292ff26444e26324587d6ad3d9fc1aa3c7f0a02af2da6bcf046e4fa4b445",
+  "packs": [
+    {
+      "pack": "replay.ch34-shapes.2026-11",
+      "path": "replay.ch34-shapes.2026-11-1e7f3266ea8f.json.gz",
+      "bytes": 724376,
+      "sha256": "1e7f3266ea8f81bf3ea2e4626bbd9c7bc6096109bfbebdd7df51e7e1c3b01200",
+      "manifest_bytes": 724376,
+      "manifest_sha256": "1e7f3266ea8f81bf3ea2e4626bbd9c7bc6096109bfbebdd7df51e7e1c3b01200",
+      "matches_manifest": true
+    },
+    {
+      "pack": "replay.ch5-values.2026-11",
+      "path": "replay.ch5-values.2026-11-5d0b01e6badb.json.gz",
+      "bytes": 1176300,
+      "sha256": "5d0b01e6badb331b6771c239e50c4fac2659bbfcf338641199dc6bdb447f5864",
+      "manifest_bytes": 1176300,
+      "manifest_sha256": "5d0b01e6badb331b6771c239e50c4fac2659bbfcf338641199dc6bdb447f5864",
+      "matches_manifest": true
+    },
+    {
+      "pack": "replay.ch7-riichi-dama.2026-11",
+      "path": "replay.ch7-riichi-dama.2026-11-08cbeacac15f.json.gz",
+      "bytes": 2176750,
+      "sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d",
+      "manifest_bytes": 2176750,
+      "manifest_sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d",
+      "matches_manifest": true
+    },
+    {
+      "pack": "replay.ch8-defense-multi-threat.2026-11",
+      "path": "replay.ch8-defense-multi-threat.2026-11-15fe519c65df.json.gz",
+      "bytes": 591096,
+      "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",
+      "manifest_bytes": 591096,
+      "manifest_sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",
+      "matches_manifest": true
+    },
+    {
+      "pack": "replay.ch8-defense.2026-11",
+      "path": "replay.ch8-defense.2026-11-6ae2c924e80c.json.gz",
+      "bytes": 2260809,
+      "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43",
+      "manifest_bytes": 2260809,
+      "manifest_sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43",
+      "matches_manifest": true
+    },
+    {
+      "pack": "replay.ch9-seating-calls.2026-11",
+      "path": "replay.ch9-seating-calls.2026-11-3deda6140a90.json.gz",
+      "bytes": 363061,
+      "sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2",
+      "manifest_bytes": 363061,
+      "manifest_sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2",
+      "matches_manifest": true
+    }
+  ],
+  "git_status_scenarios": "",
+  "all_match_manifest": true
+}

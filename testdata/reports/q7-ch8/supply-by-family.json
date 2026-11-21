@@ -1,0 +1,73 @@
+{
+  "schema": "riichiprac.q7-ch8-supply-by-family",
+  "version": 1,
+  "data_root": "~/riichiprac-data/q2-ch8-defense-2026-11",
+  "classifier_version": "3",
+  "corpus_games": 1542,
+  "families": [
+    {
+      "family": "akochan_tactics",
+      "games": 14,
+      "open_hand_defense": {
+        "stable": 0,
+        "contested": 0
+      },
+      "kabe_suji_defense": {
+        "stable": 0,
+        "contested": 1
+      }
+    },
+    {
+      "family": "akochan_vs_mortal",
+      "games": 15,
+      "open_hand_defense": {
+        "stable": 0,
+        "contested": 0
+      },
+      "kabe_suji_defense": {
+        "stable": 0,
+        "contested": 1
+      }
+    },
+    {
+      "family": "heterogeneous_table",
+      "games": 15,
+      "open_hand_defense": {
+        "stable": 0,
+        "contested": 0
+      },
+      "kabe_suji_defense": {
+        "stable": 0,
+        "contested": 1
+      }
+    },
+    {
+      "family": "mortal_mirror",
+      "games": 750,
+      "open_hand_defense": {
+        "stable": 2,
+        "contested": 7
+      },
+      "kabe_suji_defense": {
+        "stable": 17,
+        "contested": 8
+      }
+    },
+    {
+      "family": "mortal_sampling_sweep",
+      "games": 748,
+      "open_hand_defense": {
+        "stable": 2,
+        "contested": 8
+      },
+      "kabe_suji_defense": {
+        "stable": 15,
+        "contested": 17
+      }
+    }
+  ],
+  "zero_label_lessons": {
+    "suji_trap_riichi": 0,
+    "kabe_no_chance": 0
+  }
+}

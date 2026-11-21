@@ -1,0 +1,26 @@
+replay coverage: 22/25 lesson(s) replay-default at 40 bases, 3 thin, 0 not shipped, 8942 reviewed bases
+  DEFAULT ankan_decision                  62 bases  replay.ch9-seating-calls.2026-11
+  DEFAULT chiitoi_vs_toitoi               94 bases  replay.ch5-values.2026-11
+  DEFAULT chiitoitsu_riichi_vs_dama      151 bases  replay.ch7-riichi-dama.2026-11
+  DEFAULT dama_bad_wait                  982 bases  replay.ch7-riichi-dama.2026-11
+  DEFAULT dama_expensive_hand            111 bases  replay.ch7-riichi-dama.2026-11
+  DEFAULT dama_genbutsu_wait             119 bases  replay.ch7-riichi-dama.2026-11
+  DEFAULT dama_improving_hand             57 bases  replay.ch7-riichi-dama.2026-11
+  DEFAULT defense_multi_threat           764 bases  replay.ch8-defense-multi-threat.2026-11
+  DEFAULT defense_safety_chart           766 bases  replay.ch8-defense.2026-11
+  thin    defense_stuck_heuristic         32 bases  replay.ch8-defense.2026-11
+  DEFAULT fold_to_riichi                 731 bases  replay.ch8-defense.2026-11
+  DEFAULT honitsu_decision              1319 bases  replay.ch5-values.2026-11
+  thin    kabe_double_one_chance          13 bases  replay.ch8-defense.2026-11
+  thin    kabe_one_chance                 17 bases  replay.ch8-defense.2026-11
+  DEFAULT nakabukure_ready                54 bases  replay.ch34-shapes.2026-11
+  DEFAULT pair_count                     187 bases  replay.ch34-shapes.2026-11
+  DEFAULT pinfu_head                     257 bases  replay.ch5-values.2026-11
+  DEFAULT protorun_plus_one               97 bases  replay.ch34-shapes.2026-11
+  DEFAULT protorun_priority              289 bases  replay.ch34-shapes.2026-11
+  DEFAULT push_or_fold                   295 bases  replay.ch8-defense.2026-11
+  DEFAULT riichi_judgement              1426 bases  replay.ch7-riichi-dama.2026-11
+  DEFAULT ryanmen_protorun                54 bases  replay.ch34-shapes.2026-11
+  DEFAULT skipping_block                 141 bases  replay.ch34-shapes.2026-11
+  DEFAULT suji_kabe_safety               357 bases  replay.ch8-defense.2026-11
+  DEFAULT wind_discard_order             567 bases  replay.ch9-seating-calls.2026-11

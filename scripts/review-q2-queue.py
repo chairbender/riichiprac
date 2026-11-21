@@ -11,8 +11,14 @@ positions that can teach.
 
 The rules are chapter-scoped (`--chapter`):
 
-* `ch8` (default, Q2/Q2r2) — the ch. 8 defense lessons, and a ready hand is
-  rejected because it is an offense drill, not a defense drill.
+* `ch8` (default, Q2/Q2r2/Q7) — the ch. 8 defense lessons. The ready hand is
+  rejected because these are defense drills, with one exception: ch8.2's
+  `suji_trap_riichi` is a **riichi declaration** (`src/classifier/suji.rs`,
+  citing ch8:165 and ch7:512, answers Riichi on the trap discard), so its hand
+  is tenpai by definition and a ready hand is in shape. `open_hand_defense` is
+  the ch. 8.4 open-hand read (ch8:567-570) and its recogniser requires 2-away
+  or worse (`src/classifier/open_hand.rs`), so it rejects a ready hand like the
+  rest of the chapter.
 * `ch7` (Q3) — the riichi/dama declaration lessons. Those decisions are tenpai
   by definition, so the ready-hand rule does not apply.
 * `ch5` (Q4) — the hand-building/value lessons. None of the shipped shapes is a
@@ -67,7 +73,14 @@ CH8_LESSONS = {
     "defense_stuck_heuristic",
     "defense_multi_threat",
     "push_or_fold",
+    "open_hand_defense",
+    "suji_trap_riichi",
 }
+# Every ch8 lesson is a defense discard on a slow hand except the immediacy
+# suji-trap declaration: that one is tenpai by definition, so its ready hand is
+# in shape. `open_hand_defense` is the opposite case: its recogniser requires
+# 2-away or worse.
+CH8_READY_LESSONS = CH8_LESSONS - {"suji_trap_riichi"}
 CH7_LESSONS = {
     "riichi_judgement",
     "chiitoitsu_riichi_vs_dama",
@@ -124,10 +137,13 @@ SCOPES = {
     "ch8": {
         "prefix": "ch8.",
         "lessons": CH8_LESSONS,
-        "ready_hand_lessons": CH8_LESSONS,
+        # Q7 completes the chapter scope: the suji-trap declaration keeps a
+        # ready hand; the open-hand read and every other ch8 lesson reject one.
+        "ready_hand_lessons": CH8_READY_LESSONS,
         "note": (
-            "q2r2 mechanical review: stable ch8 book label, legal answer, "
-            "unique visible state, clean walk"
+            "ch8 mechanical review: stable ch8 book label, legal answer, "
+            "unique visible state, clean walk; a ready hand is out of shape "
+            "except for the suji-trap declaration"
         ),
     },
     "ch9": {

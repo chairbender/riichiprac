@@ -1,0 +1,43 @@
+{
+  "schema": "riichiprac.ch8-pack-check",
+  "version": 1,
+  "chapter": "ch34",
+  "dir": "/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/dist/scenarios",
+  "pack": "replay.ch34-shapes.2026-11",
+  "checks": 27,
+  "problems": [],
+  "scenarios": 822,
+  "bases": 822,
+  "variants": 0,
+  "variant_share": 0,
+  "transform_families": [],
+  "lessons": [
+    "nakabukure_ready",
+    "pair_count",
+    "protorun_plus_one",
+    "protorun_priority",
+    "ryanmen_protorun",
+    "skipping_block"
+  ],
+  "lesson_counts": {
+    "ryanmen_protorun": 54,
+    "nakabukure_ready": 54,
+    "pair_count": 187,
+    "protorun_priority": 289,
+    "skipping_block": 141,
+    "protorun_plus_one": 97
+  },
+  "book_sections": [
+    "ch3.2",
+    "ch3.3",
+    "ch4.1"
+  ],
+  "bytes": 724376,
+  "agents": [
+    "akochan (akochan)",
+    "efficiency-safety-v1 (corpus-reference)",
+    "isolated-first-v1 (corpus-reference)",
+    "mortal-298k (mortal-candle)"
+  ],
+  "data_commercial_use": false
+}

@@ -1,0 +1,6 @@
+review-scope synthetic check: PASS
+accepted=2 rejected=2 reasons={'ready_hand': 2}
+  q-suji-trap-ready: accepted=True problems=[]
+  q-open-hand-ready: accepted=False problems=['ready_hand']
+  q-kabe-suji-slow: accepted=True problems=[]
+  q-kabe-no-chance-ready: accepted=False problems=['ready_hand']

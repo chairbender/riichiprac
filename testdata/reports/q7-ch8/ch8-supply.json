@@ -1,0 +1,194 @@
+{
+  "schema": "riichiprac.ch8-completion-supply",
+  "version": 1,
+  "corpus": {
+    "data_root": "~/riichiprac-data/q2-ch8-defense-2026-11",
+    "classifier_version": "3",
+    "games": 1542,
+    "families": [
+      "mortal_mirror",
+      "mortal_sampling_sweep",
+      "akochan_tactics",
+      "akochan_vs_mortal",
+      "heterogeneous_table"
+    ],
+    "excluded": [
+      "rule_baseline (unlabelled; outside the B4 corpus)"
+    ]
+  },
+  "floor": 40,
+  "notes": {
+    "estimate": "games-to-floor assumes the 1,542-game rate holds and targets 45/50 stable labels so the 40-base floor survives selection and duplicate-hand dedupe",
+    "zero_rate": "no stable label in 1,542 games; the 95% upper bound is the rule of three (3/1,542)"
+  },
+  "lessons": [
+    {
+      "lesson": "push_or_fold",
+      "book_section": "ch8.1",
+      "stable_labels": 4877,
+      "contested_labels": 4020,
+      "unresolved_labels": 0,
+      "shipped_bases": 295,
+      "pack": "replay.ch8-defense.2026-11",
+      "floor": 40,
+      "decision": "replay-default",
+      "c9_target": false
+    },
+    {
+      "lesson": "defense_multi_threat",
+      "book_section": "ch8.2",
+      "stable_labels": 1153,
+      "contested_labels": 451,
+      "unresolved_labels": 0,
+      "shipped_bases": 764,
+      "pack": "replay.ch8-defense-multi-threat.2026-11",
+      "floor": 40,
+      "decision": "replay-default",
+      "c9_target": false
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "book_section": "ch8.2",
+      "stable_labels": 17190,
+      "contested_labels": 7082,
+      "unresolved_labels": 0,
+      "shipped_bases": 766,
+      "pack": "replay.ch8-defense.2026-11",
+      "floor": 40,
+      "decision": "replay-default",
+      "c9_target": false
+    },
+    {
+      "lesson": "kabe_double_one_chance",
+      "book_section": "ch8.2",
+      "stable_labels": 55,
+      "contested_labels": 84,
+      "unresolved_labels": 0,
+      "shipped_bases": 13,
+      "pack": "replay.ch8-defense.2026-11",
+      "floor": 40,
+      "decision": "thin-opt-in",
+      "c9_target": false
+    },
+    {
+      "lesson": "kabe_no_chance",
+      "book_section": "ch8.2",
+      "stable_labels": 0,
+      "contested_labels": 0,
+      "unresolved_labels": 0,
+      "shipped_bases": 0,
+      "pack": null,
+      "floor": 40,
+      "decision": "generated-only",
+      "c9_target": true,
+      "stable_per_100_games": null,
+      "games_per_stable_label": null,
+      "zero_observed_95pct_upper_per_100": 0.195,
+      "more_games_for_45_stable": null,
+      "more_games_for_50_stable": null
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "book_section": "ch8.2",
+      "stable_labels": 60,
+      "contested_labels": 88,
+      "unresolved_labels": 0,
+      "shipped_bases": 17,
+      "pack": "replay.ch8-defense.2026-11",
+      "floor": 40,
+      "decision": "thin-opt-in",
+      "c9_target": false
+    },
+    {
+      "lesson": "kabe_suji_defense",
+      "book_section": "ch8.2",
+      "stable_labels": 32,
+      "contested_labels": 28,
+      "unresolved_labels": 0,
+      "shipped_bases": 0,
+      "pack": null,
+      "floor": 40,
+      "decision": "generated-only",
+      "c9_target": true,
+      "stable_per_100_games": 2.075,
+      "games_per_stable_label": 48.2,
+      "more_games_for_45_stable": 627,
+      "more_games_for_50_stable": 868
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "book_section": "ch8.2",
+      "stable_labels": 1755,
+      "contested_labels": 1683,
+      "unresolved_labels": 0,
+      "shipped_bases": 357,
+      "pack": "replay.ch8-defense.2026-11",
+      "floor": 40,
+      "decision": "replay-default",
+      "c9_target": false
+    },
+    {
+      "lesson": "suji_trap_riichi",
+      "book_section": "ch8.2",
+      "stable_labels": 0,
+      "contested_labels": 0,
+      "unresolved_labels": 0,
+      "shipped_bases": 0,
+      "pack": null,
+      "floor": 40,
+      "decision": "generated-only",
+      "c9_target": true,
+      "stable_per_100_games": null,
+      "games_per_stable_label": null,
+      "zero_observed_95pct_upper_per_100": 0.195,
+      "more_games_for_45_stable": null,
+      "more_games_for_50_stable": null
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "book_section": "ch8.3",
+      "stable_labels": 211,
+      "contested_labels": 217,
+      "unresolved_labels": 0,
+      "shipped_bases": 32,
+      "pack": "replay.ch8-defense.2026-11",
+      "floor": 40,
+      "decision": "thin-opt-in",
+      "c9_target": false
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "book_section": "ch8.3",
+      "stable_labels": 28694,
+      "contested_labels": 5182,
+      "unresolved_labels": 0,
+      "shipped_bases": 731,
+      "pack": "replay.ch8-defense.2026-11",
+      "floor": 40,
+      "decision": "replay-default",
+      "c9_target": false
+    },
+    {
+      "lesson": "open_hand_defense",
+      "book_section": "ch8.4",
+      "stable_labels": 4,
+      "contested_labels": 15,
+      "unresolved_labels": 0,
+      "shipped_bases": 0,
+      "pack": null,
+      "floor": 40,
+      "decision": "generated-only",
+      "c9_target": true,
+      "stable_per_100_games": 0.259,
+      "games_per_stable_label": 385.5,
+      "more_games_for_45_stable": 15806,
+      "more_games_for_50_stable": 17734
+    }
+  ],
+  "totals": {
+    "ch8_lessons": 12,
+    "generated_only": 4,
+    "thin_opt_in": 3,
+    "replay_default": 5
+  }
+}

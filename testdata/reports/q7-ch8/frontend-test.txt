@@ -1,0 +1,553 @@
+
+> frontend@0.0.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/kylehipke/workspaces/riichiprac-261120-1915/frontend
+
+ ✓ src/renderers/capabilities.test.ts (37 tests) 44ms
+ ✓ tools/review-queue/review-ui.test.mjs (11 tests) 397ms
+ ✓ src/renderers/hud/Sheet.test.tsx (17 tests) 404ms
+ ✓ src/renderers/hud/ActionRail.test.tsx (10 tests) 232ms
+ ✓ src/renderers/hud/HudLayer.test.tsx (20 tests) 500ms
+stderr | src/App.renderer3d.hud.test.tsx > App 3D HUD mount (3D-H2) > mounts the HUD as a sibling of the fixed stage, not inside it
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D HUD mount (3D-H2) > replaces the 2D header with a top bar that carries only the app name
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D HUD mount (3D-H2) > deals the next hand from the top bar through the store’s own handler
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D HUD mount (3D-H2) > is not mounted in the 2D views
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.pack.test.tsx > App replay-first first deal (RF4) > opens with a replay hand from the covered lesson
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D practice HUD (3D-H3) > mounts the hint row and the action rail, and no 2D hand dock
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D practice HUD (3D-H3) > words the same state exactly as the stacked view does
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D practice HUD (3D-H3) > words the same state exactly as the stacked view does
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D practice HUD (3D-H3) > renders the dock’s call toggles and action bar unchanged, in the rail
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/hud/SetupSheet.test.tsx (9 tests) 1470ms
+   ✓ Setup sheet: the pool keeps its draft > does not apply a tick until a deal, and a deal closes the sheet 315ms
+   ✓ Setup sheet: the AI Hotseat form > returns to the pool on Cancel, and generates the chosen options 456ms
+stderr | src/App.renderer3d.hud.test.tsx > App 3D practice HUD (3D-H3) > renders the dock’s call toggles and action bar unchanged, in the rail
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D practice HUD (3D-H3) > turns a deal error into a HUD toast, not a block in the scene
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/hud/ResultCard.test.tsx (8 tests) 568ms
+stderr | src/App.renderer3d.hud.test.tsx > App 3D practice HUD (3D-H3) > keeps loading status in a toast while the table is being dealt
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/RendererHost.test.tsx (40 tests) 1631ms
+   ✓ RendererHost perf HUD (3D-13) > refreshes the printed numbers while the HUD stays open 666ms
+stderr | src/App.renderer3d.hud.test.tsx > App 3D setup sheet (3D-H4) > opens from the top bar without re-dealing, remounting or resizing the scene
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.pack.test.tsx > App replay-first first deal (RF4) > shows a status while the first replay hand is on its way
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D setup sheet (3D-H4) > hosts the 2D header’s controls with the same labels and disabled states
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D setup sheet (3D-H4) > hosts the 2D header’s controls with the same labels and disabled states
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D setup sheet (3D-H4) > mounts one sheet at a time and closes the setup sheet on a deal
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.pack.test.tsx > App replay-first first deal (RF4) > clears the first-deal status when another deal replaces it
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/overlay.test.tsx (15 tests) 1763ms
+   ✓ 3D overlay: parity with the dock > uses the same accessible names and order as HandDock 351ms
+stderr | src/App.renderer3d.hud.test.tsx > App 3D setup sheet (3D-H4) > opens the sheet from an imported position’s toast, with the full note
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D result card and verdict sheet (3D-H5) > answers into a compact card, and only Details opens the sheet
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.renderer3d.hud.test.tsx > App 3D result card and verdict sheet (3D-H5) > deals the next hand from the verdict sheet header
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/hud/PracticeHud.test.tsx (8 tests) 1849ms
+   ✓ 3D practice HUD: one hand, rail first > renders exactly one control per hand tile plus the draw, and the rail adds none 679ms
+   ✓ 3D practice HUD: one hand, rail first > walks the rail before the hand, and never duplicates a focus target 443ms
+stderr | src/App.renderer3d.hud.test.tsx > App 3D result card and verdict sheet (3D-H5) > opens the pre-answer sheet from the Mortal chip, where Peek lives
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/App.renderer3d.hud.test.tsx (16 tests) 1686ms
+ ✓ src/renderers/hud/ToastStack.test.tsx (10 tests) 315ms
+stderr | src/App.pack.test.tsx > App replay-first first deal (RF4) > deals the generated hand when the manifest cannot be reached
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/hud/VerdictSheet.test.tsx (4 tests) 578ms
+stderr | src/App.pack.test.tsx > App replay-first first deal (RF4) > falls back to the generated lesson when the first replay body fails
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+stderr | src/App.pack.test.tsx > App replay-first first deal (RF4) > deals the generated hand when the replay manifest misses its budget
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/App.viewSwitch.test.tsx (9 tests) 2109ms
+   ✓ App view switch (3D-14) > opens in 3D and keeps the same hand and answer across every view, without re-dealing 758ms
+ ✓ src/components/FullscreenButton.test.tsx (6 tests) 480ms
+stderr | src/App.renderer3d.degrade.test.tsx > App 3D degrade return (3D-11) > returns to the stored view, clears the query flag and keeps a dismissible notice
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/scenarios.test.ts (66 tests) 108ms
+stderr | src/App.renderer3d.degrade.test.tsx > App 3D degrade return (3D-11) > still returns to the stored view when history refuses the URL cleanup
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/components/ScenarioPicker.test.tsx (23 tests) 3786ms
+   ✓ replay pack entries > stages the checkboxes and only deals the draft 382ms
+   ✓ source filter and generated opt-in > keeps the filter and a generated tick across a selection change 351ms
+ ✓ src/App.renderer3d.degrade.test.tsx (2 tests) 892ms
+   ✓ App 3D degrade return (3D-11) > returns to the stored view, clears the query flag and keeps a dismissible notice 742ms
+ ✓ src/renderers/hud/HandRail.test.tsx (8 tests) 337ms
+ ✓ src/renderers/motionPreference.test.ts (5 tests) 32ms
+ ✓ src/components/AppControls.test.tsx (4 tests) 349ms
+ ✓ src/renderers/snapshot.test.ts (27 tests) 102ms
+ ✓ src/renderers/three/tileMaterial.test.ts (37 tests) 98ms
+ ✓ src/renderers/three/tileGeometry.test.ts (18 tests) 422ms
+ ✓ src/renderers/three/shadows.test.ts (16 tests) 416ms
+stderr | src/App.renderer3d.overlay.test.tsx > App 3D overlay wiring (3D-08) > passes the store’s own discard handler and the armed flags to the host
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/App.renderer3d.overlay.test.tsx (1 test) 420ms
+   ✓ App 3D overlay wiring (3D-08) > passes the store’s own discard handler and the armed flags to the host 415ms
+ ✓ src/App.renderer3d.test.tsx (1 test) 420ms
+   ✓ App 3D mount point > mounts the scene alone, full-window, and reports an unavailable WebGL2 415ms
+ ✓ src/renderers/hud/hudLayout.test.ts (574 tests) 1419ms
+ ✓ src/renderers/three/reliefAssets.test.ts (22 tests) 942ms
+stdout | src/renderers/three/hero.test.ts > the 8-texel parallax budget at every supported aspect > stays inside the budget at every aspect
+3D-05 hero parallax bound (clamp 8 texels)
+2.333: hand 13.48° → 0.47 texels, pond 37.75° → 1.52 texels, wall 42.83° → 1.82 texels, back 0.00° → 0.00 texels
+1.778: hand 14.62° → 0.51 texels, pond 37.03° → 1.48 texels, wall 43.69° → 1.88 texels, back 0.00° → 0.00 texels
+1.500: hand 15.52° → 0.55 texels, pond 36.47° → 1.45 texels, wall 44.34° → 1.92 texels, back 0.00° → 0.00 texels
+1.333: hand 15.64° → 0.55 texels, pond 36.39° → 1.45 texels, wall 44.42° → 1.93 texels, back 0.00° → 0.00 texels
+1.000: hand 15.64° → 0.55 texels, pond 36.39° → 1.45 texels, wall 44.42° → 1.93 texels, back 0.00° → 0.00 texels
+0.750: hand 28.67° → 1.07 texels, pond 23.76° → 0.86 texels, wall 33.31° → 1.29 texels, back 0.00° → 0.00 texels
+0.563: hand 28.67° → 1.07 texels, pond 23.76° → 0.86 texels, wall 33.31° → 1.29 texels, back 0.00° → 0.00 texels
+
+stdout | src/renderers/three/hero.test.ts > the 8-texel parallax budget at every supported aspect > prints the strict board-wide worst case, the pose the hero set omits
+3D-05 strict board worst (frameForAspect): 1.33 meld-1-2 at 47.98° → 2.18 texels at the live scale (physical 8.72); hero view worst (same frame): 1.93
+
+ ✓ src/renderers/three/hero.test.ts (18 tests) 195ms
+stderr | src/App.pack.test.tsx > App replay-first first deal (RF4) > fetches no pack body on the first deal when replay is off
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/layoutConstants.test.ts (22 tests) 73ms
+ ✓ src/renderers/three/boardLayout.test.ts (37 tests) 1810ms
+   ✓ 3D board layout: camera framing > keeps every tile inside the safe area at every aspect 823ms
+stderr | src/App.pack.test.tsx > App replay-pack loading > shows both the replay and generated rows for a covered lesson
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/three/boardMesh.test.ts (11 tests) 168ms
+stderr | src/App.pack.test.tsx > App replay-pack loading > deals generated hands from All once the Generated filter is chosen
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/hud/hudCss.test.ts (11 tests) 29ms
+ ✓ src/services/packLoader.test.ts (92 tests) 2740ms
+   ✓ committed pack > loads, verifies and decodes the real body, then serves it from cache 1838ms
+ ✓ src/renderers/three/hitTest.test.ts (14 tests) 340ms
+ ✓ tools/review-queue/review-core.test.mjs (16 tests) 63ms
+ ✓ src/renderers/three/probes.test.ts (14 tests) 154ms
+stderr | src/App.pack.test.tsx > App replay-pack loading > deals the covered lesson from replay on the next hand too
+Error: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)
+    at module.exports (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at HTMLCanvasElementImpl.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/nodes/HTMLCanvasElement-impl.js:42:5)
+    at HTMLCanvasElement.getContext (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/jsdom/lib/jsdom/living/generated/HTMLCanvasElement.js:131:58)
+    at Module.probeCapabilities (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/renderers/capabilities.ts:303:17)
+    at /home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:956:38
+    at mountMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16406:19)
+    at Object.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:16851:16)
+    at Proxy.useMemo (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react/cjs/react.development.js:1650:21)
+    at App (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/src/App.tsx:955:34)
+    at renderWithHooks (/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18) undefined
+
+ ✓ src/renderers/compassOverlay.test.ts (9 tests) 460ms
+ ✓ src/renderers/three/motion.test.ts (14 tests) 312ms
+ ✓ src/App.pack.test.tsx (10 tests) 5464ms
+   ✓ App replay-first first deal (RF4) > opens with a replay hand from the covered lesson 445ms
+   ✓ App replay-first first deal (RF4) > clears the first-deal status when another deal replaces it 648ms
+   ✓ App replay-first first deal (RF4) > deals the generated hand when the replay manifest misses its budget 2570ms
+   ✓ App replay-pack loading > shows both the replay and generated rows for a covered lesson 373ms
+   ✓ App replay-pack loading > deals generated hands from All once the Generated filter is chosen 440ms
+ ✓ src/renderers/three/seamProbe.test.ts (7 tests) 113ms
+ ✓ src/scenarioHistory.test.ts (11 tests) 28ms
+ ✓ src/renderers/three/cameraRig.test.ts (9 tests) 720ms
+stdout | src/renderers/three/carveShadow.test.ts > the self-shadow on the committed `1p` carve > never shadows the open face, and darkens the groove floor by a bounded amount
+3D-10 self-shadow calibration (strength 0.45, bias 0.02, softness 0.35, reach clamp 6 px)
+hand: key 33.15°, reach 5.03 px · open face visibility 1.0000 · floor visibility 0.932 · carved pixels touched 18.3% · key lost 1.95%
+pond: key 35.03°, reach 5.39 px · open face visibility 1.0000 · floor visibility 0.918 · carved pixels touched 20.4% · key lost 2.34%
+wall: key 35.03°, reach 5.39 px · open face visibility 1.0000 · floor visibility 0.918 · carved pixels touched 20.4% · key lost 2.34%
+
+ ✓ src/renderers/three/carveShadow.test.ts (1 test) 397ms
+ ✓ src/renderers/three/lighting.test.ts (13 tests) 28ms
+ ✓ src/agreement.test.ts (15 tests) 22ms
+ ✓ src/types/verdict.test.ts (19 tests) 48ms
+ ✓ src/renderers/three/perf.test.ts (11 tests) 38ms
+ ✓ src/services/mortalClient.test.ts (8 tests) 30ms
+ ✓ src/renderers/three/debugPath.test.ts (6 tests) 20ms
+ ✓ src/renderers/three/glintProbe.test.ts (6 tests) 22ms
+ ✓ src/store/useSettingsStore.test.ts (9 tests) 252ms
+stdout | src/renderers/three/carveReport.test.ts > the board’s carve bounds at every supported aspect > keeps both reaches inside their clamps
+3D-10 carve bounds (clamps: 8 parallax / 6 shadow texels)
+0.563: parallax 38.03° → 1.54 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+0.750: parallax 38.03° → 1.54 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+1.000: parallax 47.98° → 2.18 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+1.333: parallax 47.98° → 2.18 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+1.778: parallax 46.65° → 2.08 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+2.333: parallax 45.14° → 1.97 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+0.429: parallax 38.03° → 1.54 texels (meld #2); shadow 35.03° → 5.51 texels (dora #0)
+
+ ✓ src/renderers/three/carveReport.test.ts (5 tests) 201ms
+ ✓ src/stateFile.test.ts (7 tests) 18ms
+ ✓ src/hotseat.test.ts (9 tests) 23ms
+ ✓ src/renderers/three/compassPlate.test.ts (4 tests) 153ms
+ ✓ src/renderers/resolveTableMount.test.ts (8 tests) 16ms
+ ✓ src/renderers/moduleBoundary.test.ts (6 tests) 45ms
+ ✓ src/renderers/three/felt.test.ts (5 tests) 447ms
+ ✓ src/actions.test.ts (10 tests) 18ms
+ ✓ src/seatOrder.test.ts (7 tests) 25ms
+ ✓ src/renderers/three/hover.test.ts (5 tests) 54ms
+ ↓ src/services/packLoader.q1.test.ts (1 test | 1 skipped)
+ ✓ src/renderers/three/sha256.test.ts (4 tests) 222ms
+ ✓ src/callDecision.test.ts (5 tests) 18ms
+ ✓ src/meld.test.ts (8 tests) 26ms
+ ✓ src/renderers/contract.test.ts (5 tests) 20ms
+ ✓ src/renderers/three/drawCalls.test.ts (3 tests) 406ms
+ ✓ src/session.test.ts (6 tests) 19ms
+ ✓ src/handHint.test.ts (6 tests) 21ms
+ ✓ src/renderers/perfHud.test.ts (4 tests) 23ms
+ ✓ src/display.test.ts (4 tests) 18ms
+ ✓ src/renderers/three/sticks.test.ts (11 tests) 3746ms
+   ✓ the carved pip > paints one red pip on a white body, with no end bands 3147ms
+ ✓ src/renderers/three/Scene.test.ts (3 tests) 9ms
+
+ Test Files  74 passed | 1 skipped (75)
+      Tests  1532 passed | 1 skipped (1533)
+   Start at  19:27:03
+   Duration  10.59s (transform 6.67s, setup 0ms, collect 28.23s, tests 42.82s, environment 17.73s, prepare 12.49s)
+

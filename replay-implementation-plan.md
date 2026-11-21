@@ -2734,6 +2734,14 @@ constraints that matter to this plan are:
   2.26 MB body, ~0.085–0.12 s to verify and decode after the download (see
   `replay-first-rollout.md`, "Status (RF4)" and
   `testdata/reports/rf4-first-deal/measurements.json`).
+- **Ch. 8 completion is measured, not shipped (Q7, 2026-11-20).** The four
+  remaining ch8 lessons (`open_hand_defense` 4, `suji_trap_riichi` 0,
+  `kabe_no_chance` 0, `kabe_suji_defense` 32 stable labels) stay below the
+  40-base floor on the 1,542-game corpus, so no seventh pack ships and the six
+  hosted bodies are unchanged. The ch8 mechanical-review scope and content gate
+  now cover all twelve chapter lessons (ready-hand rule lesson-scoped for the
+  suji-trap declaration), so a C9 pack can use the same pipeline. See
+  `q7-ch8-completion-pack.md`.
 
 The rollout does not change this plan's gates: every pack still passes the
 legal/reachable/answer/audit/hosting/serving checks, the review flow, and the

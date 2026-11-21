@@ -542,11 +542,23 @@ lead where covered, generated rows are still listed and selectable, and the
 **Generated** filter switches the default pool to generated drills. The
 **first deal** is replay-first as well (RF4): the launch fetches the manifest and
 one section body, shows a brief loading status, and falls back to the generated
-hand when offline, slow or errored. The coverage table, the four lessons that
-still need classifiers, the per-section pack plan, the task sequence and the
+hand when offline, slow or errored. The coverage table, the classifier gaps
+(closed by B4), the per-section pack plan, the task sequence and the
 measured cold-start cost are in
 [`replay-first-rollout.md`](replay-first-rollout.md); re-measure it with
 `cd frontend && npm run first-deal:measure`.
+
+The **ch. 8 completion** measurement (Q7, 2026-11-20) closed the last chapter
+gap on paper: `open_hand_defense` 4, `suji_trap_riichi` 0, `kabe_no_chance` 0 and
+`kabe_suji_defense` 32 stable labels on the 1,542-game corpus, all below the
+40-base floor, so **no new pack ships** and the six hosted packs are unchanged.
+The four lessons stay generated-only until corpus growth C9; the ch. 8
+mechanical-review and content-check scopes now name all twelve chapter lessons,
+ready for that pack. Measured supply, C9 rates and the decision are in
+[`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md); regenerate the
+per-lesson table with
+`node scripts/replay-coverage-report.mjs --catalogue <lessons.json>`.
+
 Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and

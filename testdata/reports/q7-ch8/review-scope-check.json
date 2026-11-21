@@ -1,0 +1,54 @@
+{
+  "queue": "/tmp/opencode/q7-review-scope.jsonl",
+  "chapter": "ch8",
+  "items": 4,
+  "selected": 4,
+  "held_out": 0,
+  "accepted": 2,
+  "rejected": 2,
+  "rejection_reasons": {
+    "ready_hand": 2
+  },
+  "sections": {
+    "ch8.2": 3,
+    "ch8.4": 1
+  },
+  "lessons": {
+    "kabe_no_chance": 1,
+    "kabe_suji_defense": 1,
+    "open_hand_defense": 1,
+    "suji_trap_riichi": 1
+  },
+  "replay_families": {
+    "synthetic": 4
+  },
+  "decision_kinds": {
+    "discard": 4
+  },
+  "verdicts": [
+    {
+      "queue_id": "q-suji-trap-ready",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "q-open-hand-ready",
+      "accepted": false,
+      "problems": [
+        "ready_hand"
+      ]
+    },
+    {
+      "queue_id": "q-kabe-suji-slow",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "q-kabe-no-chance-ready",
+      "accepted": false,
+      "problems": [
+        "ready_hand"
+      ]
+    }
+  ]
+}

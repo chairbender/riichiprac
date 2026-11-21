@@ -1124,7 +1124,8 @@ One-at-a-time review does not scale past roughly a thousand candidates. Two
 additions make a ~2,000-candidate queue reviewable:
 
 - **Bulk verdicts.** `scripts/review-q2-queue.py --verdicts-out FILE` applies the
-  mechanical chapter rules (`--chapter ch8` by default, `ch7` for the
+  mechanical chapter rules (`--chapter ch8` by default — the complete twelve
+  ch. 8 lessons as of Q7, with a lesson-scoped ready-hand rule, `ch7` for the
   riichi/dama queue, where the ready-hand rejection does not apply, `ch5` for
   the value lessons, whose shipped shapes are 1-away or slower, `ch9` for the
   seating/kan pack, where the ready-hand rule is lesson-scoped, or `ch34` for
@@ -1149,8 +1150,13 @@ additions make a ~2,000-candidate queue reviewable:
 The mechanical pass is still a gate, not a judgement: it rejects out-of-scope
 sections/lessons, non-book or contested labels, report/lesson mismatches,
 illegal answers, duplicate exact/visible states and dirty walks. The ch. 8
-scope also rejects a ready hand (that is an offense drill); the ch. 7 scope
-keeps it, because a riichi/dama decision is tenpai by definition. The ch. 5
+scope rejects a ready hand for every lesson **except `suji_trap_riichi`**
+(Q7 completes the twelve-lesson chapter): that lesson is a riichi declaration
+(`src/classifier/suji.rs` answers Riichi on the trap discard), so its hand is
+tenpai by definition and the ready hand is in shape; `open_hand_defense` is the
+opposite case and its recogniser requires 2-away or worse
+(`src/classifier/open_hand.rs`). The ch. 7 scope keeps ready hands too, because
+a riichi/dama decision is tenpai by definition. The ch. 5
 scope rejects it too: `honitsu_decision` needs 1-2 shanten and refuses a discard
 into tenpai, `chiitoi_vs_toitoi` is exactly 1-away, `pinfu_head` needs two or
 more shanten, and the only tenpai ch. 5 lesson (`sanshoku_pursuit`) is below the
@@ -2128,6 +2134,20 @@ base of the three lessons under 120. Details:
 [`q6-ch34-shapes-pack.md`](q6-ch34-shapes-pack.md), evidence:
 [`testdata/reports/q6-ch34/`](testdata/reports/q6-ch34/); coverage:
 `node scripts/replay-coverage-report.mjs`.
+
+**Ch. 8 completion (Q7, 2026-11-20) — measured, no pack.** The four remaining
+ch. 8 lessons were re-measured on the same corpus at classifier v3:
+`open_hand_defense` 4 stable / 15 contested, `kabe_suji_defense` 32 / 28,
+`suji_trap_riichi` 0 / 0 and `kabe_no_chance` 0 / 0. None reaches the 40-base
+floor, so Q7 selected, reviewed and published nothing; the six hosted packs and
+their hashes are unchanged. The ch8 mechanical scope was completed for the
+future run (the two
+missing lessons were added and the ready-hand rule became lesson-scoped for
+`suji_trap_riichi`) and the ch8 content check now names all twelve lessons.
+C9 targets: `kabe_suji_defense` ~630–870 more games, `open_hand_defense`
+~15.8k–17.7k, and the two zero-supply lessons need a targeted family. Details:
+[`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md), evidence:
+[`testdata/reports/q7-ch8/`](testdata/reports/q7-ch8/).
 
 **Replay-first rollout.** The next product phase extends packs to the remaining
 book sections and makes replay the default source for covered lessons. Per-lesson

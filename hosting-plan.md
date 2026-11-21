@@ -447,7 +447,10 @@ is never in the browser's pack chain.
 `--chapter ch5`, `--chapter ch9` and `--chapter ch34` select the ch. 7, ch. 5,
 ch. 9 and ch. 3/4 lesson
 sets) and `scripts/check-pack-hosting.mjs` checks the hosting envelope
-for the whole set. The replay-first rollout
+for the whole set. **Q7 (2026-11-20) measured the four remaining ch. 8 lessons
+and ships no new body:** all are below the 40-base floor, so the six packs and
+their hashes stay exactly as Q6 left them (7,292,392 body bytes). See
+[`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md). The replay-first rollout
 ([`replay-first-rollout.md`](replay-first-rollout.md)) adds one pack per remaining
 book section; the 50 MB same-origin budget and the mirror threshold are unchanged,
 so the same manifest-plus-lazy-bodies model scales to the section packs. The Q1

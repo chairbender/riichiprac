@@ -1,0 +1,43 @@
+{
+  "schema": "riichiprac.ch8-pack-check",
+  "version": 1,
+  "chapter": "ch7",
+  "dir": "/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/dist/scenarios",
+  "pack": "replay.ch7-riichi-dama.2026-11",
+  "checks": 27,
+  "problems": [],
+  "scenarios": 2846,
+  "bases": 2846,
+  "variants": 0,
+  "variant_share": 0,
+  "transform_families": [],
+  "lessons": [
+    "chiitoitsu_riichi_vs_dama",
+    "dama_bad_wait",
+    "dama_expensive_hand",
+    "dama_genbutsu_wait",
+    "dama_improving_hand",
+    "riichi_judgement"
+  ],
+  "lesson_counts": {
+    "riichi_judgement": 1426,
+    "chiitoitsu_riichi_vs_dama": 151,
+    "dama_bad_wait": 982,
+    "dama_expensive_hand": 111,
+    "dama_genbutsu_wait": 119,
+    "dama_improving_hand": 57
+  },
+  "book_sections": [
+    "ch7.1",
+    "ch7.2",
+    "ch7.3"
+  ],
+  "bytes": 2176750,
+  "agents": [
+    "akochan (akochan)",
+    "efficiency-safety-v1 (corpus-reference)",
+    "isolated-first-v1 (corpus-reference)",
+    "mortal-298k (mortal-candle)"
+  ],
+  "data_commercial_use": false
+}

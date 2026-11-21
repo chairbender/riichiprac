@@ -1,0 +1,121 @@
+{
+  "ok": true,
+  "dir": "/home/kylehipke/workspaces/riichiprac-261120-1915/frontend/dist/scenarios",
+  "budgetBytes": 50000000,
+  "manifestBytes": 4670,
+  "totalBytes": 7292392,
+  "packs": [
+    {
+      "id": "replay.ch34-shapes.2026-11",
+      "bytes": 724376,
+      "scenarios": 822,
+      "sha256": "1e7f3266ea8f81bf3ea2e4626bbd9c7bc6096109bfbebdd7df51e7e1c3b01200",
+      "lessonIds": [
+        "nakabukure_ready",
+        "pair_count",
+        "protorun_plus_one",
+        "protorun_priority",
+        "ryanmen_protorun",
+        "skipping_block"
+      ],
+      "lessonCounts": {
+        "ryanmen_protorun": 54,
+        "nakabukure_ready": 54,
+        "pair_count": 187,
+        "protorun_priority": 289,
+        "skipping_block": 141,
+        "protorun_plus_one": 97
+      }
+    },
+    {
+      "id": "replay.ch5-values.2026-11",
+      "bytes": 1176300,
+      "scenarios": 1670,
+      "sha256": "5d0b01e6badb331b6771c239e50c4fac2659bbfcf338641199dc6bdb447f5864",
+      "lessonIds": [
+        "chiitoi_vs_toitoi",
+        "honitsu_decision",
+        "pinfu_head"
+      ],
+      "lessonCounts": {
+        "chiitoi_vs_toitoi": 94,
+        "pinfu_head": 257,
+        "honitsu_decision": 1319
+      }
+    },
+    {
+      "id": "replay.ch7-riichi-dama.2026-11",
+      "bytes": 2176750,
+      "scenarios": 2846,
+      "sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d",
+      "lessonIds": [
+        "chiitoitsu_riichi_vs_dama",
+        "dama_bad_wait",
+        "dama_expensive_hand",
+        "dama_genbutsu_wait",
+        "dama_improving_hand",
+        "riichi_judgement"
+      ],
+      "lessonCounts": {
+        "riichi_judgement": 1426,
+        "chiitoitsu_riichi_vs_dama": 151,
+        "dama_bad_wait": 982,
+        "dama_expensive_hand": 111,
+        "dama_genbutsu_wait": 119,
+        "dama_improving_hand": 57
+      }
+    },
+    {
+      "id": "replay.ch8-defense-multi-threat.2026-11",
+      "bytes": 591096,
+      "scenarios": 764,
+      "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",
+      "lessonIds": [
+        "defense_multi_threat"
+      ],
+      "lessonCounts": {
+        "defense_multi_threat": 764
+      }
+    },
+    {
+      "id": "replay.ch8-defense.2026-11",
+      "bytes": 2260809,
+      "scenarios": 2211,
+      "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43",
+      "lessonIds": [
+        "defense_safety_chart",
+        "defense_stuck_heuristic",
+        "fold_to_riichi",
+        "kabe_double_one_chance",
+        "kabe_one_chance",
+        "push_or_fold",
+        "suji_kabe_safety"
+      ],
+      "lessonCounts": {
+        "fold_to_riichi": 731,
+        "push_or_fold": 295,
+        "defense_safety_chart": 766,
+        "suji_kabe_safety": 357,
+        "defense_stuck_heuristic": 32,
+        "kabe_one_chance": 17,
+        "kabe_double_one_chance": 13
+      }
+    },
+    {
+      "id": "replay.ch9-seating-calls.2026-11",
+      "bytes": 363061,
+      "scenarios": 629,
+      "sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2",
+      "lessonIds": [
+        "ankan_decision",
+        "wind_discard_order"
+      ],
+      "lessonCounts": {
+        "ankan_decision": 62,
+        "wind_discard_order": 567
+      }
+    }
+  ],
+  "problems": [],
+  "checks": 215
+}
