@@ -873,6 +873,134 @@
 }
 
 /*
+ * The pool page (user request 2026-11-22): the sheet's header stays put and
+ * **everything below it scrolls as one column** — source filter, lesson list and
+ * the Cancel/Deal footer together.
+ *
+ * The scroll container is the picker panel itself, given a definite height by
+ * the chain above it. That is deliberate: a body-level `overflow: auto` around
+ * this content did not scroll on the phone (the sheet's flex body and the
+ * panel's own absolute overlay sitting inside a rotated shell), while a panel
+ * with `flex: 1; min-height: 0; overflow-y: auto` has a bounded height it cannot
+ * miss. `touch-action: pan-y` states the gesture so no ancestor can swallow it.
+ */
+.hud-sheet-body:has(.hud-setup-sheet--pool) {
+  display: flex;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.hud-setup-sheet--pool {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hud-setup-sheet--pool .scenario-picker--page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hud-setup-sheet--pool .scenario-picker {
+  min-height: 0;
+}
+
+.hud-setup-sheet--pool .scenario-picker-panel {
+  position: static;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-height: none;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+/*
+ * Inside a page the list is content, not a nested scroller: the panel is the one
+ * scroll container, so the footer travels with the lessons.
+ */
+.hud-setup-sheet--pool .scenario-group-list {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+/* Utilities -------------------------------------------------------------- */
+
+.hud-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The setup sheet's two pages (2026-11-21) ------------------------------- */
+
+/*
+ * The Scenario row on the settings page is a navigation control, not a
+ * dropdown: it says which pool is staged and opens the pool page, which is the
+ * only place the list is drawn.
+ */
+.hud-setup-scenario-row {
+  display: flex;
+  align-items: center;
+  gap: var(--hud-space);
+  width: 100%;
+  min-height: var(--hud-tap);
+  box-sizing: border-box;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: var(--hud-text-sm);
+  color: var(--hud-text);
+  text-align: left;
+  background-color: rgba(26, 42, 60, 0.7);
+  border: 1px solid var(--hud-border-accent);
+  border-radius: var(--hud-radius-control);
+  cursor: pointer;
+}
+
+.hud-setup-scenario-row:hover {
+  background-color: rgba(36, 56, 78, 0.9);
+}
+
+.hud-setup-scenario-row:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
+}
+
+.hud-setup-scenario-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-setup-scenario-go {
+  flex: 0 0 auto;
+  color: var(--hud-accent);
+  font-size: var(--hud-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/*
  * The pool page is one scrolling column under the sheet's fixed header (user
  * request 2026-11-22): the sheet body scrolls the whole page — controls, list
  * and Deal/Cancel together — so nothing is pinned and nothing is trapped in a

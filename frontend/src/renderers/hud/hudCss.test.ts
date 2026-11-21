@@ -264,3 +264,31 @@ describe('HUD stylesheet: the committed visual tokens (3d_hud.md §8)', () => {
     expect(envUsers).toEqual(['.hud-inset-probe']);
   });
 });
+
+describe('HUD stylesheet: the pool page scrolls (2026-11-22)', () => {
+  it('makes the picker panel the one scroll container, under a fixed header body', () => {
+    const [body] = blocksFor(HUD, '.hud-sheet-body:has(.hud-setup-sheet--pool)');
+    expect(body).toBeDefined();
+    // The body itself does not scroll: the header above it stays put.
+    expect(declarations(body.body).get('overflow')).toBe('hidden');
+    expect(declarations(body.body).get('min-height')).toBe('0');
+
+    const [panel] = blocksFor(
+      HUD,
+      '.hud-setup-sheet--pool .scenario-picker-panel',
+    );
+    expect(panel).toBeDefined();
+    const decls = declarations(panel.body);
+    // A definite height and its own scroll, so the gesture cannot be lost.
+    expect(decls.get('flex')).toContain('1');
+    expect(decls.get('min-height')).toBe('0');
+    expect(decls.get('overflow-y')).toBe('auto');
+    expect(decls.get('touch-action')).toBe('pan-y');
+    expect(decls.get('position')).toBe('static');
+
+    // The list is content inside it, not a second scroller.
+    const [list] = blocksFor(HUD, '.hud-setup-sheet--pool .scenario-group-list');
+    expect(list).toBeDefined();
+    expect(declarations(list.body).get('overflow')).toBe('visible');
+  });
+});
