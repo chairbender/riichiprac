@@ -249,19 +249,26 @@
 }
 
 /*
- * `ActionRail`'s own flow: the call's buttons and the Riichi/Kan toggles are
- * siblings in one wrapping row, so a narrow stage wraps between controls rather
- * than stacking two bars. `min-width: 0` lets a group shrink instead of pushing
- * the panel wider than its rect.
+ * `ActionRail`'s own flow: the remaining drill actions and the shared call bar
+ * are siblings in one wrapping row, so a narrow stage wraps between controls
+ * rather than stacking two bars. `min-width: 0` lets a group shrink instead of
+ * pushing the panel wider than its rect, and the call bar's own right alignment
+ * keeps it above the right side of the hand.
  */
 .hud-action-rail-controls {
   display: flex;
   flex: 1;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
   min-width: 0;
   min-height: var(--hud-tap);
+}
+
+.hud-action-rail .call-controls {
+  flex: 1 1 auto;
+  justify-content: flex-end;
 }
 
 /* The hand rail's single row: the instruction, then the Mortal chip. */
@@ -275,7 +282,7 @@
 
 /* The 2D strips' own surfaces are already dark; the panel supplies the room. */
 .hud-action-rail .action-bar,
-.hud-action-rail .call-toggles {
+.hud-action-rail .call-controls {
   min-width: 0;
 }
 
@@ -286,14 +293,14 @@
 }
 
 .hud-action-rail .action-button,
-.hud-action-rail .riichi-toggle,
-.hud-action-rail .kan-toggle {
+.hud-action-rail .call-button,
+.hud-action-rail .call-controls-cancel {
   min-height: var(--hud-tap);
 }
 
 .hud-action-rail .action-button:focus-visible,
-.hud-action-rail .riichi-toggle:focus-visible,
-.hud-action-rail .kan-toggle:focus-visible {
+.hud-action-rail .call-button:focus-visible,
+.hud-action-rail .call-controls-cancel:focus-visible {
   outline: 2px solid var(--hud-focus);
   outline-offset: 2px;
 }

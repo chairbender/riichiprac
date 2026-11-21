@@ -4,9 +4,9 @@
  *
  * The parity assertions are drift tests, not copies: the same hand state is
  * rendered by the 2D `HandDock` and by the rail, and the two control surfaces
- * are compared — labels, order, `aria-pressed` and disabled state. The rail
- * renders the same `CallToggles`/`ActionBar` components, so a change that is
- * made to one shell and not the other fails here.
+ * are compared — labels, order, disabled state and the words on each button.
+ * The rail renders the same `CallControls`/`ActionBar` components, so a change
+ * that is made to one shell and not the other fails here.
  *
  * The row count is measured from the rail's height and must be reported to the
  * caller: `hudLayout()` turns it into the panel's 84 px or 128 px shape.
@@ -16,6 +16,8 @@ import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import { HandDock } from '../../components/HandDock';
+import { NO_CALL_BUTTONS } from '../../callChoices';
+import type { CallButtons, PendingCall } from '../../callChoices';
 import type { AiActionInfo, AiEvaluation } from '../../types/ai';
 import type { PlayerState } from '../../types/game';
 import { ActionRail } from './ActionRail';
@@ -28,12 +30,10 @@ import {
 } from './actionRail';
 import type { ActionRailModel } from './actionRail';
 
-// The SVG tile/Kan/Riichi art is irrelevant here; the controls are the subject.
+// The SVG tile art is irrelevant here; the controls are the subject.
 vi.mock('../../components/Tile', () => ({ Tile: () => null }));
-vi.mock('../../components/KanIcon', () => ({ KanIcon: () => null }));
-vi.mock('../../components/RiichiStick', () => ({ RiichiStick: () => null }));
 
-/** A hand holding a callable quad, so the Kan toggle is offered. */
+/** A hand holding a callable quad, so a self-turn Kan button exists. */
 const PLAYER: PlayerState = {
   seat: 0,
   name: 'You',
@@ -49,45 +49,52 @@ const PLAYER: PlayerState = {
   riichi_discard_index: null,
 };
 
-const CHI: AiActionInfo = {
-  action: 'Chi_Low',
-  label: 'Chi 2p 3p on 4p',
-  type: 'chi',
-  tile: '4p',
-  tiles: ['2p', '3p'],
+const CALLS: CallButtons = {
+  calls: [
+    { kind: 'chi', label: 'Chi', ariaLabel: 'Call Chi on 4p' },
+    { kind: 'pon', label: 'Pon', ariaLabel: 'Call Pon 5z', action: 'Pon' },
+    { kind: 'kan', label: 'Kan', ariaLabel: 'Call Kan on 1m', action: 'Kan' },
+    { kind: 'riichi', label: 'Riichi', ariaLabel: 'Call Riichi' },
+  ],
+  pass: true,
 };
-const PASS: AiActionInfo = { action: 'Pass', label: 'Pass', type: 'pass' };
-const DISCARD: AiActionInfo = {
-  action: 'Discard_9p',
-  label: 'Discard 9p',
-  type: 'discard',
-  tile: '9p',
+
+const TSUMO: AiActionInfo = {
+  action: 'Agari',
+  label: 'Tsumo',
+  type: 'agari',
 };
 
 const EVALUATION: AiEvaluation = {
   model: 'test',
   expected_value: 0.1,
-  recommended_action: 'Kan',
+  recommended_action: 'Pon',
   evaluations: [
-    { ...CHI, probability: 0.3 },
-    { action: 'Kan', label: 'Kan 1m', type: 'kan', probability: 0.25 },
-    { ...PASS, probability: 0.15 },
+    { action: 'Pon', label: 'Pon 5z', type: 'pon', probability: 0.25 },
+    { action: 'Pass', label: 'Pass', type: 'pass', probability: 0.15 },
   ],
+};
+
+const PENDING: PendingCall = {
+  kind: 'chi',
+  need: 2,
+  picks: [],
+  options: [],
+  anyTile: false,
 };
 
 function model(overrides: Partial<ActionRailModel> = {}): ActionRailModel {
   return {
     actions: [],
-    canRiichi: true,
-    kanTile: '1m',
+    callButtons: CALLS,
+    pendingCall: null,
+    callError: null,
     answered: false,
-    isAiScenario: false,
-    callRiichi: false,
-    callKan: false,
     evaluation: null,
     revealMortal: false,
-    onToggleRiichi: () => undefined,
-    onToggleKan: () => undefined,
+    onBeginCall: () => undefined,
+    onPass: () => undefined,
+    onCancelCall: () => undefined,
     onAction: () => undefined,
     ...overrides,
   };
@@ -118,15 +125,15 @@ function dock(overrides: Partial<ComponentProps<typeof HandDock>> = {}) {
       player={PLAYER}
       grade={null}
       answer={null}
-      callRiichi={false}
-      callKan={false}
+      callButtons={CALLS}
+      pendingCall={null}
+      callError={null}
       aiEvaluation={null}
-      canRiichi
-      targetAction="Kan"
       onNextScenario={() => undefined}
       onShowVerdict={() => undefined}
-      onToggleRiichi={() => undefined}
-      onToggleKan={() => undefined}
+      onBeginCall={() => undefined}
+      onPass={() => undefined}
+      onCancelCall={() => undefined}
       onSelectTile={() => undefined}
       {...overrides}
     />
@@ -136,125 +143,124 @@ function dock(overrides: Partial<ComponentProps<typeof HandDock>> = {}) {
 afterEach(cleanup);
 
 describe('3D action rail: the same controls as the 2D dock', () => {
-  it('matches HandDock’s Riichi and Kan toggles, label for label', () => {
+  it('matches HandDock’s call buttons, label for label', () => {
     const dockView = render(dock());
-    const dockControls = controls(dockView.container, '.call-toggles button');
+    const dockControls = controls(dockView.container, '.call-controls button');
     cleanup();
 
     const railView = render(<ActionRail model={model()} />);
-    const railControls = controls(railView.container, '.call-toggles button');
+    const railControls = controls(railView.container, '.call-controls button');
 
     expect(railControls).toEqual(dockControls);
-    expect(railControls).toHaveLength(2);
-    expect(railControls[0].label).toBe(
-      'Call Riichi toggle, currently off',
-    );
-    expect(railControls[0].text).toBe('Call RiichiOFF');
-    expect(railControls[1].label).toBe(
-      'Call Kan toggle for 1m, currently off',
-    );
-    expect(railControls[1].text).toBe('Call Kan1mOFF');
+    expect(railControls.map((control) => control.text)).toEqual([
+      'Chi',
+      'Pon',
+      'Kan',
+      'Riichi',
+      'Pass',
+    ]);
   });
 
-  it('keeps the armed state identical, including aria-pressed', () => {
-    const dockView = render(dock({ callRiichi: true, callKan: true }));
-    const dockControls = controls(dockView.container, '.call-toggles button');
+  it('never exposes an armed toggle: no aria-pressed and no ON/OFF word', () => {
+    const dockView = render(dock());
+    const all = controls(dockView.container, 'button');
     cleanup();
 
-    const railView = render(
-      <ActionRail model={model({ callRiichi: true, callKan: true })} />,
-    );
-    expect(controls(railView.container, '.call-toggles button')).toEqual(
-      dockControls,
-    );
-    expect(
-      controls(railView.container, '.call-toggles button').map(
-        (control) => control.pressed,
-      ),
-    ).toEqual(['true', 'true']);
+    const railView = render(<ActionRail model={model()} />);
+    for (const control of [...all, ...controls(railView.container, 'button')]) {
+      expect(control.pressed).toBeNull();
+      expect(control.text).not.toMatch(/\bON\b|\bOFF\b/);
+    }
   });
 
-  it('shows the Kan probability exactly when Mortal may be revealed', () => {
+  it('keeps the open pick identical, prompt and Cancel included', () => {
+    const dockView = render(dock({ pendingCall: PENDING }));
+    const dockControls = controls(dockView.container, '.call-controls button');
+    cleanup();
+
+    const railView = render(<ActionRail model={model({ pendingCall: PENDING })} />);
+    expect(controls(railView.container, '.call-controls button')).toEqual(
+      dockControls,
+    );
+    // Every call is inert while the pick is open; Cancel is the one target.
+    const cancel = within(railView.container).getByRole('button', {
+      name: 'Cancel',
+    });
+    expect((cancel as HTMLButtonElement).disabled).toBe(false);
+    expect(
+      railView.container.querySelector('.call-controls-prompt')?.textContent,
+    ).toBe('Select 2 tiles for Chi');
+  });
+
+  it('shows the probability chip exactly when Mortal may be revealed', () => {
     const hidden = render(
       <ActionRail model={model({ evaluation: EVALUATION, revealMortal: false })} />,
     );
-    expect(hidden.container.querySelector('.kan-toggle-probability')).toBeNull();
+    expect(hidden.container.querySelector('.call-button-probability')).toBeNull();
     cleanup();
 
     const shown = render(
       <ActionRail model={model({ evaluation: EVALUATION, revealMortal: true })} />,
     );
-    const chip = shown.container.querySelector('.kan-toggle-probability');
+    const chip = shown.container.querySelector('.call-button-probability');
     expect(chip).not.toBeNull();
-    expect(chip?.getAttribute('aria-label')).toBe(
-      'Mortal rates Kan 25%',
-    );
+    expect(chip?.getAttribute('aria-label')).toBe('Mortal rates Pon 25%');
   });
 
-  it('arms and acts through the caller’s handlers', () => {
-    const onToggleRiichi = vi.fn();
-    const onToggleKan = vi.fn();
-    const onAction = vi.fn();
-    const { container } = render(
+  it('begins and cancels through the caller’s handlers', () => {
+    const onBeginCall = vi.fn();
+    const onCancelCall = vi.fn();
+    const onPass = vi.fn();
+    const { container, rerender } = render(
       <ActionRail
-        model={model({
-          actions: [CHI, PASS, DISCARD],
-          onToggleRiichi,
-          onToggleKan,
-          onAction,
-        })}
+        model={model({ onBeginCall, onCancelCall, onPass })}
       />,
     );
 
-    fireEvent.click(
-      within(container).getByRole('button', {
-        name: 'Call Riichi toggle, currently off',
-      }),
-    );
-    expect(onToggleRiichi).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(container).getByRole('button', { name: 'Call Pon 5z' }));
+    expect(onBeginCall).toHaveBeenCalledWith('pon');
 
-    fireEvent.click(
-      within(container).getByRole('button', {
-        name: 'Call Kan toggle for 1m, currently off',
-      }),
-    );
-    expect(onToggleKan).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(container).getByRole('button', { name: 'Pass on the call' }));
+    expect(onPass).toHaveBeenCalledTimes(1);
 
-    // The ActionBar exposes the non-discard actions only, in the state's order.
-    const actionButtons = within(container).getAllByRole('button', {
-      name: /Chi 2p 3p on 4p|Pass/,
-    });
-    expect(actionButtons.map((button) => button.textContent)).toEqual([
-      'Chi 2p 3p on 4p',
-      'Pass',
-    ]);
-    fireEvent.click(actionButtons[1]);
-    expect(onAction).toHaveBeenCalledWith(PASS);
+    rerender(
+      <ActionRail
+        model={model({ pendingCall: PENDING, onBeginCall, onCancelCall, onPass })}
+      />,
+    );
+    fireEvent.click(within(container).getByRole('button', { name: 'Cancel' }));
+    expect(onCancelCall).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the drill’s other actions in the ActionBar, not in the call bar', () => {
+    const onAction = vi.fn();
+    const { container } = render(
+      <ActionRail model={model({ actions: [TSUMO], onAction })} />,
+    );
+    expect(controls(container, '.action-bar button')).toHaveLength(1);
+    fireEvent.click(within(container).getByRole('button', { name: 'Tsumo' }));
+    expect(onAction).toHaveBeenCalledWith(TSUMO);
   });
 });
 
 describe('3D action rail: what mounts and when', () => {
-  it('draws the call actions and the toggles in one wrapping flow', () => {
+  it('draws the actions and the calls in one wrapping flow', () => {
     const { container } = render(
-      <ActionRail model={model({ actions: [CHI, PASS, DISCARD] })} />,
+      <ActionRail model={model({ actions: [TSUMO] })} />,
     );
     const flow = container.querySelector('.hud-action-rail-controls');
     expect(flow).not.toBeNull();
-    // A plain discard is not a rail action: it stays on the hand tiles.
-    expect(controls(container, '.action-bar button')).toHaveLength(2);
     expect(flow?.querySelector('.action-bar')).not.toBeNull();
-    expect(flow?.querySelector('.call-toggles')).not.toBeNull();
+    expect(flow?.querySelector('.call-controls')).not.toBeNull();
   });
 
   it('is unmounted when it would be empty, and after an answer', () => {
-    // A plain discard lesson: no Riichi, no Kan, no call.
+    // A plain discard lesson: no Riichi, no Kan, no call, no drill action.
     expect(
-      actionRailVisible(
-        model({ actions: [], canRiichi: false, kanTile: null }),
-      ),
+      actionRailVisible(model({ actions: [], callButtons: NO_CALL_BUTTONS })),
     ).toBe(false);
     const empty = render(
-      <ActionRail model={model({ actions: [], canRiichi: false, kanTile: null })} />,
+      <ActionRail model={model({ actions: [], callButtons: NO_CALL_BUTTONS })} />,
     );
     expect(empty.container.firstChild).toBeNull();
 
@@ -264,25 +270,19 @@ describe('3D action rail: what mounts and when', () => {
     expect(answered.container.firstChild).toBeNull();
   });
 
-  it('an AI drill answers through its actions, never a call toggle', () => {
-    const drill = model({
-      isAiScenario: true,
-      actions: [CHI, PASS],
-      canRiichi: true,
-      kanTile: '1m',
-    });
-    expect(actionRailVisible(drill)).toBe(true);
-    const { container } = render(<ActionRail model={drill} />);
-    expect(container.querySelector('.call-toggles')).toBeNull();
-    expect(controls(container, '.action-bar button')).toHaveLength(2);
-  });
-
-  it('hides every control when Mortal and the call toggles have nothing', () => {
-    expect(railActions([DISCARD])).toEqual([]);
+  it('hides when only a plain discard is left', () => {
     expect(
-      actionRailVisible(
-        model({ actions: [DISCARD], canRiichi: false, kanTile: null }),
-      ),
+      railActions([
+        {
+          action: 'Discard_9p',
+          label: 'Discard 9p',
+          type: 'discard',
+          tile: '9p',
+        },
+      ]),
+    ).toEqual([]);
+    expect(
+      actionRailVisible(model({ actions: [], callButtons: NO_CALL_BUTTONS })),
     ).toBe(false);
   });
 });

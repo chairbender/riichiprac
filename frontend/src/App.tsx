@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
-import {
-  callOfferActions,
-  canDeclareRiichi,
-  isCallDecision,
-  kanToggleTile,
-} from './actions';
+import { isCallDecision } from './actions';
 import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
+import {
+  callButtonsFor,
+  callContextFor,
+  isCallActionType,
+  NO_CALL_BUTTONS,
+} from './callChoices';
 import { ActionBar } from './components/ActionBar';
 import { AppControls } from './components/AppControls';
 import { ExportImportControls } from './components/ExportImportControls';
@@ -20,7 +21,7 @@ import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
-import { handHintFor } from './handHint';
+import { handHint } from './handHint';
 import { RendererHost } from './renderers/RendererHost';
 import { ActionRail } from './renderers/hud/ActionRail';
 import { actionRailVisible } from './renderers/hud/actionRail';
@@ -133,8 +134,8 @@ export const App = () => {
   const gameState = useGameStore((state) => state.gameState);
   const isLoading = useGameStore((state) => state.isLoading);
   const error = useGameStore((state) => state.error);
-  const callRiichi = useGameStore((state) => state.callRiichi);
-  const callKan = useGameStore((state) => state.callKan);
+  const pendingCall = useGameStore((state) => state.pendingCall);
+  const callError = useGameStore((state) => state.callError);
   const submittedAnswer = useGameStore((state) => state.submittedAnswer);
   const dualGrade = useGameStore((state) => state.dualGrade);
   const peekedBeforeAnswer = useGameStore((state) => state.peekedBeforeAnswer);
@@ -144,8 +145,8 @@ export const App = () => {
     (state) => state.loadFromAgreementJson,
   );
   const mortalAgreement = useGameStore((state) => state.mortalAgreement);
-  const toggleRiichi = useGameStore((state) => state.toggleRiichi);
-  const toggleKan = useGameStore((state) => state.toggleKan);
+  const beginCall = useGameStore((state) => state.beginCall);
+  const cancelCall = useGameStore((state) => state.cancelCall);
   const selectTile = useGameStore((state) => state.selectTile);
   const submitAction = useGameStore((state) => state.submitAction);
   const reset = useGameStore((state) => state.reset);
@@ -341,8 +342,6 @@ export const App = () => {
       requireAgreement: drawnWith,
       submittedAnswer: state.submittedAnswer,
       dualGrade: state.dualGrade,
-      callRiichi: state.callRiichi,
-      callKan: state.callKan,
       peekedBeforeAnswer: state.peekedBeforeAnswer,
       evaluation: state.evaluation,
       mortalAgreement: state.mortalAgreement,
@@ -704,8 +703,6 @@ export const App = () => {
     submittedAnswer,
     dualGrade,
     peekedBeforeAnswer,
-    callRiichi,
-    callKan,
     evaluation,
     mortalAgreement,
     positionDescription,
@@ -896,51 +893,48 @@ export const App = () => {
   const aiDecision = gameState?.ai_decision ?? null;
   const availableActions = aiDecision?.actions ?? [];
   const isDrill = gameState?.correct_action.type === 'best';
-  // A book call lesson renders its own Call/Pass buttons from the Rust offer.
+  // A book call lesson answers through its call/Pass buttons, never a discard.
   const isCallLesson = gameState ? isCallDecision(gameState) : false;
-  const callActions = gameState ? callOfferActions(gameState) : [];
-  const actionBarActions = isCallLesson ? callActions : availableActions;
   const canDiscard = isCallLesson
     ? false
     : isDrill
       ? availableActions.some((action) => action.type === 'discard')
       : true;
-  // Rust owns the rule (`GameState::can_riichi`), read through one helper so
-  // the dock and the store cannot disagree.
-  const canRiichi = gameState ? canDeclareRiichi(gameState) : false;
   const decision = gameState?.decision;
   const claimedFrom =
     decision?.kind === 'react_to_discard' ? decision.from : null;
 
   /*
-   * 3D-H3: the hand's decision state, derived once for both shells.
+   * 3D-H3: the hand's call state, derived once for both shells.
    *
-   * The 2D dock reads these inside `HandDock`; the HUD's hand rail and action
-   * rail need exactly the same values, so they are computed here from the same
-   * helpers (`kanToggleTile`, `handHintFor`) the dock uses. `availableActions` is
-   * only an AI drill's list — passing it is what makes a drill answer through its
-   * actions instead of a call toggle, in both views.
+   * The shared `CallControls` bar renders in the 2D dock and the HUD's action
+   * rail from this one model, so the two views cannot disagree about which
+   * calls exist. Calls are plain buttons: pressing one either submits the call
+   * (one legal way to make it) or opens a pick step in the store, whose tiles
+   * come from whichever hand surface is on screen.
    */
+  const callContext = gameState
+    ? callContextFor(gameState)
+    : { isDrill: false, availableActions: [] };
+  const callButtons =
+    gameState && humanPlayer
+      ? callButtonsFor(gameState, humanPlayer, callContext)
+      : NO_CALL_BUTTONS;
+
+  // The AI drill's non-call actions stay in the ActionBar; calls moved to the
+  // shared call bar, so a drill never renders two controls for one action.
+  const actionBarActions = availableActions.filter(
+    (action) => !isCallActionType(action.type),
+  );
+
   const answered = dualGrade !== null;
   const revealMortal = answered || peekedBeforeAnswer;
-  const drillActions = isDrill ? availableActions : undefined;
-  const kanTile = humanPlayer
-    ? kanToggleTile(humanPlayer, {
-        availableActions: drillActions,
-        targetAction: gameState?.target_action,
-      })
-    : null;
-  const handHintText = humanPlayer
-    ? handHintFor({
-        player: humanPlayer,
-        isAnswered: answered,
-        canDiscard,
-        callRiichi,
-        callKan,
-        availableActions: drillActions,
-        targetAction: gameState?.target_action,
-      })
-    : '';
+  const handHintText = handHint({
+    isAnswered: answered,
+    canDiscard,
+    pendingCall,
+    hasKanCall: callButtons.calls.some((call) => call.kind === 'kan'),
+  });
 
   /*
    * 3D-14: whether this browser can run the 3D table.
@@ -1124,16 +1118,15 @@ export const App = () => {
 
   const actionRailModel: ActionRailModel = {
     actions: actionBarActions,
-    canRiichi,
-    kanTile,
+    callButtons,
+    pendingCall,
+    callError,
     answered,
-    isAiScenario: isDrill,
-    callRiichi,
-    callKan,
     evaluation,
     revealMortal,
-    onToggleRiichi: toggleRiichi,
-    onToggleKan: toggleKan,
+    onBeginCall: beginCall,
+    onPass: () => submitAction({ action: 'Pass' }),
+    onCancelCall: cancelCall,
     onAction: submitAction,
   };
 
@@ -1449,8 +1442,7 @@ export const App = () => {
               tier={tableMount.query.quality}
               debug={tableMount.query.debug}
               perfHud={tableMount.query.perf}
-              callRiichi={callRiichi}
-              callKan={callKan}
+              pendingCall={pendingCall}
               onSelectTile={selectTile}
               onDegraded={handleThreeDegraded}
             />
@@ -1535,10 +1527,8 @@ export const App = () => {
         <ActionBar
           actions={actionBarActions}
           disabled={false}
-          riichiArmed={callRiichi}
           evaluation={evaluation}
           revealMortal={revealMortal}
-          onToggleRiichi={toggleRiichi}
           onAction={submitAction}
         />
       )}
@@ -1548,19 +1538,18 @@ export const App = () => {
           player={humanPlayer}
           grade={dualGrade}
           answer={submittedAnswer}
-          callRiichi={callRiichi}
-          callKan={callKan}
+          callButtons={callButtons}
+          pendingCall={pendingCall}
+          callError={callError}
           aiEvaluation={evaluation}
-          availableActions={isDrill ? availableActions : undefined}
           canDiscard={canDiscard}
-          canRiichi={canRiichi}
           revealMortal={dualGrade !== null || peekedBeforeAnswer}
-          targetAction={gameState?.target_action}
           nextDisabled={isLoading}
           onNextScenario={handleNextScenario}
           onShowVerdict={showVerdict}
-          onToggleRiichi={toggleRiichi}
-          onToggleKan={toggleKan}
+          onBeginCall={beginCall}
+          onPass={() => submitAction({ action: 'Pass' })}
+          onCancelCall={cancelCall}
           onSelectTile={selectTile}
         />
       )}

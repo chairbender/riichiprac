@@ -81,6 +81,22 @@ pub fn grade_answer_json(request_json: &str) -> String {
     verdict::grade_answer_json(request_json).unwrap_or_else(|err| report::error_json(&err))
 }
 
+/// Every discard that is a legal Riichi declaration tile for this state.
+///
+/// Takes a serialized [`GameState`] and returns a JSON array of tile codes. The
+/// call UI uses it to tell "there is one obvious discard" from "the player must
+/// choose": a one-tile array completes the declaration on the button press, a
+/// longer array is the pick step's option list, and an empty array (or an
+/// invalid payload) leaves the pick step unrestricted.
+#[wasm_bindgen]
+pub fn riichi_discards_json(game_state_json: &str) -> String {
+    match serde_json::from_str::<GameState>(game_state_json) {
+        Ok(state) => serde_json::to_string(&ai::actions::riichi_discard_tiles(&state))
+            .unwrap_or_else(|_| "[]".to_string()),
+        Err(_) => "[]".to_string(),
+    }
+}
+
 /// Exports a serialized [`GameState`] as a `tenhou.net/6` game log.
 ///
 /// Returns the JSON document to paste into the "Custom log" box of
@@ -222,5 +238,32 @@ mod tests {
             "correct_action tile must be present in the human hand"
         );
         assert_eq!(human["draw"], correct_tile);
+    }
+
+    #[test]
+    fn riichi_discard_options_name_the_tenpai_discards() {
+        // A lesson whose answer is always Riichi: the declaration's own tile
+        // must be offered, and the list is never empty while Riichi is legal.
+        let state = generator::generate_puzzle("suji_trap_riichi").expect("must generate");
+        assert!(state.can_riichi);
+        let discards = ai::actions::riichi_discard_tiles(&state);
+        assert!(!discards.is_empty());
+        let correct = state
+            .correct_action
+            .tile()
+            .expect("the trap answer names a discard")
+            .to_string();
+        assert!(
+            discards.contains(&correct),
+            "the answer {correct} must be a legal declaration tile, got {discards:?}"
+        );
+    }
+
+    #[test]
+    fn a_reaction_has_no_riichi_discard_options() {
+        // Riichi is declared on your own turn: a call reaction offers none.
+        let state = generator::generate_puzzle("meld_or_not").expect("must generate");
+        assert!(!state.can_riichi);
+        assert!(ai::actions::riichi_discard_tiles(&state).is_empty());
     }
 }

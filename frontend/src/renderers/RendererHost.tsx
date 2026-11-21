@@ -21,6 +21,7 @@
 
 import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { PendingCall } from '../callChoices';
 import {
   antiAliasFor,
   probeCapabilities,
@@ -93,10 +94,11 @@ export interface RendererHostProps {
    * to the view it would otherwise have drawn instead of a blank stage.
    */
   readonly fallback?: ReactNode;
-  /** Call Riichi is armed: the projected hand buttons say so (3D-08). */
-  readonly callRiichi?: boolean;
-  /** Call Kan is armed: the projected hand buttons say so (3D-08). */
-  readonly callKan?: boolean;
+  /**
+   * The open call pick, or null (3D-08). The projected hand buttons name the
+   * tile's part in the call and disable the ones it cannot use.
+   */
+  readonly pendingCall?: PendingCall | null;
   /**
    * The hand-click handler the stacked/top-down views use (App's `selectTile`).
    * The overlay is rendered only when this is supplied; the answer flow itself
@@ -478,8 +480,7 @@ export function RendererHost({
   perfHud = false,
   reducedMotion,
   fallback = null,
-  callRiichi = false,
-  callKan = false,
+  pendingCall = null,
   onSelectTile,
   onDegraded,
 }: RendererHostProps) {
@@ -861,8 +862,7 @@ export function RendererHost({
           <TableOverlay
             snapshot={snapshot}
             rects={hitRects}
-            callRiichi={callRiichi}
-            callKan={callKan}
+            pendingCall={pendingCall}
             reducedMotion={reduceMotion}
             onSelectTile={onSelectTile}
             onHoverTile={reportHoverTile}

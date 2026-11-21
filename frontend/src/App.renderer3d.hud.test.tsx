@@ -363,33 +363,25 @@ describe('App 3D practice HUD (3D-H3)', () => {
     ).toBe(stackedHint);
   });
 
-  it('renders the dock’s call toggles and action bar unchanged, in the rail', async () => {
+  it('renders the dock’s call controls unchanged, in the rail', async () => {
     const state = callState();
     const stacked = renderStacked(state);
     await waitFor(() =>
-      expect(stacked.container.querySelector('.call-toggles')).not.toBeNull(),
+      expect(stacked.container.querySelector('.call-controls')).not.toBeNull(),
     );
-    const dockToggles = controls(stacked.container, '.call-toggles button');
-    const dockActions = controls(stacked.container, '.action-bar button');
+    const dockCalls = controls(stacked.container, '.call-controls button');
+    expect(dockCalls.map((control) => control.text)).toEqual(['Pon', 'Pass']);
     cleanup();
 
     const three = renderThree(state);
     await waitFor(() =>
-      expect(three.container.querySelector('.call-toggles')).not.toBeNull(),
+      expect(three.container.querySelector('.call-controls')).not.toBeNull(),
     );
-    expect(controls(three.container, '.hud-action-rail .call-toggles button')).toEqual(
-      dockToggles,
+    expect(controls(three.container, '.hud-action-rail .call-controls button')).toEqual(
+      dockCalls,
     );
-    expect(controls(three.container, '.hud-action-rail .action-bar button')).toEqual(
-      dockActions,
-    );
-    // Order is the dock's own: the call actions, then the toggles.
-    const rail = three.container.querySelector('.hud-action-rail');
-    const groups = [...(rail?.querySelectorAll('.action-bar, .call-toggles') ?? [])];
-    expect(groups.map((group) => group.className)).toEqual([
-      'action-bar',
-      'call-toggles',
-    ]);
+    // A book call lesson has no other action, so the rail is the call bar alone.
+    expect(three.container.querySelector('.hud-action-rail .action-bar')).toBeNull();
   });
 
   it('turns a deal error into a HUD toast, not a block in the scene', async () => {

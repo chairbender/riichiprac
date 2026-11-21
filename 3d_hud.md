@@ -77,7 +77,7 @@ result card — but they are one rect.
 | **Top bar** | the app name (top-left) with the setup trigger under it, plus Next hand on the right (the result card and the verdict sheet carry their own after an answer, §4) and the full-screen toggle | always | H2/H4 |
 | **Hand panel** | one anchored surface above the hand with two rows | always (once the scene publishes anchors) | H3/H5 |
 | — *hand rail* row | the live-region hint (`handHint`) + the pre-answer Mortal chip | always | H3 |
-| — *action rail* row | `ActionBar`'s non-discard actions, Riichi toggle, Kan toggle | while unanswered and non-empty | H3 |
+| — *action rail* row | `ActionBar`'s remaining non-call actions plus the shared `CallControls` bar (Chi/Pon/Kan/Riichi/Pass, then a tile pick) | while unanswered and non-empty | H3 |
 | — *result card* | the compact result (`AnswerSummary` + one line of verdict) and its own Next control | after an answer; replaces both rows | H5 |
 | **Setup sheet** | scenario pool, AI Hotseat, settings, position, table info, notes | on demand | H4 |
 | **Verdict sheet** | full `VerdictPanel` (book, Mortal, ranking, explanation, peek) | on demand | H5 |
@@ -161,11 +161,11 @@ unchanged), **DROPPED**, **2D ONLY**.
 | 47 | `HandDock` section "Your hand" | dock | **SCENE** — the 3D overlay's group keeps that name; no duplicate group | 3D-08 |
 | 48 | Hand + draw tile buttons (labels, order, disabled, answer marks, AI badges) | dock | **SCENE** — the projected buttons; the HUD renders none | 3D-08 |
 | 49 | `hand` grid + `Tile` SVGs | dock | **SCENE** (canvas) | 3D-07/08 |
-| 50 | Riichi toggle (`aria-pressed`, ON/OFF) | dock | **ACTION RAIL** | H3 |
-| 51 | Kan toggle (tile label, probability, ON/OFF) | dock | **ACTION RAIL** | H3 |
+| 50 | Call bar (`CallControls`: Chi/Pon/Kan/Riichi/Pass, then its tile pick) | dock | **ACTION RAIL** — the same component, not a copy | H3 |
+| 51 | Call pick prompt and Cancel (2026-11-20 click-then-pick flow) | dock | **ACTION RAIL** beside the call bar | H3 |
 | 52 | Hint line (`.hand-dock-label`, `aria-live`) | dock | **HAND RAIL** | H3 |
 | 53 | Dock `NextScenarioButton` | dock | **DROPPED** — the top bar, the post-answer result card and the verdict sheet carry Next; the dock's is not re-mounted | H3/H5 |
-| 54 | `ActionBar` (non-discard actions, labels, probabilities, `aria-pressed`) | below the table | **ACTION RAIL** | H3 |
+| 54 | `ActionBar` (the drill's remaining non-call actions, labels, probabilities) | below the table | **ACTION RAIL** | H3 |
 | 55 | `DecisionPopup` (built, never mounted) | — | **DROPPED** — the rail is the only call surface; do not mount a second one | H3 |
 | 56 | `statusMessage` (loading table/pack/agreement/Mortal/hotseat) | `role="status"` | **TOAST**, persistent while loading | H3 |
 | 57 | `error` (`role="alert"`) | inline | **TOAST**, error tone, until the next deal | H3 |
@@ -189,8 +189,7 @@ second strip of tiles.
 | --- | --- | --- |
 | `section.hand-dock` "Your hand" group | **scene group** — the 3D-08 overlay keeps the same accessible name | the group must describe the real buttons, and there is only one set |
 | `AnswerSummary` (mark, headline, detail, chips, Details) | **result card** (H5) | user decision: a compact result; it replaces both panel rows, never the hand |
-| Riichi toggle | **action rail** (H3) | a decision, not hand chrome; it arms the next tile tap |
-| Kan toggle (tile, probability, ON/OFF) | **action rail** (H3) | same |
+| Call bar (Chi/Pon/Kan/Riichi/Pass) | **action rail** (H3) | a decision, not hand chrome; a press either completes the call or opens a tile pick with Cancel |
 | Hint line (`handHint`, `aria-live`) | **hand rail** row of the panel (H3) | one line directly above the hand; it explains the tap |
 | Hand + draw tile buttons | **scene** (3D-08) | the projected buttons; the HUD never renders a second hand |
 | `hand` grid + tile images | **scene** (canvas) | drawn in 3D |
@@ -226,7 +225,7 @@ The bottom of the composition is **one panel**, not three strips:
 | Panel row | Height | When |
 | --- | --- | --- |
 | hint row (the hand rail) | `24 px` | always |
-| action row (the action rail: `ActionBar` + Riichi/Kan toggles) | `44 px` + `4 px` gap | pre-answer, when it has content |
+| action row (the action rail: `ActionBar` + the call bar) | `44 px` + `4 px` gap | pre-answer, when it has content |
 | result card | `104 px` (two `44 px` rows: outcome, then picks + Next) | after an answer (replaces both rows) |
 
 So the panel is `84 px` with the action row (`128 px` if the row wraps to two),
@@ -983,18 +982,24 @@ The playing state is in the floating panel. This is what the next units build on
 
 - **Files.** `renderers/hud/{ActionRail.tsx, actionRail.ts, HandRail.tsx,
   handRail.ts, ToastStack.tsx, toastModel.ts}` plus `hudLayout.ts`'s row state
-  and the shared extraction `components/CallToggles.tsx`. `components/HandDock.tsx`
-  now renders `CallToggles`, `actions.kanToggleTile()` and
-  `handHint.handHintFor()` instead of its own copies, so the two shells cannot
-  drift. `App.tsx` changed only at the 3D mount seam.
+  and the shared `components/CallControls.tsx` (which replaced the Riichi/Kan
+  `CallToggles` in the 2026-11-20 click-then-pick flow). `components/HandDock.tsx`
+  renders the same `CallControls` and the same `handHint()`, so the two shells
+  cannot drift. `App.tsx` changed only at the 3D mount seam.
 - **One hand.** The rail and the hint row render no tile control at all — in 3D
   the only hand buttons are 3D-08's projected ones. `PracticeHud.test.tsx`
   composes the real overlay with the real HUD and asserts exactly one button per
   concealed tile plus the draw, that the rail adds none, and that Tab reaches the
-  rail's controls before the hand's buttons. It also proves the armed path: the
-  rail's toggles call the store's `toggleRiichi`/`toggleKan`, the projected tile
-  click calls the store's `selectTile`, and the answer arrives as `riichi`/`kan`
-  with no renderer in between.
+  rail's controls before the hand's buttons. It also proves the call path: the
+  rail's call buttons call the store's `beginCall`, a projected tile click calls
+  the store's `selectTile`, and the answer arrives as `riichi`/`kan`/`call` with
+  no renderer in between. A one-option call (the lone quad in the fixture) is
+  submitted by the press alone; Escape cancels a pick and returns focus.
+- **Call placement (2026-11-20).** The call bar is the rail's right-aligned
+  group: its right edge stays above the right side of the hand and each added
+  control grows the row towards the left. `.call-controls` owns that
+  `justify-content: flex-end`, and `CallControls.test.tsx` pins it in CSS text
+  (AGENTS.md §6: no visual judgement by the agent).
 - **The panel's rows are layout.** `hudLayout()` now returns `handRail` and
   `actionRail` (one or two rows) beside the panel, from the committed `8/24/4/44`
   inner geometry; `hudAtRestRects()` lists them as `hand rail` and `action rail`

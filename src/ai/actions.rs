@@ -370,6 +370,56 @@ fn can_riichi(state: &GameState, player: &PlayerState) -> bool {
         && (state.shanten == 0 || (state.shanten == 1 && can_discard_into_tenpai(player)))
 }
 
+/// Every tile whose discard keeps the human tenpai while declaring Riichi.
+///
+/// The UI's Riichi button asks for a discard. When this list holds exactly one
+/// copy there is nothing to choose and the declaration can be completed with
+/// that tile; with several it is the pick step's option list, so a discard that
+/// breaks tenpai cannot be chosen. It is derived here, from the same counts and
+/// shanten the legal action mask uses, so the frontend never re-derives a
+/// mahjong rule.
+///
+/// Empty unless Riichi is legal *on the human's own turn*: a reaction to an
+/// opponent's discard has no declaration to make.
+pub fn riichi_discard_tiles(state: &GameState) -> Vec<String> {
+    if state.players.is_empty() || !matches!(state.decision, DecisionContext::SelfTurn) {
+        return Vec::new();
+    }
+    let player = &state.players[0];
+    if !can_riichi(state, player) {
+        return Vec::new();
+    }
+
+    let concealed = concealed_tiles(player);
+    let mut counts = [0u8; 34];
+    for code in &concealed {
+        if let Some(index) = tile_index(code) {
+            counts[index] = counts[index].saturating_add(1);
+        }
+    }
+    let len_div3 = 4u8.saturating_sub(player.melds.len() as u8);
+
+    let mut out = Vec::new();
+    for code in &concealed {
+        if out.contains(code) {
+            continue;
+        }
+        let Some(index) = tile_index(code) else {
+            continue;
+        };
+        if counts[index] == 0 {
+            continue;
+        }
+        counts[index] -= 1;
+        let after = super::sp::calc_all(&counts, len_div3);
+        counts[index] += 1;
+        if after == 0 {
+            out.push(code.clone());
+        }
+    }
+    out
+}
+
 /// Nine-terminals draw: first turn, closed hand, at least nine distinct
 /// terminal/honor tile kinds.
 fn can_ryukyoku(state: &GameState, player: &PlayerState) -> bool {

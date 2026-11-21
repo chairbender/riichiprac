@@ -529,8 +529,7 @@ describe('RendererHost interaction overlay (3D-08)', () => {
       <RendererHost
         snapshot={handSnapshot()}
         onSelectTile={onSelectTile}
-        callRiichi={false}
-        callKan={false}
+        pendingCall={null}
         fallback={fallbackTable()}
       />,
     );
