@@ -332,6 +332,60 @@ fn classify_unique_is_ok_for_every_generated_book_state() {
     }
 }
 
+/// Q7: a complete-blockade board belongs to `kabe_no_chance`, not to the
+/// general `suji_kabe_safety` ranking cell.
+///
+/// Both recognisers accept the board (the no-chance mechanism is one of the
+/// ranking cell's accepted mechanisms) and name the same tile, so this pins the
+/// **attribution**: `CLASSIFIERS` puts `kabe_no_chance` first. Without that
+/// order every no-chance board in the replay corpus was labelled
+/// `suji_kabe_safety`, which is why the lesson measured zero stable labels in
+/// B4's yield report.
+#[test]
+fn a_no_chance_board_is_attributed_to_kabe_no_chance() {
+    for _ in 0..8 {
+        let state = generated(ScenarioId::KabeNoChance);
+        let matches = classify_all(&state);
+        let kabe = matches
+            .iter()
+            .find(|matched| matched.lesson == ScenarioId::KabeNoChance)
+            .expect("the blockade recogniser must read its own board");
+        // The general ranking cell reads it too, with the same answer; the
+        // attribution is what must differ.
+        if let Some(general) = matches
+            .iter()
+            .find(|matched| matched.lesson == ScenarioId::SujiKabeSafety)
+        {
+            assert!(
+                kabe.same_answer(general),
+                "the two cells name the same tile on a no-chance board"
+            );
+        }
+        let unique = classify_unique(&state)
+            .expect("the two cells agree, so this is not a conflict")
+            .expect("a no-chance board must classify");
+        assert_eq!(
+            unique.lesson,
+            ScenarioId::KabeNoChance,
+            "the complete-blockade cell must win the attribution"
+        );
+        assert_eq!(unique.answer_set(), state_answer_set(&state));
+    }
+}
+
+/// The general ranking cell keeps its own boards: a suji or kabe board that is
+/// not the complete-blockade cell still labels `suji_kabe_safety`.
+#[test]
+fn a_general_ranking_board_stays_suji_kabe_safety() {
+    for _ in 0..8 {
+        let state = generated(ScenarioId::SujiKabeSafety);
+        let unique = classify_unique(&state)
+            .expect("the ranking board is not a conflict")
+            .expect("a ranking board must classify");
+        assert_eq!(unique.lesson, ScenarioId::SujiKabeSafety);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Mortal as the tiebreaker.
 // ---------------------------------------------------------------------------

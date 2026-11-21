@@ -164,7 +164,8 @@ governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
 * **Scenario sources (replay-first, shipped 2026-11-20):** replay rows — the
   real played games shipped as replay packs, badged **REPLAY** and listed under
   the picker's **Replay** source filter — are the default and prominent source
-  for every lesson with shipped coverage (22 of 25 hosted lessons); generated
+  for every lesson with shipped coverage (26 of the 28 lesson ids the seven packs
+  cover, 9,328 reviewed bases); generated
   lessons remain available as the opt-in/fallback alternative (the **Generated**
   filter, `preferReplay: false` persisted, and the **GENERATED** badge). The
   filters are exclusive: Replay lists replay rows only, Generated lists generated

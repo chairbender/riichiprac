@@ -1,0 +1,2035 @@
+{
+  "queue": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-completion.2026-11/review-queue.jsonl",
+  "chapter": "ch8",
+  "items": 400,
+  "selected": 400,
+  "held_out": 0,
+  "accepted": 400,
+  "rejected": 0,
+  "rejection_reasons": {},
+  "sections": {
+    "ch8.2": 235,
+    "ch8.3": 161,
+    "ch8.4": 4
+  },
+  "lessons": {
+    "defense_stuck_heuristic": 161,
+    "kabe_double_one_chance": 37,
+    "kabe_no_chance": 131,
+    "kabe_one_chance": 39,
+    "kabe_suji_defense": 28,
+    "open_hand_defense": 4
+  },
+  "replay_families": {
+    "akochan_tactics": 6,
+    "akochan_vs_mortal": 2,
+    "heterogeneous_table": 3,
+    "mortal_mirror": 191,
+    "mortal_sampling_sweep": 198
+  },
+  "decision_kinds": {
+    "self_turn": 400
+  },
+  "verdicts": [
+    {
+      "queue_id": "replay.ch8-completion.2026-11-001",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-002",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-003",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-004",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-005",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-006",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-007",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-008",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-009",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-010",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-011",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-012",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-013",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-014",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-015",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-016",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-017",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-018",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-019",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-020",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-021",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-022",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-023",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-024",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-025",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-026",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-027",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-028",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-029",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-030",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-031",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-032",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-033",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-034",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-035",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-036",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-037",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-038",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-039",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-040",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-041",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-042",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-043",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-044",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-045",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-046",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-047",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-048",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-049",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-050",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-051",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-052",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-053",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-054",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-055",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-056",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-057",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-058",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-059",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-060",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-061",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-062",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-063",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-064",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-065",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-066",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-067",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-068",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-069",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-070",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-071",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-072",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-073",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-074",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-075",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-076",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-077",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-078",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-079",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-080",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-081",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-082",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-083",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-084",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-085",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-086",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-087",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-088",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-089",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-090",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-091",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-092",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-093",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-094",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-095",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-096",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-097",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-098",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-099",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-100",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-101",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-102",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-103",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-104",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-105",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-106",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-107",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-108",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-109",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-110",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-111",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-112",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-113",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-114",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-115",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-116",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-117",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-118",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-119",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-120",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-121",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-122",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-123",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-124",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-125",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-126",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-127",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-128",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-129",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-130",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-131",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-132",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-133",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-134",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-135",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-136",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-137",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-138",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-139",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-140",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-141",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-142",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-143",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-144",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-145",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-146",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-147",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-148",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-149",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-150",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-151",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-152",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-153",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-154",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-155",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-156",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-157",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-158",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-159",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-160",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-161",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-162",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-163",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-164",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-165",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-166",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-167",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-168",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-169",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-170",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-171",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-172",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-173",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-174",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-175",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-176",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-177",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-178",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-179",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-180",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-181",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-182",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-183",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-184",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-185",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-186",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-187",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-188",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-189",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-190",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-191",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-192",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-193",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-194",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-195",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-196",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-197",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-198",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-199",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-200",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-201",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-202",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-203",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-204",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-205",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-206",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-207",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-208",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-209",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-210",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-211",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-212",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-213",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-214",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-215",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-216",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-217",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-218",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-219",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-220",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-221",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-222",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-223",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-224",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-225",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-226",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-227",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-228",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-229",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-230",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-231",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-232",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-233",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-234",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-235",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-236",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-237",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-238",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-239",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-240",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-241",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-242",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-243",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-244",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-245",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-246",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-247",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-248",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-249",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-250",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-251",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-252",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-253",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-254",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-255",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-256",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-257",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-258",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-259",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-260",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-261",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-262",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-263",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-264",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-265",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-266",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-267",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-268",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-269",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-270",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-271",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-272",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-273",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-274",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-275",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-276",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-277",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-278",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-279",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-280",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-281",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-282",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-283",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-284",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-285",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-286",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-287",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-288",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-289",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-290",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-291",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-292",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-293",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-294",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-295",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-296",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-297",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-298",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-299",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-300",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-301",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-302",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-303",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-304",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-305",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-306",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-307",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-308",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-309",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-310",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-311",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-312",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-313",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-314",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-315",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-316",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-317",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-318",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-319",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-320",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-321",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-322",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-323",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-324",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-325",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-326",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-327",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-328",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-329",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-330",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-331",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-332",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-333",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-334",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-335",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-336",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-337",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-338",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-339",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-340",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-341",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-342",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-343",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-344",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-345",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-346",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-347",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-348",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-349",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-350",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-351",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-352",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-353",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-354",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-355",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-356",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-357",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-358",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-359",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-360",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-361",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-362",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-363",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-364",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-365",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-366",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-367",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-368",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-369",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-370",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-371",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-372",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-373",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-374",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-375",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-376",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-377",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-378",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-379",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-380",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-381",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-382",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-383",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-384",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-385",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-386",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-387",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-388",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-389",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-390",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-391",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-392",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-393",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-394",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-395",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-396",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-397",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-398",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-399",
+      "accepted": true,
+      "problems": []
+    },
+    {
+      "queue_id": "replay.ch8-completion.2026-11-400",
+      "accepted": true,
+      "problems": []
+    }
+  ]
+}

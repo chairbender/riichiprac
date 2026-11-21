@@ -48,6 +48,7 @@ const CHAPTERS = {
       'defense_multi_threat',
       'push_or_fold',
       'open_hand_defense',
+      'suji_trap_riichi',
     ]),
     sectionPattern: /^ch8\.\d+$/,
     defaultPack: 'replay.ch8-defense.2026-11',

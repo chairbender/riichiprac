@@ -12,10 +12,11 @@
  * `lesson_counts` without downloading a body, so this script reads the
  * manifest only — no pack body is fetched or decoded.
  *
- * It prints one row per covered lesson (pack, section, bases, floor) plus the
- * hosted packs that carry no counts, and exits 1 when the manifest is missing
- * or malformed. Thin lessons are reported, not failed: a lesson below the floor
- * stays generated-default by design and is opt-in in the picker.
+ * It prints one row per covered lesson (supplier pack, section, bases, floor),
+ * with the base count summed across every pack that carries the lesson, plus
+ * the hosted packs that carry no counts, and exits 1 when the manifest is
+ * missing or malformed. Thin lessons are reported, not failed: a lesson below
+ * the floor stays generated-default by design and is opt-in in the picker.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -70,7 +71,12 @@ if (!packs) {
   process.exit(1);
 }
 
-const lessons = [];
+// Per lesson, summed across packs: a later section pack can add bases to an
+// earlier lesson, and the app's `lessonReplayCoverage` reads the same total
+// (the pack with the most bases supplies the default row). Reporting one row
+// per pack-lesson pair would double count a lesson the completion pack shares
+// with the section pack.
+const byLesson = new Map();
 const missing = [];
 for (const pack of packs) {
   const counts = pack.lesson_counts;
@@ -80,16 +86,35 @@ for (const pack of packs) {
   }
   for (const lesson of Object.keys(counts).sort()) {
     const bases = counts[lesson];
-    lessons.push({
+    const record = byLesson.get(lesson) ?? {
       lesson,
       pack: pack.id,
       book_section: (pack.book_sections ?? [])[0] ?? null,
-      bases,
-      floor: args.floor,
-      replay_default: bases >= args.floor,
-    });
+      bases: 0,
+      sources: [],
+    };
+    record.bases += bases;
+    record.sources.push({ pack: pack.id, bases });
+    // The biggest contributor supplies the replay-default row (manifest order
+    // breaks a tie), matching `lessonReplayCoverage`.
+    if (bases > (record.pack_bases ?? 0)) {
+      record.pack = pack.id;
+      record.pack_bases = bases;
+      record.book_section = (pack.book_sections ?? [])[0] ?? null;
+    }
+    byLesson.set(lesson, record);
   }
 }
+
+const lessons = [...byLesson.values()].map((record) => ({
+  lesson: record.lesson,
+  pack: record.pack,
+  book_section: record.book_section,
+  bases: record.bases,
+  floor: args.floor,
+  replay_default: record.bases >= args.floor,
+  sources: record.sources,
+}));
 
 lessons.sort((left, right) => left.lesson.localeCompare(right.lesson));
 const covered = lessons.filter((row) => row.replay_default);
@@ -122,9 +147,13 @@ if (args.json) {
       `replay-default at ${args.floor} bases, ${summary.totals.reviewed_bases} reviewed bases`,
   );
   for (const row of lessons) {
+    const others = row.sources
+      .filter((source) => source.pack !== row.pack)
+      .map((source) => `${source.pack} ${source.bases}`);
     console.log(
       `  ${row.replay_default ? 'DEFAULT' : 'thin   '} ${row.lesson.padEnd(28)} ` +
-        `${String(row.bases).padStart(5)} bases  ${row.pack}`,
+        `${String(row.bases).padStart(5)} bases  ${row.pack}` +
+        (others.length ? ` (+ ${others.join(', ')})` : ''),
     );
   }
   for (const pack of missing) {
