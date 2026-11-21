@@ -23,6 +23,18 @@
 
 import type { QualityTier } from '../contract';
 
+/**
+ * Whether the automatic frame-time monitor runs (user decision 2026-11-21).
+ *
+ * `high` held its frame budget on the phone it was chosen for, and a phone that
+ * dips for a moment should not be silently dropped to a blurry tier, so the
+ * monitor is **off**. Everything below is kept intact — the thresholds, the
+ * EMA, the one-tier downgrade and the terminal degrade — and the `?perf=1` HUD
+ * still samples real frames; only the decision is not acted on. Set this to
+ * `true` to hand the tier back to the monitor.
+ */
+export const FRAME_MONITOR_ENABLED = false;
+
 /** The downgrade threshold: above this EMA for the sustained window, drop a tier. */
 export const FRAME_DOWNGRADE_MS = 25;
 

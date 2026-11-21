@@ -428,7 +428,9 @@
   display: inline-flex;
   align-items: baseline;
   color: #e7ecf3;
-  font-size: 1.5em;
+  /* 1.3em, not 1.5: the square is 84 px on a phone now (2026-11-21) and four
+     score rows plus the centre have to share it. */
+  font-size: 1.3em;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -458,16 +460,16 @@
 
 .renderer-3d-compass-round {
   color: #a5d8ff;
+  /* The round is a wind character plus the hand number (`東1`), so it needs no
+     uppercase transform and no letter spacing (2026-11-21). */
   font-size: 1em;
   font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   line-height: 1.1;
 }
 
 .renderer-3d-compass-count {
   color: #e7ecf3;
-  font-size: 1.35em;
+  font-size: 1.15em;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;

@@ -116,7 +116,7 @@ import {
 import { DealInMotion, systemMotionClock, withVerticalLift } from './motion';
 import type { DealInSample, MotionClock } from './motion';
 import { sceneLightSpecs } from './lighting';
-import { FrameTimeMonitor } from './perf';
+import { FRAME_MONITOR_ENABLED, FrameTimeMonitor } from './perf';
 import { allProbesPass, readProbes } from './probes';
 import type { ProbePixelSource, ProbeProjector } from './probes';
 import { loadReliefAssets, reliefUploadScale } from './reliefAssets';
@@ -1428,6 +1428,13 @@ export class TableScene implements TableRenderer {
    */
   private startPerfSampling(): void {
     if (this.disposed || this.sampled) return;
+    /*
+     * The monitor is off (user decision 2026-11-21): with no `?perf=1` HUD there
+     * is nothing to measure for, so the sampling window does not run at all.
+     * The HUD's own loop keeps sampling when it is open, and it still draws
+     * frames; only the tier decision is skipped below.
+     */
+    if (!FRAME_MONITOR_ENABLED && !this.perfHud) return;
     const schedule = globalThis.requestAnimationFrame;
     if (typeof schedule !== 'function') return;
     this.sampled = true;
@@ -1448,7 +1455,7 @@ export class TableScene implements TableRenderer {
       const frameMs = now - last;
       last = now;
       this.draw();
-      this.applyFrameSample(this.perf.sample(now, frameMs));
+      if (FRAME_MONITOR_ENABLED) this.applyFrameSample(this.perf.sample(now, frameMs));
       const elapsed =
         this.sampleStartedMs === null ? Number.POSITIVE_INFINITY : now - this.sampleStartedMs;
       const keepSampling = this.perfHud || elapsed < PERF_SAMPLE_WINDOW_MS;

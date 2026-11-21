@@ -59,8 +59,12 @@ export const TILE = {
 export const TABLE = {
   /** 700 mm square mat. */
   matSizeUnits: 25,
-  /** Screen-space compass well; the overlay is DOM, not 3D text. */
-  compassWellUnits: 4,
+  /**
+   * Screen-space compass well; the overlay is DOM, not 3D text. It follows the
+   * plate down (2026-11-21): the plate shrank a tile width per side, so the well
+   * keeps its place just inside the plate's edge.
+   */
+  compassWellUnits: 3,
 } as const;
 
 /**
@@ -299,10 +303,27 @@ export const DORA = {
 } as const;
 
 /**
- * The nearest pond row's centre-line radius. The two further rows are one tile
- * height inside it each, so the three rows touch.
+ * The nearest pond row's centre-line radius, as it was before the compass
+ * shrank. The two further rows are one tile height inside it each, so the three
+ * rows touch.
  */
 const POND_NEAREST_ROW_RADIUS_UNITS = 4.81;
+
+/**
+ * How much each side of the compass plate shrank (user request 2026-11-21:
+ * "shrink each side of the square about a tile's width"). The top and bottom
+ * ponds move in with it, so the board loses twice this from its vertical
+ * extent — which is what the discards needed.
+ */
+const COMPASS_SHRINK_UNITS = TILE.widthUnits;
+
+/**
+ * How much further out the left and right ponds sit (user request 2026-11-21:
+ * "about a half-tile width"). They move out so the top and bottom rows, which
+ * now run in toward the smaller plate, can overhang the plate's left and right
+ * edges without meeting them.
+ */
+const POND_SIDE_SHIFT_UNITS = TILE.widthUnits / 2;
 
 /**
  * One seat's discard pond: 3 rows of 6, filled from the far row toward the
@@ -319,11 +340,26 @@ export const POND = {
   columnGapUnits: 0,
   /** One row pitch: exactly one tile height, so stacked rows touch. */
   rowPitchUnits: TILE.heightUnits,
-  /** Distance from table centre to each row's centre line, nearest first. */
+  /**
+   * Distance from table centre to each row's centre line, nearest first, for
+   * the **top and bottom** seats: their rows stack vertically, so this radius
+   * is the vertical one. The block moved in with the plate
+   * ({@link COMPASS_SHRINK_UNITS}), which is what gives the discards their
+   * vertical room back.
+   */
   rowRadiiUnits: [
-    POND_NEAREST_ROW_RADIUS_UNITS,
-    POND_NEAREST_ROW_RADIUS_UNITS - TILE.heightUnits,
-    POND_NEAREST_ROW_RADIUS_UNITS - 2 * TILE.heightUnits,
+    POND_NEAREST_ROW_RADIUS_UNITS - COMPASS_SHRINK_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS - TILE.heightUnits - COMPASS_SHRINK_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS - 2 * TILE.heightUnits - COMPASS_SHRINK_UNITS,
+  ],
+  /**
+   * The same three rows for the **left and right** seats, whose rows stack
+   * horizontally: half a tile further out than the board's original radii.
+   */
+  sideRowRadiiUnits: [
+    POND_NEAREST_ROW_RADIUS_UNITS + POND_SIDE_SHIFT_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS - TILE.heightUnits + POND_SIDE_SHIFT_UNITS,
+    POND_NEAREST_ROW_RADIUS_UNITS - 2 * TILE.heightUnits + POND_SIDE_SHIFT_UNITS,
   ],
   /** Half of a 6-column row (2.5 pitches), measured from the seat's centre line. */
   columnCentreOffsetUnits: 2.5 * TILE.widthUnits,

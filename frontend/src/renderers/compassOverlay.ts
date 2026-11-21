@@ -106,6 +106,18 @@ export function formatCompassScore(score: number): CompassScoreText {
   };
 }
 
+/**
+ * The round winds as characters, the way a table's own display prints them
+ * (user request 2026-11-21: "use the wind character rather than spelling out
+ * East or South"). The accessible name keeps the spelled-out word.
+ */
+const ROUND_WIND_GLYPH: Record<Wind, string> = {
+  East: '東',
+  South: '南',
+  West: '西',
+  North: '北',
+};
+
 /** The whole compass: four corners plus the round / tiles-left centre. */
 export interface CompassView {
   /** One entry per seat, in {@link COMPASS_SIDES} order. */
@@ -153,7 +165,7 @@ export function compassView(snapshot: TableSnapshot): CompassView {
   const { roundWind, handNumber, tilesRemaining } = snapshot.compass;
   return {
     seats,
-    round: `${roundWind} ${handNumber}`,
+    round: `${ROUND_WIND_GLYPH[roundWind]}${handNumber}`,
     tilesRemaining,
     label: `Round ${roundWind} ${handNumber}, ${tilesRemaining} tiles remaining`,
   };
@@ -170,14 +182,19 @@ export interface CompassBox {
 /**
  * The smallest compass the DOM draws.
  *
- * A stage whose plate projects smaller than this (a 390 × 844 phone projects it
- * at 78 px) would put the four score rows on top of each other, so the square
- * stops shrinking here and simply overhangs the plate's projected corners. It
- * is still centred on the plate and still clear of the hand: at that phone size
- * the compass ends ~56 px above the human's buttons. 132 px is the 2D plan's
- * own phone-scale compass (~108–120 px) with a little room for legibility.
+ * A stage whose plate projects smaller than this would put the four score rows
+ * on top of each other, so the square stops shrinking here and simply overhangs
+ * the plate's projected corners. It is still centred on the plate and still
+ * clear of the hand.
+ *
+ * 2026-11-21: 132 → 84. The plate itself shrank a tile width per side (user
+ * request) so the discards could run in to it, and the readout followed: the
+ * visible round is now a wind **glyph** (`東1`) rather than "East 1", which is
+ * what buys the width back. A landscape phone projects the plate at 76–83 px,
+ * so the square now sits just over its corners instead of a third larger than
+ * them.
  */
-export const MIN_COMPASS_PX = 132;
+export const MIN_COMPASS_PX = 84;
 
 /**
  * The DOM compass square, centred on the projected plate.
@@ -221,5 +238,8 @@ export function compassBox(rect: {
  * stage from turning the centre of the table into a billboard.
  */
 export function compassFontPx(box: CompassBox): number {
-  return Math.min(30, Math.max(11, box.width * 0.08));
+  // The floor dropped with the square (2026-11-21): at the phone's 84 px box,
+  // 9 px is what keeps the score digits and the round glyph distinct after the
+  // round became a character instead of a word.
+  return Math.min(30, Math.max(9, box.width * 0.08));
 }

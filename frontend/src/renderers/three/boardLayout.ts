@@ -831,8 +831,17 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
       ),
     );
 
+    /*
+     * The top and bottom ponds stack vertically and moved in with the smaller
+     * compass; the left and right ones stack horizontally and sit half a tile
+     * further out, so the in-running rows can overhang the plate's sides.
+     */
+    const pondRadii =
+      Math.abs(seatBasis(seat).right[0]) > 0.5
+        ? POND.rowRadiiUnits
+        : POND.sideRowRadiiUnits;
     for (const pondRow of pondRows(seatState.river)) {
-      const u = POND.rowRadiiUnits[pondRow.row];
+      const u = pondRadii[pondRow.row];
       const centres = placeRow(pondRow.tiles);
       pondRow.tiles.forEach((tile, index) => {
         tiles.push(

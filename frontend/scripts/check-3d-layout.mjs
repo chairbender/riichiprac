@@ -202,7 +202,8 @@ async function main() {
     ['live wall (stacks / tiles / max in a state)', `${C.WALL.liveWallStacks} / ${C.WALL.liveWallTiles} / ${C.WALL.maxDecisionLiveTiles}`],
     ['dead wall (stacks / tiles / first stack / gap)', `${C.WALL.deadWallStacks} / ${C.WALL.deadWallTiles} / ${C.WALL.deadWallStartStack} / ${formatNumber(C.WALL.deadWallGapUnits, 4)}`],
     ['pond rows x columns (+overflow)', `${C.POND.rows} x ${C.POND.columns} (+${C.POND.overflowColumns})`],
-    ['pond radii (nearest first)', formatMatrix3(C.POND.rowRadiiUnits)],
+    ['pond radii, ends (nearest first)', formatMatrix3(C.POND.rowRadiiUnits)],
+    ['pond radii, sides (nearest first)', formatMatrix3(C.POND.sideRowRadiiUnits)],
     ['pond column pitch / centre offset', `${formatNumber(C.POND.columnPitchUnits, 6)} / ${formatNumber(C.POND.columnCentreOffsetUnits, 6)}`],
     ['hand tiles / pitch / back radius', `${C.HAND.concealedCount} / ${formatNumber(C.HAND.pitchUnits, 6)} / ${formatNumber(C.HAND.backRadiusUnits)}`],
     ['hand recline / band / face-to-view max', `${C.HAND.reclineDeg}° / ${C.HAND.reclineBandDeg.join('–')}° / ${C.HAND.maxFaceToViewDeg}°`],
@@ -591,23 +592,42 @@ async function main() {
     'roll -90°',
   );
 
-  const seatOk = [1, 2, 3].every((seat) => {
+  /*
+   * 2026-11-21: the board is no longer four-fold symmetric. The top and bottom
+   * ponds moved in with the smaller compass and the left and right ponds moved
+   * half a tile further out, so seats 0 and 2 are exact rotations of each other
+   * and seats 1 and 3 are exact rotations of each other — the two axes differ by
+   * design, and each is checked against its own opposite.
+   */
+  const rotationOf = (from, to) => {
     const a = board.foreground.find(
-      (tile) => tile.seat === 0 && tile.zone === 'river' && tile.slot === 0,
+      (tile) => tile.seat === from && tile.zone === 'river' && tile.slot === 0,
     );
     const b = board.foreground.find(
-      (tile) => tile.seat === seat && tile.zone === 'river' && tile.slot === 0,
+      (tile) => tile.seat === to && tile.zone === 'river' && tile.slot === 0,
     );
     let x = a.pose.position[0];
     let z = a.pose.position[2];
-    for (let turn = 0; turn < seat; turn += 1) [x, z] = [z, -x];
+    for (let turn = 0; turn < to - from; turn += 1) [x, z] = [z, -x];
     return (
-      b.pose.yawDeg - a.pose.yawDeg === 90 * seat &&
+      b.pose.yawDeg - a.pose.yawDeg === 90 * (to - from) &&
       close(b.pose.position[0], x) &&
       close(b.pose.position[2], z)
     );
-  });
-  check('the four seats are exact rotations of each other', seatOk, 'yaw 0/90/180/270°');
+  };
+  check(
+    'each axis is an exact two-fold rotation (0/2 and 1/3)',
+    rotationOf(0, 2) && rotationOf(1, 3),
+    'yaw 180° per pair',
+  );
+  const axisGap =
+    C.POND.sideRowRadiiUnits[C.POND.overflowRow] -
+    C.POND.rowRadiiUnits[C.POND.overflowRow];
+  check(
+    'the side ponds sit further out than the end ponds by the committed shift',
+    close(axisGap, C.TILE.widthUnits / 2 + C.TILE.widthUnits),
+    `${formatNumber(axisGap, 4)} units`,
+  );
 
   const declarers = fixture.seats.filter((seat) => seat.riichi);
   const sticksOk =

@@ -41,7 +41,7 @@ describe('3D layout constants: tile and table', () => {
   it('draws a 700 mm square mat with a 4-unit compass well', () => {
     expect(TABLE.matSizeUnits * UNIT_MM).toBeCloseTo(700, 9);
     expect(TABLE.matSizeUnits).toBe(25);
-    expect(TABLE.compassWellUnits).toBe(4);
+    expect(TABLE.compassWellUnits).toBe(3);
   });
 });
 
@@ -136,14 +136,22 @@ describe('3D layout constants: pond', () => {
     expect(POND.columnGapUnits).toBe(0);
     expect(POND.columnCentreOffsetUnits).toBeCloseTo(1.875, 12);
     // Row 0 is nearest the player; the rows advance toward the table centre by
-    // one tile height each.
-    expect(POND.rowRadiiUnits[0]).toBe(4.81);
-    expect(POND.rowRadiiUnits[1]).toBeCloseTo(3.81, 12);
-    expect(POND.rowRadiiUnits[2]).toBeCloseTo(2.81, 12);
+    // one tile height each. 2026-11-21: the end ponds moved in by a tile width
+    // with the smaller compass, and the side ponds half a tile further out, so
+    // the two axes have their own radii but the same one-tile pitch.
+    expect(POND.rowRadiiUnits[0]).toBeCloseTo(4.81 - TILE.widthUnits, 12);
     expect(POND.rowRadiiUnits[0] - POND.rowRadiiUnits[1]).toBeCloseTo(
       TILE.heightUnits,
       12,
     );
+    expect(POND.sideRowRadiiUnits[0]).toBeCloseTo(4.81 + TILE.widthUnits / 2, 12);
+    expect(POND.sideRowRadiiUnits[0] - POND.sideRowRadiiUnits[1]).toBeCloseTo(
+      TILE.heightUnits,
+      12,
+    );
+    expect(
+      POND.sideRowRadiiUnits[POND.rows - 1] - POND.rowRadiiUnits[POND.rows - 1],
+    ).toBeCloseTo(TILE.widthUnits / 2 + TILE.widthUnits, 12);
   });
 });
 
@@ -291,7 +299,9 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     expect(anchor + growth / 2 - total).toBeGreaterThan(-TABLE.matSizeUnits / 2);
   });
 
-  it('stretches the compass plate to touch the innermost discard row', () => {
+  it('stretches the compass plate to touch the innermost end discard row', () => {
+    // The plate is sized from the top/bottom ponds, which are the ones that run
+    // in to it; the side ponds now stand clear of its edges by design.
     const pondInnerEdge =
       POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2;
     const physicalHalf = COMPASS_PLATE.sizeUnits / 2 + COMPASS_PLATE.bevelUnits;

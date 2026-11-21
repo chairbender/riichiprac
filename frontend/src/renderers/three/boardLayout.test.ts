@@ -738,21 +738,33 @@ describe('3D board layout: separation', () => {
 
 describe('3D board layout: seats are rotations', () => {
   it('turns each seat by its committed yaw about the table centre', () => {
+    /*
+     * 2026-11-21: the board is no longer four-fold symmetric. The end ponds
+     * (seats 0 and 2) moved in with the smaller compass and the side ponds
+     * (1 and 3) half a tile further out, so each **axis pair** is an exact
+     * two-fold rotation of its own, and the two axes differ only in the pond
+     * radius they use.
+     */
     const pondTile = (seat: Seat): BoardTile =>
       board.foreground.find(
         (tile) => tile.seat === seat && tile.zone === 'river' && tile.slot === 0,
       )!;
-    const first = pondTile(0);
+    for (const [from, to] of [
+      [0, 2],
+      [1, 3],
+    ] as const) {
+      const a = pondTile(from);
+      const b = pondTile(to);
+      expect(b.pose.yawDeg - a.pose.yawDeg).toBe(180);
+      expect(b.pose.position[1]).toBeCloseTo(a.pose.position[1], 9);
+      // Rotating 180° about +Y maps (x, y, z) to (-x, y, -z).
+      expect(b.pose.position[0]).toBeCloseTo(-a.pose.position[0], 9);
+      expect(b.pose.position[2]).toBeCloseTo(-a.pose.position[2], 9);
+    }
+    // The side ponds keep the same yaw sequence, one quarter turn further on.
     for (const seat of [1, 2, 3] as const) {
       const next = pondTile(seat);
-      expect(next.pose.yawDeg - first.pose.yawDeg).toBe(90 * seat);
-      expect(next.pose.position[1]).toBeCloseTo(first.pose.position[1], 9);
-      // Rotating seat 0's pose 90° about +Y maps (x, y, z) to (z, y, -x).
-      let x = first.pose.position[0];
-      let z = first.pose.position[2];
-      for (let turn = 0; turn < seat; turn += 1) [x, z] = [z, -x];
-      expect(next.pose.position[0]).toBeCloseTo(x, 9);
-      expect(next.pose.position[2]).toBeCloseTo(z, 9);
+      expect(next.pose.yawDeg).toBe(90 * seat);
     }
   });
 });

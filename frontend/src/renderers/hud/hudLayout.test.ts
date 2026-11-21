@@ -24,7 +24,12 @@ import { compassBox } from '../compassOverlay';
 import type { BandRect } from '../contract';
 import { boardFixture } from '../three/boardFixture';
 import type { FixtureOptions } from '../three/boardFixture';
-import { frameForAspect, layoutBoard } from '../three/boardLayout';
+import {
+  frameForAspect,
+  layoutBoard,
+  placeHandBand,
+  withoutHandBandTiles,
+} from '../three/boardLayout';
 import { compassPlateRect, handBandRect, hitRects } from '../three/hitTest';
 import {
   HUD_ACTION_RAIL_HEIGHT,
@@ -40,6 +45,7 @@ import {
   HUD_SETUP_TRIGGER_WIDTH,
   HUD_SHEET_MAX_HEIGHT,
   HUD_SHEET_MAX_WIDTH,
+  HUD_SHEET_STAGE_FRACTION,
   HUD_TOP_BAR_CONTROL,
   NO_INSETS,
   callBarHeight,
@@ -48,6 +54,7 @@ import {
   hudLayout,
   hudPanelRows,
   rectsIntersect,
+  topBarHeight,
 } from './hudLayout';
 import type {
   HudAnchors,
@@ -103,15 +110,25 @@ function sceneFor(stage: StageSize, options: FixtureOptions): Scene {
   if (cached) return cached;
 
   const board = layoutBoard(boardFixture(options));
-  const frame = frameForAspect(stage.width / stage.height, board);
   const viewport = { widthPx: stage.width, heightPx: stage.height };
+  /*
+   * The shipped projection: the camera is solved for the table without the
+   * human's hand, and the hand is then placed in its screen-space band. Both
+   * the HUD's hand anchor and the hand buttons come from that band, so the
+   * composition the test measures is the one the phone draws.
+   */
+  const frame = frameForAspect(
+    stage.width / stage.height,
+    withoutHandBandTiles(board),
+  );
+  const banded = placeHandBand(board, frame, viewport);
   const compass = compassPlateRect(frame, viewport);
   const scene: Scene = {
     anchors: {
-      handBand: handBandRect(board, frame, viewport),
+      handBand: handBandRect(banded, frame, viewport),
       compass,
     },
-    targets: hitRects(board, frame, viewport),
+    targets: hitRects(banded, frame, viewport),
     compassBox: compass ? compassBox(compass) : null,
   };
   SCENES.set(key, scene);
@@ -282,14 +299,14 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
    * compass clearance the gate measures.
    */
   const GOLDEN = [
-    { stage: GATE_STAGES[0], callBar: 909, result: 849, sheetBottom: 918, clearance: 226 },
-    { stage: GATE_STAGES[1], callBar: 906, result: 846, sheetBottom: 918, clearance: 235 },
-    { stage: GATE_STAGES[2], callBar: 797, result: 737, sheetBottom: 835, clearance: 209 },
-    { stage: GATE_STAGES[3], callBar: 767, result: 707, sheetBottom: 811, clearance: 183 },
-    { stage: GATE_STAGES[4], callBar: 713, result: 653, sheetBottom: 757, clearance: 132 },
-    { stage: GATE_STAGES[5], callBar: 828, result: 768, sheetBottom: 872, clearance: 145 },
+    { stage: GATE_STAGES[0], callBar: 836, result: 776, sheetBottom: 880, clearance: 192 },
+    { stage: GATE_STAGES[1], callBar: 876, result: 816, sheetBottom: 918, clearance: 244 },
+    { stage: GATE_STAGES[2], callBar: 790, result: 730, sheetBottom: 834, clearance: 237 },
+    { stage: GATE_STAGES[3], callBar: 801, result: 741, sheetBottom: 835, clearance: 256 },
+    { stage: GATE_STAGES[4], callBar: 859, result: 799, sheetBottom: 866, clearance: 308 },
+    { stage: GATE_STAGES[5], callBar: 1061, result: 1001, sheetBottom: 918, clearance: 409 },
     // 9:16: the stage-height cap binds the sheet; the hand is the closest bound.
-    { stage: GATE_STAGES[6], callBar: 920, result: 860, sheetBottom: 918, clearance: 125 },
+    { stage: GATE_STAGES[6], callBar: 1301, result: 1241, sheetBottom: 918, clearance: 534 },
   ] as const;
 
   for (const golden of GOLDEN) {
@@ -343,23 +360,36 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
     expect(result.panelCompassClearance ?? 0).toBeGreaterThanOrEqual(63 - 1);
   });
 
-  it('hides the call row behind an open sheet and bounds the sheet by the hand', () => {
-    // 1:1 is a stage where the hand, not the sheet's stage-height cap, is the
-    // binding bottom edge (since 261120-2225 the closer board makes the cap bind
-    // at 16:9).
-    const stage = GATE_STAGES[4];
-    const scene = sceneFor(stage, {});
-    const open = layoutFor(stage, scene, {
-      slot: 'actions',
-      sheet: true,
-      toasts: 0,
-    });
-    expect(open.callBar).toBeNull();
-    expect(open.panel).toBeNull();
-    // The sheet's bottom edge is 8 px above the hand band's top.
-    expect(
-      (open.sheet?.top ?? 0) + (open.sheet?.height ?? 0),
-    ).toBeCloseTo((scene.anchors.handBand?.top ?? 0) - HUD_GAP, 1);
+  it('hides the call row behind an open sheet and bounds the sheet by the hand or the cap', () => {
+    /*
+     * The sheet's bottom edge is the smaller of "8 px above the hand band" and
+     * "the stage-height cap". Since the hand moved into its screen-space band
+     * (2026-11-21) it sits at the bottom of the frame, so the cap is what binds
+     * on every gate aspect — the hand is checked here anyway, because that is
+     * the rule, and a future hand shape must not be allowed to cross the sheet.
+     */
+    for (const stage of GATE_STAGES) {
+      const scene = sceneFor(stage, {});
+      const open = layoutFor(stage, scene, {
+        slot: 'actions',
+        sheet: true,
+        toasts: 0,
+      });
+      expect(open.callBar, stage.label).toBeNull();
+      expect(open.panel, stage.label).toBeNull();
+      const handBound = (scene.anchors.handBand?.top ?? 0) - HUD_GAP;
+      const capBound =
+        topBarHeight() +
+        HUD_GAP +
+        Math.min(
+          HUD_SHEET_STAGE_FRACTION * stage.height,
+          HUD_SHEET_MAX_HEIGHT,
+        );
+      expect(
+        (open.sheet?.top ?? 0) + (open.sheet?.height ?? 0),
+        stage.label,
+      ).toBeCloseTo(Math.min(handBound, capBound), 1);
+    }
   });
 
   it('uses the stage height cap for the sheet on a tall stage (§5)', () => {

@@ -70,7 +70,7 @@ describe('compass model', () => {
     }
   });
 
-  it('writes the corners and the centre exactly as PhysicalTable does', () => {
+  it('writes the corners and the centre label as PhysicalTable does', () => {
     const view = compassView(compassSnapshot(0));
     // Character-for-character the strings in PhysicalTable's CompassSeat and
     // compass-wall (the drift test below compares the rendered DOM as well).
@@ -80,7 +80,9 @@ describe('compass model', () => {
       'West wind, 27000 points, riichi',
       'North wind, 28000 points',
     ]);
-    expect(view.round).toBe('South 3');
+    // The visible round is the wind character (2026-11-21); the accessible
+    // name keeps the spelled-out word, which is what the drift test compares.
+    expect(view.round).toBe('南3');
     expect(view.tilesRemaining).toBe(42);
     expect(view.label).toBe('Round South 3, 42 tiles remaining');
     // Tenhou's split plate, lossless: lead + tail is the score.
@@ -143,7 +145,7 @@ describe('compass model', () => {
     expect(box.top + box.height / 2).toBe(130);
     // The type follows the square, inside a legible pair of bounds.
     expect(compassFontPx(box)).toBeCloseTo(180 * 0.08, 9);
-    expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(11);
+    expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(9);
     expect(compassFontPx({ ...box, width: 2000, height: 2000 })).toBe(30);
 
     // A stage whose well projects below the floor keeps a legible square,
