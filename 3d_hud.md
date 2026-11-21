@@ -33,9 +33,12 @@ and the gate move together and the composition rules below stay the same.
 3. **One hand.** The hand and draw tiles are the projected DOM buttons from
    3D-08. The HUD never renders a second hand, a tile strip, or a thumbnail of
    them.
-4. **Always visible:** Next hand and the hand panel — its hint row, its action
-   row while there is something to act on, and the result card after an answer.
-   **Everything else is a sheet or a toast** (user decision 2026-11-19).
+4. **Pre-answer, only the calls.** Next hand is always in the top bar; the only
+   other chrome is the **isolated call row** above the hand while there is a
+   call to make. There is no over-hand panel, hint line or Mortal chip (user
+   change 2026-11-21). The one panel is the result card, and it appears only
+   after an answer. **Everything else is a sheet or a toast** (user decision
+   2026-11-19).
 5. **A sheet is a modal, not a column.** It covers the scene while open, the
    scene is `inert`, and one is open at most.
 6. **The result starts small.** A result card summarises; only a tap opens the
@@ -47,9 +50,9 @@ and the gate move together and the composition rules below stay the same.
 
 ## 2. Region map
 
-Five named HUD regions, plus the scene rung they float over. The hand
-panel's rows keep the user's names — the action rail, the hand rail and the
-result card — but they are one rect.
+Five named HUD regions, plus the scene rung they float over. The pre-answer
+call row is a bare rect of buttons (no surface); the one panel is the
+post-answer result card.
 
 ```
 ┌─ stage (fixed, whole window) ─────────────────────────────────────────┐
@@ -62,10 +65,10 @@ result card — but they are one rect.
 │                                                                       │
 │                        compass (scene)                                │
 │                                                                       │
-│                   ┌─ HAND PANEL ────────────────┐                     │
-│                   │  hint row (the hand rail)   │                     │
-│                   │  action row / result card   │                     │
-│                   └─────────────────────────────┘                     │
+│                       [ Chi ][ Pon ][ Pass ]  (call row, bare)        │
+│                   ┌─ RESULT PANEL (after an answer) ─┐                 │
+│                   │  outcome row + picks line        │                 │
+│                   └──────────────────────────────────┘                 │
 │                hand + draw (scene, projected buttons)                 │
 │                                                                       │
 │  sheet (modal, on demand)      toast stack (top centre, transient)    │
@@ -75,20 +78,19 @@ result card — but they are one rect.
 | Region | Contents | Visibility | Owner |
 | --- | --- | --- | --- |
 | **Top bar** | the app name (top-left) with the setup trigger under it, plus Next hand on the right (the result card and the verdict sheet carry their own after an answer, §4) and the full-screen toggle | always | H2/H4 |
-| **Hand panel** | one anchored surface above the hand with two rows | always (once the scene publishes anchors) | H3/H5 |
-| — *hand rail* row | the live-region hint (`handHint`) + the pre-answer Mortal chip | always | H3 |
-| — *action rail* row | `ActionBar`'s non-discard actions, Riichi toggle, Kan toggle | while unanswered and non-empty | H3 |
-| — *result card* | the compact result (`AnswerSummary` + one line of verdict) and its own Next control | after an answer; replaces both rows | H5 |
+| **Call row** (pre-answer) | the shared `CallControls` bar (Chi/Pon/Kan/Riichi/Pass, then a tile pick) plus any remaining non-call drill action, as **isolated buttons with no panel surface**, right-aligned to the hand band | while unanswered and non-empty | H3 |
+| **Result panel** (post-answer) | one anchored surface with the compact result (`AnswerSummary` + one line of verdict) and its own Next control | after an answer only | H5 |
 | **Setup sheet** | scenario pool, AI Hotseat, settings, position, table info, notes | on demand | H4 |
 | **Verdict sheet** | full `VerdictPanel` (book, Mortal, ranking, explanation, peek) | on demand | H5 |
 | **Toast stack** | status, error and file notices | transient/persistent, max 3 | H3 |
 | **Scene rung** (unchanged) | canvas, hand buttons, compass, host notices, debug/perf HUDs | — | 3D-02/08/09/10/13 |
 
-The hand rail and the result card are **rows of one panel**, not three separate
-strips: one rect to anchor, one to place, one to keep off the compass. The
-action row is *unmounted when it would be empty* (a plain discard lesson with no
-riichi/kan), leaving the hint row alone, so the board is never covered by an
-empty box.
+There is **no pre-answer panel** (user change 2026-11-21): the call row is a
+bare rect of buttons, so nothing surfaces over the felt until the player has
+answered. The result panel is the only panel, and it exists only after the
+answer. The call row is *unmounted when it would be empty* (a plain discard
+lesson with no riichi/call), so the board is never covered by an empty box.
+There is no hint line and no Mortal chip in 3D.
 
 Toasts stack under the top bar, newest first, at most three; each is at most two
 lines with an ellipsis and a Details affordance when it has more. Loading
@@ -105,10 +107,10 @@ Every element the 2D shell renders today, and where it goes in 3D. "Dropped"
 means the control does not exist in the 3D view; it always comes with the
 reason. No element of `App.tsx`'s 2D return is left unmapped.
 
-Legend for the destination column: **TOP BAR**, **ACTION RAIL**, **RESULT
-CARD** and **HAND RAIL** (the last three are rows of the one hand panel, §2),
-**SETUP SHEET**, **VERDICT SHEET**, **TOAST**, **SCENE** (3D-02/08/09,
-unchanged), **DROPPED**, **2D ONLY**.
+Legend for the destination column: **TOP BAR**, **CALL ROW** (the isolated
+pre-answer row, §2), **RESULT CARD** (the one post-answer panel), **SETUP
+SHEET**, **VERDICT SHEET**, **TOAST**, **SCENE** (3D-02/08/09, unchanged),
+**DROPPED**, **2D ONLY**.
 
 | # | Element (source) | Today | In 3D | Unit |
 | --- | --- | --- | --- | --- |
@@ -144,7 +146,7 @@ unchanged), **DROPPED**, **2D ONLY**.
 | 30 | Agreement note (`role="status"`) | inline | **SETUP SHEET**, "Table info" | H4 |
 | 31 | Scenario note | inline | **SETUP SHEET**, "Table info" | H4 |
 | 32 | `PositionDescriptionCard` + Dismiss | inline | **TOAST** (first line + Details); full text in **SETUP SHEET**, "Table info" | H3/H4 |
-| 33 | Pre-answer verdict status line (tone + text) | verdict panel | **HAND RAIL** chip with a short state ("Peek", "Mortal unavailable", "Mortal thinking…"); the full line in the **VERDICT SHEET** | H3/H5 |
+| 33 | Pre-answer verdict status line (tone + text) | verdict panel | **DROPPED in 3D** (2026-11-21) — no pre-answer Mortal chip; the full line is in the post-answer **VERDICT SHEET** | H5 |
 | 34 | Peek button | verdict panel | **VERDICT SHEET** (pre-answer) | H5 |
 | 35 | Retry (pre-answer Mortal error) | verdict panel | **VERDICT SHEET** | H5 |
 | 36 | Peeked-Mortal card | verdict panel | **VERDICT SHEET** | H5 |
@@ -161,12 +163,12 @@ unchanged), **DROPPED**, **2D ONLY**.
 | 47 | `HandDock` section "Your hand" | dock | **SCENE** — the 3D overlay's group keeps that name; no duplicate group | 3D-08 |
 | 48 | Hand + draw tile buttons (labels, order, disabled, answer marks, AI badges) | dock | **SCENE** — the projected buttons; the HUD renders none | 3D-08 |
 | 49 | `hand` grid + `Tile` SVGs | dock | **SCENE** (canvas) | 3D-07/08 |
-| 50 | Riichi toggle (`aria-pressed`, ON/OFF) | dock | **ACTION RAIL** | H3 |
-| 51 | Kan toggle (tile label, probability, ON/OFF) | dock | **ACTION RAIL** | H3 |
-| 52 | Hint line (`.hand-dock-label`, `aria-live`) | dock | **HAND RAIL** | H3 |
+| 50 | Call bar (`CallControls`: Chi/Pon/Kan/Riichi/Pass, then its tile pick) | dock | **CALL ROW** — the same component, not a copy | H3 |
+| 51 | Call pick prompt and Cancel (2026-11-20 click-then-pick flow) | dock | **CALL ROW** beside the call bar | H3 |
+| 52 | Hint line (`.hand-dock-label`, `aria-live`) | dock | **DROPPED in 3D** (2026-11-21) — the call row's pick prompt is the only instruction | H3 |
 | 53 | Dock `NextScenarioButton` | dock | **DROPPED** — the top bar, the post-answer result card and the verdict sheet carry Next; the dock's is not re-mounted | H3/H5 |
-| 54 | `ActionBar` (non-discard actions, labels, probabilities, `aria-pressed`) | below the table | **ACTION RAIL** | H3 |
-| 55 | `DecisionPopup` (built, never mounted) | — | **DROPPED** — the rail is the only call surface; do not mount a second one | H3 |
+| 54 | `ActionBar` (the drill's remaining non-call actions, labels, probabilities) | below the table | **CALL ROW** | H3 |
+| 55 | `DecisionPopup` (built, never mounted) | — | **DROPPED** — the call row is the only call surface; do not mount a second one | H3 |
 | 56 | `statusMessage` (loading table/pack/agreement/Mortal/hotseat) | `role="status"` | **TOAST**, persistent while loading | H3 |
 | 57 | `error` (`role="alert"`) | inline | **TOAST**, error tone, until the next deal | H3 |
 | 58 | `threeNotice` + Dismiss (3D-11 degrade notice) | 2D shell | **2D ONLY** — it appears only after returning to a 2D view | — |
@@ -189,9 +191,8 @@ second strip of tiles.
 | --- | --- | --- |
 | `section.hand-dock` "Your hand" group | **scene group** — the 3D-08 overlay keeps the same accessible name | the group must describe the real buttons, and there is only one set |
 | `AnswerSummary` (mark, headline, detail, chips, Details) | **result card** (H5) | user decision: a compact result; it replaces both panel rows, never the hand |
-| Riichi toggle | **action rail** (H3) | a decision, not hand chrome; it arms the next tile tap |
-| Kan toggle (tile, probability, ON/OFF) | **action rail** (H3) | same |
-| Hint line (`handHint`, `aria-live`) | **hand rail** row of the panel (H3) | one line directly above the hand; it explains the tap |
+| Call bar (Chi/Pon/Kan/Riichi/Pass) | **isolated call row** (H3) | a decision, not hand chrome; a press either completes the call or opens a tile pick with Cancel. It is bare buttons, not a panel. |
+| Hint line (`handHint`, `aria-live`) | **dropped in 3D** (2026-11-21) | the user wants the call prompt only; the call row's own pick prompt and Cancel explain the step, and there is no Mortal chip |
 | Hand + draw tile buttons | **scene** (3D-08) | the projected buttons; the HUD never renders a second hand |
 | `hand` grid + tile images | **scene** (canvas) | drawn in 3D |
 | Dock `NextScenarioButton` | **dropped** | the top bar, the post-answer result card and the verdict sheet each carry Next (user request 2026-11-20); the dock's is not re-mounted |
@@ -201,17 +202,17 @@ second strip of tiles.
 Consequences the units must honour:
 
 - **Exactly one DOM control per hand tile plus the draw** (3D-08's overlay). A
-  test asserts the count, and that mounting the hand rail adds none.
-- The tile-less dock variant (H3) renders the hint, the pre-answer Mortal chip
-  and any rail content — **never** tile buttons.
+  test asserts the count, and that mounting the call row adds none.
+- The call row renders the shared call bar and any non-call drill action —
+  **never** tile buttons, and no hint or Mortal chip.
 - The 2D `HandDock` is unchanged. It is not split into new components for 3D;
-  H3 either adds an opt-out prop or extracts the controls into a rail that both
-  shells use. The 2D rendering must be structurally unchanged either way.
+  H3 extracts the controls into a bar that both shells use. The 2D rendering
+  must be structurally unchanged either way.
 - **This document supersedes the draft H3 task text** where it says the
   tile-less dock renders `AnswerSummary` and `NextScenarioButton`. Here the
-  summary is the result card (H5) and Next is the top bar's single control
-  (H2); the hand rail renders the hint and the Mortal chip only. Two summaries
-  or two Next buttons would be a duplicate control, not a convenience.
+  summary is the result panel (H5) and Next is the top bar's single control
+  (H2). Two summaries or two Next buttons would be a duplicate control, not a
+  convenience.
 
 ---
 
@@ -222,24 +223,23 @@ own list, `CAMERA.supportedAspects`: **21:9, 16:9, 3:2, 4:3, 1:1, 3:4, 9:16**,
 plus the two phone sizes the compass test already pins (390 × 844 and
 320 × 568) as compatibility rows.
 
-The bottom of the composition is **one panel**, not three strips:
+Pre-answer the composition has **no panel**. The call row is
+`44 px` (`92 px` when it wraps to two rows), spans the hand band's own width
+so its **right edge is the hand's right edge**, and sits **`8 px` above the hand
+band** — or below it on the two phones, where the gap above the hand is too
+small. Its controls are right-aligned, so more calls grow the row to the left.
+
+After an answer the one panel is the result card:
 
 | Panel row | Height | When |
 | --- | --- | --- |
-| hint row (the hand rail) | `24 px` | always |
-| action row (the action rail: `ActionBar` + Riichi/Kan toggles) | `44 px` + `4 px` gap | pre-answer, when it has content |
-| result card | `104 px` (two `44 px` rows: outcome, then picks + Reset + Next) | after an answer (replaces both rows) |
+| result card | `104 px` (two `44 px` rows: outcome, then picks + Reset + Next) | after an answer |
 
-So the panel is `84 px` with the action row (`128 px` if the row wraps to two),
-`40 px` with the hint alone, and `104 px` with the result card. It is
-`min(36rem, stageW − 16)` wide, centred on the stage, and sits **`8 px` above
-the hand band** — or below it on the two phones, where the gap above the hand is
-too small.
+It is `min(36rem, stageW − 16)` wide, centred on the stage, and sits `8 px`
+above the hand band (or below it on the phones).
 
-When a sheet opens, the panel **collapses to its hint row** (`40 px`) and the
-action row or result card is hidden, so the sheet can use the freed band and no
-visible control is inert. The sheet's bottom is that collapsed panel's top
-minus `8 px`.
+When a sheet opens, the call row and the result panel are hidden, so no visible
+control is inert. The sheet's bottom is `8 px` above the hand band.
 
 Every aspect below is drawn on the same rule set:
 
@@ -507,36 +507,35 @@ ssssssssssssssssssssssssssssssssssss
 ```
 
 The sheet is a **centred modal panel**, not a column: `left/right` gutter `8`,
-top `64`, and its bottom edge `8 px` above the hand panel's top, so the panel
-(and its hint row) stays visible under a light scrim. The scrim spans the whole
-window at `45 %` (not the 2D modal's `68 %`) so the panel's hint stays at about
-`5:1` contrast while the board behind it is clearly dimmed. The sheet covers the
-compass and the upper board by design; everything behind the scrim is `inert`.
-Its body scrolls internally; the page does not scroll.
+top `64`, and its bottom edge `8 px` above the **hand band's** top. The scrim
+spans the whole window at `45 %` (not the 2D modal's `68 %`) so the board behind
+it is clearly dimmed. The sheet covers the compass and the upper board by
+design; everything behind the scrim is `inert`, and the call row and result
+panel are hidden while it is open. Its body scrolls internally; the page does
+not scroll.
 
 ### Phone compatibility rows
 
-| Stage | panel | reason |
+| Stage | anchored row | reason |
 | --- | --- | --- |
-| 390 × 844 | **below** the hand: `574–658` | the gap above the hand is `484 → 541 = 57 px`; the panel needs `92 px` |
-| 320 × 568 | **below** the hand: `410–494` | the gap is `34 px`, and the hand band is only `152 px` wide |
+| 390 × 844 | call row **below** the hand when its gap above is too small | the gap above the hand is smaller than the row + `8 px` |
+| 320 × 568 | call row **below** the hand | same, with the narrower band |
 
 The fallback is one rule, not a second layout: when
-`handBand.top − 8 − panelHeight < compassBox.bottom + 8`, the panel docks
-**below** the hand band at `handBand.bottom + 8`, full width minus the gutters.
-The result card uses the same anchor. The collision gate checks whichever
-anchor was chosen.
+`handBand.top − 8 − rowHeight < compassBox.bottom + 8`, the row docks **below**
+the hand band at `handBand.bottom + 8`. The result card uses the same anchor.
+The collision gate checks whichever anchor was chosen.
 
 ### What collapses, and when
 
-| Band | Action row | Hint row | Top bar | Toast |
-| --- | --- | --- | --- | --- |
-| wide (≥ 3:2) | one row; labels, probabilities, ON/OFF | full hint + labelled Mortal chip | Next labelled, setup labelled, full screen | 2 lines, `32rem` |
-| square (4:3 – 1:1) | one row; probability badges hidden (they live in the verdict sheet) | hint one line, chip label shortened | Next labelled, icons | 2 lines |
-| portrait (< 1) | up to two rows; labels only; below the hand on phones | hint one line + "Mortal" chip | Next labelled, setup icon-only | full width minus gutters |
-| 21:9 | as wide; panel capped at `36rem`, centred | unchanged | unchanged | unchanged |
+| Band | Call row pre-answer | Top bar | Toast |
+| --- | --- | --- | --- |
+| wide (≥ 3:2) | one row; labels, probabilities | Next labelled, setup labelled, full screen | 2 lines, `32rem` |
+| square (4:3 – 1:1) | one row; probability badges hidden (they live in the verdict sheet) | Next labelled, icons | 2 lines |
+| portrait (< 1) | up to two rows; labels only; below the hand on phones | Next labelled, setup icon-only | full width minus gutters |
+| 21:9 | as wide; right-aligned to the hand | unchanged | unchanged |
 
-Collapse never removes a control, only its decoration: probabilities, the chip's
+Collapse never removes a control, only its decoration: probabilities,
 wordmark and the setup label are the only things that disappear. A control that
 would lose its accessible name keeps a visually-hidden one.
 
@@ -544,13 +543,14 @@ would lose its accessible name keeps a visually-hidden one.
 
 ```
 sheetTop    = topBar.height + 8
-panelTop    = handBand.top − 8 − 40      (the collapsed hint-only panel)
-sheetBottom = min(panelTop − 8, sheetTop + min(0.78 · stageH, 832))
+sheetBottom = min(handBand.top − 8, sheetTop + min(0.78 · stageH, 832))
 sheetWidth  = min(832, stageW − 16)
 ```
 
-On the phone fallback rows the panel is below the hand, so `panelTop` is
-`handBand.bottom + 8` and the same formula holds.
+The pre-answer call row is `handBand.{left,right}` at
+`handBand.top − 8 − rowHeight` (`rowHeight` is `44` or `92`); when that would
+reach the compass it docks at `handBand.bottom + 8`. The result panel uses the
+same anchor with `104 px`.
 
 At 21:9 this is `86 → 862` (`776 px`); 16:9 `86 → 858` (`772 px`); 3:2
 `86 → 754` (`668 px`); 4:3 `86 → 749` (`663 px`); 1:1 `86 → 698` (`612 px`);
@@ -616,8 +616,9 @@ Rules:
   (the panel's `8 px` gap to the hand is a layout gap, not an inset).
 - The hand is the lowest scene element, and in landscape it ends `40–76 px`
   above the stage bottom (reference hand, 21:9, `1080 − 1010 = 70 px`), which
-  clears a `34 px` home indicator without any HUD involvement. The hand panel is
-  above the hand, so no HUD rect competes for the bottom inset.
+  clears a `34 px` home indicator without any HUD involvement. The call row and
+  the result panel are above the hand, so no HUD rect competes for the bottom
+  inset.
 - `dvh` changes when mobile browser chrome shows/hides. The HUD recomputes on
   `resize` (and `orientationchange`, and `fullscreenchange`) through one
   `ResizeObserver` on the stage; the renderer already re-fits on resize, so the
@@ -653,10 +654,9 @@ Rules:
    that opened the sheet. If that element no longer exists (the result card
    vanished because a new hand dealt), focus goes to the top bar's Next hand.
 6. While a sheet is open, the HUD root and the stage are `inert`, and the
-   scrim spans the whole window at `45 %`. The hand panel's **hint row** stays
-   visible (dimmed, informational) and its action row or result card is hidden,
-   so no visible control is dead. The scrim is not focusable and contains no
-   text.
+   scrim spans the whole window at `45 %`. The pre-answer call row and the
+   result panel are hidden, so no visible control is dead. The scrim is not
+   focusable and contains no text.
 7. The page does not scroll. The sheet body is the only scroll container
    (`overflow: auto; overscroll-behavior: contain`).
 8. At most one sheet exists at a time. `sheetRoot` mounts one panel.
@@ -697,14 +697,15 @@ The screen regions the HUD reserves, and the only things allowed to cross them:
 | Reserved region | Rect (from §5/§7.3) | May cross it |
 | --- | --- | --- |
 | Top bar | full width, `78 px` at inset `0` | nothing (it is the top edge) |
-| Hand panel | `min(36rem, stageW − 16)` wide, centred; `84`/`128` px with actions, `40` hint-only, `104` result; `8 px` above the hand (below it on phones) | the open sheet's scrim and panel, debug panels |
+| Call row (pre-answer) | the hand band's width, right-aligned to its right edge; `44` px (`92` when wrapped); `8 px` above the hand (below it on phones) | the open sheet's scrim |
+| Result panel (post-answer) | `min(36rem, stageW − 16)` wide, centred; `104` px; `8 px` above the hand (below it on phones) | the open sheet's scrim and panel, debug panels |
 | Toast stack | `32rem` centred, under the top bar | nothing |
 | Sheet (open) | §5's formula | nothing (it is the top layer) |
 
-When the action row would be empty it is **unmounted**, not reserved: a plain
-discard lesson with no Riichi, Kan or call shows the hint row alone until the
-answer, then the result card. The HUD reserves no canvas pixels and changes no
-camera framing.
+When the call row would be empty it is **unmounted**, not reserved: a plain
+discard lesson with no Riichi, Kan or call shows nothing over the board until
+the answer, then the result panel. The HUD reserves no canvas pixels and
+changes no camera framing.
 
 ### 7.2 The rule
 
@@ -791,11 +792,11 @@ numbers the gate must beat. They are also why the result card has a **fixed
 shape**: a headline, one clamped detail line and the chips, capped at `104 px`
 — a card that grew with its text would break the contract at 9:16.
 
-A **wrapped** action row (`128 px`) at 9:16 with a four-meld hand does not fit
-above the hand (`900 − 8 − 128 = 764` against a compass bottom of `776`), so the
-fallback moves the panel below the hand, where there are `496 px`. That is the
-fallback doing its job, not an exception: the gate asserts whichever anchor is
-chosen.
+A **wrapped** call row (`92 px`) at 9:16 with a four-meld hand can still fit
+above the hand; when it cannot, the fallback moves the row below the hand, where
+there is room. That is the fallback doing its job, not an exception: the gate
+asserts whichever anchor is chosen. The collision test also pins the fallback
+with a synthetic low compass so the rule cannot rot.
 
 The top bar ends at `78 px`; the compass's top edge is never above `328 px` in
 any measured state and aspect (the minimum is 1 meld at 3:2), so the bar cannot
@@ -810,9 +811,8 @@ the stage in every state.
   each unanswered and answered/locked, with the real `hitRects()` and
   `compassPlateRect()` output. A violation prints the rect pair, the aspect and
   the clearance, and fails.
-- **H3** adds the action row's real content height (wrapping up to two rows)
-  and the hint row to the state and re-runs the same matrix, including the
-  below-the-hand fallback for a wrapped row.
+- **H3** adds the call row's real content height (wrapping up to two rows) to
+  the state and re-runs the same matrix, including the below-the-hand fallback.
 - **H4** adds the top bar's setup trigger and asserts the open sheet's bottom
   edge; **H5** adds the result card (2 lines + chips, the tallest form) and
   asserts the closed state.
@@ -874,9 +874,8 @@ Measured contrast (primary / muted / accent):
   `11.3:1`;
 - the solid sheet surface `#12141a`: `15.5:1` / `6.0:1` / `12.2:1`;
 - the three tone surfaces: `14.2:1`, `14.6:1`, `14.6:1` for primary text;
-- the panel's hint row **through the open sheet's scrim**: primary text
-  `#e7ecf3` lands at about `5.1:1` (`#82858c` on `#0a1315`), which is why the
-  hint uses primary text, not `--hud-text-muted`.
+- the call row's buttons over the felt: each carries its own opaque surface, so
+  the numbers above hold there too.
 
 Rules:
 
@@ -964,11 +963,11 @@ H2 landed the shell exactly as specified above. The facts H3–H5 build on:
   `env(safe-area-inset-*)`; `domMetrics.readSafeAreaInsets()` reads its computed
   padding once per resize pass and the numbers enter `hudLayout()`. The top bar's
   inline padding is `max(6px, inset)` on each side and `max(6px, safeTop)` above.
-- **Slots.** `HudLayer` takes `hintRow`, `actionRail`, `resultCard`, `toasts` +
-  `toastCount`, and `sheet` + `onCloseSheet`. The panel mounts only when it has
-  content (`slot: none` paints nothing), keeps `84`/`128`/`40`/`104` px, and
-  collapses to the hint row while a sheet is open. H3 fills the two rows and the
-  toast root, H5 the result card, H4/H5 the sheet body.
+- **Slots.** `HudLayer` takes `callBar`, `resultCard`, `toasts` + `toastCount`,
+  and `sheet` + `onCloseSheet`. The call row mounts only when it has content and
+  is hidden behind a sheet; the panel exists only for the post-answer result card
+  (`104 px`). H3 fills the call row and the toast root, H5 the result card,
+  H4/H5 the sheet body.
 - **Nested layers.** A native document-level Escape listener cannot be stopped
   by a descendant's `stopPropagation` (both run on `document`), so the sheet
   consumes the first Escape when its body contains
@@ -979,31 +978,60 @@ H2 landed the shell exactly as specified above. The facts H3–H5 build on:
   Next Scenario control is the real one, so the deal-in is one tap away. The
   `preview` query value is `sticks | null` only.
 
-### As built (3D-H3, 2026-11-20)
+### As built (3D-H3, 2026-11-20; revised 2026-11-21)
 
-The playing state is in the floating panel. This is what the next units build on.
+The playing state is the isolated call row; the one panel is the post-answer
+result card. This is what the next units build on.
 
-- **Files.** `renderers/hud/{ActionRail.tsx, actionRail.ts, HandRail.tsx,
-  handRail.ts, ToastStack.tsx, toastModel.ts}` plus `hudLayout.ts`'s row state
-  and the shared extraction `components/CallToggles.tsx`. `components/HandDock.tsx`
-  now renders `CallToggles`, `actions.kanToggleTile()` and
-  `handHint.handHintFor()` instead of its own copies, so the two shells cannot
-  drift. `App.tsx` changed only at the 3D mount seam.
-- **One hand.** The rail and the hint row render no tile control at all — in 3D
+- **Files.** `renderers/hud/{ActionRail.tsx, actionRail.ts, ToastStack.tsx,
+  toastModel.ts}` plus `hudLayout.ts`'s row state and the shared
+  `components/CallControls.tsx` (which replaced the Riichi/Kan `CallToggles` in
+  the 2026-11-20 click-then-pick flow). `HandRail.tsx`/`handRail.ts` existed for
+  the pre-answer hint and Mortal chip and were deleted with that panel on
+  2026-11-21. `components/HandDock.tsx` renders the same `CallControls` and the
+  same `handHint()`, so the two shells cannot drift. `App.tsx` changed only at
+  the 3D mount seam.
+- **One hand.** The call row and the result panel render no tile control at all — in 3D
   the only hand buttons are 3D-08's projected ones. `PracticeHud.test.tsx`
   composes the real overlay with the real HUD and asserts exactly one button per
-  concealed tile plus the draw, that the rail adds none, and that Tab reaches the
-  rail's controls before the hand's buttons. It also proves the armed path: the
-  rail's toggles call the store's `toggleRiichi`/`toggleKan`, the projected tile
-  click calls the store's `selectTile`, and the answer arrives as `riichi`/`kan`
-  with no renderer in between.
-- **The panel's rows are layout.** `hudLayout()` now returns `handRail` and
-  `actionRail` (one or two rows) beside the panel, from the committed `8/24/4/44`
-  inner geometry; `hudAtRestRects()` lists them as `hand rail` and `action rail`
-  (`action rail n` when wrapped), so the collision matrix checks each row. The
-  state gained `slot: 'hint'`: a plain discard lesson shows the 40 px hint-only
-  panel, and an answered hand falls back to it until H5's result card lands.
-  `HudLayer` treats a null `actionRail` as absent for the same reason.
+  concealed tile plus the draw, that the row adds none, and that Tab reaches the
+  rail's controls before the hand's buttons. It also proves the call path: the
+  rail's call buttons call the store's `beginCall`, a projected tile click calls
+  the store's `selectTile`, and the answer arrives as `riichi`/`kan`/`call` with
+  no renderer in between. A one-option call (the lone quad in the fixture) is
+  submitted by the press alone; Escape cancels a pick and returns focus.
+- **Call placement (2026-11-20).** The call bar is the rail's right-aligned
+  group: its right edge stays above the right side of the hand and each added
+  control grows the row towards the left. `.call-controls` owns that
+  `justify-content: flex-end`, and `CallControls.test.tsx` pins it in CSS text
+  (AGENTS.md §6: no visual judgement by the agent).
+- **Hover preview and pick highlighting (2026-11-21).** Hovering or focusing a
+  call button raises the hand tiles its press would use (the union across every
+  legal option; for Riichi, the engine's legal discards). Leaving the button, or
+  opening the pick, lowers them. While the pick is open every hand tile outside
+  the legal set is darkened and inert; picked tiles stay raised. A Chi pick
+  toggles: clicking a raised tile lowers it, and clicking a tile that cannot
+  join the raised one replaces it, so only the clicked tile stays up. The 3D
+  scene lifts the real mesh
+  (`TableRenderer.setLiftedTiles`, a set, not one hover) and the overlay paints
+  a dim layer; the 2D dock lifts the tile buttons and filters the rest.
+- **Review aid: `?preview=calls`.** The crafted cases in
+  `frontend/src/callDemo.ts` are dealt instead of a generated hand, and Next
+  hand walks them: `pon-single`, `pon-red`, `chi-single`, `chi-multi`,
+  `kan-single`, `riichi-one`, `riichi-many`, `drill-chi`. Add
+  `&case=chi-multi` to start at one; both 2D and 3D views work. The states are
+  complete payloads, so they go through the same store, overlay and grading path
+  as a dealt hand.
+- **The call row is layout.** `hudLayout()` returns `callBar` (one or two 44 px
+  rows, from `actionRows`) beside the post-answer `panel`; `hudAtRestRects()`
+  lists it as `call bar`, so the collision matrix checks it against the hand and
+  the compass. `Panel` exists only for `slot: 'result'`. `HudLayer` treats a
+  null `callBar`/`resultCard` as absent.
+- **No pre-answer popup (user change 2026-11-21).** The 3D HUD shows the call
+  row only: no panel, no hint line, no Mortal chip. The `HandRail` component and
+  its `mortalChip` data were deleted; the verdict sheet is entered post-answer
+  through the result card's Details. `HudLayer`'s props are now `callBar` and
+  `resultCard` (plus the sheet, toasts and top bar).
 - **The rail measures its wrap.** The action row's real height depends on the
   stage width, so `ActionRail` observes its own content box and reports `1` or
   `2` rows (`actionRail.railRowsForHeight`); `App` passes that as `actionRows`,
@@ -1014,23 +1042,21 @@ The playing state is in the floating panel. This is what the next units build on
   a Dismiss control only where one was asked for. The 3D stage now holds the
   scene and nothing in flow: App's `statusMessage` and `error` no longer render
   as `.status-msg`/`.error-msg` siblings of the canvas.
-- **Departs from the draft task text, per §4.** The tile-less rail renders the
-  hint and the Mortal chip only: `AnswerSummary` is H5's result card and Next is
-  the top bar's single control, so a second summary or Next button would be a
-  duplicate control. The chip is informational here; H5 wraps it in the button
-  that opens the verdict sheet (the one thing left from "Peek survives").
+- **Departs from the draft task text, per §4.** The pre-answer surface is the
+  isolated call row only (user change 2026-11-21): no hint line and no Mortal
+  chip. `AnswerSummary` is H5's result panel and Next is the top bar's single
+  control, so a second summary or Next button would be a duplicate control.
 - **Collision result.** The matrix runs the seven gate aspects and two phone
-  rows × six hand states × answered/unanswered × `none`/`hint`/`actions ×1`/
+  rows × six hand states × answered/unanswered × `none`/`actions ×1`/
   `actions ×2`/`result`, on the real projection, with 2 toasts at rest. Every
-  row is at least `8 px` clear of the hand band and the compass, and the wrapped
-  rail still docks below the hand at 9:16 with a four-meld kan hand. The
-  hint-only panel's compass clearance is the one-row panel's plus `44 px`, so it
-  cannot be worse than the `32 px` H2 measured.
+  row is at least `8 px` clear of the hand band and the compass, and the
+  below-the-hand fallback is pinned separately.
 - **Not done here.** The verdict sheet and result card (H5) and the setup sheet
   (H4). The rail's chip has no action until H5; nothing else in the rail is
   inert.
 - **User verdict (2026-11-20):** accepted — "looks fine" on the running dev
-  server, with the rail, the tile-less hint row and the toasts as composed here.
+  server, with the pre-answer controls and the toasts as composed here (the
+  controls later became the isolated call row, 2026-11-21).
 - **Follow-up landed with the sign-off (2026-11-20, user request):** the snapshot
   now carries every hand in **display order** (manzu, pinzu, souzu, then honors,
   by rank) instead of the engine's order, so the painted hand on the 3D canvas
@@ -1074,16 +1100,13 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   home, and closing the sheet returns to it.
 - **The sheet.** `VerdictSheet` is the 2D `VerdictPanel` unchanged: grade
   columns, `ActionRanking`, `CallReport`, `ScenarioExplanation`, the outcome
-  band, the peek card and Retry. Pre-answer the same sheet opens from the hand
-  rail's Mortal chip, which is where Peek/Retry live now. Opening or closing it
+  band, the peek card and Retry. The sheet is entered post-answer from the
+  result card's Details. Opening or closing it
   changes no `GameState` and re-runs neither the deal nor the grade; a new hand
-  closes it. The chip keeps the hint row's 24 px height (its minimum target) so
-  the hint-only panel stays 40 px; the sheet it opens holds the full-size Peek
-  and Retry controls.
+  closes it; the sheet holds the full-size Peek and Retry controls.
 - **Announcement and focus.** `HudLayer`'s announcer is mounted for the life of
   the HUD and only its text changes, so one answer is announced once even
-  though the card unmounts while the sheet is open; post-answer the hint row
-  stops being a live region. When the control that had focus went away with the
+  though the card unmounts while the sheet is open. When the control that had focus went away with the
   answer (a projected tile or a rail action), the card focuses its Details
   button; otherwise focus is left alone. The card's only motion is a plain
   `120 ms` opacity fade, suppressed by reduced motion.
@@ -1202,8 +1225,9 @@ trigger. This is what remains for 3D-15/16 and what the chain may build on.
 
 ## 12. Questions for the user (the handoff)
 
-The composition is a user decision (AGENTS.md §6). These are the choices this
-document makes; each can be changed in this file before H2 starts.
+**Historical, pre-H2.** These were the open choices before the HUD was built;
+the as-built sections above supersede them, including the 2026-11-21 change that
+removed the pre-answer panel in favour of the isolated call row.
 
 1. **Top bar contents.** Next hand is its one labelled control; the setup
    trigger and the full-screen toggle are icon buttons at the other end. Is

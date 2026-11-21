@@ -186,6 +186,31 @@
 }
 
 /*
+ * A call pick (2026-11-20): the projected tiles the open call can use are
+ * ringed, matching the 2D dock's `.hand-tile-button--pick`. Tiles the call
+ * cannot use stay focusable but are inert, so the cursor changes instead of
+ * the button moving.
+ */
+.renderer-3d-tile--pick {
+  box-shadow: 0 0 0 2px rgba(116, 192, 252, 0.65);
+}
+
+.renderer-3d-tile[aria-disabled='true'] {
+  cursor: default;
+}
+
+/*
+ * The dim layer under a pick's unavailable tiles (2026-11-21): the painted
+ * tile darkens while the button above it stays focusable. It never takes a tap.
+ */
+.renderer-3d-dim {
+  position: absolute;
+  background-color: rgba(4, 8, 12, 0.55);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/*
  * The 3D-05 hero debug HUD. A floating panel in the scene's bottom-left corner:
  * debug-only chrome, dense numbers, its own readable background. It never
  * stretches over the felt, and outside its own box it takes no pointer events.

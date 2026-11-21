@@ -7,9 +7,11 @@
  * - the shell is one fixed layer whose only always-mounted content is the top
  *   bar, and the top bar carries **Next Scenario and full screen only** — no
  *   title, no scenario name (user decision 2026-11-19);
- * - the hand panel is anchored from `hudLayout()` to the published projection,
- *   is absent without one, and follows a new projection;
- * - the slot seams H3–H5 mount into exist and are named;
+ * - the **pre-answer call row** is a bare, isolated row anchored above the
+ *   hand's right edge — no panel, no hint line, no Mortal chip (user change
+ *   2026-11-21);
+ * - the one panel is the **post-answer result card**, and it is absent before
+ *   an answer;
  * - the sheet opens over the scene without touching it, and Escape/scrim close
  *   it through the caller's handler;
  * - full screen promotes the shell (so the HUD travels with the scene) and
@@ -97,8 +99,10 @@ afterEach(() => {
 });
 
 describe('HudLayer: the shell and the top bar', () => {
-  it('is one fixed layer holding the bar, the panel slot and the sheet root', () => {
-    const { container } = render(<Harness hintRow={<span>hint</span>} />);
+  it('is one fixed layer holding the bar, the call row and the sheet root', () => {
+    const { container } = render(
+      <Harness callBar={<button type="button">Riichi</button>} />,
+    );
     const root = container.querySelector('.hud-root');
     expect(root).not.toBeNull();
     const roles = [...(root?.children ?? [])].map((child) =>
@@ -108,7 +112,7 @@ describe('HudLayer: the shell and the top bar', () => {
       'inset-probe',
       'announcer hud-visually-hidden',
       'top-bar',
-      'panel',
+      'call-bar',
       'sheet-root',
     ]);
     // The scene is a sibling, never a child: the HUD cannot resize it.
@@ -196,61 +200,74 @@ describe('HudLayer: the shell and the top bar', () => {
   });
 });
 
-describe('HudLayer: the hand panel slot', () => {
-  it('mounts no panel without a projection, and the top bar does not wait', () => {
+describe('HudLayer: the pre-answer call row (user change 2026-11-21)', () => {
+  it('mounts no hand chrome without a projection, and the top bar does not wait', () => {
     act(() => {
       publishHudAnchors(ANCHOR_OWNER, { handBand: null, compass: null });
     });
-    render(<Harness hintRow={<span>Discard 9m</span>} />);
+    render(<Harness callBar={<button type="button">Riichi</button>} />);
+    expect(document.querySelector('.hud-call-bar')).toBeNull();
     expect(document.querySelector('.hud-panel')).toBeNull();
     expect(screen.getByRole('button', { name: 'Next scenario' })).toBeTruthy();
   });
 
-  it('anchors a hint-only panel to the published band, 8 px above the hand', () => {
-    render(<Harness hintRow={<span>Discard 9m</span>} />);
-    const panel = document.querySelector('.hud-panel') as HTMLElement;
-    expect(panel).not.toBeNull();
-    // 600 - 8 - 40: the hint row alone, 36rem wide and centred (H3).
-    expect(panel.style.top).toBe('552px');
-    expect(panel.style.left).toBe('224px');
-    expect(panel.style.width).toBe('576px');
-    expect(panel.style.height).toBe('40px');
-    expect(panel.dataset.slot).toBe('hint');
-    expect(panel.textContent).toContain('Discard 9m');
+  it('anchors the bare call row above the hand’s right edge, with no panel', () => {
+    render(<Harness callBar={<button type="button">Riichi</button>} />);
+    const bar = document.querySelector('.hud-call-bar') as HTMLElement;
+    expect(bar).not.toBeNull();
+    // 600 - 8 - 44: one 44 px row, left/right on the hand band's own box.
+    expect(bar.style.top).toBe('548px');
+    expect(bar.style.left).toBe('300px');
+    expect(bar.style.width).toBe('400px');
+    expect(bar.style.height).toBe('44px');
+    expect(bar.dataset.anchor).toBe('above');
+    expect(bar.textContent).toContain('Riichi');
+    // No surface, no hint line, no panel around it.
+    expect(document.querySelector('.hud-panel')).toBeNull();
+    expect(document.querySelector('.hud-hand-rail')).toBeNull();
+    expect(document.querySelector('.hud-mortal-chip')).toBeNull();
   });
 
-  it('reserves the action row only when the rail is mounted (H3)', () => {
+  it('grows the call row to two measured rows when the controls wrap', () => {
     const { rerender } = render(
-      <Harness
-        hintRow={<span>hint</span>}
-        actionRail={<button type="button">Call Riichi</button>}
-      />,
+      <Harness callBar={<button type="button">Riichi</button>} actionRows={2} />,
     );
-    let panel = document.querySelector('.hud-panel') as HTMLElement;
-    // 600 - 8 - 84 (hint row + action row), and both rows are mounted.
-    expect(panel.style.top).toBe('508px');
-    expect(panel.style.height).toBe('84px');
-    expect(panel.dataset.slot).toBe('actions');
-    expect(panel.querySelector('.hud-hand-rail')?.textContent).toContain('hint');
-    expect(panel.querySelector('.hud-action-rail')?.textContent).toContain(
-      'Call Riichi',
-    );
+    let bar = document.querySelector('.hud-call-bar') as HTMLElement;
+    // 600 - 8 - (44 + 4 + 44).
+    expect(bar.style.top).toBe('500px');
+    expect(bar.style.height).toBe('92px');
 
-    // An explicit null is an empty rail: unmounted, not reserved (§7.1).
     rerender(
-      <Harness hintRow={<span>hint</span>} actionRail={null} />,
+      <Harness callBar={<button type="button">Riichi</button>} actionRows={1} />,
     );
-    panel = document.querySelector('.hud-panel') as HTMLElement;
-    expect(panel.dataset.slot).toBe('hint');
-    expect(panel.style.height).toBe('40px');
-    expect(panel.querySelector('.hud-action-rail')).toBeNull();
+    bar = document.querySelector('.hud-call-bar') as HTMLElement;
+    expect(bar.style.top).toBe('548px');
+    expect(bar.style.height).toBe('44px');
   });
 
-  it('gives the result card the fixed 104 px slot and the panel replaces both rows', () => {
-    render(
+  it('follows a new projection instead of caching the old one', () => {
+    render(<Harness callBar={<button type="button">Riichi</button>} />);
+    expect(
+      (document.querySelector('.hud-call-bar') as HTMLElement).style.top,
+    ).toBe('548px');
+
+    publish({ left: 300, top: 700, width: 400, height: 60 }, COMPASS);
+    expect(
+      (document.querySelector('.hud-call-bar') as HTMLElement).style.top,
+    ).toBe('648px');
+  });
+});
+
+describe('HudLayer: the result panel (3D-H5)', () => {
+  it('mounts the one panel only with the result card, at the fixed 104 px slot', () => {
+    const { rerender } = render(
+      <Harness callBar={<button type="button">Riichi</button>} />,
+    );
+    expect(document.querySelector('.hud-panel')).toBeNull();
+
+    rerender(
       <Harness
-        hintRow={<span>hint</span>}
-        actionRail={<button type="button">Riichi</button>}
+        callBar={<button type="button">Riichi</button>}
         resultCard={<span>Correct: 9m</span>}
         resultTone="contested"
       />,
@@ -259,41 +276,16 @@ describe('HudLayer: the hand panel slot', () => {
     expect(panel.dataset.slot).toBe('result');
     // The tone is the panel's, so its outline is the whole card's edge.
     expect(panel.dataset.tone).toBe('contested');
+    // 600 - 8 - 104.
     expect(panel.style.top).toBe('488px');
     expect(panel.style.height).toBe('104px');
     expect(panel.textContent).toContain('Correct: 9m');
-    expect(panel.textContent).not.toContain('Riichi');
+    // The call row is gone once the result card takes over.
+    expect(document.querySelector('.hud-call-bar')).toBeNull();
   });
+});
 
-  it('keeps the tone off the hint and action panels', () => {
-    const { rerender } = render(<Harness hintRow={<span>hint</span>} />);
-    let panel = document.querySelector('.hud-panel') as HTMLElement;
-    expect(panel.dataset.tone).toBeUndefined();
-
-    rerender(
-      <Harness
-        hintRow={<span>hint</span>}
-        actionRail={<button type="button">Riichi</button>}
-        resultTone="correct"
-      />,
-    );
-    panel = document.querySelector('.hud-panel') as HTMLElement;
-    expect(panel.dataset.slot).toBe('actions');
-    expect(panel.dataset.tone).toBeUndefined();
-  });
-
-  it('follows a new projection instead of caching the old one', () => {
-    render(<Harness hintRow={<span>hint</span>} />);
-    expect((document.querySelector('.hud-panel') as HTMLElement).style.top).toBe(
-      '552px',
-    );
-
-    publish({ left: 300, top: 700, width: 400, height: 60 }, COMPASS);
-    expect((document.querySelector('.hud-panel') as HTMLElement).style.top).toBe(
-      '652px',
-    );
-  });
-
+describe('HudLayer: toasts', () => {
   it('mounts the toast stack under the bar, and nothing when there are none', () => {
     const { rerender } = render(<Harness />);
     expect(document.querySelector('.hud-toast-root')).toBeNull();
@@ -309,9 +301,7 @@ describe('HudLayer: the hand panel slot', () => {
 
 describe('HudLayer: the result live region (3D-H5)', () => {
   it('keeps one persistent status node and only changes its text', () => {
-    const { container, rerender } = render(
-      <Harness hintRow={<span>hint</span>} />,
-    );
+    const { container, rerender } = render(<Harness />);
     const announcer = container.querySelector(
       '.hud-announcer',
     ) as HTMLElement;
@@ -321,10 +311,7 @@ describe('HudLayer: the result live region (3D-H5)', () => {
     expect(announcer.textContent).toBe('');
 
     rerender(
-      <Harness
-        hintRow={<span>hint</span>}
-        announcement="Result: Correct. The book and Mortal agree."
-      />,
+      <Harness announcement="Result: Correct. The book and Mortal agree." />,
     );
     const afterAnswer = container.querySelector('.hud-announcer') as HTMLElement;
     // Same node: a new deal is not a re-announcement of the old answer simply
@@ -337,7 +324,6 @@ describe('HudLayer: the result live region (3D-H5)', () => {
     // Opening the sheet unmounts the result card but not the announcement.
     rerender(
       <Harness
-        hintRow={<span>hint</span>}
         announcement="Result: Correct. The book and Mortal agree."
         sheet={{ title: 'Verdict', body: <p>Book says 9m</p> }}
       />,
@@ -360,7 +346,6 @@ describe('HudLayer: the sheet seam', () => {
     );
     expect(screen.getByRole('dialog', { name: 'Setup' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Deal from pool' })).toBeTruthy();
-    // The panel collapses to its hint row while the sheet is open.
     expect(screen.getByTestId('canvas').isConnected).toBe(true);
 
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -376,12 +361,18 @@ describe('HudLayer: the sheet seam', () => {
 
   it('marks the stage and the HUD background inert while the sheet is open', () => {
     const { container } = render(
-      <Harness sheet={{ title: 'Verdict', body: <p>Book says 9m</p> }} />,
+      <Harness
+        callBar={<button type="button">Riichi</button>}
+        sheet={{ title: 'Verdict', body: <p>Book says 9m</p> }}
+      />,
     );
     const stage = container.querySelector('main.table-3d') as HTMLElement;
     const bar = container.querySelector('.hud-top-bar') as HTMLElement;
+    const callBar = container.querySelector('.hud-call-bar') as HTMLElement;
     expect(stage.hasAttribute('inert')).toBe(true);
     expect(bar.hasAttribute('inert')).toBe(true);
+    // The call row is not mounted behind the modal, so it is not an inert box.
+    expect(callBar).toBeNull();
   });
 
   it('keeps the scene mounted across every sheet state and remount', () => {
@@ -408,32 +399,33 @@ describe('HudLayer: the sheet seam', () => {
     expect(onNextScenario).not.toHaveBeenCalled();
   });
 
-  it('collapses the panel to its hint row while a sheet is open', () => {
+  it('hides the call row and the result card while a sheet is open', () => {
     render(
       <Harness
-        hintRow={<span>Discard 9m</span>}
-        actionRail={<button type="button">Riichi</button>}
+        callBar={<button type="button">Riichi</button>}
+        resultCard={<span>Correct: 9m</span>}
         sheet={{ title: 'Setup', body: null }}
       />,
     );
-    const panel = document.querySelector('.hud-panel') as HTMLElement;
-    expect(panel.dataset.slot).toBe('hint');
-    // 600 - 8 - 40: the hint row alone, so no visible control is inert.
-    expect(panel.style.height).toBe('40px');
-    expect(panel.style.top).toBe('552px');
-    expect(panel.textContent).toContain('Discard 9m');
-    expect(panel.textContent).not.toContain('Riichi');
+    expect(document.querySelector('.hud-call-bar')).toBeNull();
+    expect(document.querySelector('.hud-panel')).toBeNull();
   });
 });
 
 describe('HudLayer: what the layer may never cover', () => {
   it('mounts only named HUD regions — no node over the felt that takes taps', () => {
-    render(<Harness hintRow={<span>hint</span>} toasts={<p role="status">hi</p>} />);
+    render(
+      <Harness
+        callBar={<button type="button">Riichi</button>}
+        toasts={<p role="status">hi</p>}
+      />,
+    );
     const root = document.querySelector('.hud-root') as HTMLElement;
     const allowed = new Set([
       'hud-inset-probe',
       'hud-announcer hud-visually-hidden',
       'hud-top-bar',
+      'hud-call-bar',
       'hud-panel',
       'hud-toast-root',
       'hud-sheet-root',
@@ -453,7 +445,7 @@ describe('HudLayer: what the layer may never cover', () => {
     render(
       <Harness
         onNextScenario={onNextScenario}
-        hintRow={<span>hint</span>}
+        callBar={<button type="button">Riichi</button>}
         toasts={<p role="status">hi</p>}
       >
         <div data-testid="felt" onClick={onFelt} />
@@ -467,7 +459,7 @@ describe('HudLayer: what the layer may never cover', () => {
     // And every control the HUD mounts is a live button.
     const root = document.querySelector('.hud-root') as HTMLElement;
     const buttons = [...root.querySelectorAll('button')];
-    expect(buttons.length).toBeGreaterThanOrEqual(2);
+    expect(buttons.length).toBeGreaterThanOrEqual(3);
     for (const button of buttons) expect(button.disabled).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Next scenario' }));
     expect(onNextScenario).toHaveBeenCalledTimes(1);

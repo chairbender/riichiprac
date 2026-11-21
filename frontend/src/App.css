@@ -1604,158 +1604,81 @@
   text-transform: uppercase;
 }
 
-/* Call toggles ------------------------------------------------------------ */
+/* Call controls ----------------------------------------------------------- */
 
-.call-toggles {
+/*
+ * The call bar sits above the hand's right side. Right alignment is the whole
+ * growth rule: the row's right edge is fixed at the hand's right edge, so each
+ * additional call grows it towards the left (user request 2026-11-20).
+ */
+.call-controls {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+  width: 100%;
 }
 
-.call-toggles > .riichi-toggle {
-  flex: 1 1 210px;
-}
-
-/* Riichi declaration toggle ------------------------------------------------ */
-
-.riichi-toggle {
-  display: flex;
+.call-button {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid #4a2a2a;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid #3b4457;
   border-radius: 10px;
+  background-color: #1b202b;
+  color: #dbe4f0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.call-button:hover:not(:disabled) {
+  border-color: #5c6b85;
+  background-color: #232a38;
+}
+
+.call-button:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.call-button:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 2px;
+}
+
+/* Riichi reads as the declaration; the others as ordinary calls. */
+.call-button--riichi {
+  border-color: #4a2a2a;
   background-color: #1d1717;
   color: #c99a9a;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    color 0.15s ease;
 }
 
-.riichi-toggle--active {
-  border-color: #e03131;
-  background-color: #3a1b1b;
-  color: #fff5f5;
-  box-shadow:
-    0 0 0 2px rgba(224, 49, 49, 0.35),
-    0 4px 14px rgba(224, 49, 49, 0.2);
-}
-
-.riichi-toggle:disabled {
-  opacity: 0.62;
-  cursor: default;
-}
-
-.riichi-toggle:focus-visible {
-  outline: 2px solid #ff8787;
-  outline-offset: 2px;
-}
-
-.riichi-toggle-stick {
-  display: block;
-  width: 38px;
-  height: auto;
-  flex: 0 0 auto;
-}
-
-.riichi-toggle-label {
-  line-height: 1;
-}
-
-.riichi-toggle-state {
-  min-width: 30px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background-color: rgba(255, 255, 255, 0.08);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-}
-
-.riichi-toggle--active .riichi-toggle-state {
-  background-color: #e03131;
-  color: #fff;
-}
-
-/* Added Kan call (amber, deliberately distinct from the red Riichi toggle). */
-
-.kan-toggle {
-  display: flex;
-  flex: 1 1 210px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-
-  padding: 10px 14px;
-  border: 1px solid #4a3a1f;
-  border-radius: 10px;
+.call-button--kan {
+  border-color: #4a3a1f;
   background-color: #1d1a14;
   color: #d9b36c;
-
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    color 0.15s ease;
 }
 
-.kan-toggle--active {
-  border-color: #f59f00;
-  background-color: #3b2c0d;
-  color: #fff9db;
-  box-shadow:
-    0 0 0 2px rgba(245, 159, 0, 0.35),
-    0 4px 14px rgba(245, 159, 0, 0.22);
+/* The call whose pick is open, so the hand's targets have a visible owner. */
+.call-button--picking {
+  border-color: #74c0fc;
+  box-shadow: 0 0 0 2px rgba(116, 192, 252, 0.28);
 }
 
-.kan-toggle:disabled {
-  opacity: 0.62;
-  cursor: default;
-}
-
-.kan-toggle:focus-visible {
-  outline: 2px solid #ffd43b;
-  outline-offset: 2px;
-}
-
-.kan-toggle-icon {
-  display: block;
-  width: 42px;
-  height: auto;
-  flex: 0 0 auto;
-}
-
-.kan-toggle-label {
-  line-height: 1;
-}
-
-.kan-toggle-tile {
-  padding: 2px 5px;
-  border-radius: 6px;
-  background-color: rgba(245, 159, 0, 0.16);
-  color: #ffd43b;
-  font-size: 0.66rem;
-  letter-spacing: 0.04em;
-}
-
-.kan-toggle-probability {
+.call-button-probability {
   padding: 1px 5px;
   border: 1px solid #3b5bdb;
   border-radius: 999px;
@@ -1767,23 +1690,64 @@
   text-transform: none;
 }
 
-.kan-toggle--active .kan-toggle-tile {
-  background-color: #f59f00;
-  color: #1d1a14;
+.call-controls-prompt {
+  color: #aeb8ca;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
-.kan-toggle-state {
-  min-width: 30px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background-color: rgba(255, 255, 255, 0.08);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
+.call-controls-cancel {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #6b3540;
+  border-radius: 10px;
+  background-color: #2a171c;
+  color: #ffc9d2;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
-.kan-toggle--active .kan-toggle-state {
-  background-color: #f59f00;
-  color: #1d1a14;
+.call-controls-cancel:focus-visible {
+  outline: 2px solid #ff8787;
+  outline-offset: 2px;
+}
+
+.call-controls-error {
+  flex-basis: 100%;
+  color: #ffa8a8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* A hand tile the open call can use: ringed, never recoloured as an answer. */
+.hand-tile-button--pick {
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(116, 192, 252, 0.7);
+}
+
+/*
+ * 2026-11-21: a call preview or a pick selection raises the tile out of the
+ * hand, and the tiles the open call cannot use are darkened so the choices
+ * read at a glance. The transform does not change the grid, so nothing else
+ * moves.
+ */
+.hand-tile-button--lifted {
+  transform: translateY(-10px);
+  z-index: 1;
+}
+
+.hand-tile-button--lifted.hand-tile-button--pick {
+  box-shadow: 0 0 0 2px rgba(116, 192, 252, 0.95);
+}
+
+.hand-tile-button--dimmed {
+  filter: brightness(0.42) saturate(0.5);
 }
 
 .hand {

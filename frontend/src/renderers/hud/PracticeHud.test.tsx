@@ -7,10 +7,10 @@
  *
  * 1. **One hand.** Exactly one DOM button per hand tile plus the draw, and the
  *    rail adds none — the HUD never renders a second hand.
- * 2. **Arm, then tap a tile.** The Riichi and Kan toggles arm through the store's
- *    own `toggleRiichi`/`toggleKan`, and a projected tile click submits the armed
- *    declaration through the store's own `selectTile`, so the answer path has no
- *    renderer in it.
+ * 2. **Press, then pick.** A call button starts a pick through the store's own
+ *    `beginCall`; a projected tile click collects the tile through the store's
+ *    own `selectTile`, so the answer path has no renderer in it. A call with one
+ *    legal option (the lone quad here) submits on the press alone.
  * 3. **Rail first, then hand.** The HUD is a sibling mounted before the stage,
  *    so Tab reaches the rail's controls before the hand's projected buttons, and
  *    once answered the rail is gone and the result slot (H5) is free.
@@ -28,14 +28,17 @@ import { frameForAspect, layoutBoard } from '../three/boardLayout';
 import { hitRects } from '../three/hitTest';
 import { ActionRail } from './ActionRail';
 import { actionRailVisible } from './actionRail';
-import { HandRail } from './HandRail';
 import { HudLayer } from './HudLayer';
 import { HudToastStack } from './ToastStack';
 import { buildHudToasts } from './toastModel';
 import { clearHudAnchors, publishHudAnchors } from './hudAnchors';
 import { HUD_GAP, topBarHeight } from './hudLayout';
-import { kanToggleTile } from '../../actions';
-import { handHintFor } from '../../handHint';
+import {
+  callButtonsFor,
+  callContextFor,
+  isCallActionType,
+  NO_CALL_BUTTONS,
+} from '../../callChoices';
 import { useGameStore } from '../../store/useGameStore';
 import type { GameState, PlayerState } from '../../types/game';
 
@@ -132,55 +135,39 @@ function gameState(overrides: Partial<GameState> = {}): GameState {
 function PracticeHud() {
   const game = useGameStore((state) => state.gameState);
   const dualGrade = useGameStore((state) => state.dualGrade);
-  const callRiichi = useGameStore((state) => state.callRiichi);
-  const callKan = useGameStore((state) => state.callKan);
+  const pendingCall = useGameStore((state) => state.pendingCall);
+  const callError = useGameStore((state) => state.callError);
   const evaluation = useGameStore((state) => state.evaluation);
   const peeked = useGameStore((state) => state.peekedBeforeAnswer);
-  const isEvaluating = useGameStore((state) => state.isEvaluating);
-  const aiStatus = useGameStore((state) => state.aiStatus);
   const error = useGameStore((state) => state.error);
-  const toggleRiichi = useGameStore((state) => state.toggleRiichi);
-  const toggleKan = useGameStore((state) => state.toggleKan);
+  const beginCall = useGameStore((state) => state.beginCall);
+  const cancelCall = useGameStore((state) => state.cancelCall);
   const submitAction = useGameStore((state) => state.submitAction);
 
   const human = game?.players.find((player) => player.is_human) ?? null;
   const answered = dualGrade !== null;
-  const isDrill = game?.correct_action.type === 'best';
   const availableActions = game?.ai_decision?.actions ?? [];
-  const isCallLesson = Boolean(game?.call_offer) || game?.correct_action.type === 'pass';
-  // This harness covers a discard/Kan lesson and a drill; a book call lesson's
-  // actions come from `callOfferActions` in App and never reach the rail here.
-  const actions = isCallLesson ? [] : availableActions;
-  const kanTile = human
-    ? kanToggleTile(human, {
-        availableActions: isDrill ? availableActions : undefined,
-        targetAction: game?.target_action,
-      })
-    : null;
-  const hint = human
-    ? handHintFor({
-        player: human,
-        isAnswered: answered,
-        canDiscard: true,
-        callRiichi,
-        callKan,
-        availableActions: isDrill ? availableActions : undefined,
-        targetAction: game?.target_action,
-      })
-    : '';
-
+  const callContext = game
+    ? callContextFor(game)
+    : { isDrill: false, availableActions: [] };
+  const callButtons =
+    game && human ? callButtonsFor(game, human, callContext) : NO_CALL_BUTTONS;
+  // The drill's non-call actions stay in the ActionBar; calls moved to the
+  // shared call bar, exactly as App splits them.
+  const actions = availableActions.filter(
+    (action) => !isCallActionType(action.type),
+  );
   const railModel = {
     actions,
-    canRiichi: game?.can_riichi ?? false,
-    kanTile,
+    callButtons,
+    pendingCall,
+    callError,
     answered,
-    isAiScenario: isDrill,
-    callRiichi,
-    callKan,
     evaluation,
     revealMortal: answered || peeked,
-    onToggleRiichi: toggleRiichi,
-    onToggleKan: toggleKan,
+    onBeginCall: beginCall,
+    onPass: () => submitAction({ action: 'Pass' }),
+    onCancelCall: cancelCall,
     onAction: submitAction,
   };
 
@@ -191,19 +178,7 @@ function PracticeHud() {
       <HudLayer
         shellRef={{ current: null }}
         onNextScenario={() => undefined}
-        hintRow={
-          human ? (
-            <HandRail
-              hint={hint}
-              aiStatus={aiStatus}
-              isEvaluating={isEvaluating}
-              hasEvaluation={evaluation !== null}
-              peeked={peeked}
-              answered={answered}
-            />
-          ) : undefined
-        }
-        actionRail={
+        callBar={
           actionRailVisible(railModel) ? (
             <ActionRail model={railModel} />
           ) : undefined
@@ -224,8 +199,7 @@ function SceneHand() {
   const game = useGameStore((state) => state.gameState);
   const submitted = useGameStore((state) => state.submittedAnswer);
   const selectTile = useGameStore((state) => state.selectTile);
-  const callRiichi = useGameStore((state) => state.callRiichi);
-  const callKan = useGameStore((state) => state.callKan);
+  const pendingCall = useGameStore((state) => state.pendingCall);
   if (!game) return null;
 
   const snapshot = snapshotFromGameState(game, 1, submitted !== null);
@@ -236,8 +210,7 @@ function SceneHand() {
     <TableOverlay
       snapshot={snapshot}
       rects={rects}
-      callRiichi={callRiichi}
-      callKan={callKan}
+      pendingCall={pendingCall}
       onSelectTile={selectTile}
     />
   );
@@ -267,8 +240,9 @@ describe('3D practice HUD: one hand, rail first', () => {
     const handButtons = within(handGroup).getAllByRole('button');
     expect(handButtons).toHaveLength(HUMAN.hand.length + 1);
 
-    // The rail exists (Riichi + Kan) and contributes no hand control.
-    const rail = container.querySelector('.hud-action-rail');
+    // The isolated call row exists (Riichi + Kan) and contributes no hand
+    // control; there is no pre-answer panel.
+    const rail = container.querySelector('.hud-call-bar');
     expect(rail).not.toBeNull();
     expect(within(rail as HTMLElement).getAllByRole('button')).toHaveLength(2);
     expect(rail?.querySelector('[aria-label^="Discard "]')).toBeNull();
@@ -287,7 +261,7 @@ describe('3D practice HUD: one hand, rail first', () => {
     load(gameState());
     const { container } = render(<PracticeHud />);
 
-    const rail = container.querySelector('.hud-action-rail') as HTMLElement;
+    const rail = container.querySelector('.hud-call-bar') as HTMLElement;
     const handGroup = within(container).getByRole('group', { name: 'Your hand' });
     const railButtons = within(rail).getAllByRole('button');
     const handButtons = within(handGroup).getAllByRole('button');
@@ -306,11 +280,11 @@ describe('3D practice HUD: one hand, rail first', () => {
       const active = document.activeElement as HTMLElement | null;
       visited.push(active?.getAttribute('aria-label') ?? active?.textContent ?? '');
     }
-    // Next hand, then the two rail controls, then the projected hand.
+    // Next hand, then the rail's calls (Kan, then Riichi), then the hand.
     expect(visited.slice(0, 3)).toEqual([
       'Next scenario',
-      'Call Riichi toggle, currently off',
-      'Call Kan toggle for 1m, currently off',
+      'Call Kan on 1m',
+      'Call Riichi',
     ]);
     expect(visited.slice(3)).toEqual(
       handButtons.map((button) => button.getAttribute('aria-label') ?? ''),
@@ -320,17 +294,15 @@ describe('3D practice HUD: one hand, rail first', () => {
   it('submits, then hides the rail so the result slot is free for H5', () => {
     load(gameState());
     const { container, rerender } = render(<PracticeHud />);
-    expect(container.querySelector('.hud-action-rail')).not.toBeNull();
+    expect(container.querySelector('.hud-call-bar')).not.toBeNull();
 
     fireEvent.click(
-      within(container).getByRole('button', {
-        name: 'Call Riichi toggle, currently off',
-      }),
+      within(container).getByRole('button', { name: 'Call Riichi' }),
     );
     fireEvent.click(
       within(
         within(container).getByRole('group', { name: 'Your hand' }),
-      ).getByRole('button', { name: 'Discard 2p, with Riichi' }),
+      ).getByRole('button', { name: 'Discard 2p for Riichi' }),
     );
     expect(useGameStore.getState().submittedAnswer).toMatchObject({
       action: 'riichi',
@@ -339,7 +311,7 @@ describe('3D practice HUD: one hand, rail first', () => {
 
     // The store changed; re-render is what the store subscription does.
     rerender(<PracticeHud />);
-    expect(container.querySelector('.hud-action-rail')).toBeNull();
+    expect(container.querySelector('.hud-call-bar')).toBeNull();
     expect(screen.getByTestId('result-card')).toBeTruthy();
     expect(container.querySelector('.hud-panel')?.getAttribute('data-slot')).toBe(
       'result',
@@ -353,24 +325,22 @@ describe('3D practice HUD: one hand, rail first', () => {
   });
 });
 
-describe('3D practice HUD: arm, then tap a tile', () => {
-  it('submits Riichi through the store when a projected tile is clicked', () => {
+describe('3D practice HUD: press a call, then pick its tile', () => {
+  it('opens the Riichi pick, then submits the projected tile as its discard', () => {
     load(gameState());
     const { container } = render(<PracticeHud />);
 
     fireEvent.click(
-      within(container).getByRole('button', {
-        name: 'Call Riichi toggle, currently off',
-      }),
+      within(container).getByRole('button', { name: 'Call Riichi' }),
     );
-    expect(useGameStore.getState().callRiichi).toBe(true);
+    expect(useGameStore.getState().pendingCall?.kind).toBe('riichi');
     // The hint and the projected labels both say what the next tap will do.
-    expect(container.querySelector('.hud-hand-rail__hint')?.textContent).toBe(
-      'Riichi selected - tap a tile to discard',
+    expect(container.querySelector('.call-controls-prompt')?.textContent).toBe(
+      'Select a tile to discard for Riichi',
     );
 
     fireEvent.click(
-      within(container).getByRole('button', { name: 'Discard 2p, with Riichi' }),
+      within(container).getByRole('button', { name: 'Discard 2p for Riichi' }),
     );
     expect(useGameStore.getState().submittedAnswer).toMatchObject({
       action: 'riichi',
@@ -378,26 +348,35 @@ describe('3D practice HUD: arm, then tap a tile', () => {
     });
   });
 
-  it('submits a Kan through the store when the armed tile is clicked', () => {
+  it('completes a one-option Kan without a tile pick', () => {
     load(gameState());
     const { container } = render(<PracticeHud />);
 
+    // Four identical 1m copies are one legal choice: the press is the answer.
     fireEvent.click(
-      within(container).getByRole('button', {
-        name: 'Call Kan toggle for 1m, currently off',
-      }),
+      within(container).getByRole('button', { name: 'Call Kan on 1m' }),
     );
-    expect(useGameStore.getState().callKan).toBe(true);
-
-    fireEvent.click(
-      within(container).getAllByRole('button', {
-        name: 'Declare Kan on 1m',
-      })[0],
-    );
+    expect(useGameStore.getState().pendingCall).toBeNull();
     expect(useGameStore.getState().submittedAnswer).toMatchObject({
       action: 'kan',
       tile: '1m',
     });
+  });
+
+  it('cancels the pick with Escape and returns focus to the call button', async () => {
+    const user = userEvent.setup();
+    load(gameState());
+    const { container } = render(<PracticeHud />);
+
+    const riichi = within(container).getByRole('button', { name: 'Call Riichi' });
+    fireEvent.click(riichi);
+    // Opening the pick moves focus to its Cancel control.
+    expect(document.activeElement?.textContent).toBe('Cancel');
+
+    await user.keyboard('{Escape}');
+    expect(useGameStore.getState().pendingCall).toBeNull();
+    expect(useGameStore.getState().submittedAnswer).toBeNull();
+    expect(document.activeElement).toBe(riichi);
   });
 });
 
@@ -435,7 +414,7 @@ describe('3D practice HUD: messages are toasts over the scene', () => {
     load(gameState());
     const { container } = render(<PracticeHud />);
     expect(container.querySelector('.hud-toast-root')).toBeNull();
-    // The rail's hint is the only live region in the hand panel.
-    expect(container.querySelectorAll('.hud-panel [aria-live]')).toHaveLength(1);
+    // There is no pre-answer panel, and the call row carries no hint region.
+    expect(container.querySelector('.hud-panel')).toBeNull();
   });
 });

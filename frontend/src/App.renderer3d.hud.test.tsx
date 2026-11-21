@@ -102,7 +102,6 @@ vi.mock('./renderers/RendererHost', () => ({
 import { App } from './App';
 import { useGameStore } from './store/useGameStore';
 import { clearHudAnchors, publishHudAnchors } from './renderers/hud/hudAnchors';
-import type { AiEvaluation } from './types/ai';
 import type { GameState, PlayerState } from './types/game';
 
 const scenariosDir = join(process.cwd(), 'public', 'scenarios');
@@ -327,69 +326,73 @@ describe('App 3D practice HUD (3D-H3)', () => {
     clearHudAnchors(ANCHOR_OWNER);
   });
 
-  it('mounts the hint row and the action rail, and no 2D hand dock', async () => {
+  it('deals the ?preview=calls review set straight into the call row', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?renderer=3d&preview=calls&case=chi-multi',
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline in test');
+      }),
+    );
+    const { container } = render(<App />);
+
+    await waitFor(() =>
+      expect(useGameStore.getState().gameState?.category).toBe('call_demo'),
+    );
+    expect(useGameStore.getState().gameState?.call_offer).toMatchObject({
+      action: 'Chi',
+      tile: '4p',
+    });
+    // The review set bypasses generation entirely.
+    expect(wasmMock.generateCalls).toBe(0);
+
+    await waitFor(() =>
+      expect(container.querySelector('.hud-call-bar')).not.toBeNull(),
+    );
+    expect(
+      within(container).getByRole('button', { name: 'Call Chi on 4p' }),
+    ).toBeTruthy();
+  });
+
+  it('mounts the isolated call row, and no pre-answer panel or 2D hand dock', async () => {
     const { container } = renderThree(callState());
     await waitFor(() => expect(hostMock.props).not.toBeNull());
 
     expect(container.querySelector('.hand-dock')).toBeNull();
     expect(container.querySelector('.hand-tile-button')).toBeNull();
-    const rail = container.querySelector('.hud-action-rail');
-    const hint = container.querySelector('.hud-hand-rail__hint');
-    expect(rail).not.toBeNull();
-    expect(hint).not.toBeNull();
-    if (!rail || !hint) throw new Error('the hand panel mounts both rows');
-    // The rail is above the hand in the panel: hint row first, then the actions.
-    expect(
-      hint.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    // No over-hand popup before the answer: just the bare call row.
+    expect(container.querySelector('.hud-panel')).toBeNull();
+    const callBar = container.querySelector('.hud-call-bar');
+    expect(callBar).not.toBeNull();
+    expect(callBar?.querySelector('.call-controls')).not.toBeNull();
+    // And none of the old hint/Mortal chrome.
+    expect(container.querySelector('.hud-hand-rail')).toBeNull();
+    expect(container.querySelector('.hud-mortal-chip')).toBeNull();
   });
 
-  it('words the same state exactly as the stacked view does', async () => {
+  it('renders the dock’s call controls unchanged, in the call row', async () => {
     const state = callState();
     const stacked = renderStacked(state);
     await waitFor(() =>
-      expect(stacked.container.querySelector('.hand-dock-label')).not.toBeNull(),
+      expect(stacked.container.querySelector('.call-controls')).not.toBeNull(),
     );
-    const stackedHint = stacked.container.querySelector('.hand-dock-label')
-      ?.textContent;
+    const dockCalls = controls(stacked.container, '.call-controls button');
+    expect(dockCalls.map((control) => control.text)).toEqual(['Pon', 'Pass']);
     cleanup();
 
     const three = renderThree(state);
     await waitFor(() =>
-      expect(three.container.querySelector('.hud-hand-rail__hint')).not.toBeNull(),
+      expect(three.container.querySelector('.call-controls')).not.toBeNull(),
     );
-    expect(
-      three.container.querySelector('.hud-hand-rail__hint')?.textContent,
-    ).toBe(stackedHint);
-  });
-
-  it('renders the dock’s call toggles and action bar unchanged, in the rail', async () => {
-    const state = callState();
-    const stacked = renderStacked(state);
-    await waitFor(() =>
-      expect(stacked.container.querySelector('.call-toggles')).not.toBeNull(),
+    expect(controls(three.container, '.hud-call-bar .call-controls button')).toEqual(
+      dockCalls,
     );
-    const dockToggles = controls(stacked.container, '.call-toggles button');
-    const dockActions = controls(stacked.container, '.action-bar button');
-    cleanup();
-
-    const three = renderThree(state);
-    await waitFor(() =>
-      expect(three.container.querySelector('.call-toggles')).not.toBeNull(),
-    );
-    expect(controls(three.container, '.hud-action-rail .call-toggles button')).toEqual(
-      dockToggles,
-    );
-    expect(controls(three.container, '.hud-action-rail .action-bar button')).toEqual(
-      dockActions,
-    );
-    // Order is the dock's own: the call actions, then the toggles.
-    const rail = three.container.querySelector('.hud-action-rail');
-    const groups = [...(rail?.querySelectorAll('.action-bar, .call-toggles') ?? [])];
-    expect(groups.map((group) => group.className)).toEqual([
-      'action-bar',
-      'call-toggles',
-    ]);
+    // A book call lesson has no other action, so the call row is the calls alone.
+    expect(three.container.querySelector('.hud-call-bar .action-bar')).toBeNull();
   });
 
   it('turns a deal error into a HUD toast, not a block in the scene', async () => {
@@ -645,16 +648,6 @@ describe('App 3D setup sheet (3D-H4)', () => {
 describe('App 3D result card and verdict sheet (3D-H5)', () => {
   const ANCHOR_OWNER = {};
 
-  const EVALUATION: AiEvaluation = {
-    model: 'mortal_298k.safetensors',
-    expected_value: 0.31,
-    recommended_action: 'Pass',
-    evaluations: [
-      { action: 'Pass', label: 'Pass', type: 'pass', probability: 0.71 },
-      { action: 'Pon', label: 'Pon 5z', type: 'pon', probability: 0.24 },
-    ],
-  };
-
   const GRADE = {
     mode: 'book_and_mortal',
     outcome: 'both_agree',
@@ -707,10 +700,10 @@ describe('App 3D result card and verdict sheet (3D-H5)', () => {
       useGameStore.getState().submitAnswer({ action: 'pass', tile: '' });
     });
 
-    // Post-answer state machine: the rail is gone, the card is in its slot,
-    // and nothing expanded on its own (user decision 2026-11-19).
+    // Post-answer state machine: the call row is gone, the card is in its
+    // slot, and nothing expanded on its own (user decision 2026-11-19).
     expect(wasmMock.gradeCalls).toBe(gradesBefore + 1);
-    expect(container.querySelector('.hud-action-rail')).toBeNull();
+    expect(container.querySelector('.hud-call-bar')).toBeNull();
     const panel = container.querySelector('.hud-panel') as HTMLElement;
     expect(panel.getAttribute('data-slot')).toBe('result');
     // The green/red outline is the whole panel's, not an inner box's.
@@ -806,9 +799,9 @@ describe('App 3D result card and verdict sheet (3D-H5)', () => {
     expect(store.dualGrade).toBeNull();
     expect(store.peekedBeforeAnswer).toBe(false);
     expect(wasmMock.generateCalls).toBe(dealsBefore);
-    // The result card is gone and the pre-answer rail is back.
+    // The result card is gone and the pre-answer call row is back.
     expect(container.querySelector('.hud-result-card')).toBeNull();
-    expect(container.querySelector('.hud-action-rail')).not.toBeNull();
+    expect(container.querySelector('.hud-call-bar')).not.toBeNull();
 
     // The same hand can be answered (and graded) again.
     await act(async () => {
@@ -849,36 +842,5 @@ describe('App 3D result card and verdict sheet (3D-H5)', () => {
     expect(container.querySelector('.hud-result-card')).toBeNull();
   }, 60000);
 
-  it('opens the pre-answer sheet from the Mortal chip, where Peek lives', async () => {
-    const { container } = renderThree(callState());
-    await waitFor(() => expect(hostMock.props).not.toBeNull());
-    // The weights mock fails on first paint; wait for that to settle before
-    // giving the store a ready evaluation, so the late catch cannot undo it.
-    await waitFor(() =>
-      expect(useGameStore.getState().aiStatus).toBe('error'),
-    );
-
-    await act(async () => {
-      useGameStore.setState({
-        aiStatus: 'ready',
-        evaluation: EVALUATION,
-        isEvaluating: false,
-      });
-    });
-
-    const chip = container.querySelector('.hud-mortal-chip--trigger');
-    expect(chip).not.toBeNull();
-    fireEvent.click(chip as HTMLElement);
-
-    expect(screen.getByRole('dialog', { name: 'Verdict' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Close' })).toBeTruthy();
-    const peek = screen.getByRole('button', { name: 'Peek' });
-
-    // Peek reveals Mortal's line without submitting an answer.
-    fireEvent.click(peek);
-    expect(useGameStore.getState().peekedBeforeAnswer).toBe(true);
-    expect(useGameStore.getState().dualGrade).toBeNull();
-    expect(container.querySelector('.hud-result-card')).toBeNull();
-    expect(screen.getByText(/peeked before answering/)).toBeTruthy();
-  }, 60000);
 });
+

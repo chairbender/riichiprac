@@ -41,6 +41,8 @@ import {
   RegularShaa,
   RegularTon,
 } from 'riichi-mahjong-tiles';
+import { isPickedCopy, isSelectableCopy } from '../callChoices';
+import type { PendingCall } from '../callChoices';
 import { handTileLabel } from '../handTileLabel';
 import { hitRectKey } from './contract';
 import type { CompassRect, HitRect, TableSnapshot } from './contract';
@@ -59,10 +61,11 @@ export interface TableOverlayProps {
   readonly snapshot: TableSnapshot;
   /** The renderer's current projection, one entry per interactive tile. */
   readonly rects: readonly HitRect[];
-  /** Call Riichi is armed, changing the hand buttons' labels. */
-  readonly callRiichi?: boolean;
-  /** Call Kan is armed, changing the hand buttons' labels. */
-  readonly callKan?: boolean;
+  /**
+   * The open call pick, or null. Labels say what the tile does (`Chi with 3m`)
+   * and tiles the call cannot use are disabled, exactly as in `HandDock`.
+   */
+  readonly pendingCall?: PendingCall | null;
   /** The handler every table view calls for a hand-tile click. */
   readonly onSelectTile: (tile: string, index?: number, isDraw?: boolean) => void;
   /** Report the pointer/focus tile for 3D-12's lift, or null for none. */
@@ -79,8 +82,7 @@ export interface TableOverlayProps {
 export function TableOverlay({
   snapshot,
   rects,
-  callRiichi = false,
-  callKan = false,
+  pendingCall = null,
   onSelectTile,
   onHoverTile,
 }: TableOverlayProps) {
@@ -105,6 +107,21 @@ export function TableOverlay({
       });
 
   const keys = buttons.map(({ tile }) => hitRectKey(tile)).join('|');
+
+  /*
+   * A pick leaves only its legal tiles bright; the rest are covered by a dim
+   * layer so the painted tile itself darkens (2026-11-21). Picked tiles stay
+   * bright and are lifted by the scene.
+   */
+  const dimmed = pendingCall
+    ? buttons.filter(({ tile }) => {
+        const copy = { code: tile.code, isRed: tile.isRed };
+        return (
+          !isSelectableCopy(pendingCall, copy) &&
+          !isPickedCopy(pendingCall, copy)
+        );
+      })
+    : [];
 
   /*
    * Keep focus valid. Answering removes the buttons, and a new snapshot replaces
@@ -153,19 +170,41 @@ export function TableOverlay({
       tabIndex={-1}
       data-interactive-tiles={buttons.length}
     >
+      {dimmed.map(({ tile, rect }) => (
+        <div
+          key={`dim-${hitRectKey(tile)}`}
+          className="renderer-3d-dim"
+          aria-hidden="true"
+          data-tile={tile.face}
+          style={{
+            left: `${rect.left}px`,
+            top: `${rect.top}px`,
+            width: `${rect.width}px`,
+            height: `${rect.height}px`,
+          }}
+        />
+      ))}
       {buttons.map(({ tile, rect }) => {
         const key = hitRectKey(tile);
         const label = handTileLabel({
           code: tile.code,
           isRed: tile.isRed,
-          callKan,
-          callRiichi,
+          pick: pendingCall?.kind ?? null,
         });
+        // A tile the open pick cannot use is not a target. It stays focusable
+        // (`aria-disabled`) so a keyboard pick keeps its place in the hand,
+        // exactly as the 2D dock does, but a click is ignored here and the
+        // store would reject it anyway.
+        const blocked =
+          pendingCall !== null &&
+          !isSelectableCopy(pendingCall, { code: tile.code, isRed: tile.isRed });
         return (
           <button
             key={key}
             type="button"
-            className="renderer-3d-tile"
+            className={`renderer-3d-tile${
+              pendingCall && !blocked ? ' renderer-3d-tile--pick' : ''
+            }`}
             style={{
               left: `${rect.left}px`,
               top: `${rect.top}px`,
@@ -173,10 +212,14 @@ export function TableOverlay({
               height: `${rect.height}px`,
             }}
             aria-label={label}
+            aria-disabled={blocked || undefined}
             data-tile={tile.face}
             data-zone={tile.zone}
             data-slot={tile.slot}
-            onClick={() => onSelectTile(tile.code, tile.index, tile.isDraw)}
+            onClick={() => {
+              if (blocked) return;
+              onSelectTile(tile.code, tile.index, tile.isDraw);
+            }}
             onFocus={() => {
               focusedKeyRef.current = key;
               hover(tile, key);

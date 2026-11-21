@@ -126,8 +126,11 @@ governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
   `{ handBand, compass }` into `hud/hudAnchors.ts`; `TableRenderer.handBandRect()`
   is the lock-independent hand band. The HUD never reads the DOM past its own
   safe-area probe and never calls the renderer.
-* **Slots, not new layouts.** H3–H5 mount into `HudLayer`'s props (`hintRow`,
-  `actionRail`, `resultCard`, `toasts`, `sheet`) and the one `Sheet` primitive.
+* **Slots, not new layouts.** H3–H5 mount into `HudLayer`'s props (`callBar`,
+  `resultCard`, `toasts`, `sheet`) and the one `Sheet` primitive. Since the
+  2026-11-21 change the pre-answer call bar is an isolated, right-aligned row
+  over the hand's right edge with no panel, hint line or Mortal chip; the one
+  panel is the post-answer result card.
 
 ## 4. UI / UX Design Constraints (React)
 * **Mobile-First, Stacked Layout:** The 2D UI must be optimized for portrait mode on mobile devices.
