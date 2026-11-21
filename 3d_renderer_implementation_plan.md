@@ -293,6 +293,47 @@ What the snapshot carries (see §4) is everything the top-down view currently
 renders plus the answered/highlight flags. It deliberately does **not** carry
 lesson text, the answer, the rationale, or the call offer: those are DOM.
 
+#### 2.3a The answered transition (261121-1206)
+
+The rule above ("a new revision is a cut, never a move") stands for every new
+position: a deal, a replay row, an import or a history restore. Task 261121-1206
+adds **one** deliberate exception, because after an answer the table should
+show the position the answer produces rather than the frozen decision behind
+the result card.
+
+**Decision: a presentation-only client delta, not an engine transition.** The
+Rust engine has no post-action `GameState`, and adding one would mean inventing
+rules it does not own (kan dora timing, dead-wall draws, scoring, furiten).
+Instead:
+
+- `frontend/src/answerPresentation.ts` reads the state the player saw plus the
+  submitted answer and the picked copies, and names the answer family and the
+  physical copies it moves. It never decides legality or scores.
+- `frontend/src/renderers/answeredBoard.ts` applies that delta to the **base
+  snapshot**: a discard/declaration leaves the hand or draw and lands in the
+  river (sideways for a declaration, dimmed for tsumogiri); a Chi/Pon/open
+  Kan claims the highlighted discard, forms the caller's meld and re-flows the
+  hand; an added Kan grows the Pon; an Ankan forms from four concealed copies;
+  a pass moves no tile. The remaining draw folds back into the hand, the next
+  turn is set, and the call marker clears.
+- The answered snapshot keeps the **same revision** and sets
+  `transition: 'answered'`. Every tile carries a stable `uid` (the adapter
+  fills it in), and the delta preserves the uid of a tile that moves. The
+  snapshot also carries `currentTurn`.
+- `three/motion.ts`'s `plannedMoves` pairs the old and new layout by uid and
+  `withMoveProgress` interpolates only the changed poses over
+  `ANSWER_MOVE_MS` (≤ 400 ms), with the same hop-as-arc, an exact settle to the
+  layout, and contact shadows that follow. Reduced motion starts no move, so the
+  new layout is an instant cut.
+- Reset (`resetAnswer`) drops the delta and returns the pre-answer snapshot at
+  the same revision; Back/Forward restores strip the answer state as before.
+  The 2D views still draw the decision position, because the store's
+  `gameState` is untouched.
+
+The base snapshot remains the only picture of a position. The answered board is
+a derived view of it, never a state the app can answer twice or export by
+accident.
+
 ### 2.4 Camera and layout source
 
 The world-space layout already exists, user-signed-off, in

@@ -23,7 +23,7 @@
 
 import type { RendererEvent } from '../contract';
 import { TILE, WALL } from '../layoutConstants';
-import type { BoardLayout, BoardTile } from './boardLayout';
+import type { BoardLayout, BoardTile, TilePose } from './boardLayout';
 import type { BoardInstance } from './boardMesh';
 
 /** A world-space point, as `boardLayout` publishes it. */
@@ -48,6 +48,13 @@ export const EVENT_FLIGHT_MS = 450;
 
 /** The flight's vertical hop at mid-path, in world units (≈ 24 mm). */
 export const EVENT_FLIGHT_ARC_UNITS = 0.85;
+
+/**
+ * The answered board's move bound (261121-1206): under 400 ms, the same bound
+ * as the deal-in. Every tile that changes pose after an answer reaches its new
+ * pose within this window; reduced motion applies the new layout immediately.
+ */
+export const ANSWER_MOVE_MS = 340;
 
 /**
  * The critically damped spring's normalised rate.
@@ -185,6 +192,197 @@ export function withVerticalLift(
     matrix[13] += liftUnits;
     return { ...instance, matrix };
   });
+}
+
+/**
+ * The answered board's motion (261121-1206).
+ *
+ * `plannedMoves` pairs two layouts by the snapshot's stable `uid` and keeps the
+ * tiles whose pose changed; `withMoveProgress` rewrites exactly those poses at
+ * one sampled instant, leaving every other tile byte-identical. At progress 1
+ * it returns the layout itself, so the settled frame **is** the layout rather
+ * than a tolerance match.
+ */
+
+/** One tile's change of pose across an answered transition. */
+export interface TileMove {
+  /** The physical tile's stable identity (the snapshot's `uid`). */
+  readonly uid: string;
+  readonly from: TilePose;
+  readonly to: TilePose;
+  /** Vertical hop at mid-path; 0 for a same-zone slide (a hand re-flow). */
+  readonly arcUnits: number;
+}
+
+/** The flight's mid-path hop, in world units. */
+const MOVE_ARC_UNITS = 0.55;
+
+function samePose(left: TilePose, right: TilePose): boolean {
+  return (
+    left.position[0] === right.position[0] &&
+    left.position[1] === right.position[1] &&
+    left.position[2] === right.position[2] &&
+    left.yawDeg === right.yawDeg &&
+    left.tiltDeg === right.tiltDeg &&
+    left.rollDeg === right.rollDeg
+  );
+}
+
+/**
+ * Every tile whose pose changed between two layouts, paired by `uid`.
+ *
+ * A tile present in both layouts but moved is one move. A tile that only
+ * appears or only disappears (none in the answered transition: a discard, a
+ * call and a kan all move tiles) is not animated, so a mismatch can never
+ * invent a flight. The per-tile arc is reserved for a zone change (hand → river,
+ * river → meld); a hand's own re-flow slides along the row.
+ */
+export function plannedMoves(
+  previous: BoardLayout,
+  next: BoardLayout,
+): readonly TileMove[] {
+  const before = new Map(previous.tiles.map((tile) => [tile.uid, tile]));
+  const moves: TileMove[] = [];
+  for (const tile of next.tiles) {
+    const from = before.get(tile.uid);
+    if (!from || samePose(from.pose, tile.pose)) continue;
+    moves.push({
+      uid: tile.uid,
+      from: from.pose,
+      to: tile.pose,
+      arcUnits: from.zone !== tile.zone ? MOVE_ARC_UNITS : 0,
+    });
+  }
+  return moves;
+}
+
+const clamp01 = (value: number): number =>
+  Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+
+/** Shortest-arc interpolation between two yaw angles, in degrees. */
+function lerpAngle(from: number, to: number, t: number): number {
+  const delta = (((to - from + 540) % 360) + 360) % 360 - 180;
+  return from + delta * t;
+}
+
+/** One move's pose at `progress` in [0, 1]. Exactly `from` at 0, `to` at 1. */
+export function movedPose(move: TileMove, progress: number): TilePose {
+  const t = clamp01(progress);
+  if (t === 0) return move.from;
+  if (t === 1) return move.to;
+  const [fx, fy, fz] = move.from.position;
+  const [tx, ty, tz] = move.to.position;
+  return {
+    position: [
+      fx + (tx - fx) * t,
+      fy + (ty - fy) * t + move.arcUnits * Math.sin(Math.PI * t),
+      fz + (tz - fz) * t,
+    ],
+    yawDeg: lerpAngle(move.from.yawDeg, move.to.yawDeg, t),
+    tiltDeg: move.from.tiltDeg + (move.to.tiltDeg - move.from.tiltDeg) * t,
+    rollDeg: move.from.rollDeg + (move.to.rollDeg - move.from.rollDeg) * t,
+    sizeUnits: move.to.sizeUnits,
+  };
+}
+
+/**
+ * The layout with every planned move's pose interpolated at `progress`.
+ *
+ * Every derived view (`wall`, `foreground`) is rebuilt from the same tile
+ * objects, because the shadow layer reads them too: a discarded tile's contact
+ * shadow has to travel with the tile rather than snap to the pond.
+ */
+export function withMoveProgress(
+  layout: BoardLayout,
+  moves: readonly TileMove[],
+  progress: number,
+): BoardLayout {
+  if (moves.length === 0 || progress >= 1) return layout;
+  const byUid = new Map(moves.map((move) => [move.uid, move]));
+  const tiles = layout.tiles.map((tile) => {
+    const move = byUid.get(tile.uid);
+    return move ? { ...tile, pose: movedPose(move, progress) } : tile;
+  });
+  const byId = new Map(tiles.map((tile) => [tile.id, tile]));
+  return {
+    ...layout,
+    tiles,
+    wall: layout.wall.map((tile) => byId.get(tile.id) ?? tile),
+    foreground: layout.foreground.map((tile) => byId.get(tile.id) ?? tile),
+  };
+}
+
+/** One reading of the answered board's move. */
+export interface MoveSample {
+  readonly active: boolean;
+  readonly progress: number;
+  readonly done: boolean;
+}
+
+/**
+ * The answered transition's animation state.
+ *
+ * `start` computes the moves once and stamps the clock; `sample` is a pure
+ * reading afterwards, clearing itself at {@link ANSWER_MOVE_MS}. Reduced motion
+ * never starts one, so the new layout is applied as an instant cut.
+ */
+export class MoveMotion {
+  private startedAtMs: number | null = null;
+  private moveList: readonly TileMove[] = [];
+
+  constructor(
+    private readonly clock: MotionClock = systemMotionClock(),
+    private readonly reducedMotion = false,
+  ) {}
+
+  /**
+   * Begin animating `previous` → `next`. Returns true when a move is running.
+   * A reduced-motion or identical board starts nothing and returns false.
+   */
+  start(previous: BoardLayout, next: BoardLayout): boolean {
+    if (this.reducedMotion) {
+      this.cancel();
+      return false;
+    }
+    const moves = plannedMoves(previous, next);
+    if (moves.length === 0) {
+      this.cancel();
+      return false;
+    }
+    this.moveList = moves;
+    this.startedAtMs = this.clock.now();
+    return true;
+  }
+
+  /** The moves being animated (empty when idle). */
+  get plans(): readonly TileMove[] {
+    return this.moveList;
+  }
+
+  sample(): MoveSample {
+    if (this.startedAtMs === null) {
+      return { active: false, progress: 1, done: true };
+    }
+    const elapsed = this.clock.now() - this.startedAtMs;
+    if (!Number.isFinite(elapsed) || elapsed >= ANSWER_MOVE_MS) {
+      this.startedAtMs = null;
+      return { active: false, progress: 1, done: true };
+    }
+    return {
+      active: true,
+      progress: springProgress(elapsed, ANSWER_MOVE_MS),
+      done: false,
+    };
+  }
+
+  get active(): boolean {
+    return this.startedAtMs !== null;
+  }
+
+  cancel(): void {
+    this.startedAtMs = null;
+    this.moveList = [];
+  }
 }
 
 /** One event's start and end points, plus the shape of the flight between them. */

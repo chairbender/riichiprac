@@ -1,12 +1,10 @@
 import { create } from 'zustand';
 import { grade_answer_json } from 'riichiprac';
-import {
-  findAiActionInfo,
-  isCallDecision,
-  isCorrectAction,
-  isKanDecision,
-} from '../actions';
+import { findAiActionInfo, isCallDecision, isCorrectAction, isKanDecision } from '../actions';
 import { parseAgreementPayload } from '../agreement';
+import { answerPresentationFor } from '../answerPresentation';
+import type { PickedCopyLike } from '../answerPresentation';
+import type { AnsweredAction } from '../renderers/answeredBoard';
 import {
   callButtonsFor,
   callContextFor,
@@ -96,6 +94,12 @@ interface GameStore {
 
   /** The answer the player submitted, in trainer vocabulary. */
   submittedAnswer: SubmittedAnswer | null;
+  /**
+   * What that answer does to the table, for the 3D view's answered board
+   * (261121-1206): the copies that leave the hand, the discard a call claims,
+   * and the family. Presentation only — the graded `gameState` is untouched.
+   */
+  answeredAction: AnsweredAction | null;
   /** Dual verdict for `submittedAnswer`; null before answering. */
   dualGrade: DualGrade | null;
   /** True when the player revealed Mortal's line before answering. */
@@ -158,11 +162,14 @@ interface GameStore {
   /** Submit the clicked hand tile as the answer (or as the open pick's tile). */
   selectTile: (tile: string, tileIndex?: number, isDraw?: boolean) => void;
   /** Submit a generic AI-scenario choice. */
-  submitChoice: (choice: PlayerChoice) => void;
+  submitChoice: (choice: PlayerChoice, picks?: readonly PickedCopyLike[]) => void;
   /** Submit a non-discard action from the generic action bar. */
-  submitAction: (action: { action: string; tile?: string | null; tiles?: string[]; label?: string }) => void;
+  submitAction: (
+    action: { action: string; tile?: string | null; tiles?: string[]; label?: string },
+    picks?: readonly PickedCopyLike[],
+  ) => void;
   /** Grade a submitted answer against both perspectives. */
-  submitAnswer: (answer: SubmittedAnswer) => void;
+  submitAnswer: (answer: SubmittedAnswer, picks?: readonly PickedCopyLike[]) => void;
   /** Re-grade the current answer after an evaluation arrives. */
   regrade: () => void;
   /** Reveal Mortal's line before answering. */
@@ -248,6 +255,7 @@ const emptyState = {
   callError: null,
   callPreview: null,
   submittedAnswer: null,
+  answeredAction: null,
   dualGrade: null,
   peekedBeforeAnswer: false,
   evaluation: null,
@@ -264,6 +272,7 @@ const emptyState = {
   | 'callError'
   | 'callPreview'
   | 'submittedAnswer'
+  | 'answeredAction'
   | 'dualGrade'
   | 'peekedBeforeAnswer'
   | 'evaluation'
@@ -437,6 +446,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     tileIndex: number | undefined,
     isDraw: boolean | undefined,
     declaration: 'riichi' | 'kan' | null,
+    picked?: PickedCopyLike,
   ) => {
     const state = get();
     const game = state.gameState;
@@ -450,14 +460,17 @@ export const useGameStore = create<GameStore>((set, get) => {
             ? 'Kan'
             : `Discard_${tile}`;
       const info = findAiActionInfo(game, name, tile);
-      get().submitChoice({
-        action: info?.action ?? name,
-        tile,
-        tileIndex,
-        isTsumogiri: isDraw,
-        tiles: info?.tiles,
-        label: info?.label,
-      });
+      get().submitChoice(
+        {
+          action: info?.action ?? name,
+          tile,
+          tileIndex,
+          isTsumogiri: isDraw,
+          tiles: info?.tiles,
+          label: info?.label,
+        },
+        picked ? [picked] : undefined,
+      );
       return;
     }
 
@@ -480,7 +493,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     } else if (submitsTheDraw(game, answer)) {
       answer.is_tsumogiri = true;
     }
-    get().submitAnswer(answer);
+    get().submitAnswer(answer, picked ? [picked] : undefined);
   };
 
   /** Submit the answer a completed call makes. */
@@ -494,29 +507,34 @@ export const useGameStore = create<GameStore>((set, get) => {
     const picked = picks[picks.length - 1];
 
     if (game.correct_action.type === 'best') {
-      get().submitChoice({
-        action: option.action ?? callName(kind),
-        tile: option.calledTile ?? picked?.code ?? '',
-        tileIndex: picked?.index,
-        isTsumogiri: picked?.isDraw,
-        tiles: option.handTiles.map((copy) => copy.code),
-      });
+      get().submitChoice(
+        {
+          action: option.action ?? callName(kind),
+          tile: option.calledTile ?? picked?.code ?? '',
+          tileIndex: picked?.index,
+          isTsumogiri: picked?.isDraw,
+          tiles: option.handTiles.map((copy) => copy.code),
+        },
+        picks,
+      );
       return;
     }
 
     if (kind === 'riichi') {
-      if (picked) submitHandTile(picked.code, picked.index, picked.isDraw, 'riichi');
+      if (picked) {
+        submitHandTile(picked.code, picked.index, picked.isDraw, 'riichi', picked);
+      }
       return;
     }
 
     const offer = game.call_offer;
     if (offer) {
-      get().submitAction({ action: offer.action });
+      get().submitAction({ action: offer.action }, picks);
       return;
     }
 
     if (kind === 'kan' && picked) {
-      submitHandTile(picked.code, picked.index, picked.isDraw, 'kan');
+      submitHandTile(picked.code, picked.index, picked.isDraw, 'kan', picked);
     }
   };
 
@@ -545,6 +563,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           callError: null,
           callPreview: null,
           submittedAnswer: null,
+          answeredAction: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
           evaluation,
@@ -566,6 +585,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           callError: null,
           callPreview: null,
           submittedAnswer: null,
+          answeredAction: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
           evaluation: null,
@@ -614,6 +634,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         callError: null,
         callPreview: null,
         submittedAnswer: snapshot.submittedAnswer,
+        answeredAction: snapshot.submittedAnswer
+          ? answerPresentationFor(parsed, snapshot.submittedAnswer)
+          : null,
         dualGrade: snapshot.dualGrade,
         peekedBeforeAnswer: snapshot.peekedBeforeAnswer,
         evaluation,
@@ -641,6 +664,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           callError: null,
           callPreview: null,
           submittedAnswer: null,
+          answeredAction: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
           evaluation: null,
@@ -899,7 +923,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       submitHandTile(tile, tileIndex, isDraw, null);
     },
 
-    submitChoice: (choice) => {
+    submitChoice: (choice, picks) => {
       const game = get().gameState;
       if (!game || game.correct_action.type !== 'best' || get().dualGrade) return;
 
@@ -918,10 +942,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       } else if (submitsTheDraw(game, answer)) {
         answer.is_tsumogiri = true;
       }
-      get().submitAnswer(answer);
+      get().submitAnswer(answer, picks);
     },
 
-    submitAction: (action) => {
+    submitAction: (action, picks) => {
       if (action.action === 'Riichi') {
         get().beginCall('riichi');
         return;
@@ -943,19 +967,22 @@ export const useGameStore = create<GameStore>((set, get) => {
         if (!isPass && !isKan) {
           answer.action_name = action.action;
         }
-        get().submitAnswer(answer);
+        get().submitAnswer(answer, picks);
         return;
       }
 
-      get().submitChoice({
-        action: action.action,
-        tile: action.tile ?? undefined,
-        tiles: action.tiles,
-        label: action.label,
-      });
+      get().submitChoice(
+        {
+          action: action.action,
+          tile: action.tile ?? undefined,
+          tiles: action.tiles,
+          label: action.label,
+        },
+        picks,
+      );
     },
 
-    submitAnswer: (answer) => {
+    submitAnswer: (answer, picks) => {
       const { gameState, evaluation } = get();
       if (!gameState || get().dualGrade) return;
 
@@ -964,6 +991,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       set({
         submittedAnswer: answer,
+        answeredAction: answerPresentationFor(gameState, answer, picks),
         dualGrade: grade,
         callPreview: null,
       });
@@ -1004,6 +1032,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       set({
         submittedAnswer: null,
+        answeredAction: null,
         dualGrade: null,
         peekedBeforeAnswer: false,
         // A call pick cannot outlive the answer it belonged to.
@@ -1035,6 +1064,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         callError: null,
         callPreview: null,
         submittedAnswer: null,
+        answeredAction: null,
         dualGrade: null,
         peekedBeforeAnswer: false,
         evaluation: null,

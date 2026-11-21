@@ -76,6 +76,8 @@ export const NEUTRAL_ATLAS_RECT: AtlasRect = [0, 0, 1, 1];
 export interface BoardInstance {
   /** The layout tile's stable id, for tests and diffs. */
   readonly id: string;
+  /** The physical tile's identity across snapshots (261121-1206). */
+  readonly uid: string;
   /** Column-major 4 x 4, as {@link poseMatrix} publishes it. */
   readonly matrix: readonly number[];
   readonly atlasRect: AtlasRect;
@@ -128,6 +130,7 @@ function instanceFor(
 ): BoardInstance {
   return {
     id: tile.id,
+    uid: tile.uid,
     matrix: poseMatrix(tile.pose),
     // A face-down tile never samples the atlas; the neutral rect keeps the
     // attribute buffer uniform without inventing art.

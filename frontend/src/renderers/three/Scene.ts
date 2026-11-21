@@ -107,8 +107,9 @@ import {
   handBandRect as projectHandBandRect,
   hitRects as projectHitRects,
 } from './hitTest';
-import { DealInMotion, systemMotionClock, withVerticalLift } from './motion';
+import { DealInMotion, MoveMotion, systemMotionClock, withVerticalLift } from './motion';
 import type { DealInSample, MotionClock } from './motion';
+import { withMoveProgress } from './motion';
 import { sceneLightSpecs } from './lighting';
 import { FrameTimeMonitor } from './perf';
 import { allProbesPass, readProbes } from './probes';
@@ -296,6 +297,12 @@ export class TableScene implements TableRenderer {
    * nothing at all. Only a new snapshot revision starts it.
    */
   private readonly dealIn: DealInMotion;
+  /**
+   * The answered board's bounded move (261121-1206): every tile whose pose the
+   * answer changed flies from its old pose to its new one. Only a snapshot with
+   * `transition: 'answered'` starts it, and reduced motion never does.
+   */
+  private readonly moves: MoveMotion;
   /** {prefers-reduced-motion}: no deal-in animation; the instant hover lift stays. */
   private readonly reducedMotion: boolean;
   /** `?debug=hero`: a fixed macro shot of four tiles, so the deal-in never runs. */
@@ -336,6 +343,7 @@ export class TableScene implements TableRenderer {
     this.reducedMotion = options.reducedMotion;
     this.heroView = options.debug === 'hero';
     this.dealIn = new DealInMotion(clock, options.reducedMotion);
+    this.moves = new MoveMotion(clock, options.reducedMotion);
     this.perf = new FrameTimeMonitor(options.tier);
 
     const context = canvas.getContext('webgl2', {
@@ -413,20 +421,35 @@ export class TableScene implements TableRenderer {
    */
   syncState(snapshot: TableSnapshot): void {
     if (this.disposed) return;
+    const previous = this.layout;
     const isCut = this.dealIn.cut(snapshot.revision);
     this.revision = snapshot.revision;
     this.locked = snapshot.locked;
     const layout = layoutBoard(snapshot);
+    /*
+     * 261121-1206: the answered transition is the one exception to the cut rule.
+     * `moves.start` is called before the first sync so the very first frame of
+     * the answered board is still the pre-answer pose (progress 0); a cut starts
+     * from the new layout and settles with the deal-in instead.
+     */
+    const moving =
+      snapshot.transition === 'answered' &&
+      previous !== null &&
+      !this.heroView &&
+      this.moves.start(previous, layout);
+    if (!moving) this.moves.cancel();
     this.layout = layout;
     this.syncBoard(layout);
     // A deeper river or a taller hand can move the solved camera, so the frame
     // and the felt follow the layout, not only the viewport.
     this.reframe();
-    if (isCut) {
+    if (moving) {
+      this.startMotion();
+    } else if (isCut) {
       // The hero view is a fixed macro shot of four tiles, not a deal: no
       // deal-in there, and no frame loop to run one.
       if (this.heroView) this.dealIn.cancel();
-      else this.startDealIn();
+      else this.startMotion();
     }
     this.requestFrame();
   }
@@ -530,7 +553,7 @@ export class TableScene implements TableRenderer {
         // unchanged; only a fallback-to-committed swap could move them, and the
         // tier path never changes the art source.
         this.registry.add(assets);
-        if (this.board && this.layout) this.syncTiles(this.layout);
+        if (this.board && this.layout) this.syncTilesCurrent();
         this.draw();
       })
       .catch((error: unknown) => {
@@ -611,7 +634,7 @@ export class TableScene implements TableRenderer {
     const next = tiles ?? [];
     if (sameTileRefs(this.lifted, next)) return;
     this.lifted = next.map((tile) => ({ ...tile }));
-    if (this.layout) this.syncTiles(this.layout);
+    if (this.layout) this.syncTilesCurrent();
     this.requestFrame();
   }
 
@@ -1098,6 +1121,7 @@ export class TableScene implements TableRenderer {
     this.disposed = true;
     this.stopPerfSampling();
     this.dealIn.cancel();
+    this.moves.cancel();
     if (this.motionHandle !== null) {
       globalThis.cancelAnimationFrame?.(this.motionHandle);
       this.motionHandle = null;
@@ -1151,13 +1175,29 @@ export class TableScene implements TableRenderer {
     this.felt.setSize(feltSizeForFrame(this.frame));
   }
 
-  /** Rewrite the board's instance buffers for a new layout, if mounted. */
+  /** Rewrite the board's buffers for a new layout, if mounted. */
   private syncBoard(layout: BoardLayout): void {
     const board = this.board;
     if (!board) return;
-    this.syncTiles(layout);
-    board.shadows.sync(shadowInstances(layout));
-    board.sticks.sync(layout.sticks);
+    // The answered move poses the very same layout every frame, so the contact
+    // shadows and the sticks follow the tiles rather than snapping ahead.
+    const posed = this.posedLayout(layout);
+    this.syncTiles(posed);
+    board.shadows.sync(shadowInstances(posed));
+    board.sticks.sync(posed.sticks);
+  }
+
+  /** The layout with the answered move sampled, or the layout itself when idle. */
+  private posedLayout(layout: BoardLayout): BoardLayout {
+    const sample = this.moves.sample();
+    return sample.active
+      ? withMoveProgress(layout, this.moves.plans, sample.progress)
+      : layout;
+  }
+
+  /** Re-sync the current layout's tiles (used outside a full board sync). */
+  private syncTilesCurrent(): void {
+    if (this.layout) this.syncTiles(this.posedLayout(this.layout));
   }
 
   /**
@@ -1201,23 +1241,27 @@ export class TableScene implements TableRenderer {
    * the sample reports `done`, at which point the buffer is exactly the layout's
    * transforms again. Reduced motion never reaches here (`cut()` returns false).
    */
-  private startDealIn(): void {
-    if (this.disposed || this.motionHandle !== null || !this.dealIn.active) return;
+  private startMotion(): void {
+    if (this.disposed || this.motionHandle !== null) return;
+    if (!this.dealIn.active && !this.moves.active) return;
     const schedule = globalThis.requestAnimationFrame;
     if (typeof schedule !== 'function') {
       // No animation clock (an exotic embed): settle immediately, never leave
-      // the board holding a lift that no frame will ever decay.
+      // the board holding a pose that no frame will ever advance.
       this.dealIn.cancel();
-      if (this.layout) this.syncTiles(this.layout);
+      this.moves.cancel();
+      if (this.layout) this.syncBoard(this.layout);
       this.requestFrame();
       return;
     }
     const step = (): void => {
       this.motionHandle = null;
       if (this.disposed) return;
-      if (this.layout) this.syncTiles(this.layout);
+      if (this.layout) this.syncBoard(this.layout);
       this.draw();
-      if (this.dealIn.active) this.motionHandle = schedule(step);
+      if (this.dealIn.active || this.moves.active) {
+        this.motionHandle = schedule(step);
+      }
     };
     this.motionHandle = schedule(step);
   }
@@ -1288,6 +1332,7 @@ export class TableScene implements TableRenderer {
     const board = createBoardMesh(
       instances.map((instance): BoardInstance => ({
         id: instance.slot.id,
+        uid: instance.slot.id,
         matrix: instance.matrix,
         atlasRect: instance.atlasRect ?? [0, 0, 1, 1],
         flags: instanceFlags({
@@ -1334,12 +1379,15 @@ export class TableScene implements TableRenderer {
       aoRoughness: assets.textures.aoRoughness,
     });
     const layout = this.layout;
+    // A board that mounts after a snapshot already arrived takes the same posed
+    // layout the running motion would draw (deal-in lift and answered move).
+    const posed = layout ? this.posedLayout(layout) : null;
     const tiles = createBoardMesh(
-      layout ? this.boardInstances(layout, assets) : [],
+      posed ? this.boardInstances(posed, assets) : [],
       material,
     );
-    const shadows = createShadowLayer(layout ? shadowInstances(layout) : []);
-    const sticks = createStickMesh(layout?.sticks ?? []);
+    const shadows = createShadowLayer(posed ? shadowInstances(posed) : []);
+    const sticks = createStickMesh(posed?.sticks ?? []);
     // The compass square is table furniture (3D-09): real geometry in
     // perspective, with only its numbers as screen-space DOM over it.
     const plate = createCompassPlate();

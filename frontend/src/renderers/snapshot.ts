@@ -70,6 +70,8 @@ interface TileSpec {
   readonly face: SnapshotTile['face'];
   readonly zone: Zone;
   readonly slot: number;
+  /** Stable identity for the answered transition (see `SnapshotTile.uid`). */
+  readonly uid: string;
   readonly faceUp: boolean;
   readonly sideways?: boolean;
   readonly highlighted?: boolean;
@@ -79,6 +81,7 @@ interface TileSpec {
 function tile(spec: TileSpec): SnapshotTile {
   return {
     face: spec.face,
+    uid: spec.uid,
     zone: spec.zone,
     slot: spec.slot,
     faceUp: spec.faceUp,
@@ -157,6 +160,9 @@ function buildSeat(
   highlight: HighlightDiscard | null,
 ): SnapshotSeat {
   const red = redFiveAllocator(player.red_fives);
+  /** A tile identity unique within this seat's snapshot. */
+  const uid = (zone: Zone, slot: number): string =>
+    `s${seat}-${zone}-${slot}`;
 
   /*
    * The hand in display order (user request 2026-11-20): the 3D canvas and
@@ -183,6 +189,7 @@ function buildSeat(
       face: faceIdForTile(entry.code, entry.isRed),
       zone: 'hand',
       slot,
+      uid: uid('hand', slot),
       faceUp: true,
     }),
   );
@@ -192,6 +199,7 @@ function buildSeat(
         face: faceIdForTile(drawEntry.code, drawEntry.isRed),
         zone: 'draw',
         slot: handEntries.length,
+        uid: uid('draw', handEntries.length),
         faceUp: true,
       })
     : null;
@@ -206,6 +214,7 @@ function buildSeat(
       face: faceIdForTile(discard.tile, discard.is_red === true),
       zone: 'river',
       slot: index,
+      uid: uid('river', index),
       faceUp: true,
       sideways: discard.is_riichi || riichiDiscardIndex === index,
       highlighted: highlight?.seat === seat && highlight.index === index,
@@ -213,7 +222,7 @@ function buildSeat(
     }),
   );
 
-  const melds: SnapshotMeld[] = player.melds.map((meld) => {
+  const melds: SnapshotMeld[] = player.melds.map((meld, meldIndex) => {
     const called = calledTile(meld, player.seat);
     return {
       kind: meld.meld_type,
@@ -222,6 +231,7 @@ function buildSeat(
           face: faceIdForTile(code),
           zone: 'meld',
           slot: index,
+          uid: uid('meld', meldIndex * 4 + index),
           faceUp: true,
           sideways: called?.index === index,
         }),
@@ -257,6 +267,7 @@ function buildWall(tilesRemaining: number, humanSeat: Seat): SnapshotTile[] {
       face: 'blank',
       zone: 'wall',
       slot: wallSlotId(run, stack, tier),
+      uid: `wall-${wallSlotId(run, stack, tier)}`,
       faceUp: false,
     }),
   );
@@ -330,6 +341,12 @@ export function snapshotFromGameState(
   if (humanSeat === null) {
     throw new Error(`3D table snapshot: invalid human seat ${String(human.seat)}`);
   }
+  const currentTurn = seatIndex(state.current_turn);
+  if (currentTurn === null) {
+    throw new Error(
+      `3D table snapshot: invalid current turn ${String(state.current_turn)}`,
+    );
+  }
 
   const highlight =
     highlightDiscard === undefined
@@ -355,6 +372,7 @@ export function snapshotFromGameState(
         face: faceIdForTile(code),
         zone: 'dora',
         slot: index,
+        uid: `dora-${index}`,
         faceUp: true,
       }),
     ),
@@ -365,6 +383,7 @@ export function snapshotFromGameState(
       riichiSticks: state.riichi_sticks,
       tilesRemaining: state.tiles_remaining,
     },
+    currentTurn,
     highlightDiscard: highlight,
     locked,
   };
