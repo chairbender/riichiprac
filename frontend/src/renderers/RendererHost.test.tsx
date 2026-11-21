@@ -77,6 +77,7 @@ const hostMock = vi.hoisted(() => {
     measureCalls: number;
     stats: RendererStats;
     hover: unknown[];
+    lifted: unknown[];
     playEventCalls: number;
   }
 
@@ -110,6 +111,7 @@ const hostMock = vi.hoisted(() => {
       frameSamples: 0,
     },
     hover: [],
+    lifted: [],
     playEventCalls: 0,
   };
 
@@ -135,6 +137,9 @@ const hostMock = vi.hoisted(() => {
       compassRect: () => state.compass,
       setHoverTile: (tile: unknown) => {
         state.hover.push(tile);
+      },
+      setLiftedTiles: (tiles: unknown) => {
+        state.lifted.push(tiles);
       },
       playEvents: () => {
         state.playEventCalls += 1;
@@ -238,6 +243,7 @@ beforeEach(() => {
       frameSamples: 0,
     },
     hover: [],
+    lifted: [],
     playEventCalls: 0,
   });
   hostMock.createRenderer.mockClear();
@@ -587,13 +593,24 @@ describe('RendererHost interaction overlay (3D-08)', () => {
     expect(hostMock.state.hitRectCalls).toBeGreaterThan(callsBefore);
   });
 
-  it('forwards hover to the renderer’s lift seam', async () => {
+  it('forwards hover and the call preview as one lift set', async () => {
     hostMock.state.rects = [HAND_RECT];
-    render(<RendererHost snapshot={handSnapshot()} onSelectTile={() => undefined} />);
+    const preview = [{ seat: 0 as const, zone: 'hand' as const, slot: 0 }];
+    render(
+      <RendererHost
+        snapshot={handSnapshot()}
+        onSelectTile={() => undefined}
+        liftedTiles={preview}
+      />,
+    );
     await waitFor(() => expect(hostMock.state.live).toBe(1));
+    // The preview is applied once the renderer is ready.
+    expect(hostMock.state.lifted.at(-1)).toEqual(preview);
+
     const button = await screen.findByRole('button', { name: 'Discard 1m' });
     fireEvent.focus(button);
-    expect(hostMock.state.hover.at(-1)).toEqual({ seat: 0, zone: 'hand', slot: 0 });
+    // Hover merges with the preview without duplicating the tile.
+    expect(hostMock.state.lifted.at(-1)).toEqual(preview);
   });
 
   it('names the view and describes the interactive hand for screen readers', async () => {

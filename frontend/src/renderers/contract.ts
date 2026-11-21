@@ -613,6 +613,12 @@ export interface TableRenderer {
    */
   setHoverTile?(tile: HandTileRef | null): void;
   /**
+   * Report the set of hand tiles to raise as one group: the call button's
+   * preview set, or the tiles a multi-tile pick has selected (2026-11-21).
+   * Replaces `setHoverTile` when present; an empty/absent list lowers them all.
+   */
+  setLiftedTiles?(tiles: readonly HandTileRef[] | null): void;
+  /**
    * Reserved for a future live/replay source: v1 draws no tile motion and the
    * host never calls it (3D-12 pins that). The seam's tested math —
    * `draw`/`discard`/`meld`/`flip` waypoints and the damped-spring sample — is

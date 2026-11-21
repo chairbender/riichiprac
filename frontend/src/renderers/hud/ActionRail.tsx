@@ -88,6 +88,7 @@ export function ActionRail({ model, onRowsChange }: ActionRailProps) {
         onBegin={model.onBeginCall}
         onPass={model.onPass}
         onCancel={model.onCancelCall}
+        onPreview={model.onPreviewCall}
       />
     </div>
   );

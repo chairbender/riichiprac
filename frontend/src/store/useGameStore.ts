@@ -13,10 +13,12 @@ import {
   callName,
   callOptionForPicks,
   callOptionsFor,
-  canPickCopy,
   displayCopies,
+  isSelectableCopy,
+  previewCopiesFor,
 } from '../callChoices';
 import type {
+  CallCopy,
   CallKind,
   CallOption,
   PendingCall,
@@ -85,6 +87,11 @@ interface GameStore {
   pendingCall: PendingCall | null;
   /** Why the last pick was rejected, for the alert beside the call bar. */
   callError: string | null;
+  /**
+   * The hand tiles a hovered/focused call button would use, for the transient
+   * raise (2026-11-21). Null when no call is being previewed.
+   */
+  callPreview: readonly CallCopy[] | null;
 
   /** The answer the player submitted, in trainer vocabulary. */
   submittedAnswer: SubmittedAnswer | null;
@@ -141,6 +148,11 @@ interface GameStore {
   pickCallTile: (tile: string, tileIndex?: number) => void;
   /** Close the open pick without answering. */
   cancelCall: () => void;
+  /**
+   * Raise the tiles a call button's press would use. Pointer leave, focus
+   * loss, opening the pick and answering clear it.
+   */
+  previewCall: (kind: CallKind | null) => void;
   /** Submit the clicked hand tile as the answer (or as the open pick's tile). */
   selectTile: (tile: string, tileIndex?: number, isDraw?: boolean) => void;
   /** Submit a generic AI-scenario choice. */
@@ -223,6 +235,7 @@ const emptyState = {
   error: null,
   pendingCall: null,
   callError: null,
+  callPreview: null,
   submittedAnswer: null,
   dualGrade: null,
   peekedBeforeAnswer: false,
@@ -238,6 +251,7 @@ const emptyState = {
   | 'error'
   | 'pendingCall'
   | 'callError'
+  | 'callPreview'
   | 'submittedAnswer'
   | 'dualGrade'
   | 'peekedBeforeAnswer'
@@ -518,6 +532,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           error: null,
           pendingCall: null,
           callError: null,
+          callPreview: null,
           submittedAnswer: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
@@ -538,6 +553,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           error: err instanceof Error ? err.message : String(err),
           pendingCall: null,
           callError: null,
+          callPreview: null,
           submittedAnswer: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
@@ -584,6 +600,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         error: null,
         pendingCall: null,
         callError: null,
+        callPreview: null,
         submittedAnswer: snapshot.submittedAnswer,
         dualGrade: snapshot.dualGrade,
         peekedBeforeAnswer: snapshot.peekedBeforeAnswer,
@@ -610,6 +627,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           error: err instanceof Error ? err.message : String(err),
           pendingCall: null,
           callError: null,
+          callPreview: null,
           submittedAnswer: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
@@ -643,6 +661,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (state.pendingCall) {
         set({ pendingCall: null, callError: null });
       }
+      // Opening a call lowers the hover preview; the pick's own selected tiles
+      // are what rise next.
+      set({ callPreview: null });
 
       if (kind === 'riichi') {
         // Rust lists the legal declaration discards. One distinct copy is not
@@ -731,7 +752,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       }
 
       const copy = { code: candidate.code, isRed: candidate.isRed };
-      if (!canPickCopy(pending, copy)) {
+      if (!isSelectableCopy(pending, copy)) {
         set({
           callError:
             pending.kind === 'riichi'
@@ -741,30 +762,103 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
 
-      const picks: PickedCopy[] = [
-        ...pending.picks,
-        {
-          code: candidate.code,
-          isRed: candidate.isRed,
-          index,
-          isDraw: candidate.isDraw,
-        },
-      ];
-      if (picks.length < pending.need) {
+      /*
+       * Selection is a toggle. Clicking a raised tile lowers it; clicking a new
+       * tile raises it, and once more than `need` are raised only the most
+       * recent `need` stay up. A set that makes the call submits at once.
+       */
+      const already = pending.picks.findIndex(
+        (pick) => pick.code === copy.code && pick.isRed === copy.isRed,
+      );
+      if (already >= 0) {
+        const picks = pending.picks.filter((_, position) => position !== already);
         set({ pendingCall: { ...pending, picks }, callError: null });
         return;
       }
 
-      const option = callOptionForPicks(pending, picks);
-      if (!option) {
-        set({ callError: `Those tiles do not make a ${callName(pending.kind)}.` });
+      const picked: PickedCopy = {
+        code: candidate.code,
+        isRed: candidate.isRed,
+        index,
+        isDraw: candidate.isDraw,
+      };
+      const next = [...pending.picks, picked];
+      const picks =
+        next.length > pending.need ? next.slice(next.length - pending.need) : next;
+
+      if (picks.length === pending.need) {
+        const option = callOptionForPicks(pending, picks);
+        if (option) {
+          set({ pendingCall: null, callError: null });
+          completeCall(pending.kind, option, picks);
+          return;
+        }
+        // A full set that is not the call yet stays raised; the next click
+        // replaces its oldest tile.
+        set({
+          pendingCall: { ...pending, picks },
+          callError: `Those tiles do not make a ${callName(pending.kind)}.`,
+        });
         return;
       }
-      set({ pendingCall: null, callError: null });
-      completeCall(pending.kind, option, picks);
+
+      set({ pendingCall: { ...pending, picks }, callError: null });
     },
 
-    cancelCall: () => set({ pendingCall: null, callError: null }),
+    cancelCall: () =>
+      set({ pendingCall: null, callError: null, callPreview: null }),
+
+    previewCall: (kind) => {
+      const state = get();
+      const game = state.gameState;
+      if (!kind || !game || state.dualGrade || state.pendingCall) {
+        set({ callPreview: null });
+        return;
+      }
+      const human = game.players.find((player) => player.is_human);
+      if (!human) {
+        set({ callPreview: null });
+        return;
+      }
+
+      const context = callContextFor(game);
+      if (
+        !callButtonsFor(game, human, context).calls.some(
+          (call) => call.kind === kind,
+        )
+      ) {
+        set({ callPreview: null });
+        return;
+      }
+
+      if (kind === 'riichi') {
+        let legal: string[] = [];
+        try {
+          legal = riichiDiscardTiles(JSON.stringify(game)) ?? [];
+        } catch {
+          legal = [];
+        }
+        const display = displayCopies(human).filter(
+          (tile) => legal.length === 0 || legal.includes(tile.code),
+        );
+        const seen = new Set<string>();
+        const copies: CallCopy[] = [];
+        for (const tile of display) {
+          const key = `${tile.code}|${tile.isRed}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          copies.push({ code: tile.code, isRed: tile.isRed });
+        }
+        set({ callPreview: copies });
+        return;
+      }
+
+      set({
+        callPreview: previewCopiesFor(
+          callOptionsFor(game, human, context, kind),
+        ),
+      });
+    },
 
     selectTile: (tile, tileIndex, isDraw) => {
       const state = get();
@@ -847,7 +941,11 @@ export const useGameStore = create<GameStore>((set, get) => {
       const grade = gradeNow(gameState, answer, evaluation);
       if (!grade) return;
 
-      set({ submittedAnswer: answer, dualGrade: grade });
+      set({
+        submittedAnswer: answer,
+        dualGrade: grade,
+        callPreview: null,
+      });
     },
 
     regrade: () => {
@@ -875,6 +973,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         error,
         pendingCall: null,
         callError: null,
+        callPreview: null,
         submittedAnswer: null,
         dualGrade: null,
         peekedBeforeAnswer: false,

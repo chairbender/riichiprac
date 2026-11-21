@@ -39,23 +39,58 @@ export function hoveredInstanceIndex(
   );
 }
 
+/** The layout indexes of a set of hand references, in layout order. */
+export function liftedInstanceIndexes(
+  layout: BoardLayout,
+  tiles: readonly HandTileRef[],
+): readonly number[] {
+  if (tiles.length === 0) return [];
+  const wanted = new Set(
+    tiles.map((tile) => `${tile.seat}:${tile.zone}:${tile.slot}`),
+  );
+  const indexes: number[] = [];
+  layout.tiles.forEach((tile, index) => {
+    if (wanted.has(`${tile.seat}:${tile.zone}:${tile.slot}`)) {
+      indexes.push(index);
+    }
+  });
+  return indexes;
+}
+
+/**
+ * The board instances with every named tile lifted.
+ *
+ * The call preview and a multi-tile pick need more than one raised tile at
+ * once, so the lift is a set rather than a single hover. A pose matrix is
+ * column-major, so its translation is elements 12-14; only the world Y
+ * component moves, which is what "raised up" means here.
+ */
+export function withLiftedTiles(
+  instances: readonly BoardInstance[],
+  layout: BoardLayout,
+  tiles: readonly HandTileRef[],
+): readonly BoardInstance[] {
+  const indexes = liftedInstanceIndexes(layout, tiles);
+  if (indexes.length === 0) return instances;
+  const liftedByIndex = new Map<number, BoardInstance>();
+  for (const index of indexes) {
+    if (index < 0 || index >= instances.length) continue;
+    const matrix = [...instances[index].matrix];
+    matrix[13] += HOVER_LIFT_UNITS;
+    liftedByIndex.set(index, { ...instances[index], matrix });
+  }
+  if (liftedByIndex.size === 0) return instances;
+  return instances.map((instance, current) => liftedByIndex.get(current) ?? instance);
+}
+
 /**
  * The board instances with the hovered tile lifted, or the input untouched when
  * nothing is hovered (or the hovered tile is not on this board).
- *
- * A pose matrix is column-major, so its translation is elements 12-14; only the
- * world Y component moves, which is what "raised up" means here.
  */
 export function withHoverLift(
   instances: readonly BoardInstance[],
   layout: BoardLayout,
   hover: HandTileRef | null,
 ): readonly BoardInstance[] {
-  const index = hoveredInstanceIndex(layout, hover);
-  if (index < 0 || index >= instances.length) return instances;
-  const lifted = [...instances[index].matrix];
-  lifted[13] += HOVER_LIFT_UNITS;
-  return instances.map((instance, current) =>
-    current === index ? { ...instance, matrix: lifted } : instance,
-  );
+  return withLiftedTiles(instances, layout, hover ? [hover] : []);
 }

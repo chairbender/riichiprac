@@ -286,6 +286,15 @@ describe('picking tiles', () => {
         picks: [{ code: '2p', isRed: false, index: 0, isDraw: false }],
       }),
     ).toBe('Select 1 more tile for Chi');
+    expect(
+      callPickPrompt({
+        ...pending,
+        picks: [
+          { code: '2p', isRed: false, index: 0, isDraw: false },
+          { code: '5p', isRed: false, index: 2, isDraw: false },
+        ],
+      }),
+    ).toBe('Select another tile for Chi');
     expect(callPickPrompt({ ...pending, kind: 'pon', need: 1 })).toBe(
       'Select a tile for Pon',
     );

@@ -38,6 +38,11 @@ export interface CallControlsProps {
   readonly onBegin: (kind: CallKind) => void;
   readonly onPass: () => void;
   readonly onCancel: () => void;
+  /**
+   * Raise the hand tiles this call would use while the pointer/focus rests on
+   * its button; null lowers them. The shells map it onto the hand's own lift.
+   */
+  readonly onPreview?: (kind: CallKind | null) => void;
 }
 
 /**
@@ -57,6 +62,7 @@ export function CallControls({
   onBegin,
   onPass,
   onCancel,
+  onPreview,
 }: CallControlsProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const buttonRefs = useRef<Partial<Record<CallKind, HTMLButtonElement | null>>>({});
@@ -102,6 +108,8 @@ export function CallControls({
 
   const begin = (kind: CallKind) => {
     originRef.current = kind;
+    // Opening the pick lowers the hover preview; the picked tiles rise next.
+    onPreview?.(null);
     onBegin(kind);
   };
 
@@ -120,6 +128,10 @@ export function CallControls({
               pending?.kind === spec.kind ? ' call-button--picking' : ''
             }`}
             onClick={() => begin(spec.kind)}
+            onPointerEnter={() => onPreview?.(spec.kind)}
+            onPointerLeave={() => onPreview?.(null)}
+            onFocus={() => onPreview?.(spec.kind)}
+            onBlur={() => onPreview?.(null)}
             disabled={disabled || pending !== null}
             aria-label={spec.ariaLabel}
             data-call={spec.kind}

@@ -326,6 +326,38 @@ describe('App 3D practice HUD (3D-H3)', () => {
     clearHudAnchors(ANCHOR_OWNER);
   });
 
+  it('deals the ?preview=calls review set straight into the call row', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?renderer=3d&preview=calls&case=chi-multi',
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline in test');
+      }),
+    );
+    const { container } = render(<App />);
+
+    await waitFor(() =>
+      expect(useGameStore.getState().gameState?.category).toBe('call_demo'),
+    );
+    expect(useGameStore.getState().gameState?.call_offer).toMatchObject({
+      action: 'Chi',
+      tile: '4p',
+    });
+    // The review set bypasses generation entirely.
+    expect(wasmMock.generateCalls).toBe(0);
+
+    await waitFor(() =>
+      expect(container.querySelector('.hud-call-bar')).not.toBeNull(),
+    );
+    expect(
+      within(container).getByRole('button', { name: 'Call Chi on 4p' }),
+    ).toBeTruthy();
+  });
+
   it('mounts the isolated call row, and no pre-answer panel or 2D hand dock', async () => {
     const { container } = renderThree(callState());
     await waitFor(() => expect(hostMock.props).not.toBeNull());

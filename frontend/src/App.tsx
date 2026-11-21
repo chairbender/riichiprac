@@ -4,6 +4,11 @@ import { generate_puzzle, list_scenarios } from 'riichiprac';
 import { isCallDecision } from './actions';
 import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import {
+  CALL_DEMO_CASES,
+  callDemoStartIndex,
+  nextCallDemoIndex,
+} from './callDemo';
+import {
   callButtonsFor,
   callContextFor,
   isCallActionType,
@@ -21,6 +26,7 @@ import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
+import { liftedHandRefs } from './renderers/handOverlay';
 import { RendererHost } from './renderers/RendererHost';
 import { ActionRail } from './renderers/hud/ActionRail';
 import { actionRailVisible } from './renderers/hud/actionRail';
@@ -134,6 +140,7 @@ export const App = () => {
   const error = useGameStore((state) => state.error);
   const pendingCall = useGameStore((state) => state.pendingCall);
   const callError = useGameStore((state) => state.callError);
+  const callPreview = useGameStore((state) => state.callPreview);
   const submittedAnswer = useGameStore((state) => state.submittedAnswer);
   const dualGrade = useGameStore((state) => state.dualGrade);
   const peekedBeforeAnswer = useGameStore((state) => state.peekedBeforeAnswer);
@@ -145,6 +152,7 @@ export const App = () => {
   const mortalAgreement = useGameStore((state) => state.mortalAgreement);
   const beginCall = useGameStore((state) => state.beginCall);
   const cancelCall = useGameStore((state) => state.cancelCall);
+  const previewCall = useGameStore((state) => state.previewCall);
   const selectTile = useGameStore((state) => state.selectTile);
   const submitAction = useGameStore((state) => state.submitAction);
   const reset = useGameStore((state) => state.reset);
@@ -286,6 +294,14 @@ export const App = () => {
   const seenPackScenariosRef = useRef<Map<string, Set<string>>>(new Map());
   const loadRequestId = useRef(0);
   /**
+   * `?preview=calls`: the review case currently on the board, or null when the
+   * mode is off. Next hand advances it (2026-11-21 review aid); a deal that is
+   * not Next (a settings change) re-loads the same case.
+   */
+  const callDemoIndexRef = useRef<number | null>(
+    callDemoStartIndex(window.location.search),
+  );
+  /**
    * Mirrors `exportDescription` synchronously. A history snapshot is written in
    * the same tick a deal finishes, before React re-renders, so it cannot read
    * the state variable and must not fall back to the previous hand's text.
@@ -404,6 +420,18 @@ export const App = () => {
         load();
         commitHistory();
       };
+
+      /*
+       * The call review set: a query-gated sequence of crafted positions the
+       * Next hand control walks. It bypasses replay/generation entirely so the
+       * review starts instantly and every case is one tap away.
+       */
+      if (callDemoIndexRef.current !== null) {
+        const demo =
+          CALL_DEMO_CASES[callDemoIndexRef.current % CALL_DEMO_CASES.length];
+        finish(() => loadFromJson(JSON.stringify(demo.state)));
+        return;
+      }
 
       try {
         await ensureWasmReady();
@@ -778,6 +806,10 @@ export const App = () => {
     // A hotseat hand is re-dealt with the same card choice; a mixed pool keeps
     // drawing normally, and a hotseat drawn from it uses the last choice.
     setHudSheet(null);
+    // Review mode: Next walks the crafted call cases.
+    if (callDemoIndexRef.current !== null) {
+      callDemoIndexRef.current = nextCallDemoIndex(callDemoIndexRef.current);
+    }
     const forced = isHotseatOnly(selection)
       ? {
           category: HOTSEAT_SCENARIO_ID,
@@ -1061,6 +1093,18 @@ export const App = () => {
     }
   }, [gameState, tableMount.kind, threeRevision, submittedAnswer, previewSticks]);
 
+  /*
+   * 2026-11-21: the call preview (hover/focus on a call button) or the open
+   * pick's selected tiles are raised together in the 3D hand. The store names
+   * them as copies; the renderer speaks in seat/zone/slot, so map them through
+   * the same snapshot the projected buttons use.
+   */
+  const liftedCopies = pendingCall?.picks ?? callPreview;
+  const liftedTiles = useMemo(
+    () => (threeSnapshot ? liftedHandRefs(threeSnapshot, liftedCopies) : []),
+    [threeSnapshot, liftedCopies],
+  );
+
   const agreementHint =
     aiStatus === 'ready'
       ? 'Deal book-graded hands only when the embedded Mortal model plays the book answer. AI drills have no book answer, so they are dealt as usual and graded by Mortal alone. Each agreeing hand may need several forward passes.'
@@ -1103,6 +1147,7 @@ export const App = () => {
     onBeginCall: beginCall,
     onPass: () => submitAction({ action: 'Pass' }),
     onCancelCall: cancelCall,
+    onPreviewCall: previewCall,
     onAction: submitAction,
   };
 
@@ -1419,6 +1464,7 @@ export const App = () => {
               debug={tableMount.query.debug}
               perfHud={tableMount.query.perf}
               pendingCall={pendingCall}
+              liftedTiles={liftedTiles}
               onSelectTile={selectTile}
               onDegraded={handleThreeDegraded}
             />
@@ -1523,9 +1569,11 @@ export const App = () => {
           nextDisabled={isLoading}
           onNextScenario={handleNextScenario}
           onShowVerdict={showVerdict}
+          previewTiles={callPreview}
           onBeginCall={beginCall}
           onPass={() => submitAction({ action: 'Pass' })}
           onCancelCall={cancelCall}
+          onPreviewCall={previewCall}
           onSelectTile={selectTile}
         />
       )}

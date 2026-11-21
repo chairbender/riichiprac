@@ -39,7 +39,7 @@ import {
   RegularShaa,
   RegularTon,
 } from 'riichi-mahjong-tiles';
-import { canPickCopy } from '../callChoices';
+import { isPickedCopy, isSelectableCopy } from '../callChoices';
 import type { PendingCall } from '../callChoices';
 import { handTileLabel } from '../handTileLabel';
 import { hitRectKey } from './contract';
@@ -110,6 +110,21 @@ export function TableOverlay({
   const keys = buttons.map(({ tile }) => hitRectKey(tile)).join('|');
 
   /*
+   * A pick leaves only its legal tiles bright; the rest are covered by a dim
+   * layer so the painted tile itself darkens (2026-11-21). Picked tiles stay
+   * bright and are lifted by the scene.
+   */
+  const dimmed = pendingCall
+    ? buttons.filter(({ tile }) => {
+        const copy = { code: tile.code, isRed: tile.isRed };
+        return (
+          !isSelectableCopy(pendingCall, copy) &&
+          !isPickedCopy(pendingCall, copy)
+        );
+      })
+    : [];
+
+  /*
    * Keep focus valid. Answering removes the buttons, and a new snapshot replaces
    * them; either way, a focused button that no longer exists must hand its focus
    * to the hand group rather than to the document. The same effect covers a
@@ -156,6 +171,20 @@ export function TableOverlay({
       tabIndex={-1}
       data-interactive-tiles={buttons.length}
     >
+      {dimmed.map(({ tile, rect }) => (
+        <div
+          key={`dim-${hitRectKey(tile)}`}
+          className="renderer-3d-dim"
+          aria-hidden="true"
+          data-tile={tile.face}
+          style={{
+            left: `${rect.left}px`,
+            top: `${rect.top}px`,
+            width: `${rect.width}px`,
+            height: `${rect.height}px`,
+          }}
+        />
+      ))}
       {buttons.map(({ tile, rect }) => {
         const key = hitRectKey(tile);
         const label = handTileLabel({
@@ -169,7 +198,7 @@ export function TableOverlay({
         // store would reject it anyway.
         const blocked =
           pendingCall !== null &&
-          !canPickCopy(pendingCall, { code: tile.code, isRed: tile.isRed });
+          !isSelectableCopy(pendingCall, { code: tile.code, isRed: tile.isRed });
         return (
           <button
             key={key}

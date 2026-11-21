@@ -1675,6 +1675,25 @@
   box-shadow: 0 0 0 2px rgba(116, 192, 252, 0.7);
 }
 
+/*
+ * 2026-11-21: a call preview or a pick selection raises the tile out of the
+ * hand, and the tiles the open call cannot use are darkened so the choices
+ * read at a glance. The transform does not change the grid, so nothing else
+ * moves.
+ */
+.hand-tile-button--lifted {
+  transform: translateY(-10px);
+  z-index: 1;
+}
+
+.hand-tile-button--lifted.hand-tile-button--pick {
+  box-shadow: 0 0 0 2px rgba(116, 192, 252, 0.95);
+}
+
+.hand-tile-button--dimmed {
+  filter: brightness(0.42) saturate(0.5);
+}
+
 .hand {
   display: grid;
   align-items: end;

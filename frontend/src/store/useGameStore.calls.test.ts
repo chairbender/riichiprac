@@ -28,6 +28,7 @@ vi.mock('../wasm', () => ({
   riichiDiscardTiles: () => wasmMock.riichiDiscards,
 }));
 
+import { CALL_DEMO_CASES } from '../callDemo';
 import { useGameStore } from './useGameStore';
 import type { CorrectAction, GameState, PlayerState } from '../types/game';
 
@@ -293,6 +294,179 @@ describe('calls: a real choice opens a pick step', () => {
       action: 'best',
       action_name: 'Chi_Mid',
       tile: '4p',
+    });
+  });
+});
+
+describe('calls: the ?preview=calls review set', () => {
+  function demo(id: string) {
+    const entry = CALL_DEMO_CASES.find((candidate) => candidate.id === id);
+    if (!entry) throw new Error(`no demo case ${id}`);
+    return entry.state;
+  }
+
+  it('walks the shortcuts and the pick steps the set is built for', () => {
+    load(demo('pon-single'));
+    useGameStore.getState().beginCall('pon');
+    expect(useGameStore.getState().pendingCall).toBeNull();
+    expect(useGameStore.getState().submittedAnswer).toMatchObject({
+      action: 'call',
+      action_name: 'Pon',
+    });
+
+    load(demo('pon-red'));
+    useGameStore.getState().beginCall('pon');
+    expect(useGameStore.getState().pendingCall?.options).toHaveLength(2);
+
+    load(demo('chi-single'));
+    useGameStore.getState().beginCall('chi');
+    expect(useGameStore.getState().pendingCall).toBeNull();
+    expect(useGameStore.getState().submittedAnswer).toMatchObject({
+      action: 'call',
+      action_name: 'Chi',
+    });
+
+    load(demo('chi-multi'));
+    useGameStore.getState().beginCall('chi');
+    expect(useGameStore.getState().pendingCall).toMatchObject({ need: 2 });
+    expect(useGameStore.getState().pendingCall?.options).toHaveLength(3);
+
+    load(demo('kan-single'));
+    useGameStore.getState().beginCall('kan');
+    expect(useGameStore.getState().pendingCall).toBeNull();
+    expect(useGameStore.getState().submittedAnswer).toMatchObject({
+      action: 'kan',
+      tile: '1m',
+    });
+  });
+
+  it('the two Riichi cases are the one-discard shortcut and the choice', () => {
+    wasmMock.riichiDiscards = ['9s'];
+    load(demo('riichi-one'));
+    useGameStore.getState().beginCall('riichi');
+    expect(useGameStore.getState().pendingCall).toBeNull();
+    expect(useGameStore.getState().submittedAnswer).toMatchObject({
+      action: 'riichi',
+      tile: '9s',
+    });
+
+    wasmMock.riichiDiscards = ['3p', '1p', '2p'];
+    load(demo('riichi-many'));
+    useGameStore.getState().beginCall('riichi');
+    expect(useGameStore.getState().pendingCall).toMatchObject({ kind: 'riichi' });
+    expect(useGameStore.getState().pendingCall?.options).toHaveLength(3);
+  });
+});
+
+describe('calls: hover preview and selection', () => {
+  function drillChi() {
+    return state(
+      player({ hand: ['2p', '3p', '5p', '6p', '9m', '9m', '1z'] }),
+      {
+        decision: { kind: 'react_to_discard', from: 3, tile: '4p' },
+        correct_action: correctAction({ type: 'best', action: 'Chi_Low', label: 'Chi' }),
+        ai_decision: {
+          model: 'test',
+          expected_value: 0.1,
+          recommended_action: 'Chi_Low',
+          evaluations: [],
+          actions: [
+            {
+              action: 'Chi_Low',
+              label: 'Chi 2p 3p on 4p',
+              type: 'chi',
+              tile: '4p',
+              tiles: ['2p', '3p'],
+            },
+            {
+              action: 'Chi_Mid',
+              label: 'Chi 5p 6p on 4p',
+              type: 'chi',
+              tile: '4p',
+              tiles: ['5p', '6p'],
+            },
+            { action: 'Pass', label: 'Pass', type: 'pass' },
+          ],
+        },
+      },
+    );
+  }
+
+  it('previews every tile any option would use, and clears on leave', () => {
+    load(drillChi());
+
+    useGameStore.getState().previewCall('chi');
+    expect(
+      (useGameStore.getState().callPreview ?? []).map((copy) => copy.code),
+    ).toEqual(['2p', '3p', '5p', '6p']);
+
+    useGameStore.getState().previewCall(null);
+    expect(useGameStore.getState().callPreview).toBeNull();
+  });
+
+  it('previews the legal Riichi discards the engine lists', () => {
+    const human = player({ hand: ['1m', '2m', '3m', '4p', '5p', '6p', '7s'], draw: '3p' });
+    wasmMock.riichiDiscards = ['3p', '7s'];
+    load(
+      state(human, {
+        target_action: 'Riichi',
+        decision: { kind: 'self_turn' },
+        correct_action: correctAction({ type: 'riichi', discard: '3p' }),
+        can_riichi: true,
+      }),
+    );
+
+    useGameStore.getState().previewCall('riichi');
+
+    expect(
+      (useGameStore.getState().callPreview ?? []).map((copy) => copy.code),
+    ).toEqual(['3p', '7s']);
+  });
+
+  it('lowers the preview when the call opens', () => {
+    load(drillChi());
+    useGameStore.getState().previewCall('chi');
+    expect(useGameStore.getState().callPreview).not.toBeNull();
+
+    useGameStore.getState().beginCall('chi');
+    expect(useGameStore.getState().callPreview).toBeNull();
+    expect(useGameStore.getState().pendingCall?.kind).toBe('chi');
+  });
+
+  it('toggles a picked tile off when it is clicked again', () => {
+    load(drillChi());
+    useGameStore.getState().beginCall('chi');
+
+    useGameStore.getState().pickCallTile('5p', 4);
+    expect(useGameStore.getState().pendingCall?.picks.map((p) => p.code)).toEqual([
+      '5p',
+    ]);
+
+    useGameStore.getState().pickCallTile('5p', 4);
+    expect(useGameStore.getState().pendingCall?.picks).toEqual([]);
+    expect(useGameStore.getState().submittedAnswer).toBeNull();
+  });
+
+  it('keeps only the most recent two tiles raised when a third is picked', () => {
+    load(drillChi());
+    useGameStore.getState().beginCall('chi');
+
+    // 2p and 5p are each selectable, but together they are not a Chi.
+    useGameStore.getState().pickCallTile('2p', 2);
+    useGameStore.getState().pickCallTile('5p', 4);
+    expect(useGameStore.getState().pendingCall?.picks.map((p) => p.code)).toEqual([
+      '2p',
+      '5p',
+    ]);
+    expect(useGameStore.getState().callError).toBe(
+      'Those tiles do not make a Chi.',
+    );
+
+    // A third tile drops the oldest, leaving 5p + 6p, which is Chi_Mid.
+    useGameStore.getState().pickCallTile('6p', 5);
+    expect(useGameStore.getState().submittedAnswer).toMatchObject({
+      action: 'best',
+      action_name: 'Chi_Mid',
     });
   });
 });

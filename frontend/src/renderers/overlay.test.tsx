@@ -186,6 +186,51 @@ describe('3D overlay: parity with the dock', () => {
     expect(dockLabels).toContain('Discard R5s for Riichi');
   });
 
+  it('raises the previewed tiles in the dock and darkens the same pick set', () => {
+    const preview = [{ code: '1m', isRed: false }];
+    const dockView = render(dock({ previewTiles: preview }));
+    const lifted = within(dockView.container)
+      .getAllByRole('button')
+      .filter((button) =>
+        button.classList.contains('hand-tile-button--lifted'),
+      );
+    expect(lifted.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Discard 1m',
+    ]);
+    cleanup();
+
+    // A pick dims every tile outside its options; the 3D overlay renders one
+    // dim layer per such tile, over the painted tile itself.
+    const pick: PendingCall = {
+      kind: 'pon',
+      need: 1,
+      picks: [],
+      options: [
+        {
+          kind: 'pon',
+          calledTile: '1m',
+          handTiles: [{ code: '1m', isRed: false }],
+        },
+      ],
+      anyTile: false,
+    };
+    const overlayView = render(
+      <TableOverlay {...overlayProps({ pendingCall: pick })} />,
+    );
+    const dims = [
+      ...overlayView.container.querySelectorAll('.renderer-3d-dim'),
+    ];
+    expect(dims).toHaveLength(10);
+    expect(dims.map((dim) => dim.getAttribute('data-tile'))).not.toContain('1m');
+
+    const dimDock = render(dock({ pendingCall: pick }));
+    expect(
+      within(dimDock.container)
+        .getAllByRole('button')
+        .filter((button) => button.classList.contains('hand-tile-button--dimmed')),
+    ).toHaveLength(10);
+  });
+
   it('disables the same tiles the dock disables while picking a call', () => {
     // A Pon on 1m needs a copy of 1m: the dock blurs every other hand tile, and
     // the 3D overlay removes them from the tab order for the same reason.

@@ -107,6 +107,48 @@ describe('call bar: the controls', () => {
     expect(onBegin).toHaveBeenCalledTimes(1);
   });
 
+  it('previews the call on hover and focus, and clears on leave and blur', () => {
+    const onPreview = vi.fn();
+    render(
+      <CallControls
+        buttons={BUTTONS}
+        pending={null}
+        onBegin={() => undefined}
+        onPass={() => undefined}
+        onCancel={() => undefined}
+        onPreview={onPreview}
+      />,
+    );
+    const pon = screen.getByRole('button', { name: 'Call Pon 5z' });
+
+    fireEvent.pointerEnter(pon);
+    expect(onPreview).toHaveBeenLastCalledWith('pon');
+    fireEvent.pointerLeave(pon);
+    expect(onPreview).toHaveBeenLastCalledWith(null);
+
+    fireEvent.focus(pon);
+    expect(onPreview).toHaveBeenLastCalledWith('pon');
+    fireEvent.blur(pon);
+    expect(onPreview).toHaveBeenLastCalledWith(null);
+  });
+
+  it('lowers the preview before opening the pick', () => {
+    const onPreview = vi.fn();
+    render(
+      <CallControls
+        buttons={BUTTONS}
+        pending={null}
+        onBegin={() => undefined}
+        onPass={() => undefined}
+        onCancel={() => undefined}
+        onPreview={onPreview}
+      />,
+    );
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Call Chi on 4p' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Call Chi on 4p' }));
+    expect(onPreview).toHaveBeenLastCalledWith(null);
+  });
+
   it('disables every call once the hand is answered', () => {
     render(
       <CallControls

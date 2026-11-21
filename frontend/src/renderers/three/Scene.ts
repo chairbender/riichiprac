@@ -101,7 +101,7 @@ import { createFelt, feltSizeForFrame } from './felt';
 import type { FeltSurface } from './felt';
 import { HERO_SLOTS, heroInstances, heroParallaxAt, heroVisibleNormal, probeWorldPoint } from './hero';
 import type { HeroInstance, HeroSlot } from './hero';
-import { withHoverLift } from './hover';
+import { withLiftedTiles } from './hover';
 import {
   compassPlateRect,
   handBandRect as projectHandBandRect,
@@ -203,6 +203,17 @@ const CARVE_CAPTURE_PANEL = { width: 1920, height: 1080 } as const;
 /** The framed extent of a pond-row or wall capture, in world units. */
 const CARVE_REGION_FRAME_UNITS = 2.6;
 
+/** True when both lists name the same hand tiles (order-insensitive). */
+function sameTileRefs(
+  left: readonly HandTileRef[],
+  right: readonly HandTileRef[],
+): boolean {
+  if (left.length !== right.length) return false;
+  const key = (tile: HandTileRef) => `${tile.seat}:${tile.zone}:${tile.slot}`;
+  const named = new Set(left.map(key));
+  return right.every((tile) => named.has(key(tile)));
+}
+
 /**
  * How long after mount the scene measures real animation-frame deltas (3D-11).
  *
@@ -279,7 +290,7 @@ export class TableScene implements TableRenderer {
   /** True once the hand is answered: the overlay renders no buttons. */
   private locked = false;
   /** The hand button the pointer/focus is on, lifted by half a tile height. */
-  private hover: HandTileRef | null = null;
+  private lifted: readonly HandTileRef[] = [];
   /**
    * The bounded deal-in (3D-12): a cut's settle from half a tile height, or
    * nothing at all. Only a new snapshot revision starts it.
@@ -586,18 +597,19 @@ export class TableScene implements TableRenderer {
    * reporting it, and the scene ignores one that arrives anyway).
    */
   setHoverTile(tile: HandTileRef | null): void {
-    const current = this.hover;
-    if (
-      current === tile ||
-      (current !== null &&
-        tile !== null &&
-        current.seat === tile.seat &&
-        current.zone === tile.zone &&
-        current.slot === tile.slot)
-    ) {
-      return;
-    }
-    this.hover = tile;
+    this.setLiftedTiles(tile ? [tile] : []);
+  }
+
+  /**
+   * The multi-tile form of the lift (2026-11-21): every tile in the set rises
+   * together, for a call button's preview or a multi-tile pick. An empty set
+   * lowers them all. The comparison is by reference identity, so a repeated
+   * call from a re-render is a no-op.
+   */
+  setLiftedTiles(tiles: readonly HandTileRef[] | null): void {
+    const next = tiles ?? [];
+    if (sameTileRefs(this.lifted, next)) return;
+    this.lifted = next.map((tile) => ({ ...tile }));
     if (this.layout) this.syncTiles(this.layout);
     this.requestFrame();
   }
@@ -1095,7 +1107,7 @@ export class TableScene implements TableRenderer {
     }
     this.hero = null;
     this.board = null;
-    this.hover = null;
+    this.lifted = [];
     this.registry.disposeAll();
     this.scene.clear();
     this.renderer.dispose();
@@ -1150,9 +1162,9 @@ export class TableScene implements TableRenderer {
   /**
    * Rewrite the tile instances only, applying the hover lift and the deal-in.
    *
-   * The atlas cells are looked up per face; `withHoverLift` copies just the
-   * hovered instance's matrix, so the rest of the buffer is byte-identical and
-   * a hover change cannot disturb any other tile. The deal-in adds one uniform
+   * The atlas cells are looked up per face; `withLiftedTiles` copies just the
+   * named instances' matrices, so the rest of the buffer is byte-identical and
+   * a hover or call preview cannot disturb any other tile. The deal-in adds one uniform
    * lift to every instance and is exactly zero once it has settled, so the final
    * buffer is the layout's own transforms.
    */
@@ -1171,8 +1183,8 @@ export class TableScene implements TableRenderer {
     const base = buildBoardInstances(layout, (face: TileFaceId) =>
       assets.cellForFace(face),
     );
-    const hovered = this.reducedMotion ? null : this.hover;
-    const lifted = withHoverLift(base, layout, hovered);
+    const liftedRefs = this.reducedMotion ? [] : this.lifted;
+    const lifted = withLiftedTiles(base, layout, liftedRefs);
     const liftUnits = this.reducedMotion ? 0 : sample.liftUnits;
     return withVerticalLift(lifted, liftUnits);
   }

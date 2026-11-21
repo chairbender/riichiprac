@@ -1000,6 +1000,22 @@ result card. This is what the next units build on.
   control grows the row towards the left. `.call-controls` owns that
   `justify-content: flex-end`, and `CallControls.test.tsx` pins it in CSS text
   (AGENTS.md §6: no visual judgement by the agent).
+- **Hover preview and pick highlighting (2026-11-21).** Hovering or focusing a
+  call button raises the hand tiles its press would use (the union across every
+  legal option; for Riichi, the engine's legal discards). Leaving the button, or
+  opening the pick, lowers them. While the pick is open every hand tile outside
+  the legal set is darkened and inert; picked tiles stay raised. A Chi pick
+  toggles: clicking a raised tile lowers it, and a third click keeps only the
+  most recent two. The 3D scene lifts the real mesh
+  (`TableRenderer.setLiftedTiles`, a set, not one hover) and the overlay paints
+  a dim layer; the 2D dock lifts the tile buttons and filters the rest.
+- **Review aid: `?preview=calls`.** The crafted cases in
+  `frontend/src/callDemo.ts` are dealt instead of a generated hand, and Next
+  hand walks them: `pon-single`, `pon-red`, `chi-single`, `chi-multi`,
+  `kan-single`, `riichi-one`, `riichi-many`, `drill-chi`. Add
+  `&case=chi-multi` to start at one; both 2D and 3D views work. The states are
+  complete payloads, so they go through the same store, overlay and grading path
+  as a dealt hand.
 - **The call row is layout.** `hudLayout()` returns `callBar` (one or two 44 px
   rows, from `actionRows`) beside the post-answer `panel`; `hudAtRestRects()`
   lists it as `call bar`, so the collision matrix checks it against the hand and

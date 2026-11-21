@@ -45,6 +45,8 @@ export interface ActionRailModel {
   readonly onBeginCall: (kind: CallKind) => void;
   readonly onPass: () => void;
   readonly onCancelCall: () => void;
+  /** Raise the hand tiles a hovered/focused call button would use. */
+  readonly onPreviewCall?: (kind: CallKind | null) => void;
   readonly onAction: (action: AiActionInfo) => void;
 }
 

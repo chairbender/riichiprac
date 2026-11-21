@@ -459,6 +459,23 @@ function copyKey(copies: readonly CallCopy[]): string {
     .join(',');
 }
 
+/**
+ * True when this copy is part of any legal option (or every tile, when Riichi's
+ * list is unknown). This is the set the pick step leaves bright; every other
+ * hand tile is darkened and inert.
+ */
+export function isSelectableCopy(pending: PendingCall, copy: CallCopy): boolean {
+  if (pending.anyTile) return true;
+  return pending.options.some(
+    (option) => countCopy(option.handTiles, copy) > 0,
+  );
+}
+
+/** True when this copy is already one of the pick's selections. */
+export function isPickedCopy(pending: PendingCall, copy: CallCopy): boolean {
+  return countCopy(pending.picks, copy) > 0;
+}
+
 /** True when this copy may be the next pick of the pending call. */
 export function canPickCopy(pending: PendingCall, copy: CallCopy): boolean {
   if (pending.anyTile) return true;
@@ -487,9 +504,12 @@ export function callPickPrompt(pending: PendingCall): string {
   const left = pending.need - pending.picks.length;
   switch (pending.kind) {
     case 'chi':
-      return left > 1
-        ? 'Select 2 tiles for Chi'
-        : 'Select 1 more tile for Chi';
+      if (pending.picks.length >= pending.need) {
+        // A full pair that is not a run stays selected; the next tile replaces
+        // the oldest one.
+        return 'Select another tile for Chi';
+      }
+      return left > 1 ? 'Select 2 tiles for Chi' : 'Select 1 more tile for Chi';
     case 'pon':
       return 'Select a tile for Pon';
     case 'kan':
@@ -527,6 +547,27 @@ function sameCopies(
     containsAll(left, right) &&
     containsAll(right, left)
   );
+}
+
+/**
+ * Every hand copy a call preview should raise: the union of all its legal
+ * options. A Riichi preview is not built here because its discard list comes
+ * from Rust; the store asks the engine for it.
+ */
+export function previewCopiesFor(
+  options: readonly CallOption[],
+): CallCopy[] {
+  const seen = new Set<string>();
+  const copies: CallCopy[] = [];
+  for (const option of options) {
+    for (const copy of option.handTiles) {
+      const key = `${copy.code}|${copy.isRed}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      copies.push(copy);
+    }
+  }
+  return copies;
 }
 
 /**

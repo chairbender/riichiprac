@@ -200,6 +200,17 @@
 }
 
 /*
+ * The dim layer under a pick's unavailable tiles (2026-11-21): the painted
+ * tile darkens while the button above it stays focusable. It never takes a tap.
+ */
+.renderer-3d-dim {
+  position: absolute;
+  background-color: rgba(4, 8, 12, 0.55);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/*
  * The 3D-05 hero debug HUD. A floating panel in the scene's bottom-left corner:
  * debug-only chrome, dense numbers, its own readable background. It never
  * stretches over the felt, and outside its own box it takes no pointer events.

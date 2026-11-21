@@ -1,5 +1,13 @@
-import { canPickCopy } from '../callChoices';
-import type { CallButtons, CallKind, PendingCall } from '../callChoices';
+import {
+  isPickedCopy,
+  isSelectableCopy,
+} from '../callChoices';
+import type {
+  CallButtons,
+  CallCopy,
+  CallKind,
+  PendingCall,
+} from '../callChoices';
 import { sortHandForDisplay } from '../display';
 import { handHint } from '../handHint';
 import { handTileLabel } from '../handTileLabel';
@@ -26,6 +34,8 @@ interface HandDockProps {
   pendingCall: PendingCall | null;
   /** Why the last pick was rejected. */
   callError: string | null;
+  /** The hand tiles a hovered/focused call button would use. */
+  previewTiles?: readonly CallCopy[] | null;
   /** Latest Mortal evaluation for the table, if one exists. */
   aiEvaluation: AiEvaluation | null;
   /** False when a reaction state has no discard option. */
@@ -44,6 +54,8 @@ interface HandDockProps {
   onPass: () => void;
   /** Close an open call pick. */
   onCancelCall: () => void;
+  /** Raise the tiles a call button would use while it is hovered/focused. */
+  onPreviewCall?: (kind: CallKind | null) => void;
   onSelectTile: (tile: string, index?: number, isDraw?: boolean) => void;
 }
 
@@ -62,6 +74,7 @@ export function HandDock({
   callButtons,
   pendingCall,
   callError,
+  previewTiles,
   aiEvaluation,
   canDiscard = true,
   revealMortal = false,
@@ -71,6 +84,7 @@ export function HandDock({
   onBeginCall,
   onPass,
   onCancelCall,
+  onPreviewCall,
   onSelectTile,
 }: HandDockProps) {
   // Presentation-only order: the engine's hand order is untouched, and the
@@ -124,6 +138,7 @@ export function HandDock({
           onBegin={onBeginCall}
           onPass={onPass}
           onCancel={onCancelCall}
+          onPreview={onPreviewCall}
         />
       )}
 
@@ -138,10 +153,18 @@ export function HandDock({
         {tiles.map((display, index) => {
           const { code, isDraw, isRed, sourceIndex } = display;
           const isSelected = answer?.tile === code;
-          const pickable =
-            !pendingCall || canPickCopy(pendingCall, { code, isRed });
-          const pickBlocked = pendingCall !== null && !pickable;
-          const pickClass = pendingCall && pickable ? ' hand-tile-button--pick' : '';
+          const copy = { code, isRed };
+          const picked = pendingCall ? isPickedCopy(pendingCall, copy) : false;
+          const previewed =
+            previewTiles?.some(
+              (tile) => tile.code === code && tile.isRed === isRed,
+            ) ?? false;
+          const selectable = !pendingCall || isSelectableCopy(pendingCall, copy);
+          const dimmed = pendingCall !== null && !selectable && !picked;
+          const pickClass = pendingCall && selectable ? ' hand-tile-button--pick' : '';
+          const liftClass =
+            previewed || picked ? ' hand-tile-button--lifted' : '';
+          const dimClass = dimmed ? ' hand-tile-button--dimmed' : '';
 
           let stateClass = '';
           if (grade) {
@@ -171,15 +194,15 @@ export function HandDock({
             <button
               key={`${code}-${sourceIndex}`}
               type="button"
-              className={`hand-tile-button${stateClass}${aiClass}${pickClass}`}
+              className={`hand-tile-button${stateClass}${aiClass}${pickClass}${liftClass}${dimClass}`}
               onClick={() => {
-                // A tile the open call cannot use stays focusable (so a
-                // keyboard pick does not lose its place) but never submits.
-                if (pickBlocked) return;
+                // A darkened tile is not part of the call: it stays focusable
+                // so a keyboard pick keeps its place, but never submits.
+                if (dimmed) return;
                 onSelectTile(code, index, isDraw);
               }}
               disabled={isAnswered || (!pendingCall && !canDiscard)}
-              aria-disabled={pickBlocked || undefined}
+              aria-disabled={dimmed || undefined}
               aria-label={handTileLabel({
                 code,
                 isRed,
