@@ -28,6 +28,15 @@ export function HudToastStack({ toasts }: HudToastStackProps) {
           role={toast.tone === 'error' ? 'alert' : 'status'}
         >
           <span className="hud-toast-text">{toast.text}</span>
+          {toast.onAction && (
+            <button
+              type="button"
+              className="hud-toast-action"
+              onClick={toast.onAction}
+            >
+              {toast.actionLabel ?? 'Details'}
+            </button>
+          )}
           {toast.onDismiss && (
             <button
               type="button"

@@ -27,6 +27,8 @@ import { frameForAspect, layoutBoard } from '../three/boardLayout';
 import { compassPlateRect, handBandRect, hitRects } from '../three/hitTest';
 import {
   HUD_ACTION_RAIL_HEIGHT,
+  HUD_TOP_BAR_BRAND,
+  HUD_TOP_BAR_BRAND_GAP,
   HUD_GAP,
   HUD_HAND_RAIL_HEIGHT,
   HUD_PANEL_ACTIONS_ONE_ROW,
@@ -38,6 +40,11 @@ import {
   HUD_RESULT_PICKS_HEIGHT,
   HUD_RESULT_TRIGGER_HEIGHT,
   HUD_RESULT_TRIGGER_WIDTH,
+  HUD_SETUP_TRIGGER_HEIGHT,
+  HUD_SETUP_TRIGGER_WIDTH,
+  HUD_SHEET_MAX_HEIGHT,
+  HUD_SHEET_MAX_WIDTH,
+  HUD_TOP_BAR_CONTROL,
   NO_INSETS,
   hudAtRestRects,
   hudCollisions,
@@ -256,7 +263,9 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
     { stage: GATE_STAGES[3], panel: 713, result: 693, sheetBottom: 749, clearance: 134 },
     { stage: GATE_STAGES[4], panel: 662, result: 642, sheetBottom: 698, clearance: 84 },
     { stage: GATE_STAGES[5], panel: 782, result: 762, sheetBottom: 818, clearance: 100 },
-    { stage: GATE_STAGES[6], panel: 874, result: 854, sheetBottom: 896, clearance: 81 },
+    // 9:16: the brand line made the bar taller, so the sheet's bottom is now
+    // the collapsed hint panel's top (910) rather than the 832 px cap.
+    { stage: GATE_STAGES[6], panel: 874, result: 854, sheetBottom: 910, clearance: 81 },
   ] as const;
 
   for (const golden of GOLDEN) {
@@ -444,6 +453,7 @@ describe('HUD layout: the panel rows (3d_hud.md §5, 3D-H3)', () => {
     const names = hudAtRestRects(actions).map((entry) => entry.name);
     expect(names).toEqual([
       'top bar',
+      'setup trigger',
       'hand panel',
       'hand rail',
       'action rail 1',
@@ -531,7 +541,9 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
     const stage = { width: 1920, height: 1080 };
     const scene = sceneFor(stage, {});
     const plain = layoutFor(stage, scene, { slot: 'none', sheet: false, toasts: 0 });
-    expect(plain.topBar.height).toBe(56);
+    expect(plain.topBar.height).toBe(
+      HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP + HUD_TOP_BAR_CONTROL + 2 * 6,
+    );
     expect(plain.topBarPadding).toEqual({ top: 6, right: 6, bottom: 6, left: 6 });
 
     const notched = layoutFor(
@@ -541,7 +553,9 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
       { top: 44, right: 20, bottom: 34, left: 12 },
     );
     // 44 control + 6 bottom + max(6, 44) top.
-    expect(notched.topBar.height).toBe(94);
+    expect(notched.topBar.height).toBe(
+      HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP + HUD_TOP_BAR_CONTROL + 6 + 44,
+    );
     expect(notched.topBarPadding.top).toBe(44);
     expect(notched.topBarPadding.right).toBe(20);
     expect(notched.topBarPadding.bottom).toBe(6);
@@ -570,7 +584,7 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
       { slot: 'none', sheet: true, toasts: 0 },
     );
     expect(layout.sheet).not.toBeNull();
-    expect(layout.sheet!.top).toBe(64);
+    expect(layout.sheet!.top).toBe(layout.topBar.height + HUD_GAP);
     expect(layout.sheet!.top + layout.sheet!.height).toBeLessThanOrEqual(
       stage.height,
     );
@@ -582,7 +596,7 @@ describe('HUD layout: safe areas, anchors and empty states (§6.3, §7.3)', () =
     const none = layoutFor(stage, scene, { slot: 'none', sheet: false, toasts: 0 });
     expect(none.toasts).toBeNull();
     const three = layoutFor(stage, scene, { slot: 'none', sheet: false, toasts: 3 });
-    expect(three.toasts?.top).toBe(56 + HUD_GAP);
+    expect(three.toasts?.top).toBe(three.topBar.height + HUD_GAP);
     expect(three.toasts?.width).toBe(512);
     // Three rows is taller than one; the cap is three (§2).
     const five = layoutFor(stage, scene, { slot: 'none', sheet: false, toasts: 5 });
@@ -636,6 +650,7 @@ describe('HUD layout: the result card and its sheet trigger (3D-H5)', () => {
     const names = hudAtRestRects(result).map((entry) => entry.name);
     expect(names).toEqual([
       'top bar',
+      'setup trigger',
       'hand panel',
       'result card',
       'sheet trigger',
@@ -702,6 +717,103 @@ describe('HUD layout: the result card and its sheet trigger (3D-H5)', () => {
     expect(hudAtRestRects(open).map((entry) => entry.name)).not.toContain(
       'sheet trigger',
     );
+  });
+});
+
+describe('HUD layout: the setup trigger and the open sheet (3D-H4)', () => {
+  it('reserves the setup trigger at the bar’s start, at tap height', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const layout = layoutFor(stage, scene, {
+      slot: 'hint',
+      sheet: false,
+      toasts: 0,
+    });
+    expect(layout.setupTrigger).toEqual({
+      left: layout.topBarPadding.left,
+      // Under the brand line: the very top-left is the app's name, not a
+      // control (user request 2026-11-20).
+      top: layout.topBarPadding.top + HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP,
+      width: HUD_SETUP_TRIGGER_WIDTH,
+      height: HUD_SETUP_TRIGGER_HEIGHT,
+    });
+    expect(HUD_SETUP_TRIGGER_HEIGHT).toBe(HUD_TOP_BAR_CONTROL);
+    // Inside the bar it belongs to, on its leading edge.
+    expect(layout.setupTrigger.top).toBeGreaterThanOrEqual(layout.topBar.top);
+    expect(
+      layout.setupTrigger.top + layout.setupTrigger.height,
+    ).toBeLessThanOrEqual(layout.topBar.top + layout.topBar.height + 0.01);
+    expect(layout.setupTrigger.left).toBeGreaterThanOrEqual(layout.topBar.left);
+  });
+
+  it('moves the trigger with the safe-area inset, like the bar it sits in', () => {
+    const stage = GATE_STAGES[1];
+    const scene = sceneFor(stage, {});
+    const notched = hudLayout(
+      stage,
+      scene.anchors,
+      { slot: 'none', sheet: false, toasts: 0 },
+      { top: 44, right: 20, bottom: 34, left: 12 },
+    );
+    expect(notched.setupTrigger.left).toBe(12);
+    expect(notched.setupTrigger.top).toBe(
+      44 + HUD_TOP_BAR_BRAND + HUD_TOP_BAR_BRAND_GAP,
+    );
+    expect(notched.setupTrigger.height).toBe(HUD_TOP_BAR_CONTROL);
+  });
+
+  it('names the trigger in the at-rest set and keeps it clear of the board', () => {
+    for (const stage of GATE_STAGES) {
+      for (const hand of HAND_STATES) {
+        const scene = sceneFor(stage, hand.options);
+        const layout = layoutFor(stage, scene, {
+          slot: 'actions',
+          sheet: false,
+          toasts: 2,
+        });
+        expect(hudAtRestRects(layout).map((entry) => entry.name)).toContain(
+          'setup trigger',
+        );
+        const violations = hudCollisions(hudAtRestRects(layout), {
+          handBand: scene.anchors.handBand,
+          compassBox: scene.compassBox,
+          hitRects: scene.targets,
+        });
+        expect(
+          violations,
+          `${stage.label} · ${hand.label}: ${describeViolations(violations)}`,
+        ).toEqual([]);
+      }
+    }
+  });
+
+  it('bounds the open sheet by the collapsed panel at every aspect', () => {
+    for (const stage of GATE_STAGES) {
+      for (const hand of HAND_STATES) {
+        const scene = sceneFor(stage, hand.options);
+        const open = layoutFor(stage, scene, {
+          slot: 'result',
+          sheet: true,
+          toasts: 0,
+        });
+        const collapsed = layoutFor(stage, scene, {
+          slot: 'hint',
+          sheet: false,
+          toasts: 0,
+        });
+        // The sheet is a modal over the board but never over the hand panel's
+        // reserved hint band: its bottom is 8 px above the collapsed panel.
+        const bottom = (open.sheet?.top ?? 0) + (open.sheet?.height ?? 0);
+        expect(bottom, stage.label).toBeLessThanOrEqual(
+          (collapsed.panel?.top ?? 0) - HUD_GAP + 0.01,
+        );
+        // And inside the stage, within the committed width and height caps.
+        expect(open.sheet?.width ?? 0).toBeLessThanOrEqual(HUD_SHEET_MAX_WIDTH);
+        expect(open.sheet?.height ?? 0).toBeLessThanOrEqual(HUD_SHEET_MAX_HEIGHT);
+        expect(open.sheet?.left ?? -1).toBeGreaterThanOrEqual(0);
+        expect(bottom).toBeLessThanOrEqual(stage.height + 0.01);
+      }
+    }
   });
 });
 

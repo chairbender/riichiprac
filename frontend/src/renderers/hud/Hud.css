@@ -59,7 +59,9 @@
   left: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  /* The end cluster sits on the control row, level with the setup trigger,
+     which is under the brand line at the start. */
+  align-items: flex-end;
   gap: var(--hud-space);
   box-sizing: border-box;
   padding: 6px;
@@ -68,11 +70,30 @@
   pointer-events: none;
 }
 
+/*
+ * The start cluster: the app's name on the very top-left, the setup trigger
+ * under it. The brand's 18 px line and 4 px gap are the layout's
+ * `HUD_TOP_BAR_BRAND`/`_GAP` (pinned by `hudCss.test.ts`), so the bar's height
+ * and the trigger's rect below it are the boxes the browser paints.
+ */
 .hud-top-bar__start {
   display: flex;
-  align-items: center;
-  gap: var(--hud-space);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   margin-right: auto;
+}
+
+.hud-top-bar__brand {
+  margin: 0;
+  color: var(--hud-text);
+  font-size: var(--hud-text-md);
+  font-weight: 700;
+  line-height: 18px;
+  letter-spacing: 0.01em;
+  /* The one HUD text directly over the felt: a dark shadow under the line is
+     what keeps it legible over the lit green without painting a plate. */
+  text-shadow: 0 1px 3px rgba(5, 8, 13, 0.75);
 }
 
 .hud-top-bar__end {
@@ -103,6 +124,19 @@
 .hud-top-bar button:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+/*
+ * The setup trigger (3D-H4): the bar's start control, and the one front door to
+ * the setup sheet. Its box is the layout's reserved `HUD_SETUP_TRIGGER_WIDTH`
+ * (`hudLayout.ts`): 96 px wide at tap height, so the collision gate checks the
+ * button that is actually painted.
+ */
+.hud-top-bar__setup {
+  box-sizing: border-box;
+  min-width: 96px;
+  min-height: var(--hud-tap);
+  font-weight: 600;
 }
 
 .hud-top-bar button:focus-visible,
@@ -460,6 +494,138 @@
   background-color: transparent;
 }
 
+/* The setup sheet body (3D-H4) -------------------------------------------- */
+
+/*
+ * One scrolling column of sections: practice, settings, position, table info.
+ * The sheet body is the only scroll container, so the sections hold no
+ * `max-height` of their own; the pool panel inside is sized so its own list
+ * scrolls rather than the whole sheet jumping.
+ */
+.hud-setup-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hud-setup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--hud-border-color);
+}
+
+.hud-setup-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.hud-setup-section-heading {
+  margin: 0;
+  color: var(--hud-text-muted);
+  font-size: var(--hud-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* One setting and its inline hint: the sheet says what the tooltip says. */
+.hud-setup-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hud-setup-hint {
+  margin: 0;
+  color: var(--hud-text-muted);
+  font-size: var(--hud-text-xs);
+  line-height: 1.45;
+}
+
+/*
+ * The AI Hotseat form is a block of the sheet, never a second modal: no scrim,
+ * no own dialog role, and the sheet's focus trap already covers its controls.
+ * It keeps the 2D card's header/rows/footer markup so the two hosts stay one
+ * component.
+ */
+.hud-setup-hotseat {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  overflow: hidden;
+  border: var(--hud-border);
+  border-radius: var(--hud-radius-control);
+  background-color: var(--hud-surface-solid);
+}
+
+.hud-setup-hotseat .hotseat-card-head {
+  padding: 12px;
+  border-bottom: 1px solid var(--hud-border-color);
+}
+
+.hud-setup-hotseat .hotseat-card-footer {
+  border-top: 1px solid var(--hud-border-color);
+}
+
+/* The sheet's primary actions keep the HUD's 44 px tap height (§8, rule 3). */
+.hud-setup-sheet .scenario-picker-cancel,
+.hud-setup-sheet .scenario-picker-deal,
+.hud-setup-sheet .scenario-item-only,
+.hud-setup-sheet .hotseat-cancel,
+.hud-setup-sheet .hotseat-generate,
+.hud-setup-sheet .hotseat-select,
+.hud-setup-sheet .state-button,
+.hud-setup-sheet .scenario-picker-trigger,
+.hud-setup-sheet .app-toggle,
+.hud-setup-sheet .app-view-select {
+  min-height: var(--hud-tap);
+}
+
+.hud-setup-sheet .app-toggle {
+  color: var(--hud-text);
+}
+
+/*
+ * The picker's panel is a popover in the 2D header and a block here: the sheet
+ * body is already the scroll container, so an absolutely positioned panel would
+ * be clipped by it (and the phone rule would lift it out of the sheet). Kept in
+ * flow, the list scrolls inside its own box and Escape still closes it first.
+ */
+.hud-setup-sheet .scenario-picker {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.hud-setup-sheet .scenario-picker-panel {
+  position: static;
+  flex: 1 0 100%;
+  width: auto;
+  max-height: min(60vh, 34rem);
+  margin-top: 8px;
+  color: var(--hud-text);
+  border-color: var(--hud-border-accent);
+  background-color: var(--hud-sheet-surface);
+}
+
+/* The re-hosted 2D blocks lose their page margins inside the sheet. */
+.hud-setup-sheet .state-controls,
+.hud-setup-sheet .table-info,
+.hud-setup-sheet .agreement-note,
+.hud-setup-sheet .scenario-note,
+.hud-setup-sheet .position-description {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--hud-radius-control);
+}
+
+.hud-setup-sheet .table-info {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: var(--hud-border);
+  background-color: var(--hud-surface-solid);
+}
+
 /*
  * With a sheet open the scrim dims the panel; the hint stays legible at about
  * 5:1 because it uses primary text, not `--hud-text-muted` (§8).
@@ -539,6 +705,23 @@
   touch-action: manipulation;
 }
 
+/* The Details action (3D-H4): opens the full note in the setup sheet. */
+.hud-toast-action {
+  flex: 0 0 auto;
+  min-height: var(--hud-tap);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: var(--hud-text-xs);
+  font-weight: 600;
+  color: var(--hud-accent);
+  background-color: transparent;
+  border: 1px solid var(--hud-border-accent);
+  border-radius: var(--hud-radius-control);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hud-toast-action:focus-visible,
 .hud-toast-dismiss:focus-visible {
   outline: 2px solid var(--hud-focus);
   outline-offset: 2px;

@@ -273,6 +273,29 @@ describe('RendererHost module boundary', () => {
   });
 });
 
+describe('RendererHost hover cue', () => {
+  const css = readFileSync(
+    join(process.cwd(), 'src/renderers/RendererHost.css'),
+    'utf8',
+  ).replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('paints nothing on a hovered tile: the lift is the only hover cue', () => {
+    // A translucent box over the face read as a stray light patch on the tile;
+    // it was removed at the user's request (2026-11-20).
+    expect(css).not.toMatch(/\.renderer-3d-tile:hover\s*\{/);
+    // The base button stays a bare hit target: no fill of its own.
+    expect(css).toMatch(
+      /\.renderer-3d-tile\s*\{[^}]*background:\s*transparent\s*;/,
+    );
+  });
+
+  it('keeps the keyboard focus ring, so focus is still visible', () => {
+    expect(css).toMatch(
+      /\.renderer-3d-tile:focus-visible\s*\{[^}]*outline:\s*2px solid/,
+    );
+  });
+});
+
 describe('RendererHost lifecycle', () => {
   it('mounts one decoration canvas named by a hidden heading, then disposes', async () => {
     const state = snapshot(3);
@@ -1035,9 +1058,8 @@ describe('RendererHost quality tiers and fallback (3D-11)', () => {
   it('never persists the 3D view as a table view', async () => {
     render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
     await waitFor(() => expect(hostMock.state.created).toBe(1));
-    // The settings store knows the 3D value (3D-14), but only the View control
-    // writes a table view; the host itself never does, and the query flag is
-    // the only way in while RENDERED3D_EXPOSED is false.
+    // Only the View control writes a table view; the host itself never does.
+    expect(window.localStorage.getItem('riichiprac.table-view')).toBeNull();
     expect(window.localStorage.getItem('riichiprac.settings')).toBeNull();
   });
 });

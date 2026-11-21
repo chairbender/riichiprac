@@ -3,18 +3,16 @@ import { create } from 'zustand';
 /**
  * How the main area draws the table.
  *
- * `stacked` is the mobile-first four-row layout and the default, so a browser
- * that has never saved a setting sees exactly what it saw before. `topdown` is
- * the flat plan view (`PhysicalTable`), with the human anchored at the bottom
- * edge. `rendered3d` is the opt-in real-time 3D table (3D chain).
+ * `rendered3d` is the real-time 3D table and the **default**: every browser
+ * opens on it (user request 2026-11-20, superseding decision D13's "opt-in,
+ * never default"). `stacked` is the mobile-first four-row layout and `topdown`
+ * is the flat plan view (`PhysicalTable`, human at the bottom edge); both are
+ * options in the View control, and the player's pick is remembered.
  *
- * The 3D value is a real member of this union from 3D-14 onwards — it persists
- * like any other view and `App` mounts it from the same slot — but the View
- * control only offers it once `RENDERED3D_EXPOSED` flips at 3D-15; until then
- * only `?renderer=3d` (or a value stored by a later build) selects it. A
- * browser that cannot run it falls back to the default view **without
- * rewriting** the stored choice, so a temporarily unsupported device does not
- * lose it.
+ * The 3D value persists like any other view and `App` mounts it from the same
+ * slot. A browser that cannot run it (no WebGL2, or the session closed it after
+ * a degrade) falls back to {@link FALLBACK_TABLE_VIEW} **without rewriting** the
+ * stored choice, so a temporarily unsupported device does not lose it.
  *
  * A stored `isometric` value is intentionally not a member any more: the
  * experimental angled view was removed, and an old blob that still names it
@@ -22,8 +20,24 @@ import { create } from 'zustand';
  */
 export type TableView = 'stacked' | 'topdown' | 'rendered3d';
 
-/** The view a browser with no stored choice gets. */
-export const DEFAULT_TABLE_VIEW: TableView = 'stacked';
+/**
+ * The view a browser that has never chosen one gets: the 3D table.
+ *
+ * This is the *first launch* answer, not a fallback. The 2D views are reachable
+ * from the View control, and once the player picks one it is remembered under
+ * {@link TABLE_VIEW_STORAGE_KEY}.
+ */
+export const DEFAULT_TABLE_VIEW: TableView = 'rendered3d';
+
+/**
+ * The 2D view drawn when the chosen 3D table cannot run here.
+ *
+ * It is never persisted: the player's choice stays in the store and in
+ * `localStorage`, only the drawing falls back, so the next capable browser (or
+ * the next launch after a fixed driver) opens 3D again. Stacked is the
+ * accessible four-row layout.
+ */
+export const FALLBACK_TABLE_VIEW: Exclude<TableView, 'rendered3d'> = 'stacked';
 
 /**
  * Whether replay packs are preferred over generated lessons where they have
@@ -38,14 +52,38 @@ export const DEFAULT_TABLE_VIEW: TableView = 'stacked';
  */
 export const DEFAULT_PREFER_REPLAY = true;
 
-/** `localStorage` key holding every persisted frontend setting. */
+/**
+ * `localStorage` key holding the replay-source preference (the legacy settings
+ * blob).
+ *
+ * It also used to hold `view`. That field is **ignored** now: a view stored
+ * while 3D was opt-in could only have been a 2D pick, and the 2026-11-20
+ * decision is that everyone sees 3D first. The blob keeps its shape (`version`
+ * plus the setting) so an older build reading it still finds something sane.
+ */
 export const SETTINGS_STORAGE_KEY = 'riichiprac.settings';
+
+/**
+ * `localStorage` key holding the player's own table-view choice.
+ *
+ * Deliberately **separate** from {@link SETTINGS_STORAGE_KEY}. Because the key
+ * is new, every browser starts with no choice and therefore opens the 3D table;
+ * from then on the player's pick is remembered locally. This is what makes
+ * "everyone sees 3D first" true without discarding the setting of anyone who
+ * then chooses a 2D view.
+ */
+export const TABLE_VIEW_STORAGE_KEY = 'riichiprac.table-view';
 
 /** What lives under {@link SETTINGS_STORAGE_KEY}; one key per setting. */
 export interface PersistedSettings {
   version: typeof SETTINGS_VERSION;
-  view: TableView;
   preferReplay: boolean;
+}
+
+/** What lives under {@link TABLE_VIEW_STORAGE_KEY}. */
+export interface PersistedTableView {
+  version: typeof TABLE_VIEW_VERSION;
+  view: TableView;
 }
 
 /**
@@ -53,6 +91,9 @@ export interface PersistedSettings {
  * by key; the field exists so a future migration can recognise old blobs.
  */
 const SETTINGS_VERSION = 1;
+
+/** The table-view blob's own version (its own key, its own lifetime). */
+const TABLE_VIEW_VERSION = 1;
 
 /** The settings the UI reads, with no store actions attached. */
 export interface FrontendSettings {
@@ -85,11 +126,33 @@ function defaultSettings(): FrontendSettings {
 }
 
 /**
- * Read a stored settings blob, falling back per key.
+ * Parse the table-view blob.
+ *
+ * A missing, malformed, unknown-version or foreign value is `null`, which the
+ * store reads as "no choice yet" and answers with {@link DEFAULT_TABLE_VIEW}.
+ * The version is checked so a future format cannot be mistaken for a view.
+ */
+export function parseStoredTableView(raw: string | null): TableView | null {
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const stored = parsed as Record<string, unknown>;
+  if (stored.version !== TABLE_VIEW_VERSION) return null;
+  return isTableView(stored.view) ? stored.view : null;
+}
+
+/**
+ * Read the legacy settings blob, falling back per key.
  *
  * A missing, malformed, or partially unknown blob never breaks the app: every
  * key it cannot validate keeps its default, so an old or corrupt entry can only
- * cost the setting it belongs to.
+ * cost the setting it belongs to. A `view` field in this blob is deliberately
+ * ignored — see {@link SETTINGS_STORAGE_KEY}.
  */
 export function parseSettings(raw: string | null): FrontendSettings {
   const settings = defaultSettings();
@@ -104,9 +167,6 @@ export function parseSettings(raw: string | null): FrontendSettings {
   if (typeof parsed !== 'object' || parsed === null) return settings;
 
   const stored = parsed as Record<string, unknown>;
-  if (isTableView(stored.view)) {
-    settings.view = stored.view;
-  }
   if (typeof stored.preferReplay === 'boolean') {
     settings.preferReplay = stored.preferReplay;
   }
@@ -119,7 +179,10 @@ export function readSettings(): FrontendSettings {
   if (!storage) return defaultSettings();
 
   try {
-    return parseSettings(storage.getItem(SETTINGS_STORAGE_KEY));
+    const settings = parseSettings(storage.getItem(SETTINGS_STORAGE_KEY));
+    const view = parseStoredTableView(storage.getItem(TABLE_VIEW_STORAGE_KEY));
+    if (view) settings.view = view;
+    return settings;
   } catch {
     return defaultSettings();
   }
@@ -136,11 +199,15 @@ export function writeSettings(settings: FrontendSettings): void {
 
   const payload: PersistedSettings = {
     version: SETTINGS_VERSION,
-    view: settings.view,
     preferReplay: settings.preferReplay,
+  };
+  const viewPayload: PersistedTableView = {
+    version: TABLE_VIEW_VERSION,
+    view: settings.view,
   };
   try {
     storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+    storage.setItem(TABLE_VIEW_STORAGE_KEY, JSON.stringify(viewPayload));
   } catch {
     // Storage full or blocked: keep the session value and move on.
   }
@@ -156,8 +223,7 @@ interface SettingsStore extends FrontendSettings {
 /**
  * Persisted frontend settings, shared by the header control and the table
  * mount point. The store is seeded from `localStorage` when the module loads,
- * so a reload keeps the player's choice; every setter writes the whole blob
- * back under one key.
+ * so a reload keeps the player's choice; every setter writes both keys back.
  */
 export const useSettingsStore = create<SettingsStore>((set) => ({
   ...readSettings(),

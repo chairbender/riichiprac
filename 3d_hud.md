@@ -21,9 +21,11 @@ and the gate move together and the composition rules below stay the same.
 
 ## 1. Principles
 
-1. **No identity in the 3D HUD** (user decision 2026-11-19). No scenario name,
-   no lesson label, no `riichiprac` title. What this hand is for lives in the
-   setup sheet, one tap away. A visible lesson name is also an answer hint.
+1. **The app's name is the only identity** (user decision 2026-11-19; brand
+   added 2026-11-20). "riichiprac" sits on the very top-left of the top bar with
+   the setup trigger under it — user request 2026-11-20. Never a scenario name
+   and never a lesson label: what this hand is for lives in the setup sheet, one
+   tap away, and a visible lesson name is also an answer hint.
 2. **The board is not resized for chrome.** The camera rig is the committed,
    signed-off one (plan §2.4, §9 decision 2). The HUD floats over the scene and
    reserves nothing from the canvas; it positions itself in the gaps the table
@@ -54,6 +56,7 @@ result card — but they are one rect.
 │  canvas + scene overlay (3D-08 hand buttons, 3D-09 compass)           │
 │                                                                       │
 │   ┌─ TOP BAR ────────────────────────────────────────────────────┐    │
+│   │  riichiprac                                                  │    │
 │   │  setup ▸                    Next hand ▸   full screen ▸      │    │
 │   └──────────────────────────────────────────────────────────────┘    │
 │                                                                       │
@@ -71,7 +74,7 @@ result card — but they are one rect.
 
 | Region | Contents | Visibility | Owner |
 | --- | --- | --- | --- |
-| **Top bar** | Next hand (the corner control; the result card and the verdict sheet carry their own after an answer, §4), setup trigger, full-screen toggle | always | H2 |
+| **Top bar** | the app name (top-left) with the setup trigger under it, plus Next hand on the right (the result card and the verdict sheet carry their own after an answer, §4) and the full-screen toggle | always | H2/H4 |
 | **Hand panel** | one anchored surface above the hand with two rows | always (once the scene publishes anchors) | H3/H5 |
 | — *hand rail* row | the live-region hint (`handHint`) + the pre-answer Mortal chip | always | H3 |
 | — *action rail* row | `ActionBar`'s non-discard actions, Riichi toggle, Kan toggle | while unanswered and non-empty | H3 |
@@ -109,7 +112,7 @@ unchanged), **DROPPED**, **2D ONLY**.
 
 | # | Element (source) | Today | In 3D | Unit |
 | --- | --- | --- | --- | --- |
-| 1 | `.app-title` "riichiprac" (`App.tsx`) | header brand | **DROPPED** — no title in the 3D HUD (user decision) | H2 |
+| 1 | `.app-title` "riichiprac" (`App.tsx`) | header brand | **TOP BAR** — the app's name only, on the very top-left with the setup trigger under it (user request 2026-11-20); no scenario or lesson name | H2/H4 |
 | 2 | Sticky `.app-header` column | 2D shell header | **DROPPED** — replaced by the floating top bar | H2 |
 | 3 | `ScenarioPicker` trigger + caret | header control | **SETUP SHEET** — the pool section; the setup trigger is its front door | H4 |
 | 4 | `selectionLabel` (pool name in the trigger) | header | **SETUP SHEET** only (pool summary); never in the top bar | H4 |
@@ -239,8 +242,9 @@ minus `8 px`.
 
 Every aspect below is drawn on the same rule set:
 
-- top bar: full width, `56 px` at inset `0` — a `44 px` control plus `6 px`
-  padding above and below, with the top pad `max(6px, safeTop)`;
+- top bar: full width, `78 px` at inset `0` — a `18 px` brand line, a `4 px` gap,
+  a `44 px` control row and `6 px` padding above and below, with the top pad
+  `max(6px, safeTop)`;
 - compass: scene-owned, never touched;
 - hand panel: as above;
 - sheet (when open): centred, `min(78dvh, 52rem)` tall, bottom edge `8 px`
@@ -261,7 +265,7 @@ the gate runs every state rather than one fixture.
 ### 21:9 — 2520 × 1080
 
 ```text
-[top bar 56px]
+[top bar 78px]
                                                                         
                                                                         
                                                                         
@@ -289,7 +293,7 @@ sheet `64–862` (`798 px`). Nothing collapses.
 ### 16:9 — 1920 × 1080 (reference aspect)
 
 ```text
-[top bar 56px]
+[top bar 78px]
                                                                 
                                                                 
                                                                 
@@ -315,7 +319,7 @@ compass `827,376–1093,643` · hand band `643,914–1362,1009` (`719 px`) · pa
 ### 3:2 — 1440 × 960
 
 ```text
-[top bar 56px]
+[top bar 78px]
 --------------------------------------------------------
                                                         
                                                         
@@ -341,7 +345,7 @@ compass `602,328–838,563` · hand band `434,810–1084,896` (`650 px`) · pane
 ### 4:3 — 1280 × 960
 
 ```text
-[top bar 56px]
+[top bar 78px]
 ----------------------------------------------------
                                                     
                                                     
@@ -367,7 +371,7 @@ compass `533,364–747,579` · hand band `378,805–973,884` (`595 px`) · panel
 ### 1:1 — 1000 × 1000
 
 ```text
-[top bar 56px]
+[top bar 78px]
 --------------------------------------------
                                             
                                             
@@ -395,7 +399,7 @@ compass `416,410–584,577` · hand band `295,754–760,816` (`465 px`) · panel
 ### 3:4 — 900 × 1200
 
 ```text
-[top bar 56px]
+[top bar 78px]
 ----------------------------------------
                                         
                                         
@@ -427,7 +431,7 @@ compass `360,502–540,681` · hand band `264,874–687,931` (`422 px`) · panel
 ### 9:16 — 810 × 1440
 
 ```text
-[top bar 56px]
+[top bar 78px]
 ------------------------------------
                                     
                                     
@@ -469,7 +473,7 @@ card's fixed `104 px` shape is what keeps them so.
 ### 9:16 with the sheet open
 
 ```text
-[top bar 56px]
+[top bar 78px]
 ssssssssssssssssssssssssssssssssssss
 ssssssssssssssssssssssssssssssssssss
 ssssssssssssssssssssssssssssssssssss
@@ -547,11 +551,12 @@ sheetWidth  = min(832, stageW − 16)
 On the phone fallback rows the panel is below the hand, so `panelTop` is
 `handBand.bottom + 8` and the same formula holds.
 
-At 21:9 this is `64 → 862` (`798 px`); 16:9 `64 → 858` (`794 px`); 3:2
-`64 → 754` (`690 px`); 4:3 `64 → 749` (`685 px`); 1:1 `64 → 698` (`634 px`);
-3:4 `64 → 818` (`754 px`); 9:16 `64 → 896` (`832 px`, the cap binds); 390 × 844
-`64 → 566` (`502 px`); 320 × 568 `64 → 402` (`338 px`). The hand panel, the hand
-and the felt under it all stay below the sheet at every size.
+At 21:9 this is `86 → 862` (`776 px`); 16:9 `86 → 858` (`772 px`); 3:2
+`86 → 754` (`668 px`); 4:3 `86 → 749` (`663 px`); 1:1 `86 → 698` (`612 px`);
+3:4 `86 → 818` (`732 px`); 9:16 `86 → 910` (`824 px`, the collapsed hint panel
+binds, not the `832 px` cap, because the brand line made the bar taller);
+390 × 844 `86 → 566` (`480 px`); 320 × 568 `86 → 402` (`316 px`). The hand
+panel, the hand and the felt under it all stay below the sheet at every size.
 
 ---
 
@@ -689,7 +694,7 @@ The screen regions the HUD reserves, and the only things allowed to cross them:
 
 | Reserved region | Rect (from §5/§7.3) | May cross it |
 | --- | --- | --- |
-| Top bar | full width, `56 px` at inset `0` | nothing (it is the top edge) |
+| Top bar | full width, `78 px` at inset `0` | nothing (it is the top edge) |
 | Hand panel | `min(36rem, stageW − 16)` wide, centred; `84`/`128` px with actions, `40` hint-only, `104` result; `8 px` above the hand (below it on phones) | the open sheet's scrim and panel, debug panels |
 | Toast stack | `32rem` centred, under the top bar | nothing |
 | Sheet (open) | §5's formula | nothing (it is the top layer) |
@@ -720,7 +725,8 @@ two anchor rects, the safe insets and a tiny state
 and returns every HUD rect. No DOM reads, no renderer calls; it is unit-tested
 in Node against the real projection.
 
-- Top bar: `0,0 → stageW, 44 + 6 + max(6px, safeTop)`.
+- Top bar: `0,0 → stageW, 18 + 4 + 44 + 6 + max(6px, safeTop)` — the brand line,
+  the gap, the control row and the padding.
 - Hand panel, primary anchor:
   `width = min(36rem, stageW − 16)`, `left = (stageW − width) / 2`,
   `height = 84` (actions, one row) / `128` (two rows) / `40` (hint only, and
@@ -789,9 +795,9 @@ fallback moves the panel below the hand, where there are `496 px`. That is the
 fallback doing its job, not an exception: the gate asserts whichever anchor is
 chosen.
 
-The top bar ends at `56 px`; the compass's top edge is never above `328 px` in
+The top bar ends at `78 px`; the compass's top edge is never above `328 px` in
 any measured state and aspect (the minimum is 1 meld at 3:2), so the bar cannot
-reach it — the nearest it comes is `272 px`. Every gate aspect keeps the panel's
+reach it — the nearest it comes is `250 px`. Every gate aspect keeps the panel's
 and card's bottom edges `≥ 8 px` above the hand band, and the panel is inside
 the stage in every state.
 
@@ -874,7 +880,10 @@ Rules:
 
 1. **No text on the felt.** Every panel paints a surface; the alpha floor is
    `0.84`, which is what keeps the muted text at AA (`≥ 4.5:1`) even on the
-   felt's brightest point.
+   felt's brightest point. The top bar's brand line is the one exception: it is
+   a name, not content, and it carries a `1 px` dark text shadow
+   (`0 1px 3px rgba(5, 8, 13, 0.75)`) instead of a plate (user request
+   2026-11-20; see §9, H4).
 2. `backdrop-filter` is additive. If a browser ignores it, the same alpha
    carries the text; the HUD must never rely on blur for contrast or layout.
 3. Text scale is fixed (`rem`), not `vw`: a HUD that shrinks its type on a
@@ -961,8 +970,9 @@ H2 landed the shell exactly as specified above. The facts H3–H5 build on:
 - **Nested layers.** A native document-level Escape listener cannot be stopped
   by a descendant's `stopPropagation` (both run on `document`), so the sheet
   consumes the first Escape when its body contains
-  `[data-hud-popover="open"]` (exported as `NESTED_LAYER_ATTRIBUTE`). H4 must set
-  that attribute on its open scenario picker / hotseat card.
+  `[data-hud-popover="open"]` (exported as `NESTED_LAYER_ATTRIBUTE`). H4 sets
+  that attribute on its open scenario picker; its hotseat form is a block of
+  the sheet, not a nested layer, so it needs no marker.
 - **Retired.** The `?preview=deal` review aid (3D-12) is gone: the top bar's
   Next Scenario control is the real one, so the deal-in is one tap away. The
   `preview` query value is `sticks | null` only.
@@ -1083,6 +1093,70 @@ The result and its full verdict are in. This is what remains for 3D-15/16.
   `http://localhost:5173/?renderer=3d`, answer a hand, and look at the card and
   the Verdict sheet on the board. The numbers above are the scripted checks;
   the look is the user's call.
+
+### As built (3D-H4, 2026-11-20)
+
+Everything that is not the live hand now lives in one setup sheet behind one
+trigger. This is what remains for 3D-15/16 and what the chain may build on.
+
+- **Files.** `renderers/hud/{SetupSheet.tsx, SetupSheet.test.tsx}`, plus
+  `hudLayout.ts` (the trigger's rect and its name in the at-rest set),
+  `HudLayer.tsx` (`setupTrigger`), the shared extractions
+  `components/{AgreementToggle,ViewPicker}.tsx` (both shells render them, so the
+  label and the disabled state cannot drift), `components/HotseatCard.tsx`
+  (`HotseatCardBody` + the 2D modal host), `components/ScenarioPicker.tsx`
+  (`nestedLayerAttribute`), `hud/toastModel.ts` + `ToastStack.tsx` (a toast's
+  Details action), and `App.tsx` at the 3D mount seam.
+- **One front door.** The top bar's start holds the app's name ("riichiprac",
+  an `h1`, on the very top-left) with the setup trigger ("Setup",
+  `aria-haspopup="dialog"`) under it — the brand line is the user's request of
+  2026-11-20 and the bar grew to `78 px` for it (`HUD_TOP_BAR_BRAND` +
+  `HUD_TOP_BAR_BRAND_GAP`). No scenario name and no label of what is loaded. Its box is a layout number, `96 × 44` at
+  `topBarPadding.left/top` (`HUD_SETUP_TRIGGER_WIDTH`/`HEIGHT`), and `Hud.css`
+  pins the same `min-width`, so `hudAtRestRects()` names and checks the painted
+  button rather than trusting the bar's rect. The collision matrix therefore
+  covers the trigger at every aspect and hand state.
+- **One sheet, one state.** App keeps `hudSheet: 'setup' | 'verdict' | null`
+  (replacing H5's `verdictOpen`), so at most one exists (§6.5.8). Opening or
+  closing it changes no `GameState`, re-runs neither the deal nor the grade, and
+  never remounts the scene. A deal started from the sheet closes it first; so
+  does a new hand from any other route and leaving the 3D view.
+- **The body.** Four sections in one scrolling column: **Scenario** (the 2D
+  `ScenarioPicker` unchanged, staged draft and all; its "Setup" row on the AI
+  Hotseat lesson opens the shared `HotseatCardBody` in place, so there is no
+  second scrim and no second `dialog`); **Settings** (`AgreementToggle` with its
+  tooltip text repeated inline and disabled until Mortal is `ready`,
+  `ViewPicker` with the unsupported reason on its option); **Position**
+  (`ExportImportControls` from the same props object the 2D header mounts); and
+  **Table info** (`TableInfo`, the agreement/scenario notes, and the imported
+  position's full `PositionDescriptionCard`). The description's toast now
+  carries a **Details** action that opens this sheet; the first line stays in
+  the toast.
+- **R14 still holds from the sheet.** The View picker calls App's existing
+  handler, so switching away from 3D exits full screen exactly as the header
+  does; `App.viewSwitch.test.tsx` drives it from the sheet.
+- **Nested Escape.** `ScenarioPicker`'s open panel sets
+  `NESTED_LAYER_ATTRIBUTE="open"` (only when a host asks, so the 2D header is
+  unchanged), which is what the sheet checks: the first Escape closes the panel,
+  the second the sheet. The hotseat form needs no marker — it is a block of the
+  sheet, not a layer.
+- **Layout departs from the draft task text, per §3.** The picker's panel is in
+  flow inside the sheet (`position: static`, the sheet body is the only scroll
+  container), not an absolutely positioned popover clipped by it. The
+  sheet's own sections are exempt from the collision set (§7.6); their bottom is
+  still bounded by the collapsed 40 px panel, which the matrix asserts at every
+  aspect. The top bar keeps its labels at every aspect: §5's portrait icon-only
+  collapse is not implemented in H2–H4, so the trigger's 96 px is its box at
+  every size.
+- **Not done here.** 3D-15 runs the stress-fixture matrix and the handoff
+  screenshots; 3D-16 records the chain.
+- **User verdict (2026-11-20): accepted.** The user reviewed the running dev
+  server — the setup sheet's four sections, the pool opened and ticked, the
+  inline hotseat form, both settings, the position/table blocks — and the top
+  bar with the app's name above the Setup trigger, and accepted the composition
+  ("this task looks good now"). The brand line (added at the same time, 78 px
+  bar) is part of that accepted composition. The numbers above are the scripted
+  checks; the look was the user's call.
 
 ---
 

@@ -123,32 +123,37 @@ governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
   `actionRail`, `resultCard`, `toasts`, `sheet`) and the one `Sheet` primitive.
 
 ## 4. UI / UX Design Constraints (React)
-* **Mobile-First, Stacked Layout:** The UI must be optimized for portrait mode on mobile devices.
-  The stacked layout is the default view.
-* **View modes:** The header's View control switches the same hand between the stacked layout, the
-  flat top-down **plan** view and the full-window rendered **3D** table. The 3D value is a real,
-  persisted `TableView` value, but it stays out of the picker until 3D-15 sets `RENDERED3D_EXPOSED`;
-  until then the table is reached with `?renderer=3d` (or a value a later build stored). Switching
-  never re-deals.
+* **Mobile-First, Stacked Layout:** The 2D UI must be optimized for portrait mode on mobile devices.
+  The stacked layout is the accessible 2D fallback and what a browser without WebGL2 draws.
+* **View modes:** The View control switches the same hand between the full-window rendered **3D**
+  table, the stacked layout and the flat top-down **plan** view. **3D is the default** (user decision
+  2026-11-20): every browser opens on it, the other two are options in the control, and the player's
+  pick is remembered locally under its own key (`riichiprac.table-view`), separate from the older
+  settings blob so a 2D choice stored while 3D was opt-in does not keep anyone out of 3D. A browser
+  that cannot run 3D draws the stacked table, says why, and keeps the choice. `?renderer=3d` still
+  overrides for review links. Switching never re-deals.
 * **No skeuomorphism by default:** Do NOT make a physically rich, square Mahjong table the
-  default view.
+  default view. (The 3D table is the default *view*; it is the signed-off camera and carve, not a
+  modelled room, rails or floors — see §3b.)
 * **Top-down plan view:** a flat 2D plan (human at the bottom edge, one seat per table edge)
   with no perspective or camera tilt. Its table edges hold only tiles: winds, scores, and
   Riichi sticks live on the compass in the middle, one corner facing each player.
-* **3D view (opt-in, `?renderer=3d` until 3D-15):** a real-time three.js scene with the committed
+* **3D view (the default):** a real-time three.js scene with the committed
   tile proportions and carved faces (see §3b). It **takes the whole browser window and the full
   height of the screen**, and **no UI panel sits above or below the canvas** in the document flow. The UI —
   status cards, action bar, hand dock, plus the projected hand buttons and compass — is a
   **floating layer over the scene** (Z order, like a typical game HUD): the hand/draw buttons
   landed in 3D-08, the compass in 3D-09, targeting as `position: fixed` in 3D-H2, together with
-  the shell's top bar (**Next Scenario and full screen only — no brand, no scenario name**),
-  its safe-area handling, the sheet primitive and the mounted full-screen toggle. 3D-H3…H5 fill
-  that shell (action rail, toasts, setup sheet, result card and verdict sheet). A full-screen
+  the shell's top bar (**the app name "riichiprac" on the very top-left with the Setup trigger under it — from
+  3D-H4 — plus Next Scenario and full screen; no scenario name, no lesson label**), its safe-area handling,
+  the sheet primitive and the mounted full-screen toggle. 3D-H3…H5 fill that shell (action rail, toasts,
+  setup sheet, result card and verdict
+  sheet). A full-screen
   toggle promotes the shell so the layer comes along. The stacked and top-down views keep their
-  own layout, and leaving 3D restores it. It is never the default and never auto-selected. See
-  `3d_hud.md` (the HUD composition and overlay contract), `3d_renderer_implementation_plan.md`
-  (§2.1, §2.7, §11, §9 decision 7) and note that the help text for the View control still
-  describes the two 2D views until 3D-14 adds the fourth.
+  own layout, and leaving 3D restores it. See
+  `3d_hud.md` (the HUD composition and overlay contract) and
+  `3d_renderer_implementation_plan.md` (§2.1, §2.7, §11, §9 decision 7; decision D13's "opt-in,
+  never the default" is superseded by the 2026-11-20 default decision).
 * **Layout Structure:**
   * 4 strictly vertical flex/grid rows (one for each player).
   * Each opponent row displays their Wind, Points, Melds, and Discard River.

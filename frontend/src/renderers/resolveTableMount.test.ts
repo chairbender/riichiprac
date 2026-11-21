@@ -1,9 +1,9 @@
 /**
- * View selection precedence (3D-02, extended by 3D-14): explicit query
- * parameter > stored view > the store's default, with a stored 3D choice
+ * View selection precedence (3D-02, extended by 3D-14 and the 2026-11-20
+ * default): explicit query parameter > chosen view, with a chosen 3D view
  * honouring the caller's "can this browser run it" answer.
  *
- * The stored view is just a value here: this resolver never reads storage, so
+ * The chosen view is just a value here: this resolver never reads storage, so
  * the test covers the rule rather than a mocked `localStorage`.
  */
 
@@ -11,23 +11,23 @@ import { describe, expect, it } from 'vitest';
 import { resolveTableMount } from './resolveTableMount';
 
 describe('resolveTableMount', () => {
-  it('lets an explicit ?renderer=3d beat the stored view', () => {
+  it('lets an explicit ?renderer=3d beat the chosen view', () => {
     expect(resolveTableMount('?renderer=3d', 'topdown').kind).toBe('three');
     expect(resolveTableMount('?renderer=3d', 'stacked').kind).toBe('three');
     expect(resolveTableMount('renderer=3d', 'topdown').kind).toBe('three');
   });
 
-  it('mounts a stored 3D view without the query flag (3D-14)', () => {
+  it('mounts the chosen 3D view without the query flag (the default)', () => {
     expect(resolveTableMount('', 'rendered3d').kind).toBe('three');
     // The query flag is an override, not the only way in: a link that names
-    // another renderer leaves the stored 3D choice alone.
+    // another renderer leaves the 3D choice alone.
     expect(resolveTableMount('?renderer=25d', 'rendered3d').kind).toBe('three');
     expect(resolveTableMount('?quality=compat', 'rendered3d').kind).toBe('three');
   });
 
-  it('falls a stored 3D view back to the default 2D view when it cannot run', () => {
+  it('falls a chosen 3D view back to the stacked table when it cannot run', () => {
     const mount = resolveTableMount('', 'rendered3d', {
-      allowStoredThreeView: false,
+      allowThreeView: false,
     });
     expect(mount).toEqual({
       kind: '2d',
@@ -37,16 +37,16 @@ describe('resolveTableMount', () => {
     // An explicit link still asks the host to try; the host owns the message.
     expect(
       resolveTableMount('?renderer=3d', 'rendered3d', {
-        allowStoredThreeView: false,
+        allowThreeView: false,
       }).kind,
     ).toBe('three');
     // The flag only governs the 3D value; the 2D choices are untouched.
     expect(
-      resolveTableMount('', 'topdown', { allowStoredThreeView: false }),
+      resolveTableMount('', 'topdown', { allowThreeView: false }),
     ).toMatchObject({ kind: '2d', view: 'topdown' });
   });
 
-  it('keeps the stored view when the query names nothing', () => {
+  it('keeps the chosen 2D view when the query names nothing', () => {
     expect(resolveTableMount('', 'topdown')).toEqual({
       kind: '2d',
       view: 'topdown',

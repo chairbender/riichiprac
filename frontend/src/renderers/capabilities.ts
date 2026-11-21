@@ -3,11 +3,11 @@
  *
  * Everything here is a pure input to the host's decision, not the decision
  * itself: `RendererHost` (3D-02) mounts the view. 3D-14 makes the 3D table a
- * real `TableView` value, but this module still owns the gate: the View control
- * offers the value only once {@link RENDERED3D_EXPOSED} flips at 3D-15, and
- * {@link threeViewUnavailableReason} is the disabled-option reason until then.
- * This module exists so the gate is testable without a GPU, a browser or
- * three.js.
+ * real `TableView` value; as of the user's 2026-11-20 decision it is also the
+ * default and {@link RENDERED3D_EXPOSED} is true, so the View control offers it
+ * and {@link threeViewUnavailableReason} is the disabled-option reason on a
+ * browser that cannot run it. This module exists so the gate is testable
+ * without a GPU, a browser or three.js.
  *
  * The probe never keeps a live WebGL2 context: it creates one, reads the two
  * facts it needs, asks the `WEBGL_lose_context` extension to release it, and
@@ -18,15 +18,18 @@
 import type { DebugMode, QualityTier, RendererCapabilities } from './contract';
 
 /**
- * Whether the 3D view may be offered from the persistent View control.
+ * Whether the 3D view is offered from the persistent View control.
  *
- * Decision 1 (2026-11-18): the view stays out of that control until 3D-15 signs
- * it off. Nothing may flip this except that sign-off, and the view is never the
- * default even then. From 3D-14 a stored `rendered3d` value (written by a build
- * that had the flag on) and an explicit `?renderer=3d` still select the view;
- * this flag is exposure in the picker, not persistence.
+ * Decision 1 (2026-11-18) kept the view out of that control until 3D-15 signed
+ * it off; the user's 2026-11-20 decision supersedes it: 3D is exposed **and**
+ * the default, so the picker offers all three views and every browser opens on
+ * the 3D table. A browser that cannot run it is offered the option disabled,
+ * with {@link threeViewUnavailableReason} as the reason, and is drawn the 2D
+ * fallback. From 3D-14 a stored `rendered3d` value and an explicit
+ * `?renderer=3d` select the view the same way; this flag is exposure in the
+ * picker, not persistence.
  */
-export const RENDERED3D_EXPOSED = false;
+export const RENDERED3D_EXPOSED = true;
 
 /** The device-pixel-ratio ceiling before the area cap applies (the `high` cap). */
 export const MAX_DEVICE_PIXEL_RATIO = 2;

@@ -11,6 +11,7 @@ import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { AppControls } from './components/AppControls';
 import { ExportImportControls } from './components/ExportImportControls';
+import type { ExportImportControlsProps } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
 import { HotseatCard } from './components/HotseatCard';
 import { NextScenarioButton } from './components/NextScenarioButton';
@@ -26,7 +27,9 @@ import { actionRailVisible } from './renderers/hud/actionRail';
 import type { ActionRailModel } from './renderers/hud/actionRail';
 import { HandRail } from './renderers/hud/HandRail';
 import { HudLayer } from './renderers/hud/HudLayer';
+import type { HudSheetContent } from './renderers/hud/HudLayer';
 import { ResultCard } from './renderers/hud/ResultCard';
+import { SetupSheet, SetupTrigger } from './renderers/hud/SetupSheet';
 import { HudToastStack } from './renderers/hud/ToastStack';
 import { VerdictSheet } from './renderers/hud/VerdictSheet';
 import { buildHudToasts } from './renderers/hud/toastModel';
@@ -246,11 +249,12 @@ export const App = () => {
    */
   const [actionRows, setActionRows] = useState<1 | 2>(1);
   /**
-   * 3D-H5: the verdict sheet's open state in the HUD. It is a view state, not
-   * game state: opening or closing it never re-deals and never re-grades, and
-   * a new hand closes it.
+   * 3D-H5/H4: which HUD sheet is open. It is a view state, not game state:
+   * opening or closing one never re-deals and never re-grades, a new hand
+   * closes it, and at most one sheet exists at a time (`3d_hud.md` §6.5.8).
    */
-  const [verdictOpen, setVerdictOpen] = useState(false);
+  const [hudSheet, setHudSheet] = useState<'setup' | 'verdict' | null>(null);
+  const closeHudSheet = useCallback(() => setHudSheet(null), []);
   /**
    * 3D-H2: the shell (the full-screen element, so the HUD travels with the
    * scene) and the fixed stage (made `inert` while a HUD sheet is open). Both
@@ -768,6 +772,9 @@ export const App = () => {
   }, [initializeAi]);
 
   const handleSelectionChange = (next: ScenarioSelection) => {
+    // A deal started from the setup sheet closes it first, so the new hand
+    // arrives on the board rather than behind the modal (`3d_hud.md` §3, row 12).
+    setHudSheet(null);
     setSelection(next);
     void loadPuzzle(next, requireAgreement);
   };
@@ -775,6 +782,7 @@ export const App = () => {
   const handleNextScenario = () => {
     // A hotseat hand is re-dealt with the same card choice; a mixed pool keeps
     // drawing normally, and a hotseat drawn from it uses the last choice.
+    setHudSheet(null);
     const forced = isHotseatOnly(selection)
       ? {
           category: HOTSEAT_SCENARIO_ID,
@@ -791,6 +799,9 @@ export const App = () => {
 
   /** Run the card's chosen self-play round. */
   const handleGenerateHotseat = (options: HotseatOptions) => {
+    // The sheet closes before the round is played: generation reports through a
+    // toast, and the new hand should land on the board (`3d_hud.md` §3, row 27).
+    setHudSheet(null);
     hotseatOptionsRef.current = options;
     setHotseatOptions(options);
     setHotseatOpen(false);
@@ -932,33 +943,36 @@ export const App = () => {
     : '';
 
   /*
-   * 3D-14: whether this browser can run the 3D table. The probe runs only when
-   * its answer can change what is drawn or offered — a stored 3D choice, or the
-   * View control once 3D-15 exposes the option — so the standard 2D views never
-   * create a WebGL2 context. The probe releases that context immediately
-   * (3D-01). `null` means "can run"; otherwise this is the reason the View
-   * control shows.
+   * 3D-14: whether this browser can run the 3D table.
+   *
+   * Since the user's 2026-11-20 decision the 3D table is the default and the
+   * View control always offers it (exposed), so the answer always matters: probe
+   * once per page, not once per 2D visit. The probe releases the WebGL2 context
+   * it creates immediately (3D-01), so this costs one context per load. `null`
+   * means "can run"; otherwise this is the reason the View control shows and
+   * what makes the mount fall back to the stacked table.
    */
-  const threeUnavailableReason = useMemo(() => {
-    if (!RENDERED3D_EXPOSED && tableView !== 'rendered3d') return null;
-    return threeViewUnavailableReason(probeCapabilities());
-  }, [tableView]);
+  const threeUnavailableReason = useMemo(
+    () => threeViewUnavailableReason(probeCapabilities()),
+    [],
+  );
 
   /*
-   * The 3D table is opt-in: an explicit `?renderer=3d` link or a stored 3D
-   * choice selects it, never the default (decision D13, exposure decision 1).
-   * The resolver owns the precedence — explicit query, then stored view, then
-   * the store's default — so App only mounts what it says.
+   * The 3D table is the default (user request 2026-11-20, superseding decision
+   * D13's "opt-in, never default"). The resolver owns the precedence — explicit
+   * query, then the chosen view, then the store's default — so App only mounts
+   * what it says.
    *
-   * A stored 3D choice mounts only while it can run: after a degrade
-   * (`threeClosed`, 3D-11) or without WebGL2 the resolver returns the default
-   * 2D view, and the store keeps the user's choice untouched (3D-14).
+   * A chosen 3D view mounts only while it can run: after a degrade
+   * (`threeClosed`, 3D-11) or without WebGL2 the resolver returns the stacked
+   * table, and the store keeps the player's choice untouched (3D-14), so the
+   * next capable load opens 3D again.
    */
   const tableMount = resolveTableMount(
     threeClosed ? '' : window.location.search,
     tableView,
     {
-      allowStoredThreeView: !threeClosed && threeUnavailableReason === null,
+      allowThreeView: !threeClosed && threeUnavailableReason === null,
     },
   );
 
@@ -980,12 +994,16 @@ export const App = () => {
    * 3D-H5: the verdict sheet describes the hand it was opened on, so a new deal
    * closes it, and so does leaving the 3D view. This is presentation state only:
    * neither transition touches the deal or the grade.
+   *
+   * 3D-H4 gives the setup sheet the same rule: a deal started from the sheet
+   * (a pool deal, a hotseat round, an agreement re-deal) closes it, so the new
+   * hand arrives on the board rather than behind the modal.
    */
   useEffect(() => {
-    setVerdictOpen(false);
+    setHudSheet(null);
   }, [gameState]);
   useEffect(() => {
-    if (!showingThree) setVerdictOpen(false);
+    if (!showingThree) setHudSheet(null);
   }, [showingThree]);
 
   /*
@@ -1065,7 +1083,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and 3D is the opt-in full-window table. Switching redraws the same hand.';
+    'How to draw the table. 3D is the full-window table and the default; stacked is the mobile-first four-row layout and top-down is the flat plan view. Switching redraws the same hand; leaving the 3D view also leaves full screen.';
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)
@@ -1099,7 +1117,7 @@ export const App = () => {
       // H5: the pre-answer chip is the verdict sheet's trigger (Peek lives
       // there); post-answer the result card's Details is the only way in, so
       // the hint no longer needs to announce "Answer submitted".
-      onOpenVerdict={() => setVerdictOpen(true)}
+      onOpenVerdict={() => setHudSheet('verdict')}
       announceHint={!answered}
     />
   ) : undefined;
@@ -1135,7 +1153,7 @@ export const App = () => {
       <ResultCard
         grade={dualGrade}
         state={gameState}
-        onDetails={() => setVerdictOpen(true)}
+        onDetails={() => setHudSheet('verdict')}
         onNext={handleNextScenario}
         nextDisabled={isLoading}
       />
@@ -1151,8 +1169,8 @@ export const App = () => {
    * report, explanation). It reads the store's existing state, so opening it is
    * not a deal and not a re-evaluation.
    */
-  const hudVerdictSheet =
-    verdictOpen && gameState
+  const hudVerdictSheet: HudSheetContent | null =
+    hudSheet === 'verdict' && gameState
       ? {
           title: 'Verdict',
           body: (
@@ -1174,7 +1192,7 @@ export const App = () => {
               onClick={() => {
                 // Close first so the deal is not read as a sheet re-evaluation,
                 // and the player sees the new hand arrive.
-                setVerdictOpen(false);
+                setHudSheet(null);
                 handleNextScenario();
               }}
               disabled={isLoading}
@@ -1182,6 +1200,11 @@ export const App = () => {
           ),
         }
       : null;
+
+  /*
+   * 3D-H4's setup sheet is built below, after the 2D blocks it re-hosts (the
+   * export/import controls, the table information and the notes) are defined.
+   */
 
   /*
    * The result's announcement. `HudLayer` owns the one persistent live region,
@@ -1198,6 +1221,8 @@ export const App = () => {
     positionDescription,
     onDismissNotice: clearFileNotice,
     onDismissDescription: clearPositionDescription,
+    // The toast carries the first line; the sheet holds the full text (§3, 32).
+    onOpenPositionDescription: () => setHudSheet('setup'),
   });
 
   // The header controls, built once so the stacked and top-down layouts cannot
@@ -1227,18 +1252,23 @@ export const App = () => {
     />
   );
 
-  const exportImportControls = (
-    <ExportImportControls
-      canExport={Boolean(gameState)}
-      description={exportDescription}
-      onDescriptionChange={updateExportDescription}
-      fileError={fileError}
-      fileNotice={fileNotice}
-      onExport={handleExport}
-      onImportFile={handleImportFile}
-      onDismissNotice={clearFileNotice}
-    />
-  );
+  /*
+   * The export/import block, as both shells render it: the 2D header mounts the
+   * element, the 3D setup sheet takes the same props for its "Position"
+   * section. One props object is what keeps the two from drifting.
+   */
+  const exportImportProps: ExportImportControlsProps = {
+    canExport: Boolean(gameState),
+    description: exportDescription,
+    onDescriptionChange: updateExportDescription,
+    fileError,
+    fileNotice,
+    onExport: handleExport,
+    onImportFile: handleImportFile,
+    onDismissNotice: clearFileNotice,
+  };
+
+  const exportImportControls = <ExportImportControls {...exportImportProps} />;
 
   const positionDescriptionCard = positionDescription ? (
     <PositionDescriptionCard
@@ -1268,6 +1298,58 @@ export const App = () => {
   const scenarioNote = gameState?.scenario_note ? (
     <p className="scenario-note">{gameState.scenario_note}</p>
   ) : null;
+
+  /*
+   * 3D-H4: the setup sheet. One front door (the top bar's Setup trigger) opens
+   * it; its body is the pool, the AI Hotseat form, the settings, the position
+   * controls and the table information. It is mounted only while selected, so
+   * opening and closing it is a view change: the same `gameState` object stays
+   * on the table, nothing re-deals, and the scene is never unmounted.
+   */
+  const hudSetupSheet: HudSheetContent | null =
+    hudSheet === 'setup'
+      ? {
+          title: 'Setup',
+          body: (
+            <SetupSheet
+              scenarios={scenarios}
+              selection={selection}
+              onSelectionChange={handleSelectionChange}
+              packStatus={packStatus}
+              packCount={packManifest?.packs.length ?? 0}
+              packError={packError}
+              preferReplay={preferReplay}
+              onPreferReplayChange={setPreferReplay}
+              hotseatOptions={hotseatOptions}
+              hotseatBusy={isLoading || aiLoading}
+              onGenerateHotseat={handleGenerateHotseat}
+              requireAgreement={requireAgreement}
+              aiStatus={aiStatus}
+              agreementHint={agreementHint}
+              onAgreementChange={handleAgreementChange}
+              tableView={tableView}
+              viewHint={viewHint}
+              onViewChange={handleViewChange}
+              rendered3dExposed={RENDERED3D_EXPOSED}
+              threeUnavailableReason={threeUnavailableReason}
+              exportImport={exportImportProps}
+              tableInfo={tableInformation}
+              notes={
+                agreementNotice || scenarioNote ? (
+                  <>
+                    {agreementNotice}
+                    {scenarioNote}
+                  </>
+                ) : undefined
+              }
+              positionNote={positionDescriptionCard}
+            />
+          ),
+        }
+      : null;
+
+  /** The one open sheet: at most one exists at a time (§6.5.8). */
+  const hudOpenSheet = hudSheet === 'verdict' ? hudVerdictSheet : hudSetupSheet;
 
   const verdictPanel = gameState ? (
     <VerdictPanel
@@ -1322,9 +1404,10 @@ export const App = () => {
    * The opt-in 3D view: the stage is the window and the UI floats over it
    * (user guidance 2026-11-18, plan §2.1/§9 decision 7). The stage holds the
    * scene and nothing in flow; `HudLayer` (3D-H2) is its fixed sibling and the
-   * only chrome mounted over the canvas — the top bar's next-hand and
-   * full-screen controls, plus the slots the HUD chain fills (3D-H3…H5). No
-   * header, cards, action bar or hand dock are rendered around the scene.
+   * only chrome mounted over the canvas — the top bar's setup trigger,
+   * next-hand and full-screen controls, plus the slots the HUD chain fills
+   * (3D-H3…H5). No header, cards, action bar or hand dock are rendered around
+   * the scene.
    */
   if (tableMount.kind === 'three') {
     return (
@@ -1334,13 +1417,19 @@ export const App = () => {
           stageRef={threeStageRef}
           onNextScenario={handleNextScenario}
           nextDisabled={isLoading}
+          setupTrigger={
+            <SetupTrigger
+              onOpen={() => setHudSheet('setup')}
+              expanded={hudSheet === 'setup'}
+            />
+          }
           actionRows={actionRows}
           hintRow={hudHintRow}
           actionRail={hudActionRail}
           resultCard={hudResultCard}
           resultTone={hudResultTone}
-          sheet={hudVerdictSheet}
-          onCloseSheet={() => setVerdictOpen(false)}
+          sheet={hudOpenSheet}
+          onCloseSheet={closeHudSheet}
           announcement={hudAnnouncement}
           toasts={
             hudToasts.length > 0 ? <HudToastStack toasts={hudToasts} /> : undefined

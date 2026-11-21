@@ -44,48 +44,80 @@ afterEach(() => {
 });
 
 describe('useSettingsStore', () => {
-  it('defaults to the stacked view when nothing is stored', async () => {
+  it('opens the 3D table when nothing is stored (2026-11-20 decision)', async () => {
     setLocalStorage(memoryStorage());
 
-    const { useSettingsStore, SETTINGS_STORAGE_KEY } =
-      await loadSettingsStore();
+    const {
+      DEFAULT_TABLE_VIEW,
+      SETTINGS_STORAGE_KEY,
+      TABLE_VIEW_STORAGE_KEY,
+      useSettingsStore,
+    } = await loadSettingsStore();
 
+    expect(DEFAULT_TABLE_VIEW).toBe('rendered3d');
+    // The view has its own key, separate from the legacy settings blob.
     expect(SETTINGS_STORAGE_KEY).toBe('riichiprac.settings');
-    expect(useSettingsStore.getState().view).toBe('stacked');
+    expect(TABLE_VIEW_STORAGE_KEY).toBe('riichiprac.table-view');
+    expect(useSettingsStore.getState().view).toBe('rendered3d');
   });
 
-  it('persists every view and keeps it across a reload', async () => {
+  it('persists every view under its own key and keeps it across a reload', async () => {
     const storage = memoryStorage();
     setLocalStorage(storage);
 
-    const { useSettingsStore, SETTINGS_STORAGE_KEY } =
-      await loadSettingsStore();
+    const {
+      SETTINGS_STORAGE_KEY,
+      TABLE_VIEW_STORAGE_KEY,
+      useSettingsStore,
+    } = await loadSettingsStore();
 
-    for (const view of ['topdown', 'rendered3d', 'stacked'] as const) {
+    for (const view of ['stacked', 'topdown', 'rendered3d'] as const) {
       useSettingsStore.getState().setView(view);
       expect(
+        JSON.parse(storage.getItem(TABLE_VIEW_STORAGE_KEY) ?? 'null'),
+      ).toEqual({ version: 1, view });
+      // The legacy blob never carries a view: it has one source of truth.
+      expect(
         JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
-      ).toEqual({ version: 1, view, preferReplay: true });
+      ).toEqual({ version: 1, preferReplay: true });
 
       const reloaded = await loadSettingsStore();
       expect(reloaded.useSettingsStore.getState().view).toBe(view);
     }
   });
 
-  it('accepts the 3D view as a real stored value (3D-14)', async () => {
+  it('ignores a view stored in the old settings blob, so everyone sees 3D first', async () => {
+    const storage = memoryStorage();
+    setLocalStorage(storage);
+    // A view a pre-3D-default build wrote: at that time 3D was opt-in, so a
+    // `stacked` here says nothing about wanting 2D now.
+    storage.setItem(
+      'riichiprac.settings',
+      JSON.stringify({ version: 1, view: 'stacked', preferReplay: false }),
+    );
+
+    const { useSettingsStore } = await loadSettingsStore();
+
+    expect(useSettingsStore.getState().view).toBe('rendered3d');
+    // The rest of that blob is still honoured.
+    expect(useSettingsStore.getState().preferReplay).toBe(false);
+    // And the ignored field is not resurrected on the next write.
+    useSettingsStore.getState().setView('topdown');
+    expect(
+      JSON.parse(storage.getItem('riichiprac.settings') ?? 'null'),
+    ).toEqual({ version: 1, preferReplay: false });
+  });
+
+  it('reads an explicit choice from the table-view key', async () => {
     const storage = memoryStorage();
     setLocalStorage(storage);
     storage.setItem(
-      'riichiprac.settings',
-      JSON.stringify({ version: 1, view: 'rendered3d' }),
+      'riichiprac.table-view',
+      JSON.stringify({ version: 1, view: 'stacked' }),
     );
 
-    const { isTableView, useSettingsStore } = await loadSettingsStore();
-
-    expect(isTableView('rendered3d')).toBe(true);
-    // The value survives a reload even though the picker hides it until
-    // 3D-15; only the mount point decides whether it can be drawn.
-    expect(useSettingsStore.getState().view).toBe('rendered3d');
+    const { useSettingsStore } = await loadSettingsStore();
+    expect(useSettingsStore.getState().view).toBe('stacked');
   });
 
   it('prefers replay hands for covered lessons by default', async () => {
@@ -102,18 +134,18 @@ describe('useSettingsStore', () => {
     const storage = memoryStorage();
     setLocalStorage(storage);
 
-    const { useSettingsStore, SETTINGS_STORAGE_KEY } =
+    const { SETTINGS_STORAGE_KEY, useSettingsStore } =
       await loadSettingsStore();
 
     useSettingsStore.getState().setPreferReplay(false);
     expect(
       JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
-    ).toEqual({ version: 1, view: 'stacked', preferReplay: false });
+    ).toEqual({ version: 1, preferReplay: false });
 
     const reloaded = await loadSettingsStore();
     expect(reloaded.useSettingsStore.getState().preferReplay).toBe(false);
     // The view setting is untouched by a source-only change.
-    expect(reloaded.useSettingsStore.getState().view).toBe('stacked');
+    expect(reloaded.useSettingsStore.getState().view).toBe('rendered3d');
 
     useSettingsStore.getState().setPreferReplay(true);
     const again = await loadSettingsStore();
@@ -132,25 +164,11 @@ describe('useSettingsStore', () => {
       storage.setItem('riichiprac.settings', raw);
       const { useSettingsStore } = await loadSettingsStore();
       expect(useSettingsStore.getState().preferReplay).toBe(true);
+      expect(useSettingsStore.getState().view).toBe('rendered3d');
     }
   });
 
-  it('migrates a stored experimental isometric view to the default', async () => {
-    const storage = memoryStorage();
-    setLocalStorage(storage);
-    storage.setItem(
-      'riichiprac.settings',
-      JSON.stringify({ version: 1, view: 'isometric' }),
-    );
-
-    const { DEFAULT_TABLE_VIEW, useSettingsStore } =
-      await loadSettingsStore();
-
-    expect(DEFAULT_TABLE_VIEW).toBe('stacked');
-    expect(useSettingsStore.getState().view).toBe('stacked');
-  });
-
-  it('falls back to stacked for malformed or unknown stored values', async () => {
+  it('falls back to 3D for a malformed, unknown or retired table-view blob', async () => {
     const storage = memoryStorage();
     setLocalStorage(storage);
 
@@ -160,12 +178,16 @@ describe('useSettingsStore', () => {
       '[]',
       JSON.stringify({ version: 1, view: 'physical' }),
       JSON.stringify({ version: 1, view: 'sideways' }),
+      // The retired experimental angled view.
       JSON.stringify({ version: 1, view: 'isometric' }),
       JSON.stringify({ version: 1 }),
+      // A future format is not read as a view.
+      JSON.stringify({ version: 2, view: 'topdown' }),
+      JSON.stringify({ view: 'topdown' }),
     ]) {
-      storage.setItem('riichiprac.settings', raw);
+      storage.setItem('riichiprac.table-view', raw);
       const { useSettingsStore } = await loadSettingsStore();
-      expect(useSettingsStore.getState().view).toBe('stacked');
+      expect(useSettingsStore.getState().view).toBe('rendered3d');
     }
   });
 
@@ -173,7 +195,7 @@ describe('useSettingsStore', () => {
     setLocalStorage(null);
 
     const { useSettingsStore } = await loadSettingsStore();
-    expect(useSettingsStore.getState().view).toBe('stacked');
+    expect(useSettingsStore.getState().view).toBe('rendered3d');
 
     expect(() => useSettingsStore.getState().setView('topdown')).not.toThrow();
     expect(useSettingsStore.getState().view).toBe('topdown');

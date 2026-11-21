@@ -253,15 +253,22 @@ describe('App 3D HUD mount (3D-H2)', () => {
     expect(screen.getByTestId('renderer-host')).toBeTruthy();
   });
 
-  it('replaces the 2D header with a top bar that has no brand or scenario name', async () => {
+  it('replaces the 2D header with a top bar that carries only the app name', async () => {
     const { container } = renderThree();
     await waitFor(() => expect(hostMock.props).not.toBeNull());
 
     expect(container.querySelector('.app-header')).toBeNull();
-    expect(screen.queryByRole('heading', { name: /riichiprac/i })).toBeNull();
+    // The name is the only identity (user request 2026-11-20), and it is an
+    // h1 at the bar's start with the setup trigger under it.
+    const brand = container.querySelector('.hud-top-bar__brand');
+    expect(brand?.tagName).toBe('H1');
+    expect(brand?.textContent).toBe('riichiprac');
+    expect(
+      container
+        .querySelector('.hud-top-bar__start')
+        ?.contains(brand as Node),
+    ).toBe(true);
     const bar = container.querySelector('.hud-top-bar');
-    expect(bar?.textContent).not.toMatch(/riichiprac/i);
-    // No lesson label either: a visible scenario name would hint at the answer.
     expect(bar?.textContent).not.toMatch(/Fold to Riichi/i);
     expect(screen.getByRole('button', { name: 'Next scenario' })).toBeTruthy();
   });
@@ -427,6 +434,212 @@ describe('App 3D practice HUD (3D-H3)', () => {
     // Once the deal lands the status toast is gone.
     expect(container.querySelector('.hud-toast--status')).toBeNull();
   });
+});
+
+describe('App 3D setup sheet (3D-H4)', () => {
+  const ANCHOR_OWNER = {};
+
+  beforeEach(() => {
+    publishHudAnchors(ANCHOR_OWNER, {
+      handBand: { left: 400, top: 640, width: 200, height: 60 },
+      compass: null,
+    });
+  });
+
+  afterEach(() => {
+    clearHudAnchors(ANCHOR_OWNER);
+  });
+
+  /** Wait until the deal and the failed Mortal load have both settled. */
+  async function settled() {
+    await waitFor(() => {
+      expect(useGameStore.getState().gameState).not.toBeNull();
+      expect(useGameStore.getState().aiStatus).toBe('error');
+    });
+  }
+
+  /** One control's comparable surface, for the header/sheet drift check. */
+  interface SetupControl {
+    readonly label: string;
+    readonly checked: boolean | null;
+    readonly disabled: boolean | null;
+    readonly title: string | null;
+  }
+
+  interface SetupControls {
+    readonly pool: SetupControl & { readonly text: string | null };
+    readonly agreement: SetupControl;
+    readonly view: {
+      readonly value: string;
+      readonly options: ReadonlyArray<{
+        readonly value: string;
+        readonly text: string;
+        readonly disabled: boolean;
+        readonly title: string | null;
+      }>;
+    };
+    readonly position: ReadonlyArray<Omit<SetupControl, 'checked'>>;
+  }
+
+  /**
+   * The setup controls a shell renders, by their visible words and their
+   * state — the comparable part of "every control matches the 2D header".
+   */
+  function setupControls(root: ParentNode): SetupControls {
+    const pool = root.querySelector('.scenario-picker-trigger');
+    const agreement = root.querySelector<HTMLInputElement>(
+      '.app-toggle input[type="checkbox"]',
+    );
+    const agreementLabel = agreement?.closest('label') ?? null;
+    const view = root.querySelector<HTMLSelectElement>('.app-view-select');
+    const position = [
+      ...root.querySelectorAll<HTMLButtonElement>('.state-button'),
+    ];
+    if (!pool || !agreement || !view) {
+      throw new Error('the setup controls are not all present');
+    }
+    return {
+      pool: {
+        label: pool.getAttribute('aria-label') ?? '',
+        text: pool.querySelector('.scenario-picker-trigger-label')?.textContent ?? null,
+        checked: null,
+        disabled: null,
+        title: pool.getAttribute('title'),
+      },
+      agreement: {
+        label: agreementLabel?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+        checked: agreement.checked,
+        disabled: agreement.disabled,
+        title: agreementLabel?.getAttribute('title') ?? null,
+      },
+      view: {
+        value: view.value,
+        options: [...view.options].map((option) => ({
+          value: option.value,
+          text: option.textContent ?? '',
+          disabled: option.disabled,
+          title: option.getAttribute('title'),
+        })),
+      },
+      position: position.map((button) => ({
+        label: button.getAttribute('aria-label') ?? '',
+        disabled: button.disabled,
+        title: button.getAttribute('title'),
+      })),
+    };
+  }
+
+  it('opens from the top bar without re-dealing, remounting or resizing the scene', async () => {
+    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+    const state = useGameStore.getState().gameState;
+    const dealsBefore = wasmMock.generateCalls;
+    const scene = screen.getByTestId('renderer-host');
+    const stage = container.querySelector('main.table-3d') as HTMLElement;
+    // Nothing about the stage's own box is written by the HUD: it is fixed and
+    // the sheet is its sibling, so opening one cannot change the canvas size.
+    const stageStyle = stage.getAttribute('style');
+
+    const trigger = screen.getByRole('button', { name: 'Setup' });
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+    trigger.focus();
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+
+    expect(screen.getByRole('dialog', { name: 'Setup' })).toBeTruthy();
+    expect(useGameStore.getState().gameState).toBe(state);
+    expect(wasmMock.generateCalls).toBe(dealsBefore);
+    expect(screen.getByTestId('renderer-host')).toBe(scene);
+    expect(stage.getAttribute('style')).toBe(stageStyle);
+    // The scene is behind the modal, not inside it.
+    expect(stage.hasAttribute('inert')).toBe(true);
+    expect(stage.querySelector('.hud-sheet')).toBeNull();
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useGameStore.getState().gameState).toBe(state);
+    expect(wasmMock.generateCalls).toBe(dealsBefore);
+    expect(screen.getByTestId('renderer-host')).toBe(scene);
+    expect(stage.hasAttribute('inert')).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+  }, 60000);
+
+  it('hosts the 2D header’s controls with the same labels and disabled states', async () => {
+    const state = callState();
+
+    const stacked = renderStacked(state);
+    await settled();
+    expect(stacked.container.querySelector('.app-controls')).not.toBeNull();
+    const header = setupControls(stacked.container);
+    cleanup();
+
+    const three = renderThree(state);
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+    await settled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Setup' }));
+    });
+    const sheet = screen.getByRole('dialog', { name: 'Setup' });
+
+    // One comparison over the pool trigger, the agreement toggle, the View
+    // picker and the export/import pair: the sheet is the header with a
+    // different frame, never a second set of settings.
+    expect(setupControls(sheet)).toEqual(header);
+    expect(three.container.querySelector('.hud-sheet')).not.toBeNull();
+  }, 60000);
+
+  it('mounts one sheet at a time and closes the setup sheet on a deal', async () => {    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+    const dealsBefore = wasmMock.generateCalls;
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Setup' }));
+    });
+    const dialog = screen.getByRole('dialog', { name: 'Setup' });
+
+    // A pool deal is committed from inside the sheet; it closes the sheet and
+    // deals exactly one hand from the new pool.
+    await act(async () => {
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: /All scenarios/i }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: /Deal from pool/i }),
+      );
+    });
+
+    await waitFor(() =>
+      expect(wasmMock.generateCalls).toBe(dealsBefore + 1),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(container.querySelector('.hud-root')).not.toBeNull();
+  }, 60000);
+
+  it('opens the sheet from an imported position’s toast, with the full note', async () => {
+    const { container } = renderThree(callState());
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+
+    await act(async () => {
+      useGameStore.setState({ positionDescription: 'Line one\nLine two' });
+    });
+    const toast = container.querySelector(
+      '[data-toast="position-description"]',
+    ) as HTMLElement;
+    expect(toast).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(within(toast).getByRole('button', { name: 'Details' }));
+    });
+    // The toast carries the first line; the sheet carries it whole (§3, 32).
+    const dialog = screen.getByRole('dialog', { name: 'Setup' });
+    expect(dialog.textContent).toContain('Line one');
+    expect(dialog.textContent).toContain('Line two');
+  }, 60000);
 });
 
 describe('App 3D result card and verdict sheet (3D-H5)', () => {

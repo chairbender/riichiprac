@@ -67,6 +67,16 @@ describe('HUD toasts: the message set', () => {
     );
   });
 
+  it('gives the imported description a Details action into the setup sheet', () => {
+    const onOpen = vi.fn();
+    const toast = buildHudToasts({
+      positionDescription: 'Line one\nLine two',
+      onOpenPositionDescription: onOpen,
+    }).find((entry) => entry.id === 'position-description');
+    expect(toast?.actionLabel).toBe('Details');
+    expect(toast?.onAction).toBe(onOpen);
+  });
+
   it('is deterministic: the same state produces the same order', () => {
     const input = { statusMessage: 'Loading table…', fileNotice: 'Exported' };
     expect(buildHudToasts(input)).toEqual(buildHudToasts(input));
@@ -104,6 +114,24 @@ describe('HUD toasts: the stack', () => {
       <HudToastStack toasts={buildHudToasts({ statusMessage: 'Loading…' })} />,
     );
     expect(within(plain.container).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('wires the description toast’s Details action', () => {
+    const onOpen = vi.fn();
+    const toasts = buildHudToasts({
+      positionDescription: 'Line one\nLine two',
+      onDismissDescription: vi.fn(),
+      onOpenPositionDescription: onOpen,
+    });
+    const { container } = render(<HudToastStack toasts={toasts} />);
+    fireEvent.click(within(container).getByRole('button', { name: 'Details' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    // Dismiss is still its own control beside the action.
+    expect(
+      within(container).getByRole('button', {
+        name: 'Dismiss position description',
+      }),
+    ).toBeTruthy();
   });
 
   it('never renders more than the cap, even if the caller passes more', () => {
