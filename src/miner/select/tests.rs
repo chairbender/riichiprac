@@ -1246,6 +1246,126 @@ fn a_shard_run_writes_the_queue_the_report_and_the_latest_pointer() {
     assert!(!outcome.report.human_summary().is_empty());
 }
 
+/// A base ships in one pack: a decision already in another pack's body is not a
+/// candidate for this one.
+///
+/// The exclusion reads `pack_scenarios` (assembled bodies), so the staging rows
+/// an earlier `select` wrote do not block a candidate that the earlier pack then
+/// dropped at assembly.
+#[test]
+fn a_decision_another_pack_ships_is_not_selected_again() {
+    // Every fixture decision is recorded as shipped by a different pack; the
+    // selection then has no candidates and reports the reason.
+    let (_temp, root) = run_fixture();
+    let bytes = crate::replay::fixtures::gzip(&crate::replay::fixtures::to_jsonl(
+        &crate::replay::fixtures::all_events_game(),
+    ));
+    let replay_id = ReplayId::from_bytes(&bytes);
+    let file = crate::replay::mjai::ReplayReader::read_gzip(&bytes).expect("fixture parses");
+    let walk = crate::replay::walk::walk_replay(&file, replay_id.clone()).expect("walk");
+    let connection = open_miner_db(&root).expect("db");
+    connection
+        .execute(
+            "INSERT INTO packs (
+                pack_id, version, schema, sha256, bytes, scenario_count,
+                source_mix, licence, data_commercial_use, export_path, created_at
+             ) VALUES ('other-pack', 1, 'riichiprac.scenario-pack', ?1, 1, 1,
+                'book', 'CC-BY-4.0', 0, 'packs/other', '2026-11-17T00:00:00Z')",
+            rusqlite::params!["a".repeat(64)],
+        )
+        .expect("pack row");
+    let mut shipped = 0;
+    for (index, decision) in walk.decisions.iter().enumerate() {
+        connection
+            .execute(
+                "INSERT INTO decisions (
+                    decision_id, replay_id, family, kyoku, honba, event_index, turn,
+                    seat, decision_kind, state_hash, state_json, legal_actions,
+                    played_action
+                 ) VALUES (?1, ?2, 'mortal_mirror', 0, 0, ?3, 0, 0, 'self_turn',
+                    ?4, '{}', '[]', 'discard')",
+                rusqlite::params![
+                    decision.decision_id,
+                    replay_id.as_str(),
+                    i64::try_from(index).expect("index"),
+                    format!("hash-{index}"),
+                ],
+            )
+            .expect("decision row");
+        let scenario_id = format!("other-{index}");
+        connection
+            .execute(
+                "INSERT INTO selected_scenarios (
+                    scenario_id, decision_id, pack_id, lesson_id, family,
+                    correct_action, accepted, label_kind, label_source,
+                    provenance, created_at
+                 ) VALUES (?1, ?2, 'other-pack', 'fold_to_riichi', 'mortal_mirror',
+                    '1m', '1m', 'book', 'book', '{}', '2026-11-17T00:00:00Z')",
+                rusqlite::params![scenario_id, decision.decision_id],
+            )
+            .expect("shipped row");
+        connection
+            .execute(
+                "INSERT INTO pack_scenarios (
+                    pack_id, scenario_id, ordinal, lesson_id, family, state_hash,
+                    scenario_sha256, variant
+                 ) VALUES ('other-pack', ?1, ?2, 'fold_to_riichi', 'mortal_mirror',
+                    ?3, ?4, 0)",
+                rusqlite::params![
+                    scenario_id,
+                    i64::try_from(index).expect("index"),
+                    format!("hash-{index}"),
+                    "b".repeat(64),
+                ],
+            )
+            .expect("pack scenario row");
+        shipped += 1;
+    }
+    assert!(shipped > 0, "the fixture must walk a decision");
+    drop(connection);
+
+    let mut config = SelectionConfig {
+        pack_id: "s2-again".to_string(),
+        pack_size: 3,
+        held_out_share: 0.0,
+        quotas: QuotaConfig {
+            families: BTreeMap::from([(Family::MortalBest, 1.0)]),
+            max_section_share: 1.0,
+            max_decision_kind_share: 1.0,
+            max_turn_bucket_share: 1.0,
+            ..QuotaConfig::default()
+        },
+        ..SelectionConfig::default()
+    };
+    config.held_out_salt = "test".to_string();
+    let outcome = run_selection(
+        &root,
+        &SelectionOptions {
+            replays: None,
+            family: Some("mortal_mirror".to_string()),
+            limit: None,
+            extracted_only: false,
+            config,
+            workers: 1,
+            progress: false,
+            dry_run: true,
+        },
+    )
+    .expect("run");
+
+    assert_eq!(outcome.report.candidates_selected, 0);
+    assert_eq!(
+        outcome
+            .report
+            .funnel
+            .rejections()
+            .get("already_packed")
+            .copied(),
+        Some(3),
+        "the three labelled fixture candidates are already shipped"
+    );
+}
+
 #[test]
 fn a_dry_run_writes_nothing() {
     let (_temp, root) = run_fixture();

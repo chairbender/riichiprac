@@ -108,7 +108,13 @@ pub const VALUE_UNITS: &str = "model_utility";
 ///   (`sanshoku_pursuit`, `chiitoi_vs_toitoi`, `chiitoitsu_riichi_vs_dama`,
 ///   `open_hand_defense`). Every cached label is invalidated once, because the
 ///   new lessons change what `classify_unique` returns on those positions.
-pub const CLASSIFIER_VERSION: &str = "3";
+/// - `4` — ch8 completion (Q7): `kabe_no_chance` now precedes
+///   `suji_kabe_safety` in `CLASSIFIERS`. Both accept the complete-blockade
+///   (`NoChance` at row `BBB`) board and name the same tile, so no answer
+///   changes; the more specific lesson takes the attribution instead of the
+///   general ranking cell. Without this, no `kabe_no_chance` state in the
+///   corpus could ever be labelled as that lesson.
+pub const CLASSIFIER_VERSION: &str = "4";
 
 /// The note carried by every label, so a consumer cannot mistake Q for points.
 pub const Q_UNITS_NOTE: &str = "Q values are model utility, not points.";
