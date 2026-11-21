@@ -152,31 +152,6 @@
   overscroll-behavior: contain;
 }
 
-.scenario-picker-panel-head {
-  padding: 10px 12px 6px;
-  border-bottom: 1px solid #26303d;
-}
-
-.scenario-picker-heading {
-  color: #e7ecf3;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.scenario-picker-hint {
-  margin: 2px 0 0;
-  color: #8b94a7;
-  font-size: 0.66rem;
-  line-height: 1.35;
-}
-
-.scenario-picker-pack-note {
-  margin: 4px 0 0;
-  color: #7f9cba;
-  font-size: 0.62rem;
-  line-height: 1.35;
-}
-
 /* Replay / Generated / Both source filter -------------------------------- */
 
 .scenario-picker-source {
@@ -3193,4 +3168,12 @@
     width: 100%;
     max-height: min(88vh, 44rem);
   }
+}
+
+/* A pack status line, not an explanation: shown only while it says something. */
+.scenario-picker-pack-status {
+  margin: 8px 12px 0;
+  color: #7f9cba;
+  font-size: 0.62rem;
+  line-height: 1.35;
 }

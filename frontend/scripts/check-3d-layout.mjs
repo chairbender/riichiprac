@@ -101,6 +101,9 @@ async function loadModules() {
       wall: await server.ssrLoadModule(
         '/src/renderers/wall.ts',
       ),
+      hit: await server.ssrLoadModule(
+        '/src/renderers/three/hitTest.ts',
+      ),
     };
   } finally {
     await server.close();
@@ -169,7 +172,8 @@ function widestFixture(fixture) {
 }
 
 async function main() {
-  const { constants: C, layout: L, fixture: F, gaps: G, wall: W } = await loadModules();
+  const { constants: C, layout: L, fixture: F, gaps: G, wall: W, hit: HI } =
+    await loadModules();
 
   const fixture = F.boardFixture();
   const board = L.layoutBoard(fixture);
@@ -843,6 +847,50 @@ async function main() {
       ),
     `${formatNumber(C.COMPASS_PLATE.mobileSizeUnits, 4)} vs ${formatNumber(C.COMPASS_PLATE.sizeUnits, 4)}`,
   );
+
+  /* ------------------- the mobile compass readout -------------------- */
+  /*
+   * The sticks ride on the plate, and the phone's plate is small: they must be
+   * inside its projected outline and clear of the first discard row, which
+   * begins at its near edge (2026-11-22).
+   */
+  {
+    const width = 844;
+    const height = 390;
+    const viewport = { widthPx: width, heightPx: height };
+    const frame = L.frameForAspect(width / height, mobileBoard);
+    const plate = HI.compassPlateRect(frame, viewport, 'mobile');
+    const stickCorners = mobileBoard.sticks.flatMap((stick) => {
+      const yaw = (stick.yawDeg * Math.PI) / 180;
+      return L.orientedBoxCorners({
+        centre: stick.position,
+        axes: [
+          [Math.cos(yaw), 0, -Math.sin(yaw)],
+          [0, 1, 0],
+          [Math.sin(yaw), 0, Math.cos(yaw)],
+        ],
+        halfExtents: stick.sizeUnits.map((v) => v / 2),
+      }).map((corner) => L.projectToPixels(corner, frame, width, height));
+    });
+    const insidePlate = plate
+      ? stickCorners.every(
+          (pixel) =>
+            pixel.x >= plate.left &&
+            pixel.x <= plate.left + plate.width &&
+            pixel.y >= plate.top &&
+            pixel.y <= plate.top + plate.height,
+        )
+      : false;
+    const pondInner =
+      C.POND.rowRadiiUnits[C.POND.rows - 1] - C.TILE.heightUnits / 2;
+    const discardTop = L.projectToPixels([0, 0.29, pondInner], frame, width, height).y;
+    const clearOfDiscards = stickCorners.every((pixel) => pixel.y < discardTop);
+    check(
+      'the mobile sticks sit inside the plate and clear of the first discards',
+      insidePlate && clearOfDiscards,
+      `${mobileBoard.sticks.length} sticks`,
+    );
+  }
 
   /* ------------------------- the hand band --------------------------- */
   /*

@@ -109,7 +109,6 @@ export const ScenarioPicker = ({
   onChange,
   onConfigureHotseat,
   packStatus,
-  packCount,
   packError,
   preferReplay,
   onPreferReplayChange,
@@ -240,21 +239,11 @@ export const ScenarioPicker = ({
             draft.ids.length === 1 ? "" : "s"
           } · ${draftGroupCount} section${draftGroupCount === 1 ? "" : "s"}`;
 
-  /**
-   * Pack/source status line.
-   *
-   * It explains the RF3 source model: replay is the default where a lesson has
-   * enough reviewed bases, REPLAY rows deal that audited hand, the GENERATED
-   * row drills the same lesson, and the filter only changes which rows are
-   * listed. A failure note from a body that could not be delivered is appended.
+  /*
+   * Only a **status** line, and only when there is one (user request
+   * 2026-11-22: no explanation of the replay model — the REPLAY/GENERATED
+   * badges and the Source filter are left to speak for themselves).
    */
-  const sourceNote =
-    "REPLAY rows deal a real audited replay hand; GENERATED rows drill the same lesson with the generator. Replay is the default where a lesson has enough reviewed bases, and a launch’s first hand may fetch one replay body before it draws. Filtering changes the rows listed, not the ticks you already made.";
-  const knownPackNote =
-    packCount === 1
-      ? `Replay pack: ${sourceNote}`
-      : `${packCount} replay packs: ${sourceNote}`;
-
   const packNote =
     packStatus === "loading"
       ? "Loading replay packs…"
@@ -262,9 +251,7 @@ export const ScenarioPicker = ({
         ? `Replay packs unavailable: ${packError ?? "unknown error"}`
         : packStatus === "empty"
           ? "No replay packs are published yet, so every lesson stays generated."
-          : packError
-            ? `${knownPackNote} ${packError}`
-            : knownPackNote;
+          : packError;
 
   const panel = (
     <div
@@ -280,16 +267,11 @@ export const ScenarioPicker = ({
         ? { [nestedLayerAttribute]: "open" }
         : {})}
     >
-      <div className="scenario-picker-panel-head">
-        <div className="scenario-picker-heading">Scenario pool</div>
-        <p className="scenario-picker-hint">
-          Pick one, a whole book section, or any mix to randomise between.
-        </p>
-        <p className="scenario-picker-pack-note" role="status">
+      {packNote && (
+        <p className="scenario-picker-pack-status" role="status">
           {packNote}
         </p>
-      </div>
-
+      )}
       <fieldset className="scenario-picker-source">
         <legend className="scenario-picker-source-legend">Source</legend>
         <div className="scenario-picker-source-options">

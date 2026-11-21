@@ -25,7 +25,15 @@ function readForcedLandscape(): boolean {
     typeof window.matchMedia === 'function'
       ? window.matchMedia('(pointer: coarse)').matches
       : false;
-  return coarse && window.innerHeight > window.innerWidth;
+  /*
+   * A touch screen counts even when a mouse or pen is the primary pointer
+   * (2026-11-22): a phone with a Bluetooth mouse reports `(pointer: fine)` and
+   * was being left in portrait. A desktop with no touch points at all is still
+   * never turned.
+   */
+  const touch =
+    typeof navigator !== 'undefined' && (navigator.maxTouchPoints ?? 0) > 0;
+  return (coarse || touch) && window.innerHeight > window.innerWidth;
 }
 
 export function useForcedLandscape(): boolean {

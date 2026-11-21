@@ -205,7 +205,7 @@ export interface CompassBox {
 export const MIN_COMPASS_PX = 132;
 
 /** The mobile floor (2026-11-21): the smaller plate's readout still has to fit. */
-export const MIN_COMPASS_PX_MOBILE = 84;
+export const MIN_COMPASS_PX_MOBILE = 56;
 
 /**
  * The mobile box's minimum **width**.
@@ -245,9 +245,18 @@ export function compassBox(
   profile: LayoutProfile = 'desktop',
 ): CompassBox {
   if (profile === 'mobile') {
-    // The phone readout follows the plate's rectangle and its own floor.
+    /*
+     * The phone readout follows the plate's rectangle, but its **height** stays
+     * inside the plate's near edge: the first discard row begins where that edge
+     * ends, and a box as tall as the plate put the bottom score on top of the
+     * player's discards (2026-11-22). 0.75 of the plate's projected height,
+     * floored at 56 px so four rows of 9 px type still fit.
+     */
     const width = Math.max(rect.width, MIN_COMPASS_PX_MOBILE_WIDTH);
-    const height = Math.max(rect.height, MIN_COMPASS_PX_MOBILE);
+    const height = Math.max(
+      MIN_COMPASS_PX_MOBILE,
+      Math.min(rect.height * 0.75, rect.height - 8),
+    );
     return {
       left: rect.centreX - width / 2,
       top: rect.centreY - height / 2,

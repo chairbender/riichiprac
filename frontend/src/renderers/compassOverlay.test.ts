@@ -147,10 +147,14 @@ describe('compass model', () => {
     // its score corners are what run out of room first.
     const box = compassBox(rect);
     expect(box).toEqual({ left: 160, top: 40, width: 180, height: 180 });
-    // Mobile follows the well's rectangle per axis, with its own floors: 118 px
-    // wide (the corner rows need the column) and 84 px tall.
+    /*
+     * Mobile follows the well's rectangle: 118 px minimum wide (the corner rows
+     * need the column), and 0.75 of the well's height — never more than 8 px
+     * short of it — so the bottom row stays above the first discard row, with a
+     * 56 px floor. Here that is 135 px.
+     */
     const mobile = compassBox(rect, 'mobile');
-    expect(mobile).toEqual({ left: 100, top: 40, width: 300, height: 180 });
+    expect(mobile).toEqual({ left: 100, top: 62.5, width: 300, height: 135 });
     const mobileSmall = compassBox(
       { left: 0, top: 0, width: 91, height: 69, centreX: 50, centreY: 40 },
       'mobile',
@@ -161,7 +165,8 @@ describe('compass model', () => {
     expect(mobile.top + mobile.height / 2).toBe(130);
     // The type follows the shorter axis, inside a legible pair of bounds.
     expect(compassFontPx(box)).toBeCloseTo(180 * 0.08, 9);
-    expect(compassFontPx(mobile)).toBeCloseTo(180 * 0.08, 9);
+    // The mobile box's shorter side is its height (135 px here).
+    expect(compassFontPx(mobile, 'mobile')).toBeCloseTo(135 * 0.08, 9);
     // The floor is 11 px on desktop and 9 px in the mobile box.
     expect(compassFontPx({ ...box, width: 20, height: 20 })).toBe(11);
     expect(compassFontPx({ ...box, width: 20, height: 20 }, 'mobile')).toBe(9);
@@ -263,8 +268,13 @@ describe('compass projection', () => {
         Math.max(well.width, MIN_COMPASS_PX_MOBILE_WIDTH),
         6,
       );
+      // The height stays inside the plate's near edge, where the first discard
+      // row begins (2026-11-22).
       expect(mobile.height, viewport.name).toBeCloseTo(
-        Math.max(well.height, MIN_COMPASS_PX_MOBILE),
+        Math.max(
+          MIN_COMPASS_PX_MOBILE,
+          Math.min(well.height * 0.75, well.height - 8),
+        ),
         6,
       );
 

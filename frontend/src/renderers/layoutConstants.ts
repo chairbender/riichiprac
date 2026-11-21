@@ -102,7 +102,11 @@ export const STICK_MM = {
  * group.
  */
 /**
- * The compass sticks are drawn at **72 %** of the real 65 mm bar.
+ * The compass sticks are drawn at **50 %** of the real 65 mm bar (2026-11-22:
+ * 72 % was sized for the desktop plate; on the mobile plate the bars ran from
+ * the score rows out to its near edge and read as sitting among the discards).
+ * The radius below brings them in with it, so they cover the plate's middle
+ * rather than its rim.
  *
  * The model's proportions, elliptical cross-section, end cut and pip are the
  * real thing; only its scale is a readability compromise for the compass. A
@@ -112,7 +116,7 @@ export const STICK_MM = {
  * so they can sit closer to the center and leave space for the scores").
  * At 72 % the bar is 46.8 mm long and the four fit the inner ring cleanly.
  */
-const STICK_MODEL_SCALE = 0.72;
+const STICK_MODEL_SCALE = 0.5;
 
 export const STICK = {
   /** Linear scale from the real 65 x 7 x 3.5 mm spec to the drawn bar. */
@@ -128,7 +132,7 @@ export const STICK = {
    * band between the centre group (~0.8 out) and the score row's inner edge
    * (~1.15 out, once the row is centred in its third of the plate again).
    */
-  radiusUnits: 0.98,
+  radiusUnits: 0.72,
 } as const;
 
 /**

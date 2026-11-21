@@ -64,3 +64,27 @@ describe('useForcedLandscape', () => {
     expect(result.current).toBe(false);
   });
 });
+
+describe('useForcedLandscape: the touch fallback (2026-11-22)', () => {
+  it('turns a touch screen in portrait even when the pointer is fine', () => {
+    // A phone with a Bluetooth mouse reports `(pointer: fine)`; the touch points
+    // are what still make it a phone.
+    matchMedia.mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      configurable: true,
+      value: 5,
+    });
+    setViewport(412, 915);
+    const { result } = renderHook(() => useForcedLandscape());
+    expect(result.current).toBe(true);
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      configurable: true,
+      value: 0,
+    });
+  });
+});
