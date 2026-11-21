@@ -187,7 +187,7 @@ body. The six pre-existing bodies keep their content addresses.
 ## Selection
 
 Machine-readable report:
-[`testdata/reports/q7-ch8/selection-report.json`](../testdata/reports/q7-ch8/selection-report.json).
+[`testdata/reports/q7-ch8/selection-report.json`](testdata/reports/q7-ch8/selection-report.json).
 
 - 14 workers, 71 min 18 s wall (the `C9` corpus run shared the box for part of
   it).
@@ -230,8 +230,8 @@ The held-out set is not part of the pack and is not dispositioned.
 - **Bulk dispositions** (`review --verdicts`): 400 accepted, 0 rejected,
   0 pending, 400 valid reports.
 - **Sampled content review:** 260 rows
-  ([`review-sample.md`](../testdata/reports/q7-ch8/review-sample.md),
-  [`review-sample.json`](../testdata/reports/q7-ch8/review-sample.json)) —
+  ([`review-sample.md`](testdata/reports/q7-ch8/review-sample.md),
+  [`review-sample.json`](testdata/reports/q7-ch8/review-sample.json)) —
   per-lesson guarantees (30 each), per-family guarantees (20 each), and **all
   bases of the four lessons under 120**: 37 `kabe_double_one_chance`,
   39 `kabe_one_chance`, 28 `kabe_suji_defense` and 4 `open_hand_defense`, plus
@@ -300,7 +300,7 @@ stays one row away.
 
 ## Coverage
 
-[`coverage.json`](../testdata/reports/q7-ch8/coverage.json) names every hosted
+[`coverage.json`](testdata/reports/q7-ch8/coverage.json) names every hosted
 lesson and its floor decision. The hosted set now covers **28 lesson ids across
 seven packs, 26 of them replay-default, 9,328 reviewed bases** (RF5 measured
 22/25 and 8,942). Q7 flipped four lessons to replay-default:
@@ -336,7 +336,7 @@ content address.
 
 ## User sign-off
 
-The 260-row sample ([`review-sample.md`](../testdata/reports/q7-ch8/review-sample.md))
+The 260-row sample ([`review-sample.md`](testdata/reports/q7-ch8/review-sample.md))
 and the published pack were presented on 2026-11-21:
 `cd frontend && npm run dev` → `http://localhost:5173/?renderer=3d`, then pick
 `kabe_no_chance` under **Replay**. Sign-off: **pending** (see the task
@@ -352,5 +352,5 @@ sheet is the human content review).
 - [`replay-miner-operations.md`](replay-miner-operations.md) — selection scope,
   the cross-pack `already_packed` rule, review, assembly and manifest
   `lesson_counts`.
-- [`testdata/reports/b4-classifiers/label-yield-report.md`](../testdata/reports/b4-classifiers/label-yield-report.md)
+- [`testdata/reports/b4-classifiers/label-yield-report.md`](testdata/reports/b4-classifiers/label-yield-report.md)
   — the classifier-v3 yield this pack starts from.
