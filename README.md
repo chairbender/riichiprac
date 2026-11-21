@@ -128,12 +128,14 @@ it teaches. Picking one deals a real audited position shipped in the pack
 instead of generating a hand; it is laid out and graded through the normal
 table.
 
-Replay is the **default source** for a lesson whose packs reach the coverage
-floor (40 reviewed bases, read from the manifest's `lesson_counts`). Such a
-lesson lists its replay row first and keeps its generated drill as a secondary
-**GENERATED** row; **All scenarios (random)** draws the replay row. A lesson
-without enough coverage keeps the generated default, and its replay row, if a
-pack ships one, stays opt-in beside it.
+Replay is the **shipped default source** for a lesson whose packs reach the
+coverage floor (40 reviewed bases, read from the manifest's `lesson_counts`). Such
+a lesson lists its replay row first and keeps its generated drill as a secondary
+**GENERATED** row; **All scenarios (random)** draws the replay row, on the first
+deal and every later one. A lesson without enough coverage keeps the generated
+default, and its replay row, if a pack ships one, stays opt-in beside it. As of
+2026-11-20, 22 of the 25 hosted lessons are replay-default (8,942 reviewed
+bases); the generated drill is never removed.
 
 The picker's **Source** filter switches between **Replay**, **Generated** and
 **Both**:
@@ -532,20 +534,23 @@ than repeating one scenario. See
 [`q2-scale-up-2000.md`](q2-scale-up-2000.md) and
 [`q2-multi-threat.md`](q2-multi-threat.md).
 
-**Replay-first rollout (in progress).** Packs are not only extra drills. The
-product target is that replay scenarios become the **default and prominent**
-source for every lesson with enough reviewed coverage, while generated lessons
-remain available as the explicit alternative. A lesson without enough replay
-bases keeps the generated default, so the app never degrades. The picker's
-Replay / Generated / Both source filter now implements the opt-in: replay rows
-lead where covered, generated rows are still listed and selectable, and the
-**Generated** filter switches the default pool to generated drills. The
-**first deal** is replay-first as well (RF4): the launch fetches the manifest and
-one section body, shows a brief loading status, and falls back to the generated
-hand when offline, slow or errored. The coverage table, the four lessons that
-still need classifiers, the per-section pack plan, the task sequence and the
-measured cold-start cost are in
-[`replay-first-rollout.md`](replay-first-rollout.md); re-measure it with
+**Replay-first rollout (shipped 2026-11-20).** Packs are not only extra drills.
+Replay scenarios are the **default and prominent** source for every lesson with
+enough reviewed coverage, while generated lessons remain available as the
+explicit alternative. A lesson without enough replay bases keeps the generated
+default, so the app never degrades. The picker's Replay / Generated / Both
+source filter is the per-user rollback: replay rows lead where covered,
+generated rows are still listed and selectable, and the **Generated** filter
+switches the default pool to generated drills and persists
+`preferReplay: false`. The **first deal** is replay-first as well (RF4): the
+launch fetches the manifest and one section body, shows a brief loading status,
+and falls back to the generated hand when offline, slow or errored. The whole
+flip is one
+constant (`DEFAULT_PREFER_REPLAY` in `frontend/src/store/useSettingsStore.ts`)
+and the build-wide rollback is written down in
+[`replay-first-rollout.md`](replay-first-rollout.md#rolling-back-to-generated-first).
+The coverage table, the per-section pack plan, the task sequence and the
+measured cold-start cost are in that file too; re-measure with
 `cd frontend && npm run first-deal:measure`.
 Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
