@@ -460,8 +460,8 @@ includes its recogniser tests and a label-yield pass.
   `meld_or_not` is agreement-limited (23 labels, **23 contested, Mortal says Pon
   23/23** at 0.52–0.96) and `suji_trap_riichi`/`sanshoku_pursuit`/
   `ryankan_break`/`nobetan_keep`/`open_hand_defense` are constructed teaching
-  shapes (0–12 labels in 2,541 games; the open-hand *situation* occurs 25 times
-  per 100 games but the cell and agreement keep 7 stable). Recommendation:
+  shapes (0–33 labels each in 2,541 games; the open-hand *situation* occurs
+  25 times per 100 games but the cell and agreement keep 7 stable). Recommendation:
   grow the constructed shapes with V2 label-preserving variants and spend
   ~1,000 more Mortal games only on `pair_count_open`/`shouminkan_decision`;
   give `meld_or_not` dual-verdict contested drills or leave it generated. The
