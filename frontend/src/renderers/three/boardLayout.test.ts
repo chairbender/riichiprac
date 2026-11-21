@@ -283,23 +283,81 @@ describe('3D board layout: the pond', () => {
 });
 
 describe('3D board layout: melds', () => {
-  it('puts a meld to the right of the hand, with the called tile sideways', () => {
+  it('lays the melds to the right of the draw, called tile sideways', () => {
     const meld = board.foreground
       .filter((tile) => tile.seat === 0 && tile.zone === 'meld')
       .sort((left, right) => left.slot - right.slot);
+    const draw = board.foreground.find(
+      (tile) => tile.seat === 0 && tile.zone === 'draw',
+    )!;
     expect(meld).toHaveLength(3);
-    expect(meld[0].pose.position[0]).toBeGreaterThan(MELD.rowStartUnits - 1);
+    // The first meld starts one deliberate 4.2 mm clearance from the draw.
+    const meldLeft = meld[0].pose.position[0] - TILE.widthUnits / 2;
+    const drawRight = draw.pose.position[0] + TILE.widthUnits / 2;
+    expect(meldLeft - drawRight).toBeCloseTo(MELD.rowClearanceUnits, 9);
     expect(meld[1].sideways).toBe(true);
     expect(meld[1].pose.rollDeg).toBe(-90);
     expect(meld[2].pose.position[0]).toBeGreaterThan(meld[1].pose.position[0]);
     for (const tile of meld) {
-      // Lying face up at the hand's radius.
+      // Lying face up, its outer edge flush with the hand's front face: the
+      // human's melds sit one tile height in from the hand radius.
       expect(tile.pose.tiltDeg).toBe(-90);
       expect(tile.faceUp).toBe(true);
       expect(radialUnits(0, tile.pose.position)).toBeCloseTo(
-        handRadius(0, fixture.humanSeat),
+        handRadius(0, fixture.humanSeat) - TILE.heightUnits / 2,
         9,
       );
+    }
+    // An upright opponent hand reaches half a tile thickness past its radius, so
+    // that seat's melds stay on the hand radius.
+    const opponentMeld = board.foreground.find(
+      (tile) => tile.seat === 1 && tile.zone === 'meld',
+    )!;
+    expect(radialUnits(1, opponentMeld.pose.position)).toBeCloseTo(
+      handRadius(1, fixture.humanSeat),
+      9,
+    );
+  });
+
+  it('shifts the concealed hand left as melds take the row’s right end', () => {
+    const melded = layoutBoard(boardFixture({ meldCounts: [1, 0, 0, 0] }));
+    const plain = layoutBoard(boardFixture({ meldCounts: [0, 0, 0, 0] }));
+    const handLeft = (source: typeof board): number =>
+      Math.min(
+        ...source.foreground
+          .filter((tile) => tile.seat === 0 && tile.zone === 'hand')
+          .map((tile) => tile.pose.position[0] - TILE.widthUnits / 2),
+      );
+    expect(handLeft(melded)).toBeLessThan(handLeft(plain) - 0.1);
+  });
+
+  it('keeps every seat’s melds inside the meld-free board’s extents', () => {
+    const plain = layoutBoard(boardFixture({ meldCounts: [0, 0, 0, 0] }));
+    const melded = layoutBoard(
+      boardFixture({ meldCounts: [4, 4, 4, 4], kan: true }),
+    );
+    const corners = (source: typeof board) =>
+      source.tiles.flatMap((tile) =>
+        orientedBoxCorners(orientedBox(tile.pose)),
+      );
+    const envelope = corners(plain);
+    const minX = Math.min(...envelope.map((p) => p[0]));
+    const maxX = Math.max(...envelope.map((p) => p[0]));
+    const minZ = Math.min(...envelope.map((p) => p[2]));
+    const maxZ = Math.max(...envelope.map((p) => p[2]));
+    for (const seat of [0, 1, 2, 3] as const) {
+      const melds = melded.foreground.filter(
+        (entry) => entry.seat === seat && entry.zone === 'meld',
+      );
+      expect(melds.length).toBeGreaterThan(0);
+      for (const tile of melds) {
+        for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+          expect(corner[0]).toBeGreaterThanOrEqual(minX - 1e-9);
+          expect(corner[0]).toBeLessThanOrEqual(maxX + 1e-9);
+          expect(corner[2]).toBeGreaterThanOrEqual(minZ - 1e-9);
+          expect(corner[2]).toBeLessThanOrEqual(maxZ + 1e-9);
+        }
+      }
     }
   });
 
@@ -702,8 +760,13 @@ describe('3D board layout: camera framing', () => {
     );
     expect(frame.eye[2]).toBeCloseTo(frame.distanceUnits * Math.cos(pitch), 9);
     // The committed Shift Y is the reference's, and the solver only nudges it
-    // far enough to reach the safe area.
-    expect(frame.shiftNdcY).toBeGreaterThan(committedShiftNdcY(16 / 9));
+    // far enough to reach the safe area. With melds no longer the board's nearest
+    // content the hand is, and it lands within a pixel or two of the 2 % margin,
+    // so the nudge is a small part of the committed offset (and may now be
+    // downward, because the band is a touch high rather than a touch low).
+    expect(
+      Math.abs(frame.shiftNdcY - committedShiftNdcY(16 / 9)),
+    ).toBeLessThan(0.02);
   });
 
   it('projects the unsolved reference frame onto the signed-off pixels', () => {
@@ -772,11 +835,41 @@ describe('3D board layout: camera framing', () => {
         bottom = Math.min(bottom, 1 - pixel.y / height);
       }
     }
+    // The meld lines are pinned inside the meld-free hand's footprint, so the
+    // hand (not a side player's melds) is the board's nearest content and sits
+    // right on the 2 % safe-area edge.
     expect(bottom).toBeGreaterThanOrEqual(CAMERA.safeAreaMargin - 1e-9);
-    // The nearest content is not the hand but the left/right players' meld
-    // rows, which run along the near corners at their own (side) radius, so the
-    // hand's own margin is larger than the safe area. The gate bounds it.
-    expect(bottom).toBeLessThanOrEqual(0.07);
+    expect(bottom).toBeLessThanOrEqual(0.03);
+  });
+
+  it('holds the solved distance when every seat declares four melds', () => {
+    // The defect this task fixes: a side player's meld line used to run past the
+    // hand's end and become the board's nearest content, so the camera solved up
+    // to 28 units further back. The melds are now inside the meld-free board's
+    // extents, and the row's small extra width (four melds replacing twelve
+    // concealed tiles) costs under 2 % of the solve at the narrowest aspects and
+    // nothing at the wide ones.
+    for (const humanSeat of [0, 1, 2, 3] as const) {
+      const plain = layoutBoard(
+        boardFixture({ humanSeat, meldCounts: [0, 0, 0, 0] }),
+      );
+      const heavy = layoutBoard(
+        boardFixture({ humanSeat, meldCounts: [4, 4, 4, 4], kan: true }),
+      );
+      for (const aspect of CAMERA.supportedAspects) {
+        const before = frameForAspect(aspect, plain).distanceUnits;
+        const after = frameForAspect(aspect, heavy).distanceUnits;
+        expect(
+          Math.abs(after - before),
+          `human seat ${humanSeat} at ${aspect}`,
+        ).toBeLessThanOrEqual(0.02 * before + 1e-9);
+      }
+      // At the reference aspect the two frames are the same solve, to the digit.
+      expect(
+        frameForAspect(16 / 9, heavy).distanceUnits,
+        `human seat ${humanSeat} at 16:9`,
+      ).toBeCloseTo(frameForAspect(16 / 9, plain).distanceUnits, 9);
+    }
   });
 
   it('keeps every tile inside the safe area at every aspect', () => {

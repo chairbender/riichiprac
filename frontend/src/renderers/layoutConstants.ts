@@ -462,60 +462,50 @@ export const HAND = {
 } as const;
 
 /**
- * One seat's open-meld row: four slots to the right of the hand, outside the
- * wall ring at the hand's radius (the reference's `meld` block).
+ * One seat's open-meld line: every called meld in **one row** to that player's
+ * right, on the seat's own hand radius (task 261120-2225).
  *
- * The row is laid out as a sequence, not a fixed grid: an upright slot advances
- * by a 21 mm tile plus the 0.3 mm groove, and a sideways (called) slot advances
- * by its 28 mm long axis plus the groove, exactly the reference's
- * `calledWidthUnits`. A meld therefore occupies as many slots as it has tiles,
- * and consecutive melds follow each other along the row (the reference only
- * models the single 4-slot row). If a row would run past {@link MELD.maxRowUnits}
- * the next meld starts a row one pitch **toward the player** — away from the wall
- * ring — so a four-meld hand never leaves the mat and never reaches into the
- * wall; the hand now sits at 8.35, so stepping inward would collide.
+ * The line is a sequence, not a fixed grid: an upright tile advances by its
+ * 21 mm width and a sideways (called) tile by its 28 mm length, with a meld's
+ * own tiles touching (one slab, as in a real hand). The whole visible row —
+ * concealed hand, drawn tile, then every meld — is laid end to end around the
+ * hand's **meld-free right edge**: the right edge a full 13-tile hand plus its
+ * draw already occupies. Declaring a meld therefore slides the concealed hand
+ * left and puts the meld in the space that opens at that player's right; extra
+ * melds extend the line toward the hand instead of starting a second row. The
+ * row's small extra width (a meld replaces three concealed tiles) is split
+ * either side of that edge so neither end leaves the board's existing extents.
+ *
+ * That is what keeps the camera still. A side player's line runs along their own
+ * edge on screen; before this rule the row grew past the hand's end and became
+ * the board's nearest/farthest content, so `frameForAspect` had to solve further
+ * back (the "camera zooms out on melds" defect). `boardLayout.rowAnchorUnits` is
+ * the rule; no second row is ever needed.
  */
-/** The felt between the drawn tile's right edge and the meld row: 4.2 mm. */
+/** The felt between the drawn tile's right edge and the first meld: 4.2 mm. */
 const MELD_ROW_CLEARANCE_UNITS = 0.15;
 
 /**
- * The felt between two meld rows: 2.8 mm.
+ * The felt between two *different* melds: 2.8 mm.
  *
- * A meld's own tiles touch (they are one slab), but two *different* melds sit on
- * separate rows with visible felt between them — a deliberate separation, wide
- * enough that it never reads as a slot the camera could look through (the layout
- * gate's slot threshold is 1.4 mm).
+ * A meld's own tiles touch (they are one slab), but two melds in the line sit
+ * with visible felt between them — a deliberate separation, wide enough that it
+ * never reads as a slot the camera could look through (the layout gate's slot
+ * threshold is 1.4 mm).
  */
-const MELD_ROW_GAP_UNITS = 0.1;
+const MELD_GAP_UNITS = 0.1;
 
 export const MELD = {
-  /** A full row's nominal slots: two upright, the called tile, the kan extension. */
-  slots: 4,
   /** Advance past an upright meld tile: exactly its width. */
   uprightPitchUnits: TILE.widthUnits,
   /** Advance past a sideways (called) meld tile: exactly its height. */
   sidewaysPitchUnits: TILE.heightUnits,
   /** Meld tiles touch: a called meld is one slab, as in a real hand. */
   slotGapUnits: 0,
-  /**
-   * Tangential start of the row: the drawn tile's right edge plus
-   * {@link MELD.rowClearanceUnits}, so the row never grazes the draw.
-   */
-  rowStartUnits: HAND.drawOffsetUnits + TILE.widthUnits / 2 + MELD_ROW_CLEARANCE_UNITS,
-  /** The felt between the drawn tile and the meld row: 4.2 mm. */
-  rowClearanceUnits: 0.15,
-  /**
-   * Centre-line radius of the first meld row, at a **left/right** seat's hand
-   * radius. The near/far seats' melds use their own hand radius
-   * (`HAND.endSeatRadiusUnits`); `boardLayout.handRadius` is the rule.
-   */
-  rowRadiusUnits: HAND.backRadiusUnits,
-  /** Radius step for a second/third meld row: a tile height plus 2.8 mm felt. */
-  rowPitchUnits: TILE.heightUnits + MELD_ROW_GAP_UNITS,
-  /** Meld rows before a row has to keep growing along its own length. */
-  rowCount: 3,
-  /** Tangential limit of one row: the mat edge (12.5) less 0.1 units. */
-  maxRowUnits: 12.4,
+  /** The felt between the drawn tile and the first meld: 4.2 mm. */
+  rowClearanceUnits: MELD_ROW_CLEARANCE_UNITS,
+  /** The felt between two melds in the line: 2.8 mm. */
+  meldGapUnits: MELD_GAP_UNITS,
 } as const;
 
 /**

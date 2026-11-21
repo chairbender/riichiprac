@@ -21,8 +21,10 @@
  *  - the human hand is reclined 40° about its far bottom edge, opponents are
  *    upright and face-down, and the drawn tile sits exactly the tsumogiri gap
  *    from the 13-tile row (reproducing `HAND.drawOffsetUnits`);
- *  - melds sit right of the hand, the called tile turned sideways, and four
- *    melds (kans included) stay on the mat without overlapping;
+ *  - melds form one line at the hand's right, the called tile turned sideways,
+ *    four melds (kans included) stay on the mat without overlapping, and the
+ *    line never extends the meld-free board's extents or moves the solved
+ *    camera (task 261120-2225);
  *  - the mat and every tile are inside the safe area with the committed margin
  *    at every supported aspect, the hand's face-to-view angle is within the
  *    25° gate, and its long axis stays readable at the reference aspect.
@@ -205,7 +207,7 @@ async function main() {
     ['hand tiles / pitch / back radius', `${C.HAND.concealedCount} / ${formatNumber(C.HAND.pitchUnits, 6)} / ${formatNumber(C.HAND.backRadiusUnits)}`],
     ['hand recline / band / face-to-view max', `${C.HAND.reclineDeg}° / ${C.HAND.reclineBandDeg.join('–')}° / ${C.HAND.maxFaceToViewDeg}°`],
     ['drawn tile offset / tsumogiri gap', `${formatNumber(C.HAND.drawOffsetUnits, 6)} / ${formatNumber(C.HAND.drawGapUnits, 4)}`],
-    ['meld row start / radius / slots', `${formatNumber(C.MELD.rowStartUnits)} / ${formatNumber(C.MELD.rowRadiusUnits)} / ${C.MELD.slots}`],
+    ['meld line clearance / meld gap / slot gap', `${formatNumber(C.MELD.rowClearanceUnits, 4)} / ${formatNumber(C.MELD.meldGapUnits, 4)} / ${C.MELD.slotGapUnits}`],
     ['meld upright / sideways pitch', `${formatNumber(C.MELD.uprightPitchUnits, 6)} / ${formatNumber(C.MELD.sidewaysPitchUnits, 6)}`],
     ['dora tier / in from draw end / max', `${C.DORA.tier} / ${C.DORA.firstStackFromDrawEnd} / ${C.DORA.maxIndicators}`],
     ['point stick (l x w x h) / radius', `${formatNumber(C.STICK.lengthUnits)} x ${formatNumber(C.STICK.widthUnits)} x ${formatNumber(C.STICK.heightUnits)} / ${formatNumber(C.STICK.radiusUnits)}`],
@@ -259,12 +261,55 @@ async function main() {
     collisions.length ? collisions.slice(0, 3).join('; ') : `${board.tiles.length} tiles`,
   );
 
-  const widest = L.layoutBoard(widestFixture(F));
+  const widestSnapshot = widestFixture(F);
+  const widest = L.layoutBoard(widestSnapshot);
   const widestCollisions = overlaps(widest, L);
   check(
     'widest board (4 melds/seat, kans, 22 discards, 5 dora) stays separate',
     widestCollisions.length === 0,
     widestCollisions.length ? widestCollisions.slice(0, 3).join('; ') : `${widest.tiles.length} tiles`,
+  );
+
+  // The meld line's whole job (task 261120-2225) is to live inside the footprint
+  // a meld-free board already needs. Check it against the widest board's own
+  // human seat, so the claim covers all four seats' melds.
+  const meldFreeWidest = L.layoutBoard(
+    F.boardFixture({
+      humanSeat: widestSnapshot.humanSeat,
+      riverCounts: [22, 22, 22, 22],
+      meldCounts: [0, 0, 0, 0],
+      doraCount: 5,
+      riichiSeats: [0, 1, 2, 3],
+    }),
+  );
+  const envelope = (source) => {
+    const corners = source.tiles.flatMap((tile) =>
+      L.orientedBoxCorners(L.orientedBox(tile.pose)),
+    );
+    return {
+      minX: Math.min(...corners.map((corner) => corner[0])),
+      maxX: Math.max(...corners.map((corner) => corner[0])),
+      minZ: Math.min(...corners.map((corner) => corner[2])),
+      maxZ: Math.max(...corners.map((corner) => corner[2])),
+    };
+  };
+  const freeBox = envelope(meldFreeWidest);
+  const meldCorners = (source) =>
+    source.foreground
+      .filter((tile) => tile.zone === 'meld')
+      .flatMap((tile) => L.orientedBoxCorners(L.orientedBox(tile.pose)));
+  const outsideMeldFree = meldCorners(widest).filter(
+    (corner) =>
+      corner[0] < freeBox.minX - 1e-9 ||
+      corner[0] > freeBox.maxX + 1e-9 ||
+      corner[2] < freeBox.minZ - 1e-9 ||
+      corner[2] > freeBox.maxZ + 1e-9,
+  );
+  check(
+    'every meld stays inside the meld-free board’s extents',
+    meldCorners(widest).length > 0 && outsideMeldFree.length === 0,
+    `x ${formatNumber(freeBox.minX, 3)}..${formatNumber(freeBox.maxX, 3)}, ` +
+      `z ${formatNumber(freeBox.minZ, 3)}..${formatNumber(freeBox.maxZ, 3)}`,
   );
 
   const farSeat = (humanSeat + 2) % C.SEATS.count;
@@ -720,14 +765,72 @@ async function main() {
     referenceLongAxis + 1e-9 >= C.CAMERA.handLongAxisMinViewportFraction,
     `${formatNumber(referenceLongAxis * 100, 2)} %`,
   );
-  // The fixture gives every seat a meld, and a left/right seat's meld row runs
-  // along the near corner at its own (side) radius, so it is the board's nearest
-  // content, not the hand. With no opponent melds the hand is the nearest tile
-  // and sits at the 2 % safe area (the unit test and the report print both).
+  // Melds no longer take the near corners (task 261120-2225), so the human hand
+  // is the board's nearest content and sits on the 2 % safe-area edge.
   check(
-    'the human hand sits within 7 % of the frame bottom at 16:9',
-    referenceHandBottom <= 0.07 + 1e-9,
+    'the human hand sits within 3 % of the frame bottom at 16:9',
+    referenceHandBottom <= 0.03 + 1e-9,
     `${formatNumber(referenceHandBottom * 100, 2)} %`,
+  );
+
+  /* --------------------- meld framing stability ---------------------- */
+  // The acceptance for 261120-2225: declaring melds must not move the camera.
+  // The melds live inside the meld-free board's extents, so the wide landscape
+  // solves are identical; the row still grows by under 2 tile widths (a meld
+  // replaces three concealed tiles), and the residual at the narrow aspects is
+  // far below the old 13-28 unit zoom-out. The bound is 2 % of the solve and
+  // 0.75 units absolute.
+  console.log('\nmeld framing stability (distance Δ vs the meld-free board)');
+  console.log('  seat  case              16:9 Δ     worst Δ   at aspect   worst %');
+  const FRAMING_EPSILON_UNITS = 0.75;
+  const FRAMING_EPSILON_FRACTION = 0.02;
+  let meldStable = true;
+  let meldExactLandscape = true;
+  for (const seat of [0, 1, 2, 3]) {
+    const plain = L.layoutBoard(
+      F.boardFixture({ humanSeat: seat, meldCounts: [0, 0, 0, 0] }),
+    );
+    for (const [label, options] of [
+      ['one meld', { meldCounts: [1, 1, 1, 1] }],
+      ['four melds + kan', { meldCounts: [4, 4, 4, 4], kan: true }],
+    ]) {
+      const heavy = L.layoutBoard(F.boardFixture({ humanSeat: seat, ...options }));
+      let worst = { delta: 0, aspect: 0, fraction: 0 };
+      for (const aspect of aspects) {
+        const before = L.frameForAspect(aspect, plain).distanceUnits;
+        const after = L.frameForAspect(aspect, heavy).distanceUnits;
+        const delta = after - before;
+        const fraction = Math.abs(delta) / before;
+        if (Math.abs(delta) > Math.abs(worst.delta)) {
+          worst = { delta, aspect, fraction };
+        }
+        if (
+          Math.abs(delta) > FRAMING_EPSILON_UNITS + 1e-9 ||
+          fraction > FRAMING_EPSILON_FRACTION + 1e-9
+        ) {
+          meldStable = false;
+        }
+      }
+      const at169 =
+        L.frameForAspect(C.CAMERA.framingAspect, heavy).distanceUnits -
+        L.frameForAspect(C.CAMERA.framingAspect, plain).distanceUnits;
+      if (Math.abs(at169) > 1e-6) meldExactLandscape = false;
+      console.log(
+        `  ${seat}     ${label.padEnd(17)} ` +
+          `${formatNumber(at169, 3).padStart(7)}  ` +
+          `${formatNumber(worst.delta, 3).padStart(8)}  ` +
+          `${formatNumber(worst.aspect, 3).padStart(9)}  ` +
+          `${formatNumber(worst.fraction * 100, 2).padStart(7)} %`,
+      );
+    }
+  }
+  check(
+    'the 16:9 solve is identical with one or four melds, every human seat',
+    meldExactLandscape,
+  );
+  check(
+    'no meld declaration moves the solve by more than 2 % (0.75 units)',
+    meldStable,
   );
 
   const sixteenNine = L.frameForAspect(C.CAMERA.framingAspect, board);

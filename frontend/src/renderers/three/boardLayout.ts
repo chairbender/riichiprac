@@ -47,6 +47,10 @@
  *   in from the draw end, so no tile is ever drawn twice (`DORA`).
  * - Ponds fill from the far row toward the player, and the four overflow cells
  *   extend the nearest row (`POND`).
+ * - A seat's hand, draw and open melds are one contiguous row: the melds take
+ *   the row's right end (the player's right), the concealed hand slides left,
+ *   and the row stays inside the meld-free board's extents, so declaring a meld
+ *   does not move the camera (261120-2225; `rowAnchorUnits`, `meldRadius`).
  * - Opponent hands are upright and face-down; only the human's concealed hand
  *   and draw are face-up (the snapshot's own `faceUp` flag is kept for the
  *   human and overridden for the other seats).
@@ -496,23 +500,164 @@ function handPose(
   };
 }
 
-/** Where a hand row sits: tile centres and the right edge of the row. */
-function handRow(count: number): {
-  readonly centres: number[];
-  readonly rightEdge: number;
-} {
-  if (count === 0) {
-    return { centres: [], rightEdge: -TILE.widthUnits / 2 };
-  }
-  const half = (count - 1) / 2;
-  const centres = Array.from(
-    { length: count },
-    (_, index) => (index - half) * HAND.pitchUnits,
+/**
+ * The right edge a **meld-free** 13-tile hand occupies, without its draw.
+ *
+ * This is the anchor the whole visible row (hand, draw, melds) is laid around
+ * (`rowAnchorUnits` adds the tsumogiri draw when the seat has one). A meld-free
+ * row puts its draw's right edge exactly here, reproducing the committed
+ * `HAND.drawOffsetUnits` draw slot to the digit.
+ */
+const MELD_FREE_HAND_RIGHT_UNITS =
+  ((HAND.concealedCount - 1) / 2) * HAND.pitchUnits + TILE.widthUnits / 2;
+
+/**
+ * The right edge a seat's visible row is anchored to.
+ *
+ * A meld-free row sits exactly here. A meld row is longer than the hand and draw
+ * it replaces, and that growth is split evenly: half extends past this edge, half
+ * pushes the concealed hand left. Neither end leaves the board's existing
+ * extents, which is what keeps the framed camera still.
+ */
+export function rowAnchorUnits(hasDraw: boolean): number {
+  return hasDraw
+    ? MELD_FREE_HAND_RIGHT_UNITS + HAND.drawGapUnits + TILE.widthUnits
+    : MELD_FREE_HAND_RIGHT_UNITS;
+}
+
+/** One meld's tangential width: its tiles touch inside the slab. */
+function meldWidth(meld: TableSnapshot['seats'][number]['melds'][number]): number {
+  return meld.tiles.reduce(
+    (sum, tile, index) =>
+      sum +
+      (tile.sideways ? TILE.heightUnits : TILE.widthUnits) +
+      (index === 0 ? 0 : MELD.slotGapUnits),
+    0,
   );
-  return {
-    centres,
-    rightEdge: half * HAND.pitchUnits + TILE.widthUnits / 2,
-  };
+}
+
+/** A whole meld line's width, including the felt between different melds. */
+function meldLineWidth(
+  melds: TableSnapshot['seats'][number]['melds'],
+): number {
+  if (melds.length === 0) return 0;
+  return (
+    melds.reduce((sum, meld) => sum + meldWidth(meld), 0) +
+    (melds.length - 1) * MELD.meldGapUnits
+  );
+}
+
+/**
+ * The meld line's centre radius for a seat.
+ *
+ * A lying meld is flat, so its **outer bottom edge** is its lowest point on
+ * screen; a hand has a leaning face whose raised corners sit further out without
+ * projecting as low. The reclined human hand's front face is exactly at its hand
+ * radius, so the human's melds are pulled one tile height in, putting their outer
+ * edge flush with that face. Otherwise the meld line would be the board's nearest
+ * tile and `frameForAspect` would solve further back — the "camera zooms out on
+ * melds" defect. An upright opponent hand's body already reaches half a tile
+ * thickness past its radius, so a meld at the hand radius stays inside it.
+ *
+ * The inset keeps the line clear of the human's own (inset) end wall: the line's
+ * near edge sits 7.3 mm in front of that run's face, and the hand itself keeps
+ * its committed 36 mm to the run.
+ */
+function meldRadius(handRadiusUnits: number, isHuman: boolean): number {
+  return isHuman ? handRadiusUnits - TILE.heightUnits / 2 : handRadiusUnits;
+}
+
+/**
+ * One seat's whole visible row: concealed hand, drawn tile, then every meld, in
+ * a single line at the seat's hand radius.
+ *
+ * The row is anchored to {@link rowAnchorUnits} plus half of its growth, so with
+ * no melds it is the committed hand + draw layout, and each meld takes the row's
+ * right end while the concealed hand and the draw slide left (the player's left).
+ * Additional melds extend the line toward the hand, never into a second row, and
+ * the whole assembly stays inside the board's existing world extents.
+ */
+function placeSeatRow(
+  seatState: TableSnapshot['seats'][number],
+  seat: Seat,
+  radius: number,
+  isHuman: boolean,
+): BoardTile[] {
+  const melds = seatState.melds;
+  const handWidth = seatState.concealed.length * HAND.pitchUnits;
+  const drawWidth = seatState.draw ? HAND.drawGapUnits + TILE.widthUnits : 0;
+  const meldBlock =
+    melds.length > 0 ? MELD.rowClearanceUnits + meldLineWidth(melds) : 0;
+  const meldFreeWidth =
+    HAND.concealedCount * HAND.pitchUnits + drawWidth;
+  const growth = handWidth + drawWidth + meldBlock - meldFreeWidth;
+  // A meld replaces three concealed tiles, so the row grows by only the meld's
+  // extra width. Centre that growth on the meld-free anchor: the melds take the
+  // row's right end and the concealed hand slides left, but neither end has to
+  // absorb all of the extra span (which would push a side hand's end toward the
+  // camera and cost a little of the solved distance back at portrait aspects).
+  const left =
+    rowAnchorUnits(seatState.draw !== null) + growth / 2 -
+    (handWidth + drawWidth + meldBlock);
+  const meldRowRadius = meldRadius(radius, isHuman);
+
+  const placed: BoardTile[] = [];
+  const handFaceUp = isHuman;
+
+  seatState.concealed.forEach((tile, index) => {
+    const w = left + (index + 0.5) * HAND.pitchUnits;
+    placed.push(
+      boardTile(
+        tile,
+        seat,
+        handPose(seat, w, isHuman, radius),
+        handFaceUp && tile.faceUp,
+      ),
+    );
+  });
+
+  if (seatState.draw) {
+    const w = left + handWidth + HAND.drawGapUnits + TILE.widthUnits / 2;
+    placed.push(
+      boardTile(
+        seatState.draw,
+        seat,
+        handPose(seat, w, isHuman, radius),
+        handFaceUp && seatState.draw.faceUp,
+      ),
+    );
+  }
+
+  // The melds fill the line's right end, starting after the draw with the
+  // committed 4.2 mm clearance and separated from each other by 2.8 mm.
+  let cursor =
+    left + handWidth + drawWidth + (melds.length > 0 ? MELD.rowClearanceUnits : 0);
+  melds.forEach((meld, meldIndex) => {
+    if (meldIndex > 0) cursor += MELD.meldGapUnits;
+    for (const tile of meld.tiles) {
+      const half = tile.sideways
+        ? TILE.heightUnits / 2
+        : TILE.widthUnits / 2;
+      placed.push(
+        boardTile(
+          tile,
+          seat,
+          lyingPose(
+            seat,
+            cursor + half,
+            meldRowRadius,
+            TILE.thicknessUnits / 2,
+            seatYawDeg(seat),
+            tile.sideways ? -90 : 0,
+          ),
+          tile.faceUp,
+        ),
+      );
+      cursor += half * 2 + MELD.slotGapUnits;
+    }
+  });
+
+  return placed;
 }
 
 /**
@@ -555,62 +700,6 @@ function pondRows(
     else rows.push({ row, tiles: [...block] });
   }
   return rows;
-}
-
-/** One seat's melds, laid out along the row to its right. */
-function placeMelds(
-  melds: TableSnapshot['seats'][number]['melds'],
-  seat: Seat,
-  handRadiusUnits: number,
-): BoardTile[] {
-  const placed: BoardTile[] = [];
-  let row = 0;
-  /** Tangential distance from the row start to the next tile's near edge. */
-  let cursor = 0;
-  // Extra rows step *toward the player* (away from the wall ring), which is what
-  // the committed `MELD` doc says and what keeps them clear of the wall now that
-  // the hands sit at 8.35: stepping inward would put rows 2-3 inside the ring.
-  const rowRadius = (index: number): number =>
-    handRadiusUnits + Math.min(index, MELD.rowCount - 1) * MELD.rowPitchUnits;
-
-  for (const meld of melds) {
-    const width = meld.tiles.reduce(
-      (sum, tile, index) =>
-        sum +
-        (tile.sideways ? TILE.heightUnits : TILE.widthUnits) +
-        (index === 0 ? 0 : MELD.slotGapUnits),
-      0,
-    );
-    // Keep a whole meld on one row: wrap before its first tile rather than
-    // splitting it across two rows.
-    if (cursor > 0 && MELD.rowStartUnits + cursor + width > MELD.maxRowUnits) {
-      row += 1;
-      cursor = 0;
-    }
-    for (const tile of meld.tiles) {
-      const half = tile.sideways
-        ? TILE.heightUnits / 2
-        : TILE.widthUnits / 2;
-      const centre = MELD.rowStartUnits + cursor + half;
-      placed.push(
-        boardTile(
-          tile,
-          seat,
-          lyingPose(
-            seat,
-            centre,
-            rowRadius(row),
-            TILE.thicknessUnits / 2,
-            seatYawDeg(seat),
-            tile.sideways ? -90 : 0,
-          ),
-          tile.faceUp,
-        ),
-      );
-      cursor += half * 2 + MELD.slotGapUnits;
-    }
-  }
-  return placed;
 }
 
 /**
@@ -713,36 +802,12 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
 
   for (const seatState of snapshot.seats) {
     const seat = seatState.seat;
-    const isHuman = seat === humanSeat;
     const radius = handRadius(seat, humanSeat);
-    const row = handRow(seatState.concealed.length);
-    const handFaceUp = isHuman;
 
-    seatState.concealed.forEach((tile, index) => {
-      tiles.push(
-        boardTile(
-          tile,
-          seat,
-          handPose(seat, row.centres[index], isHuman, radius),
-          handFaceUp && tile.faceUp,
-        ),
-      );
-    });
-
-    if (seatState.draw) {
-      const w =
-        row.rightEdge + HAND.drawGapUnits + TILE.widthUnits / 2;
-      tiles.push(
-        boardTile(
-          seatState.draw,
-          seat,
-          handPose(seat, w, isHuman, radius),
-          handFaceUp && seatState.draw.faceUp,
-        ),
-      );
-    }
-
-    tiles.push(...placeMelds(seatState.melds, seat, radius));
+    // Hand, draw and melds are one right-aligned line: a meld takes the row's
+    // right end and slides the concealed hand left, so the row never grows past
+    // the meld-free hand's footprint.
+    tiles.push(...placeSeatRow(seatState, seat, radius, seat === humanSeat));
 
     for (const pondRow of pondRows(seatState.river)) {
       const u = POND.rowRadiiUnits[pondRow.row];

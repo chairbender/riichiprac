@@ -221,10 +221,12 @@ describe('HUD layout: the collision matrix (3d_hud.md §7.5)', () => {
   }
 
   it('puts the wrapped action row below the hand where it cannot fit above', () => {
-    // §7.4's exception, which is the fallback doing its job: at 9:16 a four-meld
-    // kan hand leaves no room for a two-row rail above, so the panel docks below
-    // the hand instead of overlapping the compass.
-    const stage = { width: 810, height: 1440 };
+    // §7.4's exception, which is the fallback doing its job: on a phone-sized
+    // 9:16 stage a four-meld kan hand leaves no room for a two-row rail above, so
+    // the panel docks below the hand instead of overlapping the compass. (The
+    // gate aspect 810 x 1440 now fits the rail above, because the 261120-2225
+    // camera change brought the board in; this stage still exercises the branch.)
+    const stage = { width: 450, height: 800 };
     const scene = sceneFor(stage, HAND_STATES[5].options);
     const layout = layoutFor(stage, scene, {
       slot: 'actions',
@@ -252,20 +254,21 @@ describe('HUD layout: the collision matrix (3d_hud.md §7.5)', () => {
 
 describe('HUD layout: the published composition (§5, §7.4)', () => {
   /*
-   * The reference hand (one meld per seat), CSS px, DPR 1. These are the values
-   * in 3d_hud.md: the panel's and the result card's top edges, where the sheet
-   * reaches, and the compass clearance that was signed off.
+   * The reference hand (one meld per seat), CSS px, DPR 1. Re-measured after
+   * task 261120-2225 pinned the meld lines inside the meld-free hand's footprint
+   * (the camera no longer pulls back for melds, so the board is ~5 % larger and
+   * the hand band and every panel under it sit lower). The composition rules are
+   * unchanged; only the projection moved. Sign-off for the new numbers is the
+   * user's (AGENTS.md §6), and `3d_hud.md` §5/§7.4 carries the same table.
    */
   const GOLDEN = [
-    { stage: GATE_STAGES[0], panel: 826, result: 806, sheetBottom: 862, clearance: 171 },
-    { stage: GATE_STAGES[1], panel: 822, result: 802, sheetBottom: 858, clearance: 179 },
-    { stage: GATE_STAGES[2], panel: 718, result: 698, sheetBottom: 754, clearance: 154 },
-    { stage: GATE_STAGES[3], panel: 713, result: 693, sheetBottom: 749, clearance: 134 },
-    { stage: GATE_STAGES[4], panel: 662, result: 642, sheetBottom: 698, clearance: 84 },
-    { stage: GATE_STAGES[5], panel: 782, result: 762, sheetBottom: 818, clearance: 100 },
-    // 9:16: the brand line made the bar taller, so the sheet's bottom is now
-    // the collapsed hint panel's top (910) rather than the 832 px cap.
-    { stage: GATE_STAGES[6], panel: 874, result: 854, sheetBottom: 910, clearance: 81 },
+    { stage: GATE_STAGES[0], panel: 869, result: 849, sheetBottom: 905, clearance: 186 },
+    { stage: GATE_STAGES[1], panel: 866, result: 846, sheetBottom: 902, clearance: 195 },
+    { stage: GATE_STAGES[2], panel: 757, result: 737, sheetBottom: 793, clearance: 169 },
+    { stage: GATE_STAGES[3], panel: 727, result: 707, sheetBottom: 763, clearance: 143 },
+    { stage: GATE_STAGES[4], panel: 673, result: 653, sheetBottom: 709, clearance: 92 },
+    { stage: GATE_STAGES[5], panel: 788, result: 768, sheetBottom: 824, clearance: 105 },
+    { stage: GATE_STAGES[6], panel: 880, result: 860, sheetBottom: 916, clearance: 85 },
   ] as const;
 
   for (const golden of GOLDEN) {
@@ -305,8 +308,8 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
 
   it('docks the panel below the hand on both phone rows (§5)', () => {
     const cases = [
-      { stage: GATE_STAGES[7], top: 574 },
-      { stage: GATE_STAGES[8], top: 410 },
+      { stage: GATE_STAGES[7], top: 577 },
+      { stage: GATE_STAGES[8], top: 413 },
     ] as const;
     for (const { stage, top } of cases) {
       const scene = sceneFor(stage, {});
@@ -514,8 +517,9 @@ describe('HUD layout: the panel rows (3d_hud.md §5, 3D-H3)', () => {
   });
 
   it('keeps the hint-only panel’s compass clearance unchanged at the worst aspect', () => {
-    // H2 measured 32 px for the one-row rail at 9:16 with a four-meld kan hand;
-    // the 40 px hint-only panel is shorter, so it cannot be worse.
+    // §7.4 measures 83 px for the one-row rail at 9:16 with a four-meld kan hand
+    // (32 px in H2, before 261120-2225 brought the board in); the 40 px hint-only
+    // panel is shorter, so it cannot be worse.
     const stage = GATE_STAGES[6];
     const scene = sceneFor(stage, HAND_STATES[5].options);
     const hint = layoutFor(stage, scene, {
