@@ -808,19 +808,6 @@
   overscroll-behavior: contain;
 }
 
-/* Utilities -------------------------------------------------------------- */
-
-.hud-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
 
 /* The setup sheet's two pages (2026-11-21) ------------------------------- */
 
@@ -948,78 +935,4 @@
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
-}
-
-/* The setup sheet's two pages (2026-11-21) ------------------------------- */
-
-/*
- * The Scenario row on the settings page is a navigation control, not a
- * dropdown: it says which pool is staged and opens the pool page, which is the
- * only place the list is drawn.
- */
-.hud-setup-scenario-row {
-  display: flex;
-  align-items: center;
-  gap: var(--hud-space);
-  width: 100%;
-  min-height: var(--hud-tap);
-  box-sizing: border-box;
-  padding: 8px 12px;
-  font: inherit;
-  font-size: var(--hud-text-sm);
-  color: var(--hud-text);
-  text-align: left;
-  background-color: rgba(26, 42, 60, 0.7);
-  border: 1px solid var(--hud-border-accent);
-  border-radius: var(--hud-radius-control);
-  cursor: pointer;
-}
-
-.hud-setup-scenario-row:hover {
-  background-color: rgba(36, 56, 78, 0.9);
-}
-
-.hud-setup-scenario-row:focus-visible {
-  outline: 2px solid var(--hud-focus);
-  outline-offset: 2px;
-}
-
-.hud-setup-scenario-value {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hud-setup-scenario-go {
-  flex: 0 0 auto;
-  color: var(--hud-accent);
-  font-size: var(--hud-text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-/*
- * The pool page is one scrolling column under the sheet's fixed header (user
- * request 2026-11-22): the sheet body scrolls the whole page — controls, list
- * and Deal/Cancel together — so nothing is pinned and nothing is trapped in a
- * box too short to scroll. Only the top bar with the close button stays put.
- */
-.hud-setup-sheet--pool .scenario-picker--page {
-  display: block;
-}
-
-.hud-setup-sheet--pool .scenario-picker-panel {
-  position: static;
-  width: 100%;
-  max-height: none;
-  border: 0;
-  border-radius: 0;
-  background-color: transparent;
-}
-
-/* The list grows with the page instead of scrolling inside it. */
-.hud-setup-sheet--pool .scenario-group-list {
-  overflow: visible;
 }

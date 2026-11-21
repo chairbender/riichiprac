@@ -585,3 +585,25 @@ describe("pack manifest states", () => {
     );
   });
 });
+
+describe('the replay footnote (2026-11-22)', () => {
+  it('marks Replay with an asterisk and explains it under the controls', async () => {
+    const user = userEvent.setup();
+    renderPicker({ packStatus: 'ready', packCount: 1 });
+    const panel = await openPanel(user);
+
+    // The asterisk rides the Replay source option.
+    const replay = within(panel).getByRole('radio', { name: /Replay/ });
+    const label = replay.closest('label');
+    expect(label?.textContent?.replace(/\s+/g, '')).toContain('Replay*');
+
+    // And the note is the last thing in the panel, so every view that hosts the
+    // picker shows it: the 2D popover and the 3D sheet's pool page.
+    expect(
+      within(panel).getByText(
+        '* Scenarios from replays of AI self play matches',
+      ),
+    ).toBeTruthy();
+    expect(panel.lastElementChild?.className).toBe('scenario-picker-footnote');
+  });
+});

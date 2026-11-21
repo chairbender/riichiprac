@@ -545,3 +545,18 @@ describe("Setup sheet: the pool is a page (2026-11-21)", () => {
     expect(document.querySelector(".hud-setup-sheet--pool")).not.toBeNull();
   });
 });
+
+describe('Setup sheet: the pool page explanation (2026-11-22)', () => {
+  it('carries the replay footnote inside the pool page', () => {
+    render(<Harness />);
+    const page = openPool();
+    expect(
+      within(page).getByText('* Scenarios from replays of AI self play matches'),
+    ).toBeTruthy();
+    // The marker is on the Replay source option, next to the filter itself.
+    const replay = within(page).getByRole('radio', { name: /Replay/ });
+    expect(replay.closest('label')?.textContent?.replace(/\s+/g, '')).toContain(
+      'Replay*',
+    );
+  });
+});

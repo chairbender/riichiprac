@@ -3177,3 +3177,20 @@
   font-size: 0.62rem;
   line-height: 1.35;
 }
+
+/* The Replay filter's footnote marker, and the footnote itself. */
+.scenario-picker-asterisk {
+  margin-left: 1px;
+  vertical-align: super;
+  font-size: 0.8em;
+  line-height: 0;
+}
+
+.scenario-picker-footnote {
+  margin: 0;
+  padding: 6px 12px 8px;
+  border-top: 1px solid #26303d;
+  color: #7f9cba;
+  font-size: 0.62rem;
+  line-height: 1.35;
+}

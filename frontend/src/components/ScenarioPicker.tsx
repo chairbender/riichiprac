@@ -288,7 +288,14 @@ export const ScenarioPicker = ({
                 checked={sourceFilter === filter.id}
                 onChange={() => changeSourceFilter(filter.id)}
               />
-              <span>{filter.label}</span>
+              <span>
+                {filter.label}
+                {filter.id === "replay" && (
+                  <span className="scenario-picker-asterisk" aria-hidden="true">
+                    *
+                  </span>
+                )}
+              </span>
             </label>
           ))}
         </div>
@@ -441,6 +448,14 @@ export const ScenarioPicker = ({
           </button>
         </div>
       </div>
+      {/*
+        The one explanation the picker carries (user request 2026-11-22), under
+        the controls in every view that hosts it: the 2D header's popover and the
+        3D setup sheet's pool page.
+      */}
+      <p className="scenario-picker-footnote">
+        * Scenarios from replays of AI self play matches
+      </p>
     </div>
   );
 
