@@ -376,6 +376,63 @@ describe('App replay-first first deal (RF4)', () => {
     );
   });
 
+  it('deals the generated hand when no pack is published', async () => {
+    wasmMock.generatedJson = JSON.stringify(generatedState);
+    const calls: string[] = [];
+    const emptyManifest = JSON.stringify({
+      schema: 'riichiprac.scenario-pack-manifest',
+      version: 1,
+      updated_at: '2026-11-19T00:00:00Z',
+      packs: [],
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (url === manifestUrl) {
+          return new Response(emptyManifest, {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+
+    render(<App />);
+
+    await expectGeneratedHand();
+    expect(bodyCalls(calls)).toEqual([]);
+    expect(useGameStore.getState().error).toBeNull();
+  });
+
+  it('falls back when the first replay body fails its hash', async () => {
+    wasmMock.generatedJson = JSON.stringify(generatedState);
+    const user = userEvent.setup();
+    // Valid-looking gzip bytes that do not match the manifest's byte count and
+    // SHA-256: the loader must reject them before parsing anything.
+    const calls = stubFetch(
+      () => new Response(new Uint8Array([0x1f, 0x8b, 1, 2, 3, 4]), { status: 200 }),
+    );
+
+    render(<App />);
+
+    await expectGeneratedHand();
+    expect(bodyCalls(calls)).toEqual([PACK_BODY_URL]);
+    expect(useGameStore.getState().error).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    const trigger = screen.getByTitle(
+      'Choose one lesson, all scenarios, or a pool to randomise between',
+    );
+    await user.click(trigger);
+    const panel = screen.getByRole('dialog', { name: 'Scenario pool' });
+    expect(within(panel).getByRole('status').textContent).toContain(
+      'could not be delivered',
+    );
+  });
+
   it('deals the generated hand when the replay manifest misses its budget', async () => {
     wasmMock.generatedJson = JSON.stringify(generatedState);
     const calls: string[] = [];

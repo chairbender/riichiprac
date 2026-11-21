@@ -24,7 +24,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
@@ -178,7 +178,9 @@ function main() {
     load_average_1m: Number(loadavg()[0].toFixed(2)),
     runs: args.runs,
     manifest: {
-      path: args.manifest,
+      // Relative to the working directory the measurement ran from, so the
+      // committed report never embeds a worktree path that later disappears.
+      path: relative(process.cwd(), args.manifest),
       bytes: manifestBytes.byteLength,
       parse_ms: Number(manifestParseMs.toFixed(2)),
       packs: packs.length,
