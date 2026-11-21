@@ -339,9 +339,15 @@ content address.
 The 260-row sample ([`review-sample.md`](testdata/reports/q7-ch8/review-sample.md))
 and the published pack were presented on 2026-11-21:
 `cd frontend && npm run dev` → `http://localhost:5173/?renderer=3d`, then pick
-`kabe_no_chance` under **Replay**. Sign-off: **pending** (see the task
-hand-off; the module-level numbers above are the scripted evidence, the sample
-sheet is the human content review).
+`kabe_no_chance` under **Replay**.
+
+**User sign-off: approved 2026-11-21** for the 386-base, 0-variant pack and the
+sampled content review, including the `open_hand_defense` opt-in row and the
+`defense_stuck_heuristic`/kabe rows recovered from the older ch. 8 pack's
+pack-size share. The only open question the user left for later is cosmetic: a
+lesson carried by two packs lists two `(replay)` rows in the picker (the
+completion pack supplies the default). The scripted evidence is in
+`testdata/reports/q7-ch8/`.
 
 ## Related links
 

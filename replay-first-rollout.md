@@ -495,7 +495,7 @@ includes its recogniser tests and a label-yield pass.
   ids replay-default, 9,328 reviewed bases across seven packs. Evidence:
   `testdata/reports/q7-ch8/` and
   [`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md). User sign-off:
-  pending (see the task hand-off).
+  **approved 2026-11-21** for the 386-base pack and the 260-row sample.
 
 **RF5 — Flip to replay-first by default** (`riichiprac`, worktree)
 - Turn `preferReplay` on for the build after coverage is sufficient; keep the
