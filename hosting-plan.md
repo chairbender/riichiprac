@@ -469,11 +469,11 @@ the same content address downloads nothing; a corrupt or evicted entry is
 re-fetched and a cache failure is ignored. Replay is the **default source** for
 a lesson at or above the coverage floor, so `all` deals its replay row — on the
 first deal (RF4 fetches the best-covered section body under a 2.5 s budget and
-falls back to generated) and on every later one. The PACK badge remains on the
-row, the generated drill is the GENERATED opt-in, and `preferReplay: false`
-(the Generated filter) makes the launch download the manifest only. Details and
-evidence: P3 in `replay-implementation-plan.md`; the flip and its rollback in
-[`replay-first-rollout.md`](replay-first-rollout.md).
+falls back to generated) and on every later one. The **REPLAY** badge remains on
+the row, the generated drill is the **GENERATED** opt-in, and
+`preferReplay: false` (the Generated filter) makes the launch download the
+manifest only. Details and evidence: P3 in `replay-implementation-plan.md`; the
+flip and its rollback in [`replay-first-rollout.md`](replay-first-rollout.md).
 
 **Manual setup for a mirror or a Release copy** (needs credentials):
 

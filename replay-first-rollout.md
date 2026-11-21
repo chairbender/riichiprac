@@ -171,19 +171,30 @@ hand and leaves the reason in the picker's pack note.
 three states — Replay, Generated, Both — plus the per-row source labels. A
 lesson at or above the floor lists its replay row first and its generated row
 second, marked **GENERATED** as the opt-in alternative; a lesson below the floor
-keeps the pre-RF2 order (generated, then its opt-in replay row) and a lesson
-with no replay row is always listed as generated, even under the Replay filter,
-so it stays reachable. Filtering changes which rows are listed, not the ticks
-already made. The Generated filter is also the user-facing form of
-`preferReplay`: it persists the setting as off and makes `all` deal generated
-ids, while Replay and Both turn it back on. `mergePackLessons` now copies each
-row's reviewed-base count onto `pack.bases`, and `defaultScenarioIds` expands
-`all` from the merged catalogue so the picker's ticks match what the deal will
-actually draw (a covered lesson stands for its replay row). The picker's pack
-note explains the model instead of calling replay rows opt-in. Tests cover the
-filter's DOM/ARIA, row order and badges, tab order into the filter, the filter
-and ticks surviving a selection change, and both row kinds still dealing their
-own lesson.
+keeps the pre-RF2 order (generated, then its opt-in replay row). Filtering
+changes which rows are listed, not the ticks already made. The Generated filter
+is also the user-facing form of `preferReplay`: it persists the setting as off
+and makes `all` deal generated ids, while Replay and Both turn it back on.
+`mergePackLessons` now copies each row's reviewed-base count onto `pack.bases`,
+and `defaultScenarioIds` expands `all` from the merged catalogue so the picker's
+ticks match what the deal will actually draw (a covered lesson stands for its
+replay row). The picker's pack note explains the model instead of calling replay
+rows opt-in. Tests cover the filter's DOM/ARIA, row order and badges, tab order
+into the filter, the filter and ticks surviving a selection change, and both row
+kinds still dealing their own lesson.
+
+**Update (2026-11-20, task 261120-1718).** One user-facing term wins: **Replay**
+(the user's choice; `cc-task show 261120-1718`). The Replay filter, the row
+badge (**REPLAY**, replacing PACK), the note ("REPLAY rows deal…"), the tooltips
+and the docs all use it; `pack` stays the internal/corpus name for the published
+artifact. The filter is now **exclusive**: Replay lists replay rows only and
+never a generated row, Generated lists generated rows only, and Both is
+unchanged. A lesson with no replay row is therefore reachable only under
+Generated or Both; when no replay rows are published the panel's group list
+shows an empty state that says so instead of generated rows. The default pool
+(`allScenarioIds` / `selectionPool` / `defaultScenarioIds`) is unchanged: it is
+still the replay-first per-lesson pool RF2 landed, and the filter only changes
+which rows are listed.
 
 ### Per-lesson counts in the manifest
 
@@ -551,7 +562,7 @@ leaving a stale blob in charge.
 What a rollback does **not** need: changing the manifest schema or
 `lesson_counts`, rebuilding packs, removing the Replay/Generated/Both filter,
 or removing the `RF4` bootstrap code. With the setting off, the bootstrap
-returns before it fetches a body; the filter and PACK/GENERATED badges still
+returns before it fetches a body; the filter and REPLAY/GENERATED badges still
 describe rows a user can pick by name. If the whole source model is ever retired
 rather than defaulted off, the touch points are `allScenarioIds`/
 `defaultScenarioIds` (drop the replay substitution), the bootstrap branch in
@@ -607,8 +618,9 @@ Create the current wave only:
 
 Later waves, as captured on 2026-11-19: RF4 `261119-2159` (landed), Q4
 `261119-2335` (landed), Q5 `261119-2336` (landed), C9 `261119-233553`, RF5
-`261119-2340` (landed 2026-11-20), Q6 `261120-1609` (landed). Q7 and D1 are not
-captured yet; create them when the remaining coverage lands.
+`261119-2340` (landed 2026-11-20), Q6 `261120-1609` (landed), Q7 `261120-2158`
+(captured 2026-11-20). D1 is not captured yet; create it when the real-game
+source question is taken up.
 
 ## Expected end state
 

@@ -123,8 +123,8 @@ pool never fires a burst of generations or Mortal forward passes.
 ### Replay packs
 
 Published replay packs ship real audited positions. The picker merges one
-**PACK** row per pack lesson, labelled `(replay)`, next to the generated lesson
-it teaches. Picking one deals a real audited position shipped in the pack
+**REPLAY** row per pack lesson, labelled `(replay)`, next to the generated
+lesson it teaches. Picking one deals a real audited position shipped in the pack
 instead of generating a hand; it is laid out and graded through the normal
 table.
 
@@ -142,8 +142,9 @@ The picker's **Source** filter switches between **Replay**, **Generated** and
 
 * **Both** lists every row — replay first where covered, generated first
   elsewhere;
-* **Replay** lists replay rows and keeps a generated row only for a lesson that
-  has no replay row, so nothing becomes unreachable;
+* **Replay** lists replay rows only. A lesson with no replay row is reachable
+  under Generated or Both, and when no replay rows are published the filter's
+  list says so instead of showing generated rows;
 * **Generated** lists generated drills only and makes the default pool generated
   too. It is the explicit opt-in for generated drills and persists as the
   `preferReplay` setting; choosing Replay or Both turns the replay default back

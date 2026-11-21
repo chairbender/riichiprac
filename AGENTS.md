@@ -161,16 +161,20 @@ governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
 * **Visual Rules:** Riichi discards must be horizontal in the river. In the 2D views, rotate the
   tile glyph and keep the tile upright; never rotate a pre-shaded tile image. In 3D, lay the tile
   body sideways. Riichi sticks must be visibly rendered for players who have called Riichi.
-* **Scenario sources (replay-first, shipped 2026-11-20):** replay packs are the
-  default and prominent source for every lesson with shipped coverage (22 of 25
-  hosted lessons); the generated drill remains available behind the picker's
-  Generated filter (`preferReplay: false`, persisted) or its GENERATED row. A
-  lesson without enough reviewed replay bases keeps its generated default. The
-  covered/uncovered decision is RF2's manifest-driven coverage model and the
-  first deal is replay-first too (RF4), so do not re-implement either in React.
-  The build-wide flip is `DEFAULT_PREFER_REPLAY` in
-  `frontend/src/store/useSettingsStore.ts`; the full rollback and the coverage
-  floor are in `replay-first-rollout.md`.
+* **Scenario sources (replay-first, shipped 2026-11-20):** replay rows — the
+  real played games shipped as replay packs, badged **REPLAY** and listed under
+  the picker's **Replay** source filter — are the default and prominent source
+  for every lesson with shipped coverage (22 of 25 hosted lessons); generated
+  lessons remain available as the opt-in/fallback alternative (the **Generated**
+  filter, `preferReplay: false` persisted, and the **GENERATED** badge). The
+  filters are exclusive: Replay lists replay rows only, Generated lists generated
+  rows only, and Both lists every row, so a lesson without a replay row is
+  reachable under Generated or Both. A lesson without enough reviewed replay
+  bases keeps its generated default. The covered/uncovered decision is RF2's
+  manifest-driven coverage model and the first deal is replay-first too (RF4), so
+  do not re-implement either in React. The build-wide flip is
+  `DEFAULT_PREFER_REPLAY` in `frontend/src/store/useSettingsStore.ts`; the full
+  rollback and the coverage floor are in `replay-first-rollout.md`.
 
 ## 5. Agent Workflow Rules
 * Always write WASM-compatible Rust tests (`#[wasm_bindgen_test]`) to verify generator logic before attempting to render the state in React.

@@ -46,7 +46,7 @@ Commands and captured output:
 
 | Command | Result | Evidence |
 | --- | --- | --- |
-| `cd frontend && npm test` | pass — 74 files, 1,535 tests (+3 new) | `frontend-test.txt` |
+| `cd frontend && npm test` | pass — 74 files, 1,539 tests | `frontend-test.txt` |
 | `cd frontend && npm run build` | pass | `frontend-build.txt` |
 | `cd frontend && npm run lint` | pass | `frontend-lint.txt` |
 | `node scripts/replay-coverage-report.mjs --json` | success | `coverage.json` |

@@ -245,6 +245,14 @@
   padding: 4px 8px 8px;
 }
 
+/* The Replay filter is exclusive; with no replay rows it lists nothing. */
+.scenario-picker-empty {
+  margin: 10px 4px 0;
+  color: #8b94a7;
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
 .scenario-group {
   margin-top: 8px;
 }
