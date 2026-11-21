@@ -7,27 +7,29 @@
  * document flow, never shrinks the canvas and never captures a tap outside its
  * own controls (`Hud.css`; the structural test asserts the rules).
  *
- * What it owns in H2:
+ * What it owns:
  *
  * - the top bar: the app's name ("riichiprac") on the very top-left with the
  *   setup trigger under it (3D-H4), and next hand + full screen on the right.
  *   Never a scenario or lesson name (user decision 2026-11-19, §1.1): a visible
  *   lesson name is an answer hint;
- * - the one hand panel's slot (H3/H5 fill it), the toast root (H3) and the
- *   sheet root + `Sheet` primitive (H4/H5);
+ * - the **isolated call row** above the hand (user change 2026-11-21): the
+ *   call/action buttons as a bare row, right-aligned to the hand band, with no
+ *   panel surface, no hint line and no Mortal chip. It is the only pre-answer
+ *   chrome over the board;
+ * - the one **result panel**, mounted only after an answer (H5);
+ * - the toast root (H3) and the sheet root + `Sheet` primitive (H4/H5);
  * - the layout: `hudLayout()` from the live `handBandRect()`/`compassRect()`
  *   projection and the safe-area insets, recomputed on resize, orientation
  *   change, full-screen change and every new projection;
  * - §5's aspect band: `hudLayout()` returns `wide`/`square`/`portrait`, the root
  *   carries it as `data-band`, and `hud/hudBand.ts`'s context hands it to the
- *   controls `App` builds (the setup trigger, the rail, the Mortal chip);
+ *   controls `App` builds (the setup trigger and the call row);
  * - the full-screen toggle, targeting the **shell** so the HUD travels with the
- *   scene, reflecting the browser's own state (the button already did that;
- *   H2 is what mounts it).
+ *   scene.
  *
- * Every rect that a later unit will fill comes from the same pure function, so
- * a new row is a height in `hudLayout()` and a node in a slot — never a second
- * layout path.
+ * Every rect comes from the same pure function, so a new row is a height in
+ * `hudLayout()` and a node in a slot — never a second layout path.
  */
 
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
@@ -69,16 +71,15 @@ export interface HudLayerProps {
    * to the setup sheet; the top bar holds no other app chrome (§1.1).
    */
   readonly setupTrigger?: ReactNode;
-  /** The action row's real height: two when it wraps (H3). */
+  /** The call row's real height: two when it wraps. */
   readonly actionRows?: 1 | 2;
-  /** H3: the hand panel's hint row (the live-region hint + Mortal chip). */
-  readonly hintRow?: ReactNode;
   /**
-   * H3: the action rail row; absent (or null) and the panel is the hint alone,
-   * which is the 40 px shape rather than an empty 84 px surface.
+   * The pre-answer call row: the shared call bar (and any remaining drill
+   * action). It is mounted bare — no panel, no hint line — above the right side
+   * of the hand. Absent (or null) and the HUD shows no pre-answer controls.
    */
-  readonly actionRail?: ReactNode;
-  /** H5: the result card; replaces both rows and keeps the panel's fixed shape. */
+  readonly callBar?: ReactNode;
+  /** H5: the result card; the one panel, mounted after an answer. */
   readonly resultCard?: ReactNode;
   /**
    * H5: the result panel's tone (`outcomeTone`). The tone surface and its
@@ -150,8 +151,7 @@ export function HudLayer({
   nextDisabled = false,
   setupTrigger,
   actionRows = 1,
-  hintRow,
-  actionRail,
+  callBar,
   resultCard,
   resultTone,
   toasts,
@@ -163,6 +163,7 @@ export function HudLayer({
   const rootRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
+  const callBarRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const toastRef = useRef<HTMLDivElement>(null);
 
@@ -205,21 +206,14 @@ export function HudLayer({
   }, [measure]);
 
   const sheetOpen = sheet !== null;
+  const hasCallBar = callBar !== undefined && callBar !== null;
   /*
-   * `hint` is H3's slot: the hint row alone. The action rail (a plain discard
-   * lesson with no Riichi, Kan or call) is unmounted rather than reserved, so
-   * the panel keeps its 40 px shape and never paints an empty box over the board
-   * (`3d_hud.md` §7.1). A null rail is absent, not a control.
+   * The call row is the only pre-answer content; the one panel exists only for
+   * the post-answer result card. An absent node is unmounted, not reserved, so
+   * the HUD never paints an empty surface over the board (`3d_hud.md` §7.1).
    */
-  const hasActionRail = actionRail !== undefined && actionRail !== null;
   const slot: HudSlot =
-    resultCard !== undefined
-      ? 'result'
-      : hasActionRail
-        ? 'actions'
-        : hintRow !== undefined
-          ? 'hint'
-          : 'none';
+    resultCard !== undefined ? 'result' : hasCallBar ? 'actions' : 'none';
   const layout: HudLayout | null =
     metrics.stage.width > 0 && metrics.stage.height > 0
       ? hudLayout(
@@ -235,27 +229,17 @@ export function HudLayer({
         )
       : null;
 
-  /*
-   * Under an open sheet the panel collapses to its hint row (§5) and the action
-   * row or result card is hidden, so no visible control is inert. With nothing
-   * to show, no panel surface is painted at all: the board is never covered by
-   * an empty box.
-   */
-  const panelSlot = layout?.panelSlot ?? 'none';
-  const band: HudBand = layout?.band ?? hudBand(metrics.stage);
-  const panelContent =
-    panelSlot === 'result'
-      ? resultCard
-      : panelSlot === 'actions'
-        ? hintRow ?? actionRail
-        : panelSlot === 'hint'
-          ? hintRow
-          : undefined;
-  const showPanel = layout?.panel !== null && panelSlot !== 'none' && panelContent !== undefined;
+  const showResult = layout?.panelSlot === 'result' && resultCard !== undefined;
+  const showCallBar =
+    layout?.callBar !== null &&
+    layout?.callBar !== undefined &&
+    hasCallBar &&
+    !sheetOpen;
 
   // The fallback for §6.5.5: when the opener is gone, focus goes to the top
   // bar's Next hand. `Sheet` focuses the first control inside this container.
   const fallbackFocus = topBarRef;
+  const band: HudBand = layout?.band ?? hudBand(metrics.stage);
 
   return (
     <div
@@ -264,10 +248,10 @@ export function HudLayer({
       data-reduced-motion={reducedMotion ? 'true' : 'false'}
       data-sheet-open={sheetOpen ? 'true' : 'false'}
       /*
-       * §5's aspect band is published once here: the top bar's and the panel's
-       * controls read it from context, so no component re-derives the aspect.
-       * The attribute is also the CSS hook for the collapsed forms whose size
-       * is a layout number (`Hud.css`).
+       * §5's aspect band is published once here: the top bar's and the call
+       * row's controls read it from context, so no component re-derives the
+       * aspect. The attribute is also the CSS hook for the collapsed forms whose
+       * size is a layout number (`Hud.css`).
        */
       data-band={band}
     >
@@ -317,25 +301,31 @@ export function HudLayer({
           </div>
         )}
 
-        {layout?.panel && showPanel && (
+        {/*
+         * The pre-answer call row: isolated buttons, no panel. The rect is the
+         * hand band's right-aligned box, so the controls grow towards the left as
+         * calls are added (user change 2026-11-21).
+         */}
+        {showCallBar && layout?.callBar && (
+          <div
+            ref={callBarRef}
+            className="hud-call-bar"
+            data-anchor={layout.callBarAnchor}
+            style={rectStyle(layout.callBar)}
+          >
+            {callBar}
+          </div>
+        )}
+
+        {showResult && layout?.panel && (
           <div
             ref={panelRef}
             className="hud-panel"
-            data-slot={panelSlot}
-            data-tone={panelSlot === 'result' ? resultTone : undefined}
-            data-dimmed={sheetOpen ? 'true' : 'false'}
+            data-slot="result"
+            data-tone={resultTone}
             style={rectStyle(layout.panel)}
           >
-            {panelSlot === 'result' ? (
-              <div className="hud-result-card">{resultCard}</div>
-            ) : (
-              <>
-                {hintRow !== undefined && <div className="hud-hand-rail">{hintRow}</div>}
-                {panelSlot === 'actions' && hasActionRail && (
-                  <div className="hud-action-rail">{actionRail}</div>
-                )}
-              </>
-            )}
+            <div className="hud-result-card">{resultCard}</div>
           </div>
         )}
 
@@ -352,7 +342,7 @@ export function HudLayer({
             actions={sheet?.actions}
             onClose={() => onCloseSheet?.()}
             rect={layout?.sheet ?? null}
-            inertTargets={[topBarRef, panelRef, toastRef, stageRef]}
+            inertTargets={[topBarRef, callBarRef, panelRef, toastRef, stageRef]}
             fallbackFocus={fallbackFocus}
             reducedMotion={reducedMotion}
           >

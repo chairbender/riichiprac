@@ -416,15 +416,20 @@ pub const CLASSIFIERS: &[LessonClassifier] = &[
         policy: defense::POLICY,
         matches: defense::fold_to_riichi,
     },
-    LessonClassifier {
-        lesson: ScenarioId::SujiKabeSafety,
-        policy: defense::POLICY,
-        matches: defense::suji_kabe_safety,
-    },
+    // The complete-blockade cell comes before the general suji/kabe ranking
+    // cell that also accepts the no-chance mechanism. Both name the same tile,
+    // so this is an attribution rule, not an answer rule: without it every
+    // `kabe_no_chance` board is labelled `suji_kabe_safety` (and the lesson
+    // could never ship a replay base). Bumped with CLASSIFIER_VERSION 4.
     LessonClassifier {
         lesson: ScenarioId::KabeNoChance,
         policy: defense::POLICY,
         matches: defense::kabe_no_chance,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::SujiKabeSafety,
+        policy: defense::POLICY,
+        matches: defense::suji_kabe_safety,
     },
     LessonClassifier {
         lesson: ScenarioId::KabeOneChance,

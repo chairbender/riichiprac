@@ -88,6 +88,13 @@ it renders.
   (`TABLE`, `CAMERA`, `WALL`, hands, ponds, melds, dead wall, compass well) and
   `three/boardLayout.ts`, which solve the transforms and the one-point camera.
   The user approved the table model and anchor bank on 2026-11-17.
+  Since task 261120-2112 the wall follows state: the 136-tile wall is
+  **122 live + 14 dead**, the live wall is one contiguous arc depleted from the
+  break (top tier first) by `GameState.tiles_remaining` (at most 70 at a
+  decision), and the dead wall is the far run's intact 7×2 block, nudged
+  0.3 units (8.4 mm) clear of the live wall. `frontend/src/renderers/wall.ts` is
+  the one model that turns the count into slots; do not re-derive occupancy in
+  another module. Plan §2.4a and §9 R6 record the decision.
 * **The carve** — the approved engraving look is baked into the 3D channel atlas
   by `frontend/tools/relief3d/bake-relief3d.mjs`: the glyph area pushed in by
   0.495 mm through a 0.3 mm Bézier transition, with the wall **inside** the
@@ -119,8 +126,11 @@ governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
   `{ handBand, compass }` into `hud/hudAnchors.ts`; `TableRenderer.handBandRect()`
   is the lock-independent hand band. The HUD never reads the DOM past its own
   safe-area probe and never calls the renderer.
-* **Slots, not new layouts.** H3–H5 mount into `HudLayer`'s props (`hintRow`,
-  `actionRail`, `resultCard`, `toasts`, `sheet`) and the one `Sheet` primitive.
+* **Slots, not new layouts.** H3–H5 mount into `HudLayer`'s props (`callBar`,
+  `resultCard`, `toasts`, `sheet`) and the one `Sheet` primitive. Since the
+  2026-11-21 change the pre-answer call bar is an isolated, right-aligned row
+  over the hand's right edge with no panel, hint line or Mortal chip; the one
+  panel is the post-answer result card.
 
 ## 4. UI / UX Design Constraints (React)
 * **Mobile-First, Stacked Layout:** The 2D UI must be optimized for portrait mode on mobile devices.
@@ -164,7 +174,8 @@ governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
 * **Scenario sources (replay-first, shipped 2026-11-20):** replay rows — the
   real played games shipped as replay packs, badged **REPLAY** and listed under
   the picker's **Replay** source filter — are the default and prominent source
-  for every lesson with shipped coverage (22 of 25 hosted lessons); generated
+  for every lesson with shipped coverage (26 of the 28 lesson ids the seven packs
+  cover, 9,328 reviewed bases); generated
   lessons remain available as the opt-in/fallback alternative (the **Generated**
   filter, `preferReplay: false` persisted, and the **GENERATED** badge). The
   filters are exclusive: Replay lists replay rows only, Generated lists generated

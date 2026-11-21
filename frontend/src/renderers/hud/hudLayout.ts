@@ -46,7 +46,7 @@ export const HUD_TOP_BAR_BRAND_GAP = 4;
  * `Hud.css` as the control's `min-width`, so the rect the collision gate checks
  * and the button the browser paints are the same box.
  *
- * On portrait the label collapses (§5) and the box shrinks to one tap square;
+ * On portrait §5 collapses the label and the box shrinks to one tap square;
  * that size is pinned by the portrait rule in `Hud.css` the same way.
  */
 export const HUD_SETUP_TRIGGER_WIDTH = 96;
@@ -80,27 +80,24 @@ export function hudBand(stage: StageSize): HudBand {
   return 'wide';
 }
 
-/** How §5 collapses the chip's wording in a band. */
-export type HudChipWording = 'full' | 'state' | 'wordmark';
-
 /**
  * §5's "What collapses, and when", as data.
  *
- * Collapse removes decoration only — a probability badge, the chip's wordmark
- * (or its state word), the setup trigger's label and the toast width cap. No
- * control disappears, and each one that loses visible words keeps its
- * accessible name (`aria-label`, `aria-pressed` or a visually hidden copy).
+ * Collapse removes decoration only — a probability badge, the setup trigger's
+ * label and the toast width cap. No control disappears, and the one that loses
+ * visible words (the setup trigger) keeps its accessible name.
+ *
+ * The 2026-11-21 call-row change removed the rail's ON/OFF words and the Mortal
+ * chip, so the only remaining rail decoration is the probability badge: square
+ * and portrait now collapse alike there, and the table's chip and hint rows
+ * have no control to act on.
  */
 export interface HudCollapse {
   readonly band: HudBand;
   /** The setup trigger is a tap-sized icon button; its label is visually hidden. */
   readonly setupIconOnly: boolean;
-  /** Mortal's probability badges are drawn in the action rail. */
+  /** Mortal's probability badges are drawn in the call/action row. */
   readonly actionProbabilities: boolean;
-  /** The call toggles' ON/OFF words are drawn (the `aria-pressed` state stays). */
-  readonly actionStates: boolean;
-  /** The Mortal chip reads in full, as its state word only, or as "Mortal". */
-  readonly chipWording: HudChipWording;
   /** The toast stack takes the stage minus the gutters instead of `32rem`. */
   readonly toastFullWidth: boolean;
 }
@@ -111,10 +108,8 @@ export function hudCollapse(band: HudBand): HudCollapse {
     return {
       band,
       setupIconOnly: true,
+      // "labels only": probabilities stay in the verdict sheet.
       actionProbabilities: false,
-      // "labels only": the ON/OFF words go, the pressed state does not.
-      actionStates: false,
-      chipWording: 'wordmark',
       toastFullWidth: true,
     };
   }
@@ -124,8 +119,6 @@ export function hudCollapse(band: HudBand): HudCollapse {
       setupIconOnly: false,
       // "probability badges hidden (they live in the verdict sheet)".
       actionProbabilities: false,
-      actionStates: true,
-      chipWording: 'state',
       toastFullWidth: false,
     };
   }
@@ -133,35 +126,26 @@ export function hudCollapse(band: HudBand): HudCollapse {
     band,
     setupIconOnly: false,
     actionProbabilities: true,
-    actionStates: true,
-    chipWording: 'full',
     toastFullWidth: false,
   };
 }
 
-/** The hand panel's heights: §5's table, in CSS px. */
-export const HUD_PANEL_HINT_ONLY = 40;
-export const HUD_PANEL_ACTIONS_ONE_ROW = 84;
-export const HUD_PANEL_ACTIONS_TWO_ROWS = 128;
+/**
+ * The result card's panel height, in CSS px. The panel is now only the
+ * post-answer result card (user change 2026-11-21): before an answer there is no
+ * panel at all, just the isolated call row over the hand.
+ */
 export const HUD_PANEL_RESULT = 104;
 /** The panel's width cap: `36rem`. */
 export const HUD_PANEL_MAX_WIDTH = 576;
 
 /**
- * The panel's inner geometry (§5, §8): the surface's padding, the hint row and
- * the action row(s). These are the numbers the rows are positioned by, and they
- * are what makes the panel's heights add up:
- *
- *   hint-only        8 + 24        (≤ 40)
- *   one action row   8 + 24 + 4 + 44 (80 ≤ 84)
- *   two action rows  8 + 24 + 4 + 44 + 4 + 44  (128 exactly)
- *
- * The row rects are the HUD's own (the collision gate checks them
- * individually), so they live here rather than only in CSS.
+ * The panel's inner geometry (§8): the surface's padding. The result card is
+ * the only panel content, so these are its numbers; the call row is outside
+ * the panel and uses {@link HUD_ACTION_RAIL_HEIGHT} directly.
  */
 export const HUD_PANEL_PAD = 8;
 export const HUD_PANEL_SIDE_PAD = 12;
-export const HUD_HAND_RAIL_HEIGHT = 24;
 export const HUD_RAIL_GAP = 4;
 export const HUD_ACTION_RAIL_HEIGHT = 44;
 
@@ -224,33 +208,29 @@ export interface HudAnchors {
 }
 
 /**
- * What the HUD is showing above the hand: nothing, the hint row alone, both
- * rows, or the result card.
- *
- * `hint` is H3's addition: a plain discard lesson with no Riichi, Kan or call
- * shows the hint alone, and the panel keeps the 40 px hint-only shape (§5)
- * instead of reserving an empty action row.
+ * What the HUD shows pre-answer: nothing, or the call row. `result` is the one
+ * panel, mounted only after the answer.
  */
-export type HudSlot = 'none' | 'hint' | 'actions' | 'result';
+export type HudSlot = 'none' | 'actions' | 'result';
 
 /** The panel content actually mounted this frame. */
-export type HudPanelSlot = 'none' | 'hint' | 'actions' | 'result';
+export type HudPanelSlot = 'none' | 'result';
 
-/** Which side of the hand band the panel ended up on. */
+/** Which side of the hand band the call row or panel ended up on. */
 export type HudPanelAnchor = 'none' | 'above' | 'below';
 
 /** The few bits of state the layout depends on. */
 export interface HudState {
   readonly slot: HudSlot;
-  /** The action row's real content height: one row, or two when it wraps (H3). */
+  /** The call row's real content height: one row, or two when it wraps. */
   readonly actionRows?: 1 | 2;
-  /** A sheet is open: the panel collapses to its hint row (§5). */
+  /** A sheet is open: the call row is hidden behind the modal. */
   readonly sheet: boolean;
   /** How many toasts the stack shows (0–3, §2). */
   readonly toasts: number;
 }
 
-/** Everything `HudLayer` positions, plus the panel's anchor and clearances. */
+/** Everything `HudLayer` positions, plus the anchors and clearances. */
 export interface HudLayout {
   /** §5's aspect band, which every collapsed control follows. */
   readonly band: HudBand;
@@ -264,25 +244,22 @@ export interface HudLayout {
    * why the collision gate names it (`hudAtRestRects`).
    */
   readonly setupTrigger: HudRect;
-  /** The one hand panel, or null when there is nothing to show (§7.3). */
+  /**
+   * The isolated call row above the hand (user change 2026-11-21): the call and
+   * action buttons as a bare row, right-aligned to the hand band, with no panel
+   * surface. Null when there is nothing to show or a sheet is open.
+   */
+  readonly callBar: HudRect | null;
+  readonly callBarAnchor: HudPanelAnchor;
+  /** The result card's panel, or null before an answer (§7.3). */
   readonly panel: HudRect | null;
-  /** What the panel should mount: hint only, both rows, or the result card. */
+  /** The one panel is the result card after an answer. */
   readonly panelSlot: HudPanelSlot;
   readonly panelAnchor: HudPanelAnchor;
   /**
-   * The hand rail (the hint row) inside the panel, or null with no panel or a
-   * result card. H3's rect: the live region's own box, checked by the gate.
-   */
-  readonly handRail: HudRect | null;
-  /**
-   * The action rail's rows inside the panel (one, or two when it wraps), and
-   * empty whenever the panel is the hint row alone or the result card.
-   */
-  readonly actionRail: readonly HudRect[];
-  /**
    * The result card's content box inside the panel (H5), or null unless the
-   * panel is the result card. The card's outcome row and picks line are fixed
-   * by the panel's 104 px shape.
+   * panel is mounted. The card's outcome row and picks line are fixed by the
+   * panel's 104 px shape.
    */
   readonly resultCard: HudRect | null;
   /**
@@ -295,10 +272,14 @@ export interface HudLayout {
   readonly toasts: HudRect | null;
   /** The open sheet's panel, or null when closed (or the stage is too short). */
   readonly sheet: HudRect | null;
-  /** Compass bottom edge → the panel's top edge (negative is illegal). */
+  /** Compass bottom edge → the result panel's top edge (negative is illegal). */
   readonly panelCompassClearance: number | null;
-  /** The gap between the panel and the hand band's nearest edge. */
+  /** The gap between the result panel and the hand band's nearest edge. */
   readonly panelHandClearance: number | null;
+  /** Compass bottom edge → the call row's top edge (negative is illegal). */
+  readonly callBarCompassClearance: number | null;
+  /** The gap between the call row and the hand band's nearest edge. */
+  readonly callBarHandClearance: number | null;
 }
 
 /** A named rect, for the collision report. */
@@ -357,27 +338,22 @@ export function compassSquare(compass: CompassRect | null): HudRect | null {
   return compassBox(compass);
 }
 
-/** The panel's height for the content it mounts. */
-function panelHeight(
-  slot: HudPanelSlot,
-  actionRows: 1 | 2,
-): number {
-  if (slot === 'result') return HUD_PANEL_RESULT;
-  if (slot === 'actions') {
-    return actionRows === 2 ? HUD_PANEL_ACTIONS_TWO_ROWS : HUD_PANEL_ACTIONS_ONE_ROW;
-  }
-  return HUD_PANEL_HINT_ONLY;
+/** The call row's height for one or two wrapped rows. */
+export function callBarHeight(actionRows: 1 | 2): number {
+  return (
+    actionRows * HUD_ACTION_RAIL_HEIGHT + (actionRows - 1) * HUD_RAIL_GAP
+  );
 }
 
 /**
- * The panel's top edge and anchor for a given height.
+ * The row's top edge and anchor for a given height.
  *
  * The primary anchor is `handBand.top − 8 − height`. When that would reach the
- * compass (or the bar), the panel docks **below** the hand band at
+ * compass (or the bar), the row docks **below** the hand band at
  * `handBand.bottom + 8` — the phone fallback of §5, one rule rather than a
  * second layout.
  */
-function anchorPanel(
+function anchorRow(
   band: BandRect,
   compassBottom: number | null,
   height: number,
@@ -390,68 +366,30 @@ function anchorPanel(
 }
 
 /**
- * The panel's inner rows (H3, extended by H5), in stage coordinates.
+ * The result card's content box and its Details trigger.
  *
- * The row heights and gaps are the committed §5 table; the horizontal inset is
- * the surface's own padding, so a row's box is exactly where its text and
- * controls are drawn. A hint-only panel has no action rail — that is the
- * "unmounted, not reserved" rule. A result card instead has one content box and
- * its Details trigger, positioned from the card's fixed shape:
- *
- *   outcome row  8 → 8 + 44 (the tap-sized trigger)
- *   picks line   8 + 44 + 4 → + 18
- *   (the 104 px panel leaves the card centred in its own box)
+ * The card fills the panel's padded content box, and the trigger sits in its
+ * top-right corner at tap height, both inside the fixed `104 px` panel.
  */
-export function hudPanelRows(
-  panel: HudRect,
-  slot: HudPanelSlot,
-  actionRows: 1 | 2,
-): {
-  handRail: HudRect | null;
-  actionRail: HudRect[];
-  resultCard: HudRect | null;
-  sheetTrigger: HudRect | null;
+export function hudPanelRows(panel: HudRect): {
+  resultCard: HudRect;
+  sheetTrigger: HudRect;
 } {
-  if (slot === 'none') {
-    return { handRail: null, actionRail: [], resultCard: null, sheetTrigger: null };
-  }
-
   const left = panel.left + HUD_PANEL_SIDE_PAD;
   const width = Math.max(0, panel.width - 2 * HUD_PANEL_SIDE_PAD);
-  if (slot === 'result') {
-    const resultCard = rect(
-      left,
-      panel.top + HUD_PANEL_PAD,
-      width,
-      panel.height - 2 * HUD_PANEL_PAD,
-    );
-    const sheetTrigger = rect(
-      left + width - HUD_RESULT_TRIGGER_WIDTH,
-      resultCard.top,
-      HUD_RESULT_TRIGGER_WIDTH,
-      HUD_RESULT_TRIGGER_HEIGHT,
-    );
-    return { handRail: null, actionRail: [], resultCard, sheetTrigger };
-  }
-
-  const handRail = rect(left, panel.top + HUD_PANEL_PAD, width, HUD_HAND_RAIL_HEIGHT);
-  if (slot !== 'actions') {
-    return { handRail, actionRail: [], resultCard: null, sheetTrigger: null };
-  }
-
-  const first = panel.top + HUD_PANEL_PAD + HUD_HAND_RAIL_HEIGHT + HUD_RAIL_GAP;
-  const actionRail: HudRect[] = [];
-  for (let row = 0; row < actionRows; row += 1) {
-    actionRail.push(
-      rect(
-        left,
-        first + row * (HUD_ACTION_RAIL_HEIGHT + HUD_RAIL_GAP),
-        width,
-        HUD_ACTION_RAIL_HEIGHT,
-      ),
-    );
-  }
-  return { handRail, actionRail, resultCard: null, sheetTrigger: null };
+  const resultCard = rect(
+    left,
+    panel.top + HUD_PANEL_PAD,
+    width,
+    panel.height - 2 * HUD_PANEL_PAD,
+  );
+  const sheetTrigger = rect(
+    left + width - HUD_RESULT_TRIGGER_WIDTH,
+    resultCard.top,
+    HUD_RESULT_TRIGGER_WIDTH,
+    HUD_RESULT_TRIGGER_HEIGHT,
+  );
+  return { resultCard, sheetTrigger };
 }
 
 /**
@@ -460,6 +398,10 @@ export function hudPanelRows(
  * Nothing here reads the DOM, the renderer or the clock, and nothing is cached:
  * the caller recomputes on resize, on a new snapshot and on a sheet/toggle
  * change, which is exactly the set of events that can move a rect.
+ *
+ * Pre-answer the HUD has **no panel**: the call row is a bare rect anchored
+ * above the right side of the hand (user change 2026-11-21). The one panel is
+ * the result card after the answer.
  */
 export function hudLayout(
   stage: StageSize,
@@ -506,58 +448,71 @@ export function hudLayout(
   const compass = compassSquare(anchors.compass);
   const compassBottom = compass ? compass.top + compass.height : null;
 
-  // A sheet collapses the panel to its hint row; with nothing mounted at all the
-  // 40 px band is still reserved, because it is the sheet's bottom bound (§5).
+  /*
+   * The one panel is the post-answer result card. A sheet over it hides both the
+   * card and the pre-answer call row: the modal owns the screen.
+   */
   const panelSlot: HudPanelSlot =
-    state.slot === 'none' ? 'none' : state.sheet ? 'hint' : state.slot;
+    state.slot === 'result' && !state.sheet ? 'result' : 'none';
+  const callBarVisible = state.slot === 'actions' && !state.sheet;
   const actionRows = state.actionRows === 2 ? 2 : 1;
 
+  let callBar: HudRect | null = null;
+  let callBarAnchor: HudPanelAnchor = 'none';
   let panel: HudRect | null = null;
   let panelAnchor: HudPanelAnchor = 'none';
   let sheet: HudRect | null = null;
-  let handRail: HudRect | null = null;
-  let actionRail: HudRect[] = [];
   let resultCard: HudRect | null = null;
   let sheetTrigger: HudRect | null = null;
   let panelCompassClearance: number | null = null;
   let panelHandClearance: number | null = null;
+  let callBarCompassClearance: number | null = null;
+  let callBarHandClearance: number | null = null;
 
   if (band) {
-    // The sheet is bounded by the collapsed (hint-only) panel's top, whatever
-    // the panel is actually showing while the sheet is open.
-    const collapsed = anchorPanel(band, compassBottom, HUD_PANEL_HINT_ONLY);
+    if (callBarVisible) {
+      const rowHeight = callBarHeight(actionRows);
+      const anchored = anchorRow(band, compassBottom, rowHeight);
+      const left = Math.max(HUD_GAP, band.left);
+      const right = Math.min(width - HUD_GAP, band.left + band.width);
+      callBar = rect(left, anchored.top, Math.max(0, right - left), rowHeight);
+      callBarAnchor = anchored.anchor;
+      callBarHandClearance =
+        anchored.anchor === 'above'
+          ? band.top - (anchored.top + rowHeight)
+          : anchored.top - (band.top + band.height);
+      callBarCompassClearance =
+        anchored.anchor === 'above' && compassBottom !== null
+          ? anchored.top - compassBottom
+          : null;
+    }
 
     if (panelSlot !== 'none') {
-      const panelHeightPx = panelHeight(panelSlot, actionRows);
-      const anchored = anchorPanel(band, compassBottom, panelHeightPx);
-      const top = anchored.top;
+      const anchored = anchorRow(band, compassBottom, HUD_PANEL_RESULT);
       // Above the hand the panel is the §5 width, centred; docked below the hand
       // it takes the full width minus the gutters.
       const panelWidth =
         anchored.anchor === 'above'
           ? Math.min(HUD_PANEL_MAX_WIDTH, width - 2 * HUD_GAP)
           : width - 2 * HUD_GAP;
-      const left = anchored.anchor === 'above' ? (width - panelWidth) / 2 : HUD_GAP;
-      panel = rect(left, top, panelWidth, panelHeightPx);
+      const left =
+        anchored.anchor === 'above' ? (width - panelWidth) / 2 : HUD_GAP;
+      panel = rect(left, anchored.top, panelWidth, HUD_PANEL_RESULT);
       panelAnchor = anchored.anchor;
-      ({ handRail, actionRail, resultCard, sheetTrigger } = hudPanelRows(
-        panel,
-        panelSlot,
-        actionRows,
-      ));
+      ({ resultCard, sheetTrigger } = hudPanelRows(panel));
       panelHandClearance =
         anchored.anchor === 'above'
-          ? band.top - (top + panelHeightPx)
-          : top - (band.top + band.height);
+          ? band.top - (anchored.top + HUD_PANEL_RESULT)
+          : anchored.top - (band.top + band.height);
       panelCompassClearance =
         anchored.anchor === 'above' && compassBottom !== null
-          ? top - compassBottom
+          ? anchored.top - compassBottom
           : null;
     }
 
     const sheetTop = barHeight + HUD_GAP;
     const sheetBottom = Math.min(
-      collapsed.top - HUD_GAP,
+      band.top - HUD_GAP,
       sheetTop +
         Math.min(HUD_SHEET_STAGE_FRACTION * height, HUD_SHEET_MAX_HEIGHT),
     );
@@ -601,29 +556,29 @@ export function hudLayout(
     topBar,
     topBarPadding,
     setupTrigger,
+    callBar,
+    callBarAnchor,
     panel,
     panelSlot,
     panelAnchor,
-    handRail,
-    actionRail,
     resultCard,
     sheetTrigger,
     toasts,
     sheet,
     panelCompassClearance,
     panelHandClearance,
+    callBarCompassClearance,
+    callBarHandClearance,
   };
 }
 
 /**
- * Every at-rest rect the HUD can cover with: the top bar, the panel **and each
- * of its rows or the result card**, and the toasts.
+ * Every at-rest rect the HUD can cover with: the top bar, the isolated call
+ * row, the result panel **and its card or trigger**, and the toasts.
  *
- * The rows are listed individually as well as the panel that contains them
- * (H3): the hint row and each action row are the boxes the controls are drawn
- * in, so a violation names the row — "action rail 2" — rather than only the
- * surface around it. H5 adds the result card and its Details trigger, so a card
- * that ever reaches the hand or the compass fails with the control's own name.
+ * The call row is named as its own rect (it has no panel surface around it),
+ * and H5's result card and Details trigger are named too, so a failing
+ * composition points at the control rather than only the surface.
  */
 export function hudAtRestRects(layout: HudLayout): HudNamedRect[] {
   const rects: HudNamedRect[] = [
@@ -632,15 +587,8 @@ export function hudAtRestRects(layout: HudLayout): HudNamedRect[] {
     // so the gate checks it by name rather than trusting the bar's rect alone.
     { name: 'setup trigger', rect: layout.setupTrigger },
   ];
+  if (layout.callBar) rects.push({ name: 'call bar', rect: layout.callBar });
   if (layout.panel) rects.push({ name: 'hand panel', rect: layout.panel });
-  if (layout.handRail) rects.push({ name: 'hand rail', rect: layout.handRail });
-  layout.actionRail.forEach((row, index) => {
-    rects.push({
-      name:
-        layout.actionRail.length > 1 ? `action rail ${index + 1}` : 'action rail',
-      rect: row,
-    });
-  });
   if (layout.resultCard) {
     rects.push({ name: 'result card', rect: layout.resultCard });
   }

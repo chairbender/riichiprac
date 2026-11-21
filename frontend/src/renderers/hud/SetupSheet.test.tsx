@@ -152,7 +152,6 @@ function Harness({ initialOpen = true, overrides = {}, onDeal }: HarnessProps) {
             expanded={sheetOpen}
           />
         }
-        hintRow={<span>Discard 9m</span>}
         sheet={
           sheetOpen ? { title: 'Setup', body: <SetupSheet {...props} /> } : null
         }

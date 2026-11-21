@@ -98,13 +98,26 @@ describe('3D layout constants: wall', () => {
     expect(WALL.endRunRadiusUnits).toBeLessThan(WALL.radiusUnits);
   });
 
-  it('omits each run\u2019s draw-end top tile', () => {
+  it('reserves a 7-stack dead wall on the far run\u2019s draw-end half', () => {
     expect(WALL.drawEndSlot).toBe(16);
-    expect(WALL.drawEndTiers).toBe(1);
-    expect(WALL.tileCount).toBe(132);
-    expect(WALL.tileCount).toBe(
-      WALL.runs * (WALL.stacksPerRun * WALL.tiers - 1),
+    expect(WALL.deadWallStacks).toBe(7);
+    expect(WALL.deadWallStartStack).toBe(10);
+    expect(WALL.deadWallTiles).toBe(14);
+    // A deliberate break, wider than the layout gate's 1.4 mm slot threshold.
+    expect(WALL.deadWallGapUnits).toBeCloseTo(0.3, 12);
+    expect(WALL.deadWallGapUnits).toBeGreaterThan(0.05);
+  });
+
+  it('leaves 61 live stacks (122 tiles) beside the 14 dead ones', () => {
+    expect(WALL.liveWallStacks).toBe(61);
+    expect(WALL.liveWallStacks).toBe(
+      WALL.runs * WALL.stacksPerRun - WALL.deadWallStacks,
     );
+    expect(WALL.liveWallTiles).toBe(122);
+    expect(WALL.liveWallTiles + WALL.deadWallTiles).toBe(136);
+    // The deal is off the wall before any decision exists.
+    expect(WALL.maxDecisionLiveTiles).toBe(70);
+    expect(WALL.maxDecisionLiveTiles).toBeLessThan(WALL.liveWallTiles);
   });
 });
 
@@ -235,35 +248,47 @@ describe('3D layout constants: board layout additions (3D-06)', () => {
     ).toBeCloseTo(2.25, 12);
   });
 
-  it('lays a meld row right of the drawn tile, outside the wall', () => {
-    expect(MELD.slots).toBe(4);
-    expect(MELD.rowStartUnits).toBeCloseTo(5.5125 + 0.375 + 0.15, 12);
-    expect(MELD.rowRadiusUnits).toBe(HAND.backRadiusUnits);
+  it('lays one contiguous meld line on the hand’s row, on the mat', () => {
+    // A meld's tiles touch (one slab); the advances are the body extents.
     expect(MELD.uprightPitchUnits).toBe(TILE.widthUnits);
     expect(MELD.sidewaysPitchUnits).toBe(TILE.heightUnits);
     expect(MELD.slotGapUnits).toBe(0);
-    // The row starts clear of the 13-tile draw slot.
-    expect(MELD.rowStartUnits).toBeGreaterThan(
-      HAND.drawOffsetUnits + TILE.widthUnits / 2,
+    // The two deliberate separations: felt between the draw and the first meld
+    // (4.2 mm), and between two different melds (2.8 mm). Both are wider than the
+    // layout gate's 1.4 mm slot threshold, so neither reads as a hole.
+    expect(MELD.rowClearanceUnits).toBe(0.15);
+    expect(MELD.meldGapUnits).toBe(0.1);
+    expect(MELD.rowClearanceUnits).toBeGreaterThan(0.05);
+    expect(MELD.meldGapUnits).toBeGreaterThan(0.05);
+    expect(MELD.rowClearanceUnits * UNIT_MM).toBeCloseTo(4.2, 9);
+    expect(MELD.meldGapUnits * UNIT_MM).toBeCloseTo(2.8, 9);
+    // The corner shift is two tile widths along the row (user request, 2026-11-21).
+    expect(MELD.rowShiftUnits).toBeCloseTo(2 * TILE.widthUnits, 12);
+    expect(MELD.rowShiftUnits * UNIT_MM).toBeCloseTo(42, 9);
+
+    // The widest line the fixture builds: a four-tile kan plus three pons, laid
+    // end to end, stays on the mat when the meld-free hand's anchor is kept.
+    // (Board assembly: `boardLayout.rowAnchorUnits`.)
+    const pon = 2 * TILE.widthUnits + TILE.heightUnits;
+    const kan = 3 * TILE.widthUnits + TILE.heightUnits;
+    const meldBlock =
+      MELD.rowClearanceUnits + kan + 3 * pon + 3 * MELD.meldGapUnits;
+    const hand = TILE.widthUnits; // 13 - 3*4 concealed tiles
+    const draw = HAND.drawGapUnits + TILE.widthUnits;
+    const total = hand + draw + meldBlock;
+    const anchor = HAND.drawOffsetUnits + TILE.widthUnits / 2;
+    const meldFree = HAND.concealedCount * HAND.pitchUnits + draw;
+    const growth = total - meldFree;
+    // Four melds replace twelve concealed tiles, so the row grows by well under
+    // two tile widths. The shifted line and the concealed hand both stay on the
+    // mat: the right end is the anchor plus half the growth plus the corner
+    // shift, and the hand's left edge is the anchor plus half the growth minus
+    // the whole row.
+    expect(total).toBeLessThan(13);
+    expect(anchor + growth / 2 + MELD.rowShiftUnits).toBeLessThan(
+      TABLE.matSizeUnits / 2,
     );
-    // A four-tile kan fits inside one row's tangential limit.
-    expect(MELD.rowStartUnits + 4 * MELD.sidewaysPitchUnits).toBeLessThanOrEqual(
-      MELD.maxRowUnits,
-    );
-    // Rows step toward the player, so the *first* row is the one nearest the
-    // wall: it must clear both the end run's outer face and the side run's, and
-    // the last row must stay on the mat.
-    expect(MELD.rowRadiusUnits - TILE.heightUnits / 2).toBeGreaterThan(
-      WALL.radiusUnits + TILE.heightUnits / 2,
-    );
-    expect(MELD.rowRadiusUnits - TILE.heightUnits / 2).toBeGreaterThan(
-      WALL.endRunRadiusUnits + TILE.heightUnits / 2,
-    );
-    expect(
-      MELD.rowRadiusUnits +
-        (MELD.rowCount - 1) * MELD.rowPitchUnits +
-        TILE.heightUnits / 2,
-    ).toBeLessThanOrEqual(TABLE.matSizeUnits / 2);
+    expect(anchor + growth / 2 - total).toBeGreaterThan(-TABLE.matSizeUnits / 2);
   });
 
   it('stretches the compass plate to touch the innermost discard row', () => {

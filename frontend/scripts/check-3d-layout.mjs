@@ -21,8 +21,10 @@
  *  - the human hand is reclined 40° about its far bottom edge, opponents are
  *    upright and face-down, and the drawn tile sits exactly the tsumogiri gap
  *    from the 13-tile row (reproducing `HAND.drawOffsetUnits`);
- *  - melds sit right of the hand, the called tile turned sideways, and four
- *    melds (kans included) stay on the mat without overlapping;
+ *  - melds form one line at the hand's right, the called tile turned sideways,
+ *    four melds (kans included) stay on the mat without overlapping, and the
+ *    line never extends the meld-free board's extents or moves the solved
+ *    camera (task 261120-2225);
  *  - the mat and every tile are inside the safe area with the committed margin
  *    at every supported aspect, the hand's face-to-view angle is within the
  *    25° gate, and its long axis stays readable at the reference aspect.
@@ -96,6 +98,9 @@ async function loadModules() {
       gaps: await server.ssrLoadModule(
         '/src/renderers/three/gaps.ts',
       ),
+      wall: await server.ssrLoadModule(
+        '/src/renderers/wall.ts',
+      ),
     };
   } finally {
     await server.close();
@@ -164,7 +169,7 @@ function widestFixture(fixture) {
 }
 
 async function main() {
-  const { constants: C, layout: L, fixture: F, gaps: G } = await loadModules();
+  const { constants: C, layout: L, fixture: F, gaps: G, wall: W } = await loadModules();
 
   const fixture = F.boardFixture();
   const board = L.layoutBoard(fixture);
@@ -193,15 +198,17 @@ async function main() {
     ['plate edge to innermost discard', formatNumber((C.POND.rowRadiiUnits[C.POND.rows - 1] - C.TILE.heightUnits / 2) - (C.COMPASS_PLATE.sizeUnits / 2 + C.COMPASS_PLATE.bevelUnits), 4)],
     ['wall runs x stacks x tiers', `${C.WALL.runs} x ${C.WALL.stacksPerRun} x ${C.WALL.tiers}`],
     ['wall ring radius / end-run radius / pitch / tier step', `${formatNumber(C.WALL.radiusUnits)} / ${formatNumber(C.WALL.endRunRadiusUnits, 6)} / ${formatNumber(C.WALL.stackPitchUnits, 6)} / ${formatNumber(C.WALL.tierStepUnits)}`],
-    ['wall draw end (slot, tiers at seat right)', `${C.WALL.drawEndSlot}, ${C.WALL.drawEndTiers} (${C.WALL.drawEndIsSeatRight})`],
+    ['wall draw end (slot, seat right)', `${C.WALL.drawEndSlot} (${C.WALL.drawEndIsSeatRight})`],
+    ['live wall (stacks / tiles / max in a state)', `${C.WALL.liveWallStacks} / ${C.WALL.liveWallTiles} / ${C.WALL.maxDecisionLiveTiles}`],
+    ['dead wall (stacks / tiles / first stack / gap)', `${C.WALL.deadWallStacks} / ${C.WALL.deadWallTiles} / ${C.WALL.deadWallStartStack} / ${formatNumber(C.WALL.deadWallGapUnits, 4)}`],
     ['pond rows x columns (+overflow)', `${C.POND.rows} x ${C.POND.columns} (+${C.POND.overflowColumns})`],
     ['pond radii (nearest first)', formatMatrix3(C.POND.rowRadiiUnits)],
     ['pond column pitch / centre offset', `${formatNumber(C.POND.columnPitchUnits, 6)} / ${formatNumber(C.POND.columnCentreOffsetUnits, 6)}`],
     ['hand tiles / pitch / back radius', `${C.HAND.concealedCount} / ${formatNumber(C.HAND.pitchUnits, 6)} / ${formatNumber(C.HAND.backRadiusUnits)}`],
     ['hand recline / band / face-to-view max', `${C.HAND.reclineDeg}° / ${C.HAND.reclineBandDeg.join('–')}° / ${C.HAND.maxFaceToViewDeg}°`],
     ['drawn tile offset / tsumogiri gap', `${formatNumber(C.HAND.drawOffsetUnits, 6)} / ${formatNumber(C.HAND.drawGapUnits, 4)}`],
-    ['meld row start / radius / slots', `${formatNumber(C.MELD.rowStartUnits)} / ${formatNumber(C.MELD.rowRadiusUnits)} / ${C.MELD.slots}`],
-    ['meld upright / sideways pitch', `${formatNumber(C.MELD.uprightPitchUnits, 6)} / ${formatNumber(C.MELD.sidewaysPitchUnits, 6)}`],
+    ['meld line clearance / meld gap / slot gap', `${formatNumber(C.MELD.rowClearanceUnits, 4)} / ${formatNumber(C.MELD.meldGapUnits, 4)} / ${C.MELD.slotGapUnits}`],
+    ['meld corner shift / upright / sideways', `${formatNumber(C.MELD.rowShiftUnits, 4)} / ${formatNumber(C.MELD.uprightPitchUnits, 6)} / ${formatNumber(C.MELD.sidewaysPitchUnits, 6)}`],
     ['dora tier / in from draw end / max', `${C.DORA.tier} / ${C.DORA.firstStackFromDrawEnd} / ${C.DORA.maxIndicators}`],
     ['point stick (l x w x h) / radius', `${formatNumber(C.STICK.lengthUnits)} x ${formatNumber(C.STICK.widthUnits)} x ${formatNumber(C.STICK.heightUnits)} / ${formatNumber(C.STICK.radiusUnits)}`],
     ['camera lens / sensor / fit', `${C.CAMERA.lensMm} mm / ${C.CAMERA.sensorWidthMm} mm / ${C.CAMERA.sensorFit}`],
@@ -254,7 +261,8 @@ async function main() {
     collisions.length ? collisions.slice(0, 3).join('; ') : `${board.tiles.length} tiles`,
   );
 
-  const widest = L.layoutBoard(widestFixture(F));
+  const widestSnapshot = widestFixture(F);
+  const widest = L.layoutBoard(widestSnapshot);
   const widestCollisions = overlaps(widest, L);
   check(
     'widest board (4 melds/seat, kans, 22 discards, 5 dora) stays separate',
@@ -262,10 +270,82 @@ async function main() {
     widestCollisions.length ? widestCollisions.slice(0, 3).join('; ') : `${widest.tiles.length} tiles`,
   );
 
+  // The meld line's whole job (task 261120-2225) is to live inside the footprint
+  // a meld-free board already needs. Check it against the widest board's own
+  // human seat, so the claim covers all four seats' melds.
+  const meldFreeWidest = L.layoutBoard(
+    F.boardFixture({
+      humanSeat: widestSnapshot.humanSeat,
+      riverCounts: [22, 22, 22, 22],
+      meldCounts: [0, 0, 0, 0],
+      doraCount: 5,
+      riichiSeats: [0, 1, 2, 3],
+    }),
+  );
+  const envelope = (source) => {
+    const corners = source.tiles.flatMap((tile) =>
+      L.orientedBoxCorners(L.orientedBox(tile.pose)),
+    );
+    return {
+      minX: Math.min(...corners.map((corner) => corner[0])),
+      maxX: Math.max(...corners.map((corner) => corner[0])),
+      minZ: Math.min(...corners.map((corner) => corner[2])),
+      maxZ: Math.max(...corners.map((corner) => corner[2])),
+    };
+  };
+  const freeBox = envelope(meldFreeWidest);
+  const meldCorners = (source) =>
+    source.foreground
+      .filter((tile) => tile.zone === 'meld')
+      .flatMap((tile) => L.orientedBoxCorners(L.orientedBox(tile.pose)));
+  const outsideMeldFree = meldCorners(widest).filter(
+    (corner) =>
+      corner[0] < freeBox.minX - 1e-9 ||
+      corner[0] > freeBox.maxX + 1e-9 ||
+      corner[2] < freeBox.minZ - 1e-9 ||
+      corner[2] > freeBox.maxZ + 1e-9,
+  );
   check(
-    'wall is the fixed decorative set minus the dora-covered tiles',
-    board.wall.length === C.WALL.tileCount - fixture.dora.length,
-    `${board.wall.length} = ${C.WALL.tileCount} - ${fixture.dora.length}`,
+    'every meld stays inside the meld-free board’s extents',
+    meldCorners(widest).length > 0 && outsideMeldFree.length === 0,
+    `x ${formatNumber(freeBox.minX, 3)}..${formatNumber(freeBox.maxX, 3)}, ` +
+      `z ${formatNumber(freeBox.minZ, 3)}..${formatNumber(freeBox.maxZ, 3)}`,
+  );
+
+  const farSeat = (humanSeat + 2) % C.SEATS.count;
+  const isDead = (tile) => W.isDeadWallSlot(tile.slot, humanSeat);
+  const liveTiles = board.wall.filter((tile) => !isDead(tile));
+  const deadTiles = board.wall.filter(isDead);
+  const liveCount = Math.min(
+    fixture.compass.tilesRemaining,
+    C.WALL.maxDecisionLiveTiles,
+  );
+  check(
+    'live wall holds exactly the published tiles_remaining tiles',
+    liveTiles.length === liveCount,
+    `${liveTiles.length} = ${liveCount}`,
+  );
+
+  const decoded = (tile) => W.decodeWallSlot(tile.slot);
+  const stackOf = (tile) => decoded(tile).stack;
+  const deadStacks = new Set(deadTiles.map(stackOf));
+  const coveredStacks = new Set(
+    fixture.dora.map(
+      (_tile, index) =>
+        C.WALL.drawEndSlot - C.DORA.firstStackFromDrawEnd - index,
+    ),
+  );
+  const deadIntact =
+    deadStacks.size === C.WALL.deadWallStacks &&
+    [...deadStacks].every(
+      (stack) =>
+        stack >= C.WALL.deadWallStartStack && stack <= C.WALL.drawEndSlot,
+    ) &&
+    deadTiles.length + fixture.dora.length === C.WALL.deadWallTiles;
+  check(
+    'dead wall is intact: 7 stacks x 2 tiers, 14 tiles, dora on its top tier',
+    deadIntact,
+    `${deadTiles.length} face-down + ${fixture.dora.length} indicators = ${C.WALL.deadWallTiles}`,
   );
 
   const runRadiusOk = [0, 1, 2, 3].every((run) => {
@@ -294,46 +374,116 @@ async function main() {
     `${formatNumber(C.WALL.runHalfLengthUnits, 6)} units`,
   );
 
-  const farSeat = (humanSeat + 2) % C.SEATS.count;
+  const deadRight = L.seatPoint(farSeat, 1, 0, 0);
+  const deadW = (tile) =>
+    tile.pose.position[0] * deadRight[0] + tile.pose.position[2] * deadRight[2];
+  const deadShifted = deadTiles.every((tile) =>
+    close(
+      deadW(tile),
+      (stackOf(tile) - (C.WALL.stacksPerRun - 1) / 2) *
+        C.WALL.stackPitchUnits +
+        C.WALL.deadWallGapUnits,
+      1e-9,
+    ),
+  );
+  check(
+    'the dead wall is nudged clear of the live wall by the committed felt break',
+    deadShifted,
+    `${formatNumber(C.WALL.deadWallGapUnits, 3)} units = ${formatNumber(C.WALL.deadWallGapUnits * C.UNIT_MM, 1)} mm`,
+  );
+
+  const wallGaps = G.tileGaps(board.tiles, { withinUnits: 1.5 });
+  const byId = new Map(board.tiles.map((tile) => [tile.id, tile]));
+  const deadLiveGaps = wallGaps.filter((pair) => {
+    const a = byId.get(pair.aId);
+    const b = byId.get(pair.bId);
+    // Wall tiles only: a dora indicator's slot is an indicator index, not a ring
+    // slot, and it belongs to the dead block anyway.
+    if (!a || !b || a.zone !== 'wall' || b.zone !== 'wall') return false;
+    return isDead(a) !== isDead(b);
+  });
+  const nearestDeadLive = deadLiveGaps.length
+    ? Math.min(...deadLiveGaps.map((pair) => pair.gapUnits))
+    : Number.POSITIVE_INFINITY;
+  check(
+    'no dead-wall tile touches the live wall',
+    nearestDeadLive + 1e-9 >= C.WALL.deadWallGapUnits,
+    `${formatNumber(nearestDeadLive, 4)} units minimum`,
+  );
+
+  const modelSlots = W.liveWallSlots(
+    fixture.compass.tilesRemaining,
+    humanSeat,
+  )
+    .map((slot) => W.wallSlotId(slot.run, slot.stack, slot.tier))
+    .sort((left, right) => left - right);
+  const liveSlots = liveTiles
+    .map((tile) => tile.slot)
+    .sort((left, right) => left - right);
+  check(
+    'the live wall is exactly the arc suffix the draw order implies',
+    JSON.stringify(liveSlots) === JSON.stringify(modelSlots),
+    `${liveSlots.length} slots`,
+  );
+
+  const partialStacks = (() => {
+    const byStack = new Map();
+    for (const tile of liveTiles) {
+      const { run, stack, tier } = decoded(tile);
+      const key = `${run}:${stack}`;
+      byStack.set(key, [...(byStack.get(key) ?? []), tier]);
+    }
+    return [...byStack.entries()].filter(([, tiers]) => tiers.length === 1);
+  })();
+  const expectPartial = liveCount % 2 === 1;
+  check(
+    'an odd live count leaves one bottom-only stack at the draw edge',
+    partialStacks.length === (expectPartial ? 1 : 0) &&
+      (!expectPartial || partialStacks[0][1][0] === 0),
+    `${partialStacks.length} partial stack(s) at ${liveCount} tiles`,
+  );
+
   const doraTiles = board.foreground.filter((tile) => tile.zone === 'dora');
   check(
-    'dora indicators sit on the far wall\u2019s top tier',
-    doraTiles.every((tile) => {
+    'dora indicators sit on the dead wall\u2019s top tier, on the block',
+    doraTiles.every((tile, index) => {
       const outward = L.seatPoint(farSeat, 0, 1, 0);
       const radius =
         tile.pose.position[0] * outward[0] + tile.pose.position[2] * outward[2];
       return (
         close(radius, L.wallRunRadius(farSeat, humanSeat)) &&
         close(tile.pose.position[1], L.wallTierHeightUnits(1)) &&
+        close(
+          deadW(tile),
+          (C.WALL.drawEndSlot -
+            C.DORA.firstStackFromDrawEnd -
+            index -
+            (C.WALL.stacksPerRun - 1) / 2) *
+            C.WALL.stackPitchUnits +
+            C.WALL.deadWallGapUnits,
+          1e-9,
+        ) &&
         tile.pose.tiltDeg === -90
       );
     }),
     `${doraTiles.length} indicators`,
   );
 
-  const drawEndOk = (() => {
-    for (let run = 0; run < C.WALL.runs; run += 1) {
-      const right = L.seatPoint(run, 1, 0, 0);
-      const along = (tile) =>
-        tile.pose.position[0] * right[0] + tile.pose.position[2] * right[2];
-      const runTiles = board.wall.filter(
-        (tile) => Math.floor(tile.slot / C.WALL.slotsPerRun) === run,
-      );
-      const drawEnd = runTiles.filter(
-        (tile) => (tile.slot % C.WALL.slotsPerRun) >> 1 === C.WALL.drawEndSlot,
-      );
-      if (drawEnd.length !== 1) return `run ${run}: ${drawEnd.length} draw-end tiles`;
-      const end = along(drawEnd[0]);
-      if (runTiles.some((tile) => along(tile) > end + 1e-9)) {
-        return `run ${run}: a tile sits past the draw end`;
-      }
-    }
-    return null;
-  })();
+  // A late hand: the live wall is nearly empty, the dead wall is still 14 tiles
+  // and still clear of the live wall and of everything else.
+  const late = L.layoutBoard(F.boardFixture({ tilesRemaining: 12, doraCount: 5 }));
+  const lateDead = late.wall.filter((tile) =>
+    W.isDeadWallSlot(tile.slot, late.humanSeat),
+  );
+  const lateLive = late.wall.filter(
+    (tile) => !W.isDeadWallSlot(tile.slot, late.humanSeat),
+  );
   check(
-    'every run\u2019s draw end is at its seat\u2019s right',
-    drawEndOk === null,
-    drawEndOk ?? '4 runs',
+    'a late-hand board keeps the dead wall intact and draws only the live count',
+    lateLive.length === 12 &&
+      lateDead.length + 5 === C.WALL.deadWallTiles &&
+      overlaps(late, L).length === 0,
+    `${lateLive.length} live + ${lateDead.length} face-down dead + 5 dora`,
   );
 
   const humanHand = board.foreground
@@ -615,14 +765,72 @@ async function main() {
     referenceLongAxis + 1e-9 >= C.CAMERA.handLongAxisMinViewportFraction,
     `${formatNumber(referenceLongAxis * 100, 2)} %`,
   );
-  // The fixture gives every seat a meld, and a left/right seat's meld row runs
-  // along the near corner at its own (side) radius, so it is the board's nearest
-  // content, not the hand. With no opponent melds the hand is the nearest tile
-  // and sits at the 2 % safe area (the unit test and the report print both).
+  // Melds no longer take the near corners (task 261120-2225), so the human hand
+  // is the board's nearest content and sits on the 2 % safe-area edge.
   check(
-    'the human hand sits within 7 % of the frame bottom at 16:9',
-    referenceHandBottom <= 0.07 + 1e-9,
+    'the human hand sits within 3 % of the frame bottom at 16:9',
+    referenceHandBottom <= 0.03 + 1e-9,
     `${formatNumber(referenceHandBottom * 100, 2)} %`,
+  );
+
+  /* --------------------- meld framing stability ---------------------- */
+  // The acceptance for 261120-2225: declaring melds must not move the camera.
+  // The melds live inside the meld-free board's extents, so the wide landscape
+  // solves are identical; the row still grows by under 2 tile widths (a meld
+  // replaces three concealed tiles), and the residual at the narrow aspects is
+  // far below the old 13-28 unit zoom-out. The bound is 2 % of the solve and
+  // 0.75 units absolute.
+  console.log('\nmeld framing stability (distance Δ vs the meld-free board)');
+  console.log('  seat  case              16:9 Δ     worst Δ   at aspect   worst %');
+  const FRAMING_EPSILON_UNITS = 0.75;
+  const FRAMING_EPSILON_FRACTION = 0.02;
+  let meldStable = true;
+  let meldExactLandscape = true;
+  for (const seat of [0, 1, 2, 3]) {
+    const plain = L.layoutBoard(
+      F.boardFixture({ humanSeat: seat, meldCounts: [0, 0, 0, 0] }),
+    );
+    for (const [label, options] of [
+      ['one meld', { meldCounts: [1, 1, 1, 1] }],
+      ['four melds + kan', { meldCounts: [4, 4, 4, 4], kan: true }],
+    ]) {
+      const heavy = L.layoutBoard(F.boardFixture({ humanSeat: seat, ...options }));
+      let worst = { delta: 0, aspect: 0, fraction: 0 };
+      for (const aspect of aspects) {
+        const before = L.frameForAspect(aspect, plain).distanceUnits;
+        const after = L.frameForAspect(aspect, heavy).distanceUnits;
+        const delta = after - before;
+        const fraction = Math.abs(delta) / before;
+        if (Math.abs(delta) > Math.abs(worst.delta)) {
+          worst = { delta, aspect, fraction };
+        }
+        if (
+          Math.abs(delta) > FRAMING_EPSILON_UNITS + 1e-9 ||
+          fraction > FRAMING_EPSILON_FRACTION + 1e-9
+        ) {
+          meldStable = false;
+        }
+      }
+      const at169 =
+        L.frameForAspect(C.CAMERA.framingAspect, heavy).distanceUnits -
+        L.frameForAspect(C.CAMERA.framingAspect, plain).distanceUnits;
+      if (Math.abs(at169) > 1e-6) meldExactLandscape = false;
+      console.log(
+        `  ${seat}     ${label.padEnd(17)} ` +
+          `${formatNumber(at169, 3).padStart(7)}  ` +
+          `${formatNumber(worst.delta, 3).padStart(8)}  ` +
+          `${formatNumber(worst.aspect, 3).padStart(9)}  ` +
+          `${formatNumber(worst.fraction * 100, 2).padStart(7)} %`,
+      );
+    }
+  }
+  check(
+    'the 16:9 solve is identical with one or four melds, every human seat',
+    meldExactLandscape,
+  );
+  check(
+    'no meld declaration moves the solve by more than 2 % (0.75 units)',
+    meldStable,
   );
 
   const sixteenNine = L.frameForAspect(C.CAMERA.framingAspect, board);

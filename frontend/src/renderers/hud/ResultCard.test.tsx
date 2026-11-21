@@ -119,14 +119,14 @@ describe('3D result card: the compact result', () => {
     cleanup();
 
     const card = render(
-      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
+      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} onReset={() => undefined} />,
     );
     expect(readSummary(card.container as HTMLElement)).toEqual(expected);
   });
 
   it('adds the book-versus-Mortal pick line without painting an inner box', () => {
     const { container } = render(
-      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
+      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} onReset={() => undefined} />,
     );
     const content = container.querySelector('.hud-result-card-content');
     // The outcome tone belongs to the whole panel (HudLayer), not this box: an
@@ -150,6 +150,7 @@ describe('3D result card: the compact result', () => {
         })}
         onDetails={() => undefined}
         onNext={() => undefined}
+        onReset={() => undefined}
       />,
     );
     expect(container.querySelector('.hud-result-card__picks')?.textContent).toBe(
@@ -162,6 +163,7 @@ describe('3D result card: the compact result', () => {
         state={state()}
         onDetails={() => undefined}
         onNext={() => undefined}
+        onReset={() => undefined}
       />,
     );
     expect(container.querySelector('.hud-result-card__picks')?.textContent).toBe(
@@ -171,7 +173,7 @@ describe('3D result card: the compact result', () => {
 
   it('is not a live region: the HUD’s announcer speaks once', () => {
     const { container } = render(
-      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
+      <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} onReset={() => undefined} />,
     );
     // The summary's own polite region is suppressed in the 3D card.
     expect(container.querySelectorAll('[aria-live]')).toHaveLength(0);
@@ -180,7 +182,7 @@ describe('3D result card: the compact result', () => {
 
   it('opens the verdict only through Details', () => {
     const onDetails = vi.fn();
-    render(<ResultCard grade={GRADE} state={state()} onDetails={onDetails} onNext={() => undefined} />);
+    render(<ResultCard grade={GRADE} state={state()} onDetails={onDetails} onNext={() => undefined} onReset={() => undefined} />);
     const details = screen.getByRole('button', {
       name: 'Show the full book and Mortal comparison',
     });
@@ -196,6 +198,7 @@ describe('3D result card: the compact result', () => {
         state={state()}
         onDetails={() => undefined}
         onNext={onNext}
+        onReset={() => undefined}
       />,
     );
     const next = screen.getByRole('button', { name: 'Next scenario' });
@@ -209,6 +212,7 @@ describe('3D result card: the compact result', () => {
         state={state()}
         onDetails={() => undefined}
         onNext={onNext}
+        onReset={() => undefined}
         nextDisabled
       />,
     );
@@ -218,8 +222,30 @@ describe('3D result card: the compact result', () => {
     ).toBe(true);
   });
 
+  it('pairs Reset with Next, so the same hand can be tried again', () => {
+    const onReset = vi.fn();
+    render(
+      <ResultCard
+        grade={GRADE}
+        state={state()}
+        onDetails={() => undefined}
+        onNext={() => undefined}
+        onReset={onReset}
+      />,
+    );
+    const reset = screen.getByRole('button', { name: 'Reset this answer' });
+    // Beside Next in the card's action row, before it: Next stays the primary
+    // control at the row's end.
+    const next = screen.getByRole('button', { name: 'Next scenario' });
+    expect(reset.parentElement).toBe(next.parentElement);
+    expect(reset.nextElementSibling).toBe(next);
+    expect(reset.textContent).toBe('Reset');
+    fireEvent.click(reset);
+    expect(onReset).toHaveBeenCalledTimes(1);
+  });
+
   it('takes focus when the answer removed the focused control', () => {
-    render(<ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />);
+    render(<ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} onReset={() => undefined} />);
     expect(document.activeElement).toBe(
       screen.getByRole('button', {
         name: 'Show the full book and Mortal comparison',
@@ -234,7 +260,7 @@ describe('3D result card: the compact result', () => {
     outside.focus();
     try {
       render(
-        <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} />,
+        <ResultCard grade={GRADE} state={state()} onDetails={() => undefined} onNext={() => undefined} onReset={() => undefined} />,
       );
       expect(document.activeElement).toBe(outside);
     } finally {

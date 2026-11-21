@@ -1,10 +1,10 @@
 /**
  * The HUD action rail's content model (3D-H3).
  *
- * The rail is the hand panel's action row (`3d_hud.md` §2, §4): `ActionBar`'s
- * non-discard actions, plus the Riichi and Kan toggles that the 2D hand dock
- * keeps at the top of the hand. Both shells render the same components
- * (`components/ActionBar.tsx`, `components/CallToggles.tsx`), so this module is
+ * The rail is the hand panel's action row (`3d_hud.md` §2, §4): the AI drill's
+ * remaining non-discard actions plus the shared `CallControls` bar the 2D hand
+ * dock also mounts. Both shells render the same components
+ * (`components/ActionBar.tsx`, `components/CallControls.tsx`), so this module is
  * only the decision *what the rail shows* — never a second copy of a control.
  *
  * It lives in a `.ts` module (not the component) because `App` needs the same
@@ -14,6 +14,8 @@
  * Pure data: no React, no DOM.
  */
 
+import { noCallButtons } from '../../callChoices';
+import type { CallButtons, CallKind, PendingCall } from '../../callChoices';
 import type { AiActionInfo, AiEvaluation } from '../../types/ai';
 
 /**
@@ -27,26 +29,24 @@ export const HUD_ACTION_RAIL_ROW = 44;
 export const HUD_ACTION_RAIL_GAP = 4;
 
 export interface ActionRailModel {
-  /** The state's non-discard actions (App's `actionBarActions`). */
+  /** The state's non-call actions (Tsumo, nine terminals, ...). */
   readonly actions: readonly AiActionInfo[];
-  /** Whether Riichi is a legal declaration for this hand (Rust-derived). */
-  readonly canRiichi: boolean;
-  /** The Kan-callable tile for this lesson, or null (`kanToggleTile`). */
-  readonly kanTile: string | null;
+  /** The call controls this state offers (`callButtonsFor`). */
+  readonly callButtons: CallButtons;
+  /** The open call pick, or null. */
+  readonly pendingCall: PendingCall | null;
+  /** Why the last pick was rejected. */
+  readonly callError: string | null;
   /** The hand is answered: the rail hides and the result slot is free. */
   readonly answered: boolean;
-  /**
-   * The state is an AI drill: its answer is one of `actions`, never a call
-   * toggle (the dock has always hidden the toggles there).
-   */
-  readonly isAiScenario: boolean;
-  readonly callRiichi: boolean;
-  readonly callKan: boolean;
   readonly evaluation?: AiEvaluation | null;
   /** Whether Mortal's probability may be shown (answered, or deliberately peeked). */
   readonly revealMortal?: boolean;
-  readonly onToggleRiichi: () => void;
-  readonly onToggleKan: () => void;
+  readonly onBeginCall: (kind: CallKind) => void;
+  readonly onPass: () => void;
+  readonly onCancelCall: () => void;
+  /** Raise the hand tiles a hovered/focused call button would use. */
+  readonly onPreviewCall?: (kind: CallKind | null) => void;
   readonly onAction: (action: AiActionInfo) => void;
 }
 
@@ -63,8 +63,7 @@ export function railActions(actions: readonly AiActionInfo[]): AiActionInfo[] {
  */
 export function actionRailVisible(model: ActionRailModel): boolean {
   if (model.answered) return false;
-  if (railActions(model.actions).length > 0) return true;
-  return !model.isAiScenario && (model.canRiichi || model.kanTile !== null);
+  return railActions(model.actions).length > 0 || !noCallButtons(model.callButtons);
 }
 
 /**

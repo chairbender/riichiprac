@@ -193,15 +193,22 @@ const ch34Entry = fixtureManifest.packs.find(
   (pack) => pack.id === 'replay.ch34-shapes.2026-11',
 )!;
 const ch34Body = new Uint8Array(readFileSync(new URL(ch34Entry.path, fixtureDir)));
+const ch8CompletionEntry = fixtureManifest.packs.find(
+  (pack) => pack.id === 'replay.ch8-completion.2026-11',
+)!;
+const ch8CompletionBody = new Uint8Array(
+  readFileSync(new URL(ch8CompletionEntry.path, fixtureDir)),
+);
 
 describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
     expect(packManifestUrl()).toBe('/scenarios/manifest.json');
-    expect(fixtureManifest.packs).toHaveLength(6);
+    expect(fixtureManifest.packs).toHaveLength(7);
     expect(fixtureManifest.packs.map((pack) => pack.id).sort()).toEqual([
       'replay.ch34-shapes.2026-11',
       'replay.ch5-values.2026-11',
       'replay.ch7-riichi-dama.2026-11',
+      'replay.ch8-completion.2026-11',
       'replay.ch8-defense-multi-threat.2026-11',
       'replay.ch8-defense.2026-11',
       'replay.ch9-seating-calls.2026-11',
@@ -348,6 +355,57 @@ describe('committed pack', () => {
       'protorun_priority',
       'ryanmen_protorun',
       'skipping_block',
+    ]);
+    expect(memory.calls.write).toBe(1);
+  });
+
+  it('makes the shipped ch8 completion lessons replay-default from the manifest alone', () => {
+    const coverage = lessonReplayCoverage(fixtureManifest);
+    // Three thin ch8 rows are topped up by the completion pack, so the sum of
+    // both packs' counts is what clears the floor; the completion pack supplies
+    // the default row because it holds the most bases for each of them.
+    for (const lesson of [
+      'defense_stuck_heuristic',
+      'kabe_one_chance',
+      'kabe_double_one_chance',
+      'kabe_no_chance',
+    ]) {
+      const record = coverage.get(lesson);
+      expect(record, lesson).toBeDefined();
+      expect(record?.covered, lesson).toBe(true);
+      expect(record?.packId, lesson).toBe('replay.ch8-completion.2026-11');
+    }
+    expect(coverage.get('defense_stuck_heuristic')?.bases).toBe(183);
+    expect(coverage.get('kabe_no_chance')?.bases).toBe(129);
+    expect(coverage.get('kabe_one_chance')?.bases).toBe(56);
+    expect(coverage.get('kabe_double_one_chance')?.bases).toBe(49);
+    // These two stay below the 40-base floor, so their rows are opt-in.
+    expect(coverage.get('kabe_suji_defense')?.covered).toBe(false);
+    expect(coverage.get('kabe_suji_defense')?.bases).toBe(27);
+    expect(coverage.get('open_hand_defense')?.covered).toBe(false);
+    expect(coverage.get('open_hand_defense')?.bases).toBe(4);
+    // `suji_trap_riichi` has no stable replay label, so it has no row at all.
+    expect(coverage.get('suji_trap_riichi')).toBeUndefined();
+  });
+
+  it('loads the ch8 completion pack body through the same verification path', async () => {
+    const memory = memoryCache();
+    const loaded = await loadPack(ch8CompletionEntry, {
+      cache: memory.cache,
+      fetchImpl: vi.fn(async () => bodyResponse(ch8CompletionBody)),
+    });
+
+    expect(loaded.fromCache).toBe(false);
+    expect(loaded.pack.schema).toBe(PACK_SCHEMA);
+    expect(loaded.pack.pack_id).toBe(ch8CompletionEntry.id);
+    expect(loaded.pack.scenarios).toHaveLength(386);
+    expect([...loaded.byLesson.keys()].sort()).toEqual([
+      'defense_stuck_heuristic',
+      'kabe_double_one_chance',
+      'kabe_no_chance',
+      'kabe_one_chance',
+      'kabe_suji_defense',
+      'open_hand_defense',
     ]);
     expect(memory.calls.write).toBe(1);
   });

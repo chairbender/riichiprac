@@ -34,6 +34,7 @@ import {
   type BoardTile,
 } from './boardLayout';
 import { boardFixture } from './boardFixture';
+import { decodeWallSlot, isDeadWallSlot, liveWallSlots } from '../wall';
 
 const fixture = boardFixture();
 const board = layoutBoard(fixture);
@@ -90,10 +91,13 @@ const riverOf = (
   source.foreground.filter((tile) => tile.seat === seat && tile.zone === 'river');
 
 describe('3D board layout: every zone is produced', () => {
-  it('draws the full decorative wall minus the dora-covered tiles', () => {
-    expect(WALL.tileCount).toBe(132);
-    expect(fixture.wall).toHaveLength(WALL.tileCount);
-    expect(board.wall).toHaveLength(WALL.tileCount - fixture.dora.length);
+  it('draws the dead wall and the live wall left by tiles_remaining', () => {
+    // The default fixture publishes 69 live tiles and 14 dead ones.
+    expect(fixture.compass.tilesRemaining).toBe(69);
+    expect(fixture.wall).toHaveLength(WALL.deadWallTiles + 69);
+    expect(board.wall).toHaveLength(
+      WALL.deadWallTiles + 69 - fixture.dora.length,
+    );
     for (const tile of board.wall) {
       expect(tile.zone).toBe('wall');
       expect(tile.faceUp).toBe(false);
@@ -279,23 +283,103 @@ describe('3D board layout: the pond', () => {
 });
 
 describe('3D board layout: melds', () => {
-  it('puts a meld to the right of the hand, with the called tile sideways', () => {
+  it('lays the melds to the right of the draw, called tile sideways', () => {
     const meld = board.foreground
       .filter((tile) => tile.seat === 0 && tile.zone === 'meld')
       .sort((left, right) => left.slot - right.slot);
+    const draw = board.foreground.find(
+      (tile) => tile.seat === 0 && tile.zone === 'draw',
+    )!;
     expect(meld).toHaveLength(3);
-    expect(meld[0].pose.position[0]).toBeGreaterThan(MELD.rowStartUnits - 1);
+    // The first meld starts after the draw's minimum clearance plus the bottom
+    // row's corner shift (user request 2026-11-21).
+    const meldLeft = meld[0].pose.position[0] - TILE.widthUnits / 2;
+    const drawRight = draw.pose.position[0] + TILE.widthUnits / 2;
+    expect(meldLeft - drawRight).toBeCloseTo(
+      MELD.rowClearanceUnits + MELD.rowShiftUnits,
+      9,
+    );
+    // The left/right rows are already against their vertical screen edges and
+    // keep only the minimum clearance. Seat 1's row runs along -Z, so compare in
+    // its own tangential coordinate, not world x.
+    const sideDraw = board.foreground.find(
+      (tile) => tile.seat === 1 && tile.zone === 'draw',
+    )!;
+    const sideMeld = board.foreground
+      .filter((tile) => tile.seat === 1 && tile.zone === 'meld')
+      .sort((left, right) => left.slot - right.slot)[0];
+    const sideRight = seatBasis(1).right;
+    const sideW = (position: readonly [number, number, number]): number =>
+      position[0] * sideRight[0] + position[2] * sideRight[2];
+    const sideMeldLeft = sideW(sideMeld.pose.position) - TILE.widthUnits / 2;
+    const sideDrawRight = sideW(sideDraw.pose.position) + TILE.widthUnits / 2;
+    expect(sideMeldLeft - sideDrawRight).toBeCloseTo(
+      MELD.rowClearanceUnits,
+      9,
+    );
     expect(meld[1].sideways).toBe(true);
     expect(meld[1].pose.rollDeg).toBe(-90);
     expect(meld[2].pose.position[0]).toBeGreaterThan(meld[1].pose.position[0]);
     for (const tile of meld) {
-      // Lying face up at the hand's radius.
+      // Lying face up, its outer edge flush with the hand's front face: the
+      // human's melds sit one tile height in from the hand radius.
       expect(tile.pose.tiltDeg).toBe(-90);
       expect(tile.faceUp).toBe(true);
       expect(radialUnits(0, tile.pose.position)).toBeCloseTo(
-        handRadius(0, fixture.humanSeat),
+        handRadius(0, fixture.humanSeat) - TILE.heightUnits / 2,
         9,
       );
+    }
+    // An upright opponent hand reaches half a tile thickness past its radius, so
+    // that seat's melds stay on the hand radius.
+    const opponentMeld = board.foreground.find(
+      (tile) => tile.seat === 1 && tile.zone === 'meld',
+    )!;
+    expect(radialUnits(1, opponentMeld.pose.position)).toBeCloseTo(
+      handRadius(1, fixture.humanSeat),
+      9,
+    );
+  });
+
+  it('shifts the concealed hand left as melds take the row’s right end', () => {
+    const melded = layoutBoard(boardFixture({ meldCounts: [1, 0, 0, 0] }));
+    const plain = layoutBoard(boardFixture({ meldCounts: [0, 0, 0, 0] }));
+    const handLeft = (source: typeof board): number =>
+      Math.min(
+        ...source.foreground
+          .filter((tile) => tile.seat === 0 && tile.zone === 'hand')
+          .map((tile) => tile.pose.position[0] - TILE.widthUnits / 2),
+      );
+    expect(handLeft(melded)).toBeLessThan(handLeft(plain) - 0.1);
+  });
+
+  it('keeps every seat’s melds inside the meld-free board’s extents', () => {
+    const plain = layoutBoard(boardFixture({ meldCounts: [0, 0, 0, 0] }));
+    const melded = layoutBoard(
+      boardFixture({ meldCounts: [4, 4, 4, 4], kan: true }),
+    );
+    const corners = (source: typeof board) =>
+      source.tiles.flatMap((tile) =>
+        orientedBoxCorners(orientedBox(tile.pose)),
+      );
+    const envelope = corners(plain);
+    const minX = Math.min(...envelope.map((p) => p[0]));
+    const maxX = Math.max(...envelope.map((p) => p[0]));
+    const minZ = Math.min(...envelope.map((p) => p[2]));
+    const maxZ = Math.max(...envelope.map((p) => p[2]));
+    for (const seat of [0, 1, 2, 3] as const) {
+      const melds = melded.foreground.filter(
+        (entry) => entry.seat === seat && entry.zone === 'meld',
+      );
+      expect(melds.length).toBeGreaterThan(0);
+      for (const tile of melds) {
+        for (const corner of orientedBoxCorners(orientedBox(tile.pose))) {
+          expect(corner[0]).toBeGreaterThanOrEqual(minX - 1e-9);
+          expect(corner[0]).toBeLessThanOrEqual(maxX + 1e-9);
+          expect(corner[2]).toBeGreaterThanOrEqual(minZ - 1e-9);
+          expect(corner[2]).toBeLessThanOrEqual(maxZ + 1e-9);
+        }
+      }
     }
   });
 
@@ -326,26 +410,104 @@ describe('3D board layout: melds', () => {
 });
 
 describe('3D board layout: wall, dora and sticks', () => {
-  it('puts every run\u2019s draw end at its own seat\u2019s right', () => {
-    for (let run = 0; run < WALL.runs; run += 1) {
-      const runTiles = board.wall.filter(
-        (tile) => Math.floor(tile.slot / WALL.slotsPerRun) === run,
+  it('places the intact dead wall on the far run, shifted clear of the live wall', () => {
+    const farSeat = ((fixture.humanSeat + 2) % 4) as Seat;
+    const dead = board.wall.filter((tile) => isDeadWallSlot(tile.slot, fixture.humanSeat));
+    expect(dead).toHaveLength(WALL.deadWallTiles - fixture.dora.length);
+    const right = seatPoint(farSeat, 1, 0, 0);
+    const w = (tile: BoardTile): number =>
+      tile.pose.position[0] * right[0] + tile.pose.position[2] * right[2];
+
+    const stacks = new Set(
+      dead.map((tile) => Math.floor((tile.slot % WALL.slotsPerRun) / WALL.tiers)),
+    );
+    expect(stacks.size).toBe(WALL.deadWallStacks);
+    for (const stack of stacks) {
+      expect(stack).toBeGreaterThanOrEqual(WALL.deadWallStartStack);
+    }
+    // Every dead tile is at the far run's radius and shifted by the committed
+    // break, so the block is visibly separated from the live wall.
+    for (const tile of dead) {
+      expect(radialUnits(farSeat, tile.pose.position)).toBeCloseTo(
+        wallRunRadius(farSeat, fixture.humanSeat),
+        9,
       );
-      // Slot 16 keeps only its bottom tier.
-      const drawEnd = runTiles.filter(
-        (tile) => (tile.slot % WALL.slotsPerRun) >> 1 === WALL.drawEndSlot,
+      const stack = Math.floor((tile.slot % WALL.slotsPerRun) / WALL.tiers);
+      expect(w(tile)).toBeCloseTo(
+        (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits +
+          WALL.deadWallGapUnits,
+        9,
       );
-      expect(drawEnd).toHaveLength(1);
-      const basis = seatPoint(run as Seat, 1, 0, 0);
-      const along = drawEnd[0].pose.position[0] * basis[0] +
-        drawEnd[0].pose.position[2] * basis[2];
-      expect(along).toBeGreaterThan(0);
-      // Nothing in the run sits further toward the seat's right.
-      for (const tile of runTiles) {
-        const w =
-          tile.pose.position[0] * basis[0] + tile.pose.position[2] * basis[2];
-        expect(w).toBeLessThanOrEqual(along + 1e-9);
+    }
+
+    // The nearest live wall tile is at least the committed felt break away.
+    const live = board.wall.filter(
+      (tile) => !isDeadWallSlot(tile.slot, fixture.humanSeat),
+    );
+    let nearest = Number.POSITIVE_INFINITY;
+    for (const deadTile of dead) {
+      for (const liveTile of live) {
+        nearest = Math.min(
+          nearest,
+          Math.hypot(
+            deadTile.pose.position[0] - liveTile.pose.position[0],
+            deadTile.pose.position[1] - liveTile.pose.position[1],
+            deadTile.pose.position[2] - liveTile.pose.position[2],
+          ),
+        );
       }
+    }
+    expect(nearest).toBeGreaterThanOrEqual(WALL.deadWallGapUnits - 1e-9);
+  });
+
+  it('draws exactly the live tiles the count publishes', () => {
+    const live = board.wall.filter(
+      (tile) => !isDeadWallSlot(tile.slot, fixture.humanSeat),
+    );
+    expect(live).toHaveLength(fixture.compass.tilesRemaining);
+    // The count is odd, so exactly one stack at the draw edge keeps only its
+    // bottom tile (the draw order takes the top first).
+    const perStack = new Map<string, number[]>();
+    for (const tile of live) {
+      const decoded = decodeWallSlot(tile.slot);
+      if (!decoded) throw new Error('bad slot');
+      const key = `${decoded.run}:${decoded.stack}`;
+      perStack.set(key, [...(perStack.get(key) ?? []), decoded.tier]);
+    }
+    const partial = [...perStack.values()].filter(
+      (tiers) => tiers.length === 1,
+    );
+    expect(partial).toHaveLength(1);
+    expect(partial[0]).toEqual([0]);
+    expect(liveWallSlots(fixture.compass.tilesRemaining, fixture.humanSeat)).toHaveLength(
+      fixture.compass.tilesRemaining,
+    );
+  });
+
+  it('keeps the dead wall intact at a late-hand count', () => {
+    const late = layoutBoard(
+      boardFixture({ tilesRemaining: 12, doraCount: 5 }),
+    );
+    const dead = late.wall.filter((tile) =>
+      isDeadWallSlot(tile.slot, late.humanSeat),
+    );
+    // 14 tiles, minus the 5 face-down tiles the indicators cover.
+    expect(dead).toHaveLength(WALL.deadWallTiles - 5);
+    const live = late.wall.filter(
+      (tile) => !isDeadWallSlot(tile.slot, late.humanSeat),
+    );
+    expect(live).toHaveLength(12);
+    // No live tile survives on the empty (dealt) side of the ring.
+    for (const tile of live) {
+      const decoded = decodeWallSlot(tile.slot);
+      if (!decoded) throw new Error('bad slot');
+      const index = liveWallSlots(12, late.humanSeat).findIndex(
+        (slot) =>
+          slot.run === decoded.run &&
+          slot.stack === decoded.stack &&
+          slot.tier === decoded.tier,
+      );
+      expect(index).toBeGreaterThanOrEqual(0);
     }
   });
 
@@ -416,7 +578,8 @@ describe('3D board layout: wall, dora and sticks', () => {
         tile.pose.position[0] * right[0] + tile.pose.position[2] * right[2];
       expect(w).toBeCloseTo(
         (WALL.drawEndSlot - 1 - index - (WALL.stacksPerRun - 1) / 2) *
-          WALL.stackPitchUnits,
+          WALL.stackPitchUnits +
+          WALL.deadWallGapUnits,
         9,
       );
       // The revealed glyph reads from the human's side: its top points away
@@ -619,8 +782,13 @@ describe('3D board layout: camera framing', () => {
     );
     expect(frame.eye[2]).toBeCloseTo(frame.distanceUnits * Math.cos(pitch), 9);
     // The committed Shift Y is the reference's, and the solver only nudges it
-    // far enough to reach the safe area.
-    expect(frame.shiftNdcY).toBeGreaterThan(committedShiftNdcY(16 / 9));
+    // far enough to reach the safe area. With melds no longer the board's nearest
+    // content the hand is, and it lands within a pixel or two of the 2 % margin,
+    // so the nudge is a small part of the committed offset (and may now be
+    // downward, because the band is a touch high rather than a touch low).
+    expect(
+      Math.abs(frame.shiftNdcY - committedShiftNdcY(16 / 9)),
+    ).toBeLessThan(0.02);
   });
 
   it('projects the unsolved reference frame onto the signed-off pixels', () => {
@@ -689,11 +857,41 @@ describe('3D board layout: camera framing', () => {
         bottom = Math.min(bottom, 1 - pixel.y / height);
       }
     }
+    // The meld lines are pinned inside the meld-free hand's footprint, so the
+    // hand (not a side player's melds) is the board's nearest content and sits
+    // right on the 2 % safe-area edge.
     expect(bottom).toBeGreaterThanOrEqual(CAMERA.safeAreaMargin - 1e-9);
-    // The nearest content is not the hand but the left/right players' meld
-    // rows, which run along the near corners at their own (side) radius, so the
-    // hand's own margin is larger than the safe area. The gate bounds it.
-    expect(bottom).toBeLessThanOrEqual(0.07);
+    expect(bottom).toBeLessThanOrEqual(0.03);
+  });
+
+  it('holds the solved distance when every seat declares four melds', () => {
+    // The defect this task fixes: a side player's meld line used to run past the
+    // hand's end and become the board's nearest content, so the camera solved up
+    // to 28 units further back. The melds are now inside the meld-free board's
+    // extents, and the row's small extra width (four melds replacing twelve
+    // concealed tiles) costs under 2 % of the solve at the narrowest aspects and
+    // nothing at the wide ones.
+    for (const humanSeat of [0, 1, 2, 3] as const) {
+      const plain = layoutBoard(
+        boardFixture({ humanSeat, meldCounts: [0, 0, 0, 0] }),
+      );
+      const heavy = layoutBoard(
+        boardFixture({ humanSeat, meldCounts: [4, 4, 4, 4], kan: true }),
+      );
+      for (const aspect of CAMERA.supportedAspects) {
+        const before = frameForAspect(aspect, plain).distanceUnits;
+        const after = frameForAspect(aspect, heavy).distanceUnits;
+        expect(
+          Math.abs(after - before),
+          `human seat ${humanSeat} at ${aspect}`,
+        ).toBeLessThanOrEqual(0.02 * before + 1e-9);
+      }
+      // At the reference aspect the two frames are the same solve, to the digit.
+      expect(
+        frameForAspect(16 / 9, heavy).distanceUnits,
+        `human seat ${humanSeat} at 16:9`,
+      ).toBeCloseTo(frameForAspect(16 / 9, plain).distanceUnits, 9);
+    }
   });
 
   it('keeps every tile inside the safe area at every aspect', () => {

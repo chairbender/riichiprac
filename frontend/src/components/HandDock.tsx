@@ -1,19 +1,25 @@
-import { kanToggleTile } from '../actions';
+import {
+  isPickedCopy,
+  isSelectableCopy,
+} from '../callChoices';
+import type {
+  CallButtons,
+  CallCopy,
+  CallKind,
+  PendingCall,
+} from '../callChoices';
 import { sortHandForDisplay } from '../display';
-import { handHintFor } from '../handHint';
+import { handHint } from '../handHint';
 import { handTileLabel } from '../handTileLabel';
 import type { SubmittedAnswer } from '../store/useGameStore';
-import type { AiActionInfo, AiEvaluation } from '../types/ai';
-import {
-  discardProbabilitiesByTile,
-  formatProbability,
-} from '../types/ai';
-import type { PlayerState, TargetAction } from '../types/game';
+import type { AiEvaluation } from '../types/ai';
+import { discardProbabilitiesByTile, formatProbability } from '../types/ai';
+import type { PlayerState } from '../types/game';
 import type { DualGrade } from '../types/verdict';
 import { bookAcceptedTiles, mortalRecommendedTile } from '../types/verdict';
 import { AnswerSummary } from './AnswerSummary';
-import { CallToggles } from './CallToggles';
-import { NextScenarioButton } from './NextScenarioButton';
+import { CallControls } from './CallControls';
+import { PostAnswerControls } from './PostAnswerControls';
 import { Tile } from './Tile';
 
 interface HandDockProps {
@@ -22,69 +28,75 @@ interface HandDockProps {
   grade: DualGrade | null;
   /** The answer the player submitted, if any. */
   answer: SubmittedAnswer | null;
-  callRiichi: boolean;
-  callKan: boolean;
+  /** The call controls this state offers (Chi/Pon/Kan/Riichi/Pass). */
+  callButtons: CallButtons;
+  /** The open tile-pick step for a call, or null. */
+  pendingCall: PendingCall | null;
+  /** Why the last pick was rejected. */
+  callError: string | null;
+  /** The hand tiles a hovered/focused call button would use. */
+  previewTiles?: readonly CallCopy[] | null;
   /** Latest Mortal evaluation for the table, if one exists. */
   aiEvaluation: AiEvaluation | null;
-  /** Non-discard actions for an AI scenario; undefined for legacy lessons. */
-  availableActions?: AiActionInfo[];
   /** False when a reaction state has no discard option. */
   canDiscard?: boolean;
-  /** Whether Riichi is a legal declaration for this hand (Rust-derived). */
-  canRiichi?: boolean;
   /** Whether Mortal's probability badges may be shown. */
   revealMortal?: boolean;
-  /**
-   * The state's target action. Only used to decide whether this lesson owns the
-   * Call Kan toggle: the push/fold lesson derives its target from the correct
-   * answer, so pre-answer copy must never branch on it.
-   */
-  targetAction?: TargetAction;
   /** Disables the post-answer Next Scenario control while a puzzle loads. */
   nextDisabled?: boolean;
   /** Loads the next scenario; shown at the bottom once the hand is answered. */
   onNextScenario: () => void;
+  /**
+   * Returns this hand to its unanswered state (same table, no re-deal); shown
+   * beside Next once the hand is answered.
+   */
+  onResetAnswer: () => void;
   /** Scroll to the full book-vs-Mortal comparison. */
   onShowVerdict: () => void;
-  onToggleRiichi: () => void;
-  onToggleKan: () => void;
+  /** Press a call button; a single-option call submits immediately. */
+  onBeginCall: (kind: CallKind) => void;
+  /** Pass on the offered call. */
+  onPass: () => void;
+  /** Close an open call pick. */
+  onCancelCall: () => void;
+  /** Raise the tiles a call button would use while it is hovered/focused. */
+  onPreviewCall?: (kind: CallKind | null) => void;
   onSelectTile: (tile: string, index?: number, isDraw?: boolean) => void;
 }
 
 /**
  * The human player's active hand, pinned to the bottom of the viewport.
- * The "Call Riichi" and "Call Kan" toggles arm a declaration; clicking a tile
- * then submits the armed action together with the clicked tile. The Kan button
- * only appears on a Kan lesson that holds a callable quad: the fourth tile of
- * an open Pon, or four concealed copies.
+ *
+ * The call bar sits above the hand's right side. Pressing a call either submits
+ * it (one legal way to make it) or opens a pick step: Chi collects two hand
+ * tiles, Pon/Kan one, Riichi the discard. The same click handler feeds the 3D
+ * overlay, so a picked tile behaves identically in every view.
  */
 export function HandDock({
   player,
   grade,
   answer,
-  callRiichi,
-  callKan,
+  callButtons,
+  pendingCall,
+  callError,
+  previewTiles,
   aiEvaluation,
-  availableActions,
   canDiscard = true,
-  canRiichi = false,
   revealMortal = false,
-  targetAction,
   nextDisabled = false,
   onNextScenario,
+  onResetAnswer,
   onShowVerdict,
-  onToggleRiichi,
-  onToggleKan,
+  onBeginCall,
+  onPass,
+  onCancelCall,
+  onPreviewCall,
   onSelectTile,
 }: HandDockProps) {
   // Presentation-only order: the engine's hand order is untouched, and the
   // draw/red-five flags travel with their copies so tsumogiri survives sorting.
   const tiles = sortHandForDisplay(player.hand, player.draw, player.red_fives);
   const isAnswered = grade !== null;
-  const isAiScenario = availableActions !== undefined;
-  // Only a Kan lesson offers the call: any hand can hold four copies, but only
-  // these puzzles ask about them. Both shells share the rule (`kanToggleTile`).
-  const kanTile = kanToggleTile(player, { availableActions, targetAction });
 
   const bookTiles = bookAcceptedTiles(grade?.book ?? null);
   // The drill has no book column, so its selected-tile mark comes from Mortal.
@@ -93,18 +105,13 @@ export function HandDock({
     : (grade?.mortal?.matches_tile ?? false);
   const mortalTile = mortalRecommendedTile(grade?.mortal ?? null);
 
-  // Never derive this from `targetAction`: the push/fold lesson sets it from
-  // the correct answer, so naming the action here would give the answer away.
-  // The 3D HUD's hand rail calls the same `handHintFor`, so the two views cannot
+  // The 3D HUD's hand rail calls the same `handHint`, so the two views cannot
   // word the same state differently.
-  const hint = handHintFor({
-    player,
+  const hint = handHint({
     isAnswered,
     canDiscard,
-    callKan,
-    callRiichi,
-    availableActions,
-    targetAction,
+    pendingCall,
+    hasKanCall: callButtons.calls.some((call) => call.kind === 'kan'),
   });
 
   // Mortal's per-tile probabilities are a spoiler until the answer exists (or
@@ -127,19 +134,18 @@ export function HandDock({
       {isAnswered && grade ? (
         <AnswerSummary grade={grade} onDetails={onShowVerdict} />
       ) : (
-        !isAiScenario && (
-          <CallToggles
-            canRiichi={canRiichi}
-            kanTile={kanTile}
-            callRiichi={callRiichi}
-            callKan={callKan}
-            disabled={isAnswered}
-            evaluation={aiEvaluation}
-            revealMortal={revealMortal}
-            onToggleRiichi={onToggleRiichi}
-            onToggleKan={onToggleKan}
-          />
-        )
+        <CallControls
+          buttons={callButtons}
+          pending={pendingCall}
+          error={callError}
+          disabled={isAnswered}
+          evaluation={aiEvaluation}
+          revealMortal={revealMortal}
+          onBegin={onBeginCall}
+          onPass={onPass}
+          onCancel={onCancelCall}
+          onPreview={onPreviewCall}
+        />
       )}
 
       <div className="hand-dock-label" aria-live="polite">
@@ -153,6 +159,18 @@ export function HandDock({
         {tiles.map((display, index) => {
           const { code, isDraw, isRed, sourceIndex } = display;
           const isSelected = answer?.tile === code;
+          const copy = { code, isRed };
+          const picked = pendingCall ? isPickedCopy(pendingCall, copy) : false;
+          const previewed =
+            previewTiles?.some(
+              (tile) => tile.code === code && tile.isRed === isRed,
+            ) ?? false;
+          const selectable = !pendingCall || isSelectableCopy(pendingCall, copy);
+          const dimmed = pendingCall !== null && !selectable && !picked;
+          const pickClass = pendingCall && selectable ? ' hand-tile-button--pick' : '';
+          const liftClass =
+            previewed || picked ? ' hand-tile-button--lifted' : '';
+          const dimClass = dimmed ? ' hand-tile-button--dimmed' : '';
 
           let stateClass = '';
           if (grade) {
@@ -182,14 +200,19 @@ export function HandDock({
             <button
               key={`${code}-${sourceIndex}`}
               type="button"
-              className={`hand-tile-button${stateClass}${aiClass}`}
-              onClick={() => onSelectTile(code, index, isDraw)}
-              disabled={isAnswered || !canDiscard}
+              className={`hand-tile-button${stateClass}${aiClass}${pickClass}${liftClass}${dimClass}`}
+              onClick={() => {
+                // A darkened tile is not part of the call: it stays focusable
+                // so a keyboard pick keeps its place, but never submits.
+                if (dimmed) return;
+                onSelectTile(code, index, isDraw);
+              }}
+              disabled={isAnswered || (!pendingCall && !canDiscard)}
+              aria-disabled={dimmed || undefined}
               aria-label={handTileLabel({
                 code,
                 isRed,
-                callKan,
-                callRiichi,
+                pick: pendingCall?.kind ?? null,
               })}
             >
               {aiProbabilities.get(code) !== undefined &&
@@ -209,10 +232,11 @@ export function HandDock({
       </div>
 
       {isAnswered && (
-        <NextScenarioButton
+        <PostAnswerControls
           variant="dock"
-          onClick={onNextScenario}
-          disabled={nextDisabled}
+          onNext={onNextScenario}
+          nextDisabled={nextDisabled}
+          onReset={onResetAnswer}
         />
       )}
     </section>

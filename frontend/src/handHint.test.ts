@@ -1,13 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { handHint } from './handHint';
 import type { HandHintInput } from './handHint';
+import type { PendingCall } from './callChoices';
 
-const unarmed: HandHintInput = {
+const neutral: HandHintInput = {
   isAnswered: false,
   canDiscard: true,
-  callKan: false,
-  callRiichi: false,
-  kanTileLabel: null,
+  pendingCall: null,
+  hasKanCall: false,
+};
+
+const riichiPick: PendingCall = {
+  kind: 'riichi',
+  need: 1,
+  picks: [],
+  options: [],
+  anyTile: true,
+};
+
+const chiPick: PendingCall = {
+  kind: 'chi',
+  need: 2,
+  picks: [],
+  options: [],
+  anyTile: false,
 };
 
 describe('hand dock hint', () => {
@@ -15,16 +31,16 @@ describe('hand dock hint', () => {
     // The push/fold lesson's target action is Push or Fold straight from the
     // correct answer, so the pre-answer line must not name either: it is the
     // judgement being tested.
-    expect(handHint(unarmed)).toBe('Tap a tile to discard');
+    expect(handHint(neutral)).toBe('Tap a tile to discard');
   });
 
   it('never names push, fold or the safest tile before answering', () => {
     const preAnswer: HandHintInput[] = [
-      unarmed,
-      { ...unarmed, callRiichi: true },
-      { ...unarmed, callKan: true, kanTileLabel: '5z' },
-      { ...unarmed, canDiscard: false },
-      { ...unarmed, kanTileLabel: '5z' },
+      neutral,
+      { ...neutral, hasKanCall: true },
+      { ...neutral, canDiscard: false },
+      { ...neutral, pendingCall: riichiPick },
+      { ...neutral, pendingCall: chiPick },
     ];
 
     for (const hint of preAnswer) {
@@ -35,30 +51,47 @@ describe('hand dock hint', () => {
     }
   });
 
-  it('describes the declaration the player armed', () => {
-    expect(handHint({ ...unarmed, callRiichi: true })).toBe(
-      'Riichi selected - tap a tile to discard',
+  it('asks for the tiles an open call pick needs', () => {
+    expect(handHint({ ...neutral, pendingCall: riichiPick })).toBe(
+      'Select a tile to discard for Riichi',
     );
-    expect(handHint({ ...unarmed, callKan: true, kanTileLabel: '5z' })).toBe(
-      'Kan armed - tap 5z to declare Kan',
+    expect(handHint({ ...neutral, pendingCall: chiPick })).toBe(
+      'Select 2 tiles for Chi',
     );
+    expect(
+      handHint({
+        ...neutral,
+        pendingCall: {
+          ...chiPick,
+          picks: [
+            { code: '2p', isRed: false, index: 0, isDraw: false },
+          ],
+        },
+      }),
+    ).toBe('Select 1 more tile for Chi');
+    expect(
+      handHint({
+        ...neutral,
+        pendingCall: { ...chiPick, kind: 'pon', need: 1 },
+      }),
+    ).toBe('Select a tile for Pon');
   });
 
   it('asks for a button answer when no discard is legal', () => {
-    expect(handHint({ ...unarmed, canDiscard: false })).toBe(
+    expect(handHint({ ...neutral, canDiscard: false })).toBe(
       'Choose a call or Pass',
     );
   });
 
-  it('mentions the visible Kan toggle on a Kan lesson', () => {
-    expect(handHint({ ...unarmed, kanTileLabel: '5z' })).toBe(
-      'Tap a tile to discard, or arm Call Kan',
+  it('mentions the visible Kan button on a Kan lesson', () => {
+    expect(handHint({ ...neutral, hasKanCall: true })).toBe(
+      'Tap a tile to discard, or call Kan',
     );
   });
 
   it('replaces the instruction once the answer is in', () => {
     expect(
-      handHint({ ...unarmed, isAnswered: true, callRiichi: true }),
+      handHint({ ...neutral, isAnswered: true, pendingCall: chiPick }),
     ).toBe('Answer submitted');
   });
 });

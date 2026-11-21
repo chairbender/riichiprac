@@ -13,8 +13,9 @@
  *    "resting on the table" form ({@link SHADOW.hand}). This is the one the user
  *    asked to leave alone.
  * 3. **One radial cast band for every other standing thing** (3D-19) — the three
- *    opponent hands (row + draw unioned) and each of the four wall runs. Each
- *    band starts under the object's base and reaches
+ *    opponent hands (row + draw unioned) and each contiguous stretch of wall
+ *    tiles (the live wall empties as tiles are drawn, so an empty run casts
+ *    nothing). Each band starts under the object's base and reaches
  *    {@link SHADOW.cast.lengthUnits} **directly away from the table centre**, as
  *    if a lamp hung above the compass: down-screen for the near wall, up-screen
  *    for the far one, sideways for the side runs and hands. That is what makes
@@ -75,6 +76,7 @@ import type { Seat } from '../contract';
 import { TILE, WALL } from '../layoutConstants';
 import { BOARD_TILE_CAPACITY } from './boardMesh';
 import { orientedBox, orientedBoxCorners, seatBasis, wallRunRadius } from './boardLayout';
+import { GAP } from './gaps';
 import type { BoardLayout, BoardTile, Vec3 } from './boardLayout';
 
 /** The contact-shadow layer's committed numbers. */
@@ -386,21 +388,36 @@ function castQuad(id: string, span: GroupSpan, seat: Seat): ShadowInstance {
 }
 
 /**
- * The wall ring's cast: one band per run, thrown outward from the wall's outer
- * face, plus — for the two side runs — one band off the **player-facing end**.
+ * The wall's cast: one band per **occupied** wall stretch, thrown outward from
+ * the wall's outer face, plus — for a side run that actually reaches it — one
+ * band off the **player-facing end**.
  *
  * The wall is the tallest thing on the table (two tiers, 1.18 units), so its
  * shadow is what makes the hands read as *behind* it rather than merely darker.
- * The side runs' outward bands go sideways, which leaves the 1-unit-wide strip of
- * felt in front of each end face unshadowed — a notch in the ring's shadow right
- * where the near wall's band stops. Those two ends face the human, so they get
- * the same outward cast as the near run's long face.
+ * The layer used to draw one band per run unconditionally; the wall now empties
+ * as tiles are drawn, so a full-run band would cast the shadow of a wall that is
+ * no longer there. Each run therefore contributes a band per contiguous stretch
+ * of its remaining tiles (the dead wall is its own stretch, separated from the
+ * live wall by `WALL.deadWallGapUnits`), and an empty run contributes nothing.
+ *
+ * The side runs' outward bands go sideways, which leaves the strip of felt in
+ * front of the player-facing end face unshadowed — a notch right where the near
+ * wall's band stops. That end faces the human, so a side run that still has a
+ * tile at it gets the same outward cast as the near run's long face.
  */
 function wallCastQuads(layout: BoardLayout): ShadowInstance[] {
   const { lengthUnits, overlapUnits, sigmaAcrossUnits, sigmaAlongUnits } = SHADOW.cast;
   const bands: ShadowInstance[] = [];
+  const wallTiles = layout.wall.filter((tile) => tile.zone === 'wall');
+  const halfWidth = TILE.widthUnits / 2;
+
   for (let run = 0; run < WALL.runs; run += 1) {
     const seat = run as Seat;
+    const runTiles = wallTiles.filter(
+      (tile) => Math.floor(tile.slot / WALL.slotsPerRun) === run,
+    );
+    if (runTiles.length === 0) continue;
+
     const { outward, right } = seatBasis(seat);
     const rowIsX = Math.abs(right[0]) > Math.abs(right[2]);
     const sign = rowIsX ? Math.sign(outward[2]) : Math.sign(outward[0]);
@@ -408,22 +425,46 @@ function wallCastQuads(layout: BoardLayout): ShadowInstance[] {
       sign * (wallRunRadius(seat, layout.humanSeat) + TILE.heightUnits / 2);
     const inner = outerFace - sign * overlapUnits;
     const outer = outerFace + sign * (lengthUnits - sigmaAcrossUnits);
-    bands.push(
-      bandQuad({
-        id: `wall-cast-${run}`,
-        rowIsX,
-        rowMin: -WALL.runHalfLengthUnits,
-        rowMax: WALL.runHalfLengthUnits,
-        depthMin: Math.min(inner, outer),
-        depthMax: Math.max(inner, outer),
-        sigmaUnits: bandSigmas(rowIsX, sigmaAlongUnits, sigmaAcrossUnits),
-      }),
-    );
+
+    // A run's occupied stretches, measured along its own tangential axis. A
+    // stack pitch of separation is a contact; anything wider is a real gap (the
+    // dead wall's break), so it starts a new shadow band.
+    const rows = runTiles
+      .map((tile) => tile.pose.position[0] * right[0] + tile.pose.position[2] * right[2])
+      .sort((left, rightValue) => left - rightValue);
+    const groups: { min: number; max: number }[] = [];
+    for (const row of rows) {
+      const current = groups[groups.length - 1];
+      if (current && row - current.max <= WALL.stackPitchUnits + GAP.maxTouchingGapUnits) {
+        current.max = row;
+      } else {
+        groups.push({ min: row, max: row });
+      }
+    }
+
+    groups.forEach((group, index) => {
+      bands.push(
+        bandQuad({
+          id: `wall-cast-${run}-${index}`,
+          rowIsX,
+          rowMin: group.min - halfWidth,
+          rowMax: group.max + halfWidth,
+          depthMin: Math.min(inner, outer),
+          depthMax: Math.max(inner, outer),
+          sigmaUnits: bandSigmas(rowIsX, sigmaAlongUnits, sigmaAcrossUnits),
+        }),
+      );
+    });
+
     if (rowIsX) continue;
-    // A side run's player-facing end: its end face points at the human (+Z), and
-    // the band spans the run's own radial footprint so it meets the near wall's
-    // band instead of leaving a gap at the corner.
+    // A side run's player-facing end: its end face points at the human (+Z). Only
+    // a run with a tile at that end casts the corner-notch band; an emptied run
+    // has no end to shade.
     const endFace = WALL.runHalfLengthUnits;
+    const reachesHumanEnd = runTiles.some(
+      (tile) => tile.pose.position[2] + halfWidth >= endFace - 1e-9,
+    );
+    if (!reachesHumanEnd) continue;
     const radialInner = sign * (wallRunRadius(seat, layout.humanSeat) - TILE.heightUnits / 2);
     const radialOuter = sign * (wallRunRadius(seat, layout.humanSeat) + TILE.heightUnits / 2);
     const endInner = endFace - overlapUnits;
@@ -469,8 +510,9 @@ function tileQuad(tile: BoardTile): ShadowInstance {
  * - Each seat's hand row and drawn tile are unioned into one band: the human's
  *   keeps the signed-off "resting on the table" fake, the three opponents cast
  *   a radial shadow away from the centre.
- * - One radial cast band per wall run (the ring is the tallest thing on the
- *   table, and its shadow is what grounds the hands behind it).
+ * - One radial cast band per contiguous occupied wall stretch (the ring is the
+ *   tallest thing on the table, and its shadow is what grounds the hands behind
+ *   it).
  */
 export function shadowInstances(layout: BoardLayout): readonly ShadowInstance[] {
   const instances: ShadowInstance[] = [...wallCastQuads(layout)];

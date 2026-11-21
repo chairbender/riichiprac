@@ -128,11 +128,16 @@ describe('3D feature gate', () => {
     expect(parseRendererQuery('?renderer=3d&renderer=25d').renderer).toBe('3d');
   });
 
-  it('reads the sticks preview flag, and nothing else, as a preview', () => {
+  it('reads the sticks and melds preview flags, and nothing else', () => {
     expect(parseRendererQuery('?renderer=3d&preview=sticks').preview).toBe(
       'sticks',
     );
     expect(parseRendererQuery('?preview=sticks').preview).toBe('sticks');
+    // The meld-layout board is a preview too, and is handled at the entry point.
+    expect(parseRendererQuery('?preview=melds').preview).toBe('melds');
+    expect(parseRendererQuery('?renderer=3d&preview=melds').preview).toBe(
+      'melds',
+    );
     // 3D-12's `deal` aid was retired in 3D-H2 with the real Next Scenario
     // control; the value is no longer a preview, it is just an unknown word.
     expect(parseRendererQuery('?renderer=3d&preview=deal').preview).toBeNull();

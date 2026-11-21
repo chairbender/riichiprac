@@ -139,19 +139,34 @@ export const SEATS = {
 } as const;
 
 /**
- * The wall: four runs of 17 stacks, two face-down tiles high, on a ring. Every
- * run is missing its top tile at the draw end (slot 16), as the committed
- * reference draws it. The wall is decorative: the engine publishes
- * `tiles_remaining`, not per-slot occupancy, so it is never depleted
- * (§9 R6 of the plan).
+ * The wall: four runs of 17 stacks, two tiles high, on a ring. The physical
+ * wall is 136 tiles: **122 live** (61 stacks) and the **14-tile dead wall**
+ * (7 stacks x 2 tiers) on the far run's draw-end half.
+ *
+ * The wall is no longer decorative. `GameState.tiles_remaining` is the live
+ * wall count (the replay walker sets it to `70 - draws`), and the draw order is
+ * the committed physical rule in `renderers/wall.ts`: the live wall is one
+ * contiguous arc that starts at the break (the dead wall's outer end), is drawn
+ * top tile then bottom tile, and is depleted from that end. So the number of
+ * drawn live tiles is exactly `WALL.liveWallTiles - tiles_remaining`, and the
+ * remaining tiles are the arc's far suffix. A decision state can hold at most
+ * {@link WALL.maxDecisionLiveTiles}: the 52-tile deal (plus the dealer's draw)
+ * is already off the wall before any state exists, so the renderer never needs
+ * the dealt positions.
+ *
+ * The dead wall never depletes. It occupies the far run's draw-end 7 stacks
+ * (stacks {@link WALL.deadWallStartStack}..16) and is separated from the live
+ * wall by a deliberate felt break, {@link WALL.deadWallGapUnits}, along the run
+ * (the real-table habit the book calls out: the dead wall is nudged away from
+ * the end of the wall). The block stays at its run's radius, so its tiles still
+ * line up with the ring radially.
  *
  * A wall tile's snapshot slot is
  * `run * slotsPerRun + stack * tiers + tier`, with tiers 0 (bottom) and 1 (top).
  * Run `n` is the run in front of absolute seat `n`, so the far wall is
- * `(humanSeat + 2) % 4`. The draw-end top positions are absent, so a full
- * snapshot wall has {@link WALL.tileCount} tiles and no gaps in the slot
- * meanings it does use. The wall is decorative; board layout is free to use the
- * constants for a symmetric ring.
+ * `(humanSeat + 2) % 4`. A position's tier is absent exactly when its tile has
+ * been drawn (or, for the dead wall, replaced by a revealed dora indicator), so
+ * the slot set is not a fixed rectangle.
  *
  * The ring is **not** four identical rotations: the two runs at the human's own
  * edge and the far edge sit at {@link WALL.endRunRadiusUnits} so their outer
@@ -163,7 +178,23 @@ const WALL_RUNS = 4;
 const WALL_STACKS_PER_RUN = 17;
 const WALL_TIERS = 2;
 const WALL_DRAW_END_SLOT = 16;
-const WALL_DRAW_END_TIERS = 1;
+const WALL_DEAD_WALL_STACKS = 7;
+const WALL_DEAD_WALL_START_STACK = WALL_STACKS_PER_RUN - WALL_DEAD_WALL_STACKS;
+const WALL_DEAD_WALL_GAP_UNITS = 0.3;
+const WALL_LIVE_WALL_STACKS =
+  WALL_RUNS * WALL_STACKS_PER_RUN - WALL_DEAD_WALL_STACKS;
+/**
+ * The live wall at the deal, before the 52 dealt tiles and the dealer's draw:
+ * 61 stacks x 2 tiers.
+ */
+const WALL_LIVE_WALL_TILES = WALL_LIVE_WALL_STACKS * WALL_TIERS;
+/**
+ * The most live tiles a decision state can hold. The replay walker defines
+ * `tiles_remaining` as `70 - draws`, and every decision is after the deal, so
+ * 70 is the ceiling (69 once the dealer has drawn). A larger count would mean
+ * the hands and the wall do not add up to 136.
+ */
+const WALL_MAX_DECISION_LIVE_TILES = 70;
 
 /**
  * A run's tangential half-length: the outer edge of its end tile.
@@ -217,38 +248,52 @@ export const WALL = {
   tierStepUnits: TILE.thicknessUnits,
   /** Centre-to-centre length of one 17-stack run. */
   runSpanUnits: WALL_STACKS_PER_RUN * TILE.widthUnits,
-  /** The committed one-tile draw end: slot 16 loses its top tier on every run. */
-  drawEndSlot: WALL_DRAW_END_SLOT,
-  drawEndTiers: WALL_DRAW_END_TIERS,
   /**
    * The draw end sits at the seat's **right** (local +tangential), which is the
    * committed clockwise draw: the close wall draws from its right, the top wall
    * from its left, the right wall from its far side and the left wall from its
    * close side. In each seat's own frame that is the same +w end, so the layout
-   * and its gate can assert one rule instead of four.
+   * and its gate can assert one rule instead of four. The far run's draw end is
+   * also where the dead wall starts and where the live arc begins.
    */
+  drawEndSlot: WALL_DRAW_END_SLOT,
   drawEndIsSeatRight: true,
   slotsPerRun: WALL_STACKS_PER_RUN * WALL_TIERS,
-  tileCount:
-    WALL_RUNS *
-    (WALL_STACKS_PER_RUN * WALL_TIERS - (WALL_TIERS - WALL_DRAW_END_TIERS)),
+  /** The dead wall's 7 stacks, on the far run's draw-end half. */
+  deadWallStacks: WALL_DEAD_WALL_STACKS,
+  /** Its first stack: 10, so stacks 10..16 are the dead wall. */
+  deadWallStartStack: WALL_DEAD_WALL_START_STACK,
+  /** 7 x 2: the tiles reserved from drawing, always intact. */
+  deadWallTiles: WALL_DEAD_WALL_STACKS * WALL_TIERS,
+  /**
+   * The deliberate felt break along the run between the live wall's far end and
+   * the dead wall. The dead block is shifted away from the live wall by this
+   * much (in the far run's +w direction); 0.3 units is 8.4 mm, comfortably
+   * clear of the layout gate's 1.4 mm "is this a slot?" threshold.
+   */
+  deadWallGapUnits: WALL_DEAD_WALL_GAP_UNITS,
+  /** The live wall's 61 stacks (122 tiles) at the deal. */
+  liveWallStacks: WALL_LIVE_WALL_STACKS,
+  liveWallTiles: WALL_LIVE_WALL_TILES,
+  /** The most live tiles a decision state can hold (`tiles_remaining`). */
+  maxDecisionLiveTiles: WALL_MAX_DECISION_LIVE_TILES,
 } as const;
 
 /**
- * The revealed dora indicators: face-up on the far wall's top tier, one per
- * indicator, counting in from the draw end (the 3D contract places them there,
- * §4 of `3d_renderer_implementation_plan.md`; the 2.5D reference's dead wall is
- * on the left run and is not modelled here).
+ * The revealed dora indicators: face-up on the **dead wall's** top tier, one
+ * per indicator, counting in from the draw end (the 3D contract places them
+ * there; §4 of `3d_renderer_implementation_plan.md`).
  *
- * Indicator `i` covers the wall stack at `drawEndSlot - 1 - i`, tier 1, and the
- * decorative wall tile underneath it is omitted, so the two lists never draw the
- * same tile twice. A game reveals at most five indicators (four kans plus the
- * initial flip), which is what the layout accepts.
+ * Indicator `i` covers the dead-wall stack at `drawEndSlot - 1 - i`, tier 1,
+ * and the face-down dead-wall tile underneath it is omitted, so the two lists
+ * never draw the same tile twice. The dead wall is 14 tiles, so five indicators
+ * (four kans plus the initial flip) always fit. The indicators ride the dead
+ * block's deliberate offset, so they stay on it.
  */
 export const DORA = {
-  /** Top tier, matching the flipped wall tile. */
+  /** Top tier, matching the flipped dead-wall tile. */
   tier: 1,
-  /** Indicator 0 sits one stack inboard of the missing draw-end top. */
+  /** Indicator 0 sits one stack inboard of the draw end. */
   firstStackFromDrawEnd: 1,
   maxIndicators: 5,
 } as const;
@@ -417,60 +462,68 @@ export const HAND = {
 } as const;
 
 /**
- * One seat's open-meld row: four slots to the right of the hand, outside the
- * wall ring at the hand's radius (the reference's `meld` block).
+ * One seat's open-meld line: every called meld in **one row** to that player's
+ * right, on the seat's own hand radius (task 261120-2225).
  *
- * The row is laid out as a sequence, not a fixed grid: an upright slot advances
- * by a 21 mm tile plus the 0.3 mm groove, and a sideways (called) slot advances
- * by its 28 mm long axis plus the groove, exactly the reference's
- * `calledWidthUnits`. A meld therefore occupies as many slots as it has tiles,
- * and consecutive melds follow each other along the row (the reference only
- * models the single 4-slot row). If a row would run past {@link MELD.maxRowUnits}
- * the next meld starts a row one pitch **toward the player** — away from the wall
- * ring — so a four-meld hand never leaves the mat and never reaches into the
- * wall; the hand now sits at 8.35, so stepping inward would collide.
+ * The line is a sequence, not a fixed grid: an upright tile advances by its
+ * 21 mm width and a sideways (called) tile by its 28 mm length, with a meld's
+ * own tiles touching (one slab, as in a real hand). The whole visible row —
+ * concealed hand, drawn tile, then every meld — is laid end to end around the
+ * hand's **meld-free right edge**: the right edge a full 13-tile hand plus its
+ * draw already occupies. Declaring a meld therefore slides the concealed hand
+ * left and puts the meld in the space that opens at that player's right; extra
+ * melds extend the line toward the hand instead of starting a second row. The
+ * row's small extra width (a meld replaces three concealed tiles) is split
+ * either side of that edge so neither end leaves the board's existing extents.
+ * On the bottom/top rows the meld line then starts a further {@link
+ * MELD.rowShiftUnits} toward that player's corner (2026-11-21); the hand stays
+ * where it is, so the felt between the draw and the first meld is wider there.
+ *
+ * That is what keeps the camera still. A side player's line runs along their own
+ * edge on screen; before this rule the row grew past the hand's end and became
+ * the board's nearest/farthest content, so `frameForAspect` had to solve further
+ * back (the "camera zooms out on melds" defect). `boardLayout.rowAnchorUnits` is
+ * the rule; no second row is ever needed.
  */
-/** The felt between the drawn tile's right edge and the meld row: 4.2 mm. */
+/** The felt between the drawn tile's right edge and the first meld: 4.2 mm. */
 const MELD_ROW_CLEARANCE_UNITS = 0.15;
 
 /**
- * The felt between two meld rows: 2.8 mm.
+ * The felt between two *different* melds: 2.8 mm.
  *
- * A meld's own tiles touch (they are one slab), but two *different* melds sit on
- * separate rows with visible felt between them — a deliberate separation, wide
- * enough that it never reads as a slot the camera could look through (the layout
- * gate's slot threshold is 1.4 mm).
+ * A meld's own tiles touch (they are one slab), but two melds in the line sit
+ * with visible felt between them — a deliberate separation, wide enough that it
+ * never reads as a slot the camera could look through (the layout gate's slot
+ * threshold is 1.4 mm).
  */
-const MELD_ROW_GAP_UNITS = 0.1;
+const MELD_GAP_UNITS = 0.1;
 
 export const MELD = {
-  /** A full row's nominal slots: two upright, the called tile, the kan extension. */
-  slots: 4,
   /** Advance past an upright meld tile: exactly its width. */
   uprightPitchUnits: TILE.widthUnits,
   /** Advance past a sideways (called) meld tile: exactly its height. */
   sidewaysPitchUnits: TILE.heightUnits,
   /** Meld tiles touch: a called meld is one slab, as in a real hand. */
   slotGapUnits: 0,
+  /** The felt between the drawn tile and the first meld: 4.2 mm. */
+  rowClearanceUnits: MELD_ROW_CLEARANCE_UNITS,
+  /** The felt between two melds in the line: 2.8 mm. */
+  meldGapUnits: MELD_GAP_UNITS,
   /**
-   * Tangential start of the row: the drawn tile's right edge plus
-   * {@link MELD.rowClearanceUnits}, so the row never grazes the draw.
+   * How far a **near/far row's** meld line starts further to the player's right
+   * than the draw's minimum clearance (user request 2026-11-21: the melds can
+   * start "about 2 tile-lengths" further right, toward the viewport corner).
+   *
+   * Two tile widths along the row (1.5 units, 42 mm). Only the bottom and top
+   * rows — the ones that face an inset end run — use it: they have screen room
+   * toward their corners (about 340 px at 16:9), and a flat meld moved along
+   * that row never leaves the board's existing x extent. The left/right rows run
+   * down the screen edges and have only about one tile width of room; moving
+   * them would make their flat meld the board's near/far extreme and pull the
+   * camera back, so they keep the minimum clearance. The concealed hand does not
+   * move with the line in either case.
    */
-  rowStartUnits: HAND.drawOffsetUnits + TILE.widthUnits / 2 + MELD_ROW_CLEARANCE_UNITS,
-  /** The felt between the drawn tile and the meld row: 4.2 mm. */
-  rowClearanceUnits: 0.15,
-  /**
-   * Centre-line radius of the first meld row, at a **left/right** seat's hand
-   * radius. The near/far seats' melds use their own hand radius
-   * (`HAND.endSeatRadiusUnits`); `boardLayout.handRadius` is the rule.
-   */
-  rowRadiusUnits: HAND.backRadiusUnits,
-  /** Radius step for a second/third meld row: a tile height plus 2.8 mm felt. */
-  rowPitchUnits: TILE.heightUnits + MELD_ROW_GAP_UNITS,
-  /** Meld rows before a row has to keep growing along its own length. */
-  rowCount: 3,
-  /** Tangential limit of one row: the mat edge (12.5) less 0.1 units. */
-  maxRowUnits: 12.4,
+  rowShiftUnits: 2 * TILE.widthUnits,
 } as const;
 
 /**

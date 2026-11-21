@@ -1,14 +1,30 @@
 import { create } from 'zustand';
 import { grade_answer_json } from 'riichiprac';
 import {
-  canDeclareRiichi,
   findAiActionInfo,
-  findKanCandidateTile,
   isCallDecision,
   isCorrectAction,
   isKanDecision,
 } from '../actions';
 import { parseAgreementPayload } from '../agreement';
+import {
+  callButtonsFor,
+  callContextFor,
+  callName,
+  callOptionForPicks,
+  callOptionsFor,
+  displayCopies,
+  isSelectableCopy,
+  previewCopiesFor,
+  sharesCall,
+} from '../callChoices';
+import type {
+  CallCopy,
+  CallKind,
+  CallOption,
+  PendingCall,
+  PickedCopy,
+} from '../callChoices';
 import type { ScenarioSnapshot } from '../scenarioHistory';
 import { initMortalClient } from '../services/mortalClient';
 import type { MortalClient } from '../services/mortalClient';
@@ -18,7 +34,7 @@ import type { AiDecision, AiEvaluation, AiStatus } from '../types/ai';
 import type { MortalAgreementReport } from '../types/agreement';
 import type { CorrectActionType, GameState } from '../types/game';
 import type { DualGrade } from '../types/verdict';
-import { ensureWasmReady } from '../wasm';
+import { ensureWasmReady, riichiDiscardTiles } from '../wasm';
 
 /** An answer in the trainer's submitted-answer shape (mirrors `verdict.rs`). */
 export interface SubmittedAnswer {
@@ -62,10 +78,21 @@ interface GameStore {
   gameState: GameState | null;
   isLoading: boolean;
   error: string | null;
-  /** Whether the player has armed the "Call Riichi" toggle. */
-  callRiichi: boolean;
-  /** Whether the player has armed the Kan call (Added Kan or concealed quad). */
-  callKan: boolean;
+  /**
+   * The call whose tile pick is open, or null.
+   *
+   * A call is a click-to-pick step, never an armed toggle: pressing Chi, Pon,
+   * Kan or Riichi opens exactly one pick, and Cancel/Escape closes it without
+   * touching the hand. A call with one legal option never opens it at all.
+   */
+  pendingCall: PendingCall | null;
+  /** Why the last pick was rejected, for the alert beside the call bar. */
+  callError: string | null;
+  /**
+   * The hand tiles a hovered/focused call button would use, for the transient
+   * raise (2026-11-21). Null when no call is being previewed.
+   */
+  callPreview: readonly CallCopy[] | null;
 
   /** The answer the player submitted, in trainer vocabulary. */
   submittedAnswer: SubmittedAnswer | null;
@@ -104,8 +131,9 @@ interface GameStore {
   /** Parse and store a raw JSON payload returned by the WASM engine. */
   loadFromJson: (json: string) => void;
   /**
-   * Put a hand from a browser history entry back on screen, answer state and
-   * all, without regenerating it or re-running Mortal.
+   * Put a hand on screen without regenerating it, from whatever snapshot the
+   * caller supplies. Back/Forward passes one stripped of its answer state
+   * (`withoutAnswerState`), so the same table comes back unanswered.
    */
   restoreSnapshot: (snapshot: ScenarioSnapshot) => void;
   /**
@@ -113,11 +141,21 @@ interface GameStore {
    * `generate_puzzle_with_agreement` and load its table.
    */
   loadFromAgreementJson: (json: string) => void;
-  /** Arm or disarm the Riichi declaration before choosing a discard. */
-  toggleRiichi: () => void;
-  /** Arm or disarm the Added Kan before choosing the fourth tile. */
-  toggleKan: () => void;
-  /** Submit the armed call state and clicked hand tile as one answer. */
+  /**
+   * Press a call button. A call with exactly one legal option is submitted
+   * immediately; otherwise a tile pick opens (`pendingCall`).
+   */
+  beginCall: (kind: CallKind) => void;
+  /** Add a hand tile to the open pick, submitting the call when it is whole. */
+  pickCallTile: (tile: string, tileIndex?: number) => void;
+  /** Close the open pick without answering. */
+  cancelCall: () => void;
+  /**
+   * Raise the tiles a call button's press would use. Pointer leave, focus
+   * loss, opening the pick and answering clear it.
+   */
+  previewCall: (kind: CallKind | null) => void;
+  /** Submit the clicked hand tile as the answer (or as the open pick's tile). */
   selectTile: (tile: string, tileIndex?: number, isDraw?: boolean) => void;
   /** Submit a generic AI-scenario choice. */
   submitChoice: (choice: PlayerChoice) => void;
@@ -129,6 +167,15 @@ interface GameStore {
   regrade: () => void;
   /** Reveal Mortal's line before answering. */
   peekMortal: () => void;
+  /**
+   * Return the current hand to its unanswered state without re-dealing it.
+   *
+   * Clears the submitted answer, the verdict, the peek and the armed call
+   * state, and supersedes any evaluation still running for the answered hand so
+   * it cannot re-grade the reset table. The `GameState` object is untouched, so
+   * the same hand can be answered again (and graded normally the second time).
+   */
+  resetAnswer: () => void;
   /** Clear the current table and answer before loading the next scenario. */
   reset: () => void;
   setError: (error: string) => void;
@@ -197,8 +244,9 @@ const emptyState = {
   gameState: null,
   isLoading: true,
   error: null,
-  callRiichi: false,
-  callKan: false,
+  pendingCall: null,
+  callError: null,
+  callPreview: null,
   submittedAnswer: null,
   dualGrade: null,
   peekedBeforeAnswer: false,
@@ -212,8 +260,9 @@ const emptyState = {
   | 'gameState'
   | 'isLoading'
   | 'error'
-  | 'callRiichi'
-  | 'callKan'
+  | 'pendingCall'
+  | 'callError'
+  | 'callPreview'
   | 'submittedAnswer'
   | 'dualGrade'
   | 'peekedBeforeAnswer'
@@ -347,6 +396,130 @@ export const useGameStore = create<GameStore>((set, get) => {
     }
   };
 
+  /**
+   * Resolve an option's hand copies against the displayed hand, so a submitted
+   * answer carries the click's display index and tsumogiri flag.
+   */
+  const pickedCopies = (
+    player: GameState['players'][number],
+    copies: readonly { code: string; isRed: boolean }[],
+  ): PickedCopy[] => {
+    const display = displayCopies(player);
+    const used = new Set<number>();
+    const picks: PickedCopy[] = [];
+    for (const copy of copies) {
+      const index = display.findIndex(
+        (tile, position) =>
+          !used.has(position) &&
+          tile.code === copy.code &&
+          tile.isRed === copy.isRed,
+      );
+      if (index < 0) continue;
+      used.add(index);
+      picks.push({
+        code: copy.code,
+        isRed: copy.isRed,
+        index,
+        isDraw: display[index].isDraw,
+      });
+    }
+    return picks;
+  };
+
+  /**
+   * Submit the hand tile a declaration or discard names.
+   *
+   * `declaration` is the call that owns this pick (Riichi's discard, a Kan's
+   * fourth tile); null is an ordinary discard/dama/fold answer.
+   */
+  const submitHandTile = (
+    tile: string,
+    tileIndex: number | undefined,
+    isDraw: boolean | undefined,
+    declaration: 'riichi' | 'kan' | null,
+  ) => {
+    const state = get();
+    const game = state.gameState;
+    if (!game || state.dualGrade) return;
+
+    if (game.correct_action.type === 'best') {
+      const name =
+        declaration === 'riichi'
+          ? 'Riichi'
+          : declaration === 'kan'
+            ? 'Kan'
+            : `Discard_${tile}`;
+      const info = findAiActionInfo(game, name, tile);
+      get().submitChoice({
+        action: info?.action ?? name,
+        tile,
+        tileIndex,
+        isTsumogiri: isDraw,
+        tiles: info?.tiles,
+        label: info?.label,
+      });
+      return;
+    }
+
+    let selectedType: CorrectActionType =
+      game.correct_action.type === 'fold' ? 'fold' : 'dama';
+    if (declaration === 'kan') {
+      selectedType = 'kan';
+    } else if (declaration === 'riichi') {
+      selectedType = 'riichi';
+    } else if (isKanDecision(game.correct_action)) {
+      selectedType = 'discard';
+    }
+
+    const answer: SubmittedAnswer = { action: selectedType, tile };
+    if (tileIndex !== undefined) {
+      answer.tile_index = tileIndex;
+    }
+    if (isDraw !== undefined) {
+      answer.is_tsumogiri = isDraw;
+    } else if (submitsTheDraw(game, answer)) {
+      answer.is_tsumogiri = true;
+    }
+    get().submitAnswer(answer);
+  };
+
+  /** Submit the answer a completed call makes. */
+  const completeCall = (
+    kind: CallKind,
+    option: CallOption,
+    picks: PickedCopy[],
+  ) => {
+    const game = get().gameState;
+    if (!game) return;
+    const picked = picks[picks.length - 1];
+
+    if (game.correct_action.type === 'best') {
+      get().submitChoice({
+        action: option.action ?? callName(kind),
+        tile: option.calledTile ?? picked?.code ?? '',
+        tileIndex: picked?.index,
+        isTsumogiri: picked?.isDraw,
+        tiles: option.handTiles.map((copy) => copy.code),
+      });
+      return;
+    }
+
+    if (kind === 'riichi') {
+      if (picked) submitHandTile(picked.code, picked.index, picked.isDraw, 'riichi');
+      return;
+    }
+
+    const offer = game.call_offer;
+    if (offer) {
+      get().submitAction({ action: offer.action });
+      return;
+    }
+
+    if (kind === 'kan' && picked) {
+      submitHandTile(picked.code, picked.index, picked.isDraw, 'kan');
+    }
+  };
+
   return {
     ...emptyState,
     aiStatus: 'idle',
@@ -368,8 +541,9 @@ export const useGameStore = create<GameStore>((set, get) => {
           gameState: parsed,
           isLoading: false,
           error: null,
-          callRiichi: false,
-          callKan: false,
+          pendingCall: null,
+          callError: null,
+          callPreview: null,
           submittedAnswer: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
@@ -388,8 +562,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({
           isLoading: false,
           error: err instanceof Error ? err.message : String(err),
-          callRiichi: false,
-          callKan: false,
+          pendingCall: null,
+          callError: null,
+          callPreview: null,
           submittedAnswer: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
@@ -421,9 +596,10 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
 
-      // A stored evaluation is reused as-is: it belongs to this exact table and
-      // a fresh forward pass would be slow and could disagree after a model
-      // update, which would make the restored verdict inconsistent.
+      // A stored evaluation is reused when the caller supplies one: it belongs
+      // to this exact table, so a fresh forward pass would be slow and could
+      // disagree after a model update. Back/Forward strips it instead, so a
+      // restored hand starts with no evaluation of its own.
       const evaluation =
         snapshot.evaluation ??
         (parsed.ai_decision
@@ -434,8 +610,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         gameState: parsed,
         isLoading: false,
         error: null,
-        callRiichi: snapshot.callRiichi,
-        callKan: snapshot.callKan,
+        pendingCall: null,
+        callError: null,
+        callPreview: null,
         submittedAnswer: snapshot.submittedAnswer,
         dualGrade: snapshot.dualGrade,
         peekedBeforeAnswer: snapshot.peekedBeforeAnswer,
@@ -460,8 +637,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({
           isLoading: false,
           error: err instanceof Error ? err.message : String(err),
-          callRiichi: false,
-          callKan: false,
+          pendingCall: null,
+          callError: null,
+          callPreview: null,
           submittedAnswer: null,
           dualGrade: null,
           peekedBeforeAnswer: false,
@@ -481,75 +659,244 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({ mortalAgreement: payload.report });
     },
 
-    toggleRiichi: () =>
-      set((state) => {
-        if (!state.gameState || state.dualGrade) return state;
-        // Rust decides legality: an open hand, an already-declared Riichi, or a
-        // non-tenpai hand must never arm one.
-        if (!canDeclareRiichi(state.gameState)) return state;
-        return { callRiichi: !state.callRiichi, callKan: false };
-      }),
+    beginCall: (kind) => {
+      const state = get();
+      const game = state.gameState;
+      if (!game || state.dualGrade) return;
+      const human = game.players.find((player) => player.is_human);
+      if (!human) return;
 
-    toggleKan: () =>
-      set((state) => {
-        if (!state.gameState || state.dualGrade) return state;
-        // Only a Kan lesson offers the call; another lesson can hold four
-        // concealed copies without asking about them.
-        if (state.gameState.target_action !== 'Kan') return state;
+      const context = callContextFor(game);
+      if (!callButtonsFor(game, human, context).calls.some((call) => call.kind === kind)) {
+        return;
+      }
+      if (state.pendingCall) {
+        set({ pendingCall: null, callError: null });
+      }
+      // Opening a call lowers the hover preview; the pick's own selected tiles
+      // are what rise next.
+      set({ callPreview: null });
 
-        const human = state.gameState.players.find((player) => player.is_human);
-        if (!human || !findKanCandidateTile(human)) return state;
+      if (kind === 'riichi') {
+        // Rust lists the legal declaration discards. One distinct copy is not
+        // a choice: the button press is the whole interaction. More than one
+        // (including a red/plain five of the same tile) opens the pick, whose
+        // options are the engine's list, so a tenpai-breaking discard cannot be
+        // chosen at all. A test double (or an older Wasm package) that cannot
+        // answer falls back to any tile and leaves the grading to the engine.
+        let legal: string[] = [];
+        try {
+          legal = riichiDiscardTiles(JSON.stringify(game)) ?? [];
+        } catch {
+          legal = [];
+        }
 
-        return { callKan: !state.callKan, callRiichi: false };
-      }),
+        const display = displayCopies(human);
+        const options: CallOption[] = [];
+        for (const code of legal) {
+          const seenRed = new Set<boolean>();
+          for (const tile of display) {
+            if (tile.code !== code || seenRed.has(tile.isRed)) continue;
+            seenRed.add(tile.isRed);
+            options.push({
+              kind: 'riichi',
+              calledTile: null,
+              handTiles: [{ code: tile.code, isRed: tile.isRed }],
+            });
+          }
+        }
+
+        if (options.length === 1) {
+          completeCall('riichi', options[0], pickedCopies(human, options[0].handTiles));
+          return;
+        }
+        set({
+          pendingCall: {
+            kind: 'riichi',
+            need: 1,
+            picks: [],
+            options,
+            anyTile: legal.length === 0,
+          },
+          callError: null,
+        });
+        return;
+      }
+
+      const options = callOptionsFor(game, human, context, kind);
+      if (options.length === 0) {
+        set({ callError: 'That call is not available here.', pendingCall: null });
+        return;
+      }
+      if (options.length === 1) {
+        const option = options[0];
+        completeCall(kind, option, pickedCopies(human, option.handTiles));
+        return;
+      }
+
+      set({
+        pendingCall: {
+          kind,
+          need: kind === 'chi' ? 2 : 1,
+          picks: [],
+          options,
+          anyTile: false,
+        },
+        callError: null,
+      });
+    },
+
+    pickCallTile: (tile, tileIndex) => {
+      const state = get();
+      const pending = state.pendingCall;
+      const game = state.gameState;
+      if (!pending || !game || state.dualGrade) return;
+      const human = game.players.find((player) => player.is_human);
+      if (!human) return;
+
+      const display = displayCopies(human);
+      const index =
+        tileIndex ?? display.findIndex((candidate) => candidate.code === tile);
+      const candidate = display[index];
+      if (!candidate || candidate.code !== tile) {
+        set({ callError: 'That is not one of your hand tiles.' });
+        return;
+      }
+
+      const copy = { code: candidate.code, isRed: candidate.isRed };
+      if (!isSelectableCopy(pending, copy)) {
+        set({
+          callError:
+            pending.kind === 'riichi'
+              ? 'That tile cannot be discarded for Riichi.'
+              : `That tile cannot be used for this ${callName(pending.kind)}.`,
+        });
+        return;
+      }
+
+      /*
+       * Selection is a toggle. Clicking a raised tile lowers it; clicking a new
+       * tile raises it, and once more than `need` are raised only the most
+       * recent `need` stay up. A set that makes the call submits at once.
+       */
+      const already = pending.picks.findIndex(
+        (pick) => pick.code === copy.code && pick.isRed === copy.isRed,
+      );
+      if (already >= 0) {
+        const picks = pending.picks.filter((_, position) => position !== already);
+        set({ pendingCall: { ...pending, picks }, callError: null });
+        return;
+      }
+
+      const picked: PickedCopy = {
+        code: candidate.code,
+        isRed: candidate.isRed,
+        index,
+        isDraw: candidate.isDraw,
+      };
+      const next = [...pending.picks, picked];
+      let picks =
+        next.length > pending.need ? next.slice(next.length - pending.need) : next;
+
+      /*
+       * Keep the newest tile and only the raised tiles that can share a call
+       * with it. A tile that cannot join the current selection replaces it
+       * (user request 2026-11-21), rather than leaving an impossible pair up.
+       */
+      if (picks.length > 1 && !sharesCall(pending.options, picks)) {
+        picks = [picks[picks.length - 1]];
+      }
+
+      if (picks.length === pending.need) {
+        const option = callOptionForPicks(pending, picks);
+        if (option) {
+          set({ pendingCall: null, callError: null });
+          completeCall(pending.kind, option, picks);
+          return;
+        }
+        // A full set that is not the call yet stays raised; the next click
+        // replaces its oldest tile.
+        set({
+          pendingCall: { ...pending, picks },
+          callError: `Those tiles do not make a ${callName(pending.kind)}.`,
+        });
+        return;
+      }
+
+      set({ pendingCall: { ...pending, picks }, callError: null });
+    },
+
+    cancelCall: () =>
+      set({ pendingCall: null, callError: null, callPreview: null }),
+
+    previewCall: (kind) => {
+      const state = get();
+      const game = state.gameState;
+      if (!kind || !game || state.dualGrade || state.pendingCall) {
+        set({ callPreview: null });
+        return;
+      }
+      const human = game.players.find((player) => player.is_human);
+      if (!human) {
+        set({ callPreview: null });
+        return;
+      }
+
+      const context = callContextFor(game);
+      if (
+        !callButtonsFor(game, human, context).calls.some(
+          (call) => call.kind === kind,
+        )
+      ) {
+        set({ callPreview: null });
+        return;
+      }
+
+      if (kind === 'riichi') {
+        let legal: string[] = [];
+        try {
+          legal = riichiDiscardTiles(JSON.stringify(game)) ?? [];
+        } catch {
+          legal = [];
+        }
+        const display = displayCopies(human).filter(
+          (tile) => legal.length === 0 || legal.includes(tile.code),
+        );
+        const seen = new Set<string>();
+        const copies: CallCopy[] = [];
+        for (const tile of display) {
+          const key = `${tile.code}|${tile.isRed}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          copies.push({ code: tile.code, isRed: tile.isRed });
+        }
+        set({ callPreview: copies });
+        return;
+      }
+
+      set({
+        callPreview: previewCopiesFor(
+          callOptionsFor(game, human, context, kind),
+        ),
+      });
+    },
 
     selectTile: (tile, tileIndex, isDraw) => {
       const state = get();
       const game = state.gameState;
       if (!game || state.dualGrade) return;
 
-      // A call lesson is answered with the Call/Pass buttons, never a tile.
-      if (isCallDecision(game)) return;
-
-      if (game.correct_action.type === 'best') {
-        const action = state.callRiichi ? 'Riichi' : `Discard_${tile}`;
-        const info = findAiActionInfo(game, action, tile);
-        get().submitChoice({
-          action: info?.action ?? action,
-          tile,
-          tileIndex,
-          isTsumogiri: isDraw,
-          tiles: info?.tiles,
-          label: info?.label,
-        });
+      // A pick step owns the hand: a tile click collects the call's tiles
+      // instead of answering.
+      if (state.pendingCall) {
+        get().pickCallTile(tile, tileIndex);
         return;
       }
 
-      const human = game.players.find((player) => player.is_human);
-      const kanCandidate = human ? findKanCandidateTile(human) : null;
+      // A book call lesson answers with its call/Pass buttons, never a tile.
+      if (isCallDecision(game)) return;
 
-      // A defense lesson's answer is a fold: no declaration is armed, so the
-      // click alone submits the "safest discard" action.
-      let selectedType: CorrectActionType =
-        game.correct_action.type === 'fold' ? 'fold' : 'dama';
-      if (state.callKan && kanCandidate) {
-        selectedType = 'kan';
-      } else if (state.callRiichi) {
-        selectedType = 'riichi';
-      } else if (isKanDecision(game.correct_action)) {
-        selectedType = 'discard';
-      }
-
-      const answer: SubmittedAnswer = { action: selectedType, tile };
-      if (tileIndex !== undefined) {
-        answer.tile_index = tileIndex;
-      }
-      if (isDraw !== undefined) {
-        answer.is_tsumogiri = isDraw;
-      } else if (submitsTheDraw(game, answer)) {
-        answer.is_tsumogiri = true;
-      }
-      get().submitAnswer(answer);
+      submitHandTile(tile, tileIndex, isDraw, null);
     },
 
     submitChoice: (choice) => {
@@ -576,7 +923,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     submitAction: (action) => {
       if (action.action === 'Riichi') {
-        get().toggleRiichi();
+        get().beginCall('riichi');
         return;
       }
 
@@ -615,7 +962,11 @@ export const useGameStore = create<GameStore>((set, get) => {
       const grade = gradeNow(gameState, answer, evaluation);
       if (!grade) return;
 
-      set({ submittedAnswer: answer, dualGrade: grade });
+      set({
+        submittedAnswer: answer,
+        dualGrade: grade,
+        callPreview: null,
+      });
     },
 
     regrade: () => {
@@ -629,6 +980,45 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     peekMortal: () => set({ peekedBeforeAnswer: true }),
 
+    resetAnswer: () => {
+      const { gameState } = get();
+      if (!gameState) return;
+
+      /*
+       * Supersede the evaluation still running for the answered hand. Its late
+       * result must not populate the reset table's Mortal column or re-grade it;
+       * the fresh request below gets a new id and owns the state from here.
+       */
+      evaluationRequestId += 1;
+      pendingState = null;
+
+      /*
+       * An AI drill's ranking is part of the hand (`ai_decision`), not of the
+       * answer, so it is re-seeded as-is. A book lesson drops the evaluation it
+       * had and asks Mortal again for the same table: the reset hand starts with
+       * no evaluation of its own, exactly as when it was first dealt.
+       */
+      const evaluation = gameState.ai_decision
+        ? evaluationFromDecision(gameState.ai_decision)
+        : null;
+
+      set({
+        submittedAnswer: null,
+        dualGrade: null,
+        peekedBeforeAnswer: false,
+        // A call pick cannot outlive the answer it belonged to.
+        pendingCall: null,
+        callError: null,
+        callPreview: null,
+        evaluation,
+        isEvaluating: false,
+      });
+
+      if (!evaluation) {
+        requestEvaluationFor(gameState);
+      }
+    },
+
     reset: () => {
       pendingState = null;
       evaluationRequestId += 1;
@@ -641,8 +1031,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({
         isLoading: false,
         error,
-        callRiichi: false,
-        callKan: false,
+        pendingCall: null,
+        callError: null,
+        callPreview: null,
         submittedAnswer: null,
         dualGrade: null,
         peekedBeforeAnswer: false,

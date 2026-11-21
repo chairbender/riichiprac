@@ -19,8 +19,7 @@ const wasmMock = vi.hoisted(() => ({ generatedJson: '{}' }));
 const hostMock = vi.hoisted(() => ({
   props: null as null | {
     readonly snapshot: unknown;
-    readonly callRiichi?: boolean;
-    readonly callKan?: boolean;
+    readonly pendingCall?: unknown;
     readonly onSelectTile?: (tile: string, index?: number, isDraw?: boolean) => void;
   },
 }));
@@ -100,7 +99,7 @@ afterEach(() => {
 });
 
 describe('App 3D overlay wiring (3D-08)', () => {
-  it('passes the store’s own discard handler and the armed flags to the host', async () => {
+  it('passes the store’s own discard handler and the open call pick to the host', async () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     window.history.replaceState(null, '', '?renderer=3d');
     vi.stubGlobal(
@@ -118,8 +117,7 @@ describe('App 3D overlay wiring (3D-08)', () => {
     // The exact handler the 2D views receive: a click in the 3D view answers
     // through the store, with no renderer in the path.
     expect(hostMock.props?.onSelectTile).toBe(useGameStore.getState().selectTile);
-    expect(hostMock.props?.callRiichi).toBe(useGameStore.getState().callRiichi);
-    expect(hostMock.props?.callKan).toBe(useGameStore.getState().callKan);
+    expect(hostMock.props?.pendingCall).toBe(useGameStore.getState().pendingCall);
     expect(hostMock.props?.snapshot).not.toBeNull();
 
     expect(useGameStore.getState().submittedAnswer).toBeNull();

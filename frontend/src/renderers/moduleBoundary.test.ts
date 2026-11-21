@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 const FILES = [
   'contract.ts',
   'snapshot.ts',
+  'wall.ts',
   'capabilities.ts',
   'layoutConstants.ts',
   'three/boardLayout.ts',

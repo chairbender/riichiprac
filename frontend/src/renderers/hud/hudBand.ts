@@ -2,7 +2,7 @@
  * The HUD's aspect band, as React context (3D-H6, `3d_hud.md` §5).
  *
  * `hudLayout()` is the one place the band is derived, from the live stage size.
- * The top-bar and hand-panel controls are built by `App` but rendered inside
+ * The top-bar and call-row controls are built by `App` but rendered inside
  * `HudLayer`, so the layer publishes the band here and each control reads it
  * with `useHudCollapse()` — no second aspect calculation, no `window` reads in a
  * component, and no prop drilling through `App` (which never knows the stage

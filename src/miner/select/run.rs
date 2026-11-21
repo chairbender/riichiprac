@@ -31,7 +31,7 @@
 //! `--dry-run`, and a write failure leaves the previous file intact
 //! ([`crate::miner::storage::write_atomic`]).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -409,6 +409,26 @@ pub fn run_selection(
     }
     let replay_rows = load_replay_rows(&connection)?;
     let labels = LabelIndex::load(&connection)?;
+    // A base ships in one pack only. Per-lesson coverage is the *sum* of the
+    // packs' `lesson_counts` (RF1/RF2), so a decision another pack already
+    // *shipped* must not be counted twice; packs are disjoint slices of the
+    // corpus. The check reads `pack_scenarios` (the assembled bodies), not the
+    // wider `selected_scenarios` staging table, so a candidate the earlier
+    // pack selected and then dropped is still available. A re-run of this pack
+    // does not exclude its own rows.
+    let already_packed: BTreeSet<String> = {
+        let mut statement = connection.prepare(
+            "SELECT DISTINCT s.decision_id
+             FROM pack_scenarios p
+             JOIN selected_scenarios s ON s.scenario_id = p.scenario_id
+             WHERE p.pack_id <> ?1",
+        )?;
+        statement
+            .query_map([options.config.pack_id.as_str()], |row| {
+                row.get::<_, String>(0)
+            })?
+            .collect::<Result<_, _>>()?
+    };
 
     let workers = if options.workers == 0 {
         std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
@@ -563,6 +583,10 @@ pub fn run_selection(
                         || !options.config.replay_family_allowed(&family)
                     {
                         out.funnel.reject("out_of_scope");
+                        continue;
+                    }
+                    if already_packed.contains(&decision.decision_id) {
+                        out.funnel.reject("already_packed");
                         continue;
                     }
                     match build_candidate(

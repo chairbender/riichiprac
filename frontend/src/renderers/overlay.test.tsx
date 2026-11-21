@@ -23,6 +23,8 @@ import { frameForAspect, layoutBoard } from './three/boardLayout';
 import { compassPlateRect, hitRects } from './three/hitTest';
 import type { TableSnapshot } from './contract';
 import type { GameState, PlayerState } from '../types/game';
+import { NO_CALL_BUTTONS } from '../callChoices';
+import type { PendingCall } from '../callChoices';
 
 // The SVG tile package bundles its own React; the labels are the subject here.
 vi.mock('../components/Tile', () => ({ Tile: () => null }));
@@ -123,13 +125,16 @@ function dock(overrides: Partial<ComponentProps<typeof HandDock>> = {}) {
       player={HUMAN}
       grade={null}
       answer={null}
-      callRiichi={false}
-      callKan={false}
+      callButtons={NO_CALL_BUTTONS}
+      pendingCall={null}
+      callError={null}
       aiEvaluation={null}
       onNextScenario={() => undefined}
+      onResetAnswer={() => undefined}
       onShowVerdict={() => undefined}
-      onToggleRiichi={() => undefined}
-      onToggleKan={() => undefined}
+      onBeginCall={() => undefined}
+      onPass={() => undefined}
+      onCancelCall={() => undefined}
       onSelectTile={() => undefined}
       {...overrides}
     />
@@ -162,16 +167,112 @@ describe('3D overlay: parity with the dock', () => {
     expect(dockLabels).toContain('Discard G');
   });
 
-  it('keeps the armed Riichi/Kan wording identical to the dock', () => {
-    const dockView = render(dock({ callRiichi: true, callKan: true }));
+  it('keeps the call-pick wording identical to the dock', () => {
+    const pick: PendingCall = {
+      kind: 'riichi',
+      need: 1,
+      picks: [],
+      options: [],
+      anyTile: true,
+    };
+    const dockView = render(dock({ pendingCall: pick }));
     const dockLabels = labelsIn(dockView.container);
     cleanup();
 
     const overlayView = render(
-      <TableOverlay {...overlayProps({ callRiichi: true, callKan: true })} />,
+      <TableOverlay {...overlayProps({ pendingCall: pick })} />,
     );
     expect(labelsIn(overlayView.container)).toEqual(dockLabels);
-    expect(dockLabels[0]).toBe('Declare Kan on 1m, with Riichi');
+    expect(dockLabels[0]).toBe('Discard 1m for Riichi');
+    expect(dockLabels).toContain('Discard R5s for Riichi');
+  });
+
+  it('raises the previewed tiles in the dock and darkens the same pick set', () => {
+    const preview = [{ code: '1m', isRed: false }];
+    const dockView = render(dock({ previewTiles: preview }));
+    const lifted = within(dockView.container)
+      .getAllByRole('button')
+      .filter((button) =>
+        button.classList.contains('hand-tile-button--lifted'),
+      );
+    expect(lifted.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Discard 1m',
+    ]);
+    cleanup();
+
+    // A pick dims every tile outside its options; the 3D overlay renders one
+    // dim layer per such tile, over the painted tile itself.
+    const pick: PendingCall = {
+      kind: 'pon',
+      need: 1,
+      picks: [],
+      options: [
+        {
+          kind: 'pon',
+          calledTile: '1m',
+          handTiles: [{ code: '1m', isRed: false }],
+        },
+      ],
+      anyTile: false,
+    };
+    const overlayView = render(
+      <TableOverlay {...overlayProps({ pendingCall: pick })} />,
+    );
+    const dims = [
+      ...overlayView.container.querySelectorAll('.renderer-3d-dim'),
+    ];
+    expect(dims).toHaveLength(10);
+    expect(dims.map((dim) => dim.getAttribute('data-tile'))).not.toContain('1m');
+
+    const dimDock = render(dock({ pendingCall: pick }));
+    expect(
+      within(dimDock.container)
+        .getAllByRole('button')
+        .filter((button) => button.classList.contains('hand-tile-button--dimmed')),
+    ).toHaveLength(10);
+  });
+
+  it('disables the same tiles the dock disables while picking a call', () => {
+    // A Pon on 1m needs a copy of 1m: the dock blurs every other hand tile, and
+    // the 3D overlay removes them from the tab order for the same reason.
+    const pick: PendingCall = {
+      kind: 'pon',
+      need: 1,
+      picks: [],
+      options: [
+        {
+          kind: 'pon',
+          calledTile: '1m',
+          handTiles: [{ code: '1m', isRed: false }],
+        },
+      ],
+      anyTile: false,
+    };
+
+    const dockView = render(dock({ pendingCall: pick }));
+    const dockEnabled = within(dockView.container)
+      .getAllByRole('button')
+      .map((button) => ({
+        label: button.getAttribute('aria-label'),
+        blocked: button.getAttribute('aria-disabled') === 'true',
+      }));
+    cleanup();
+
+    const overlayView = render(
+      <TableOverlay {...overlayProps({ pendingCall: pick })} />,
+    );
+    const overlayButtons = within(overlayView.container).getAllByRole('button');
+    expect(
+      overlayButtons.map((button) => button.getAttribute('aria-label')),
+    ).toEqual(dockEnabled.map((entry) => entry.label));
+    expect(
+      overlayButtons.map(
+        (button) => button.getAttribute('aria-disabled') === 'true',
+      ),
+    ).toEqual(dockEnabled.map((entry) => entry.blocked));
+    expect(
+      dockEnabled.filter((entry) => !entry.blocked).map((entry) => entry.label),
+    ).toEqual(['Pon with 1m']);
   });
 
   it('hands the same tile, display index and draw flag to the click handler', async () => {
@@ -302,7 +403,7 @@ describe('3D overlay: placement and motion', () => {
     }
   });
 
-  it('reports hover/focus for the lift, with motion suppressed on request', () => {
+  it('reports hover/focus for the lift under every motion preference', () => {
     const onHoverTile = vi.fn();
     const { container } = render(
       <TableOverlay {...overlayProps({ onHoverTile })} />,
@@ -317,20 +418,15 @@ describe('3D overlay: placement and motion', () => {
     });
     fireEvent.blur(button);
     expect(onHoverTile.mock.calls[1]).toEqual([null]);
-    cleanup();
 
-    const suppressed = vi.fn();
-    const quiet = render(
-      <TableOverlay {...overlayProps({ onHoverTile: suppressed, reducedMotion: true })} />,
-    );
-    const quietButton = within(quiet.container).getAllByRole('button')[0];
-    fireEvent.focus(quietButton);
-    // No lift is asked for...
-    expect(suppressed).not.toHaveBeenCalled();
-    // ...but a clear is still delivered, so a stale raised tile can never
-    // survive if motion is turned off between two hovers.
-    fireEvent.blur(quietButton);
-    expect(suppressed.mock.calls).toEqual([[null]]);
+    // The lift is a discrete pose change, not an animation (user decision
+    // 2026-11-21), so the overlay no longer has a reduced-motion branch: the
+    // deal-in is the animation that preference suppresses. A pointer hover
+    // still reports, and leaving still clears.
+    fireEvent.pointerEnter(button);
+    expect(onHoverTile.mock.calls.at(-1)?.[0]).toMatchObject({ code: '1m' });
+    fireEvent.pointerLeave(button);
+    expect(onHoverTile.mock.calls.at(-1)).toEqual([null]);
   });
 
   it('clears the lift when the hovered button disappears (answered hand)', () => {

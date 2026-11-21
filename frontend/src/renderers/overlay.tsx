@@ -21,9 +21,11 @@
  *   same arguments;
  * - visible focus, and focus kept somewhere valid when the answered hand
  *   removes the buttons;
- * - hover/focus reported through `onHoverTile` for 3D-12's bounded lift, with
- *   the motion suppressed under `prefers-reduced-motion`. The buttons never move
- *   for it: their rects come from the camera, not from interaction state.
+ * - hover/focus reported through `onHoverTile` for 3D-12's bounded lift. The
+ *   lift is a discrete pose change, not an animation, so it is reported even
+ *   under `prefers-reduced-motion` (which suppresses the deal-in instead). The
+ *   buttons never move for it: their rects come from the camera, not from
+ *   interaction state.
  *
  * 3D-09 adds {@link TableCompass}: the table's numbers are DOM, never 3D text.
  * It is a separate sibling of the hand group, not a child of it, so the hand's
@@ -39,6 +41,8 @@ import {
   RegularShaa,
   RegularTon,
 } from 'riichi-mahjong-tiles';
+import { isPickedCopy, isSelectableCopy } from '../callChoices';
+import type { PendingCall } from '../callChoices';
 import { handTileLabel } from '../handTileLabel';
 import { hitRectKey } from './contract';
 import type { CompassRect, HitRect, TableSnapshot } from './contract';
@@ -57,12 +61,11 @@ export interface TableOverlayProps {
   readonly snapshot: TableSnapshot;
   /** The renderer's current projection, one entry per interactive tile. */
   readonly rects: readonly HitRect[];
-  /** Call Riichi is armed, changing the hand buttons' labels. */
-  readonly callRiichi?: boolean;
-  /** Call Kan is armed, changing the hand buttons' labels. */
-  readonly callKan?: boolean;
-  /** Suppress the hover/focus lift (the focus ring still shows). */
-  readonly reducedMotion?: boolean;
+  /**
+   * The open call pick, or null. Labels say what the tile does (`Chi with 3m`)
+   * and tiles the call cannot use are disabled, exactly as in `HandDock`.
+   */
+  readonly pendingCall?: PendingCall | null;
   /** The handler every table view calls for a hand-tile click. */
   readonly onSelectTile: (tile: string, index?: number, isDraw?: boolean) => void;
   /** Report the pointer/focus tile for 3D-12's lift, or null for none. */
@@ -79,9 +82,7 @@ export interface TableOverlayProps {
 export function TableOverlay({
   snapshot,
   rects,
-  callRiichi = false,
-  callKan = false,
-  reducedMotion = false,
+  pendingCall = null,
   onSelectTile,
   onHoverTile,
 }: TableOverlayProps) {
@@ -108,6 +109,21 @@ export function TableOverlay({
   const keys = buttons.map(({ tile }) => hitRectKey(tile)).join('|');
 
   /*
+   * A pick leaves only its legal tiles bright; the rest are covered by a dim
+   * layer so the painted tile itself darkens (2026-11-21). Picked tiles stay
+   * bright and are lifted by the scene.
+   */
+  const dimmed = pendingCall
+    ? buttons.filter(({ tile }) => {
+        const copy = { code: tile.code, isRed: tile.isRed };
+        return (
+          !isSelectableCopy(pendingCall, copy) &&
+          !isPickedCopy(pendingCall, copy)
+        );
+      })
+    : [];
+
+  /*
    * Keep focus valid. Answering removes the buttons, and a new snapshot replaces
    * them; either way, a focused button that no longer exists must hand its focus
    * to the hand group rather than to the document. The same effect covers a
@@ -126,8 +142,8 @@ export function TableOverlay({
    * Drop a lift whose button has gone. Answering removes every button and a new
    * snapshot may replace the hovered one; a removed element gets no
    * `pointerleave`, so the renderer would otherwise keep that tile raised
-   * forever. Null is always reported, even under reduced motion: it only
-   * clears, and clearing must never be suppressed.
+   * forever. Null is always reported: it only clears, and clearing must never
+   * be suppressed.
    */
   useLayoutEffect(() => {
     const key = hoveredKeyRef.current;
@@ -139,9 +155,9 @@ export function TableOverlay({
 
   const hover = (tile: OverlayHandTile | null, key: string | null = null) => {
     hoveredKeyRef.current = tile ? key : null;
-    // Suppress the lift under reduced motion; report the clear regardless so a
-    // stale raised tile can never survive.
-    if (tile && reducedMotion) return;
+    // The lift is a discrete pose change, not an animation (user decision
+    // 2026-11-21): report it under every motion preference. Reduced motion
+    // still suppresses the deal-in, which is the actual animation.
     onHoverTile?.(tile);
   };
 
@@ -154,19 +170,41 @@ export function TableOverlay({
       tabIndex={-1}
       data-interactive-tiles={buttons.length}
     >
+      {dimmed.map(({ tile, rect }) => (
+        <div
+          key={`dim-${hitRectKey(tile)}`}
+          className="renderer-3d-dim"
+          aria-hidden="true"
+          data-tile={tile.face}
+          style={{
+            left: `${rect.left}px`,
+            top: `${rect.top}px`,
+            width: `${rect.width}px`,
+            height: `${rect.height}px`,
+          }}
+        />
+      ))}
       {buttons.map(({ tile, rect }) => {
         const key = hitRectKey(tile);
         const label = handTileLabel({
           code: tile.code,
           isRed: tile.isRed,
-          callKan,
-          callRiichi,
+          pick: pendingCall?.kind ?? null,
         });
+        // A tile the open pick cannot use is not a target. It stays focusable
+        // (`aria-disabled`) so a keyboard pick keeps its place in the hand,
+        // exactly as the 2D dock does, but a click is ignored here and the
+        // store would reject it anyway.
+        const blocked =
+          pendingCall !== null &&
+          !isSelectableCopy(pendingCall, { code: tile.code, isRed: tile.isRed });
         return (
           <button
             key={key}
             type="button"
-            className="renderer-3d-tile"
+            className={`renderer-3d-tile${
+              pendingCall && !blocked ? ' renderer-3d-tile--pick' : ''
+            }`}
             style={{
               left: `${rect.left}px`,
               top: `${rect.top}px`,
@@ -174,10 +212,14 @@ export function TableOverlay({
               height: `${rect.height}px`,
             }}
             aria-label={label}
+            aria-disabled={blocked || undefined}
             data-tile={tile.face}
             data-zone={tile.zone}
             data-slot={tile.slot}
-            onClick={() => onSelectTile(tile.code, tile.index, tile.isDraw)}
+            onClick={() => {
+              if (blocked) return;
+              onSelectTile(tile.code, tile.index, tile.isDraw);
+            }}
             onFocus={() => {
               focusedKeyRef.current = key;
               hover(tile, key);

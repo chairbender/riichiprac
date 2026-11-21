@@ -3,15 +3,17 @@
  *
  * Every dealt hand becomes one history entry. The entry carries a full
  * {@link ScenarioSnapshot} in `history.state`: the table JSON, how it was drawn,
- * and the answer state (submitted answer, verdict, peek, armed toggles). The URL
+ * and the answer state (submitted answer, verdict, peek). The URL
  * is left alone, so this is session-level navigation rather than a shareable
  * deep link; see `scenario-history-plan.md` for why deep linking is not part of
  * this change.
  *
  * History state is structured-cloneable and has no URL length limit, which is
- * what lets the whole table plus its verdict travel in the entry. A restored
- * hand is therefore the exact hand the player saw, answer and all, with no
- * regeneration and no second Mortal forward pass.
+ * what lets the whole table travel in the entry. A restored hand is therefore
+ * the exact hand the player saw, with no regeneration. Its answer is not
+ * restored, though: [`withoutAnswerState`] strips the verdict, peek and
+ * evaluation before the table is put back, so a hand reached with Back/Forward
+ * is answerable again.
  */
 
 import type { ScenarioSelection } from './scenarios';
@@ -47,10 +49,6 @@ export interface ScenarioSnapshot {
   dualGrade: DualGrade | null;
   /** Whether Mortal's line was revealed before answering. */
   peekedBeforeAnswer: boolean;
-  /** Armed Riichi declaration, when the player hadn't answered yet. */
-  callRiichi: boolean;
-  /** Armed Kan call, when the player hadn't answered yet. */
-  callKan: boolean;
   /** Mortal's ranking for this table, when it had been computed. */
   evaluation: AiEvaluation | null;
   /** Agreement-filter report for a hand dealt through the filter. */
@@ -60,6 +58,32 @@ export interface ScenarioSnapshot {
   positionDescription: string | null;
   /** Text already typed into the export description box. */
   exportDescription: string;
+}
+
+/**
+ * A snapshot's table with its answer state removed.
+ *
+ * Back/Forward restores the hand, never the finished answer: the player lands
+ * on the same table, unanswered, with no verdict, no peeked Mortal line, no
+ * stale evaluation and no armed call. The table JSON, selection, agreement
+ * report and description fields survive, so nothing is re-dealt or
+ * regenerated and the entry stays usable.
+ *
+ * Clearing `evaluation` is deliberate even though it ranks the table rather
+ * than the answer: the store then asks Mortal again for that table (or
+ * re-seeds an AI drill's own `ai_decision`), so no result computed while the
+ * answer was on screen rides along with the restored hand.
+ */
+export function withoutAnswerState(
+  snapshot: ScenarioSnapshot,
+): ScenarioSnapshot {
+  return {
+    ...snapshot,
+    submittedAnswer: null,
+    dualGrade: null,
+    peekedBeforeAnswer: false,
+    evaluation: null,
+  };
 }
 
 /** The part of `window.history` this module needs, so tests can fake it. */
@@ -105,14 +129,8 @@ export function readScenarioSnapshot(state: unknown): ScenarioSnapshot | null {
   const dualGrade = readObjectOrNull(raw.dualGrade);
   if (dualGrade === undefined) return null;
 
-  const callRiichi = raw.callRiichi;
-  const callKan = raw.callKan;
   const peekedBeforeAnswer = raw.peekedBeforeAnswer;
-  if (
-    typeof callRiichi !== 'boolean' ||
-    typeof callKan !== 'boolean' ||
-    typeof peekedBeforeAnswer !== 'boolean'
-  ) {
+  if (typeof peekedBeforeAnswer !== 'boolean') {
     return null;
   }
 
@@ -135,8 +153,6 @@ export function readScenarioSnapshot(state: unknown): ScenarioSnapshot | null {
     requireAgreement,
     submittedAnswer,
     dualGrade: dualGrade as DualGrade | null,
-    callRiichi,
-    callKan,
     peekedBeforeAnswer,
     evaluation: evaluation as AiEvaluation | null,
     mortalAgreement: mortalAgreement as MortalAgreementReport | null,
@@ -194,8 +210,10 @@ export class ScenarioHistory {
    * Keep the current entry in step with the on-screen hand.
    *
    * Called whenever the answer state changes (answer submitted, verdict arrived,
-   * toggle armed, description typed), so pressing Back straight after answering
-   * and then Forward again restores the answered hand rather than the fresh one.
+   * description typed), so the entry always describes the same hand and its
+   * export note. The answer state recorded here is not restored: Back/Forward
+   * strips it (`withoutAnswerState`), so returning to this hand shows it
+   * unanswered.
    * A no-op before the first commit, after navigating to a foreign entry, and for
    * a snapshot of a different table: that one belongs to a deal or import that is
    * about to `commit` itself, and writing it here would overwrite the entry Back

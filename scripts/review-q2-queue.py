@@ -11,8 +11,11 @@ positions that can teach.
 
 The rules are chapter-scoped (`--chapter`):
 
-* `ch8` (default, Q2/Q2r2) — the ch. 8 defense lessons, and a ready hand is
-  rejected because it is an offense drill, not a defense drill.
+* `ch8` (default, Q2/Q2r2, extended by Q7) — the ch. 8 defense lessons, plus
+  ch8.4's open-hand cell and the suji-trap declaration. A ready hand is
+  rejected because it is an offense drill, not a defense drill, except for
+  `suji_trap_riichi`, whose decision is a riichi/dama question and therefore
+  tenpai by definition.
 * `ch7` (Q3) — the riichi/dama declaration lessons. Those decisions are tenpai
   by definition, so the ready-hand rule does not apply.
 * `ch5` (Q4) — the hand-building/value lessons. None of the shipped shapes is a
@@ -67,7 +70,13 @@ CH8_LESSONS = {
     "defense_stuck_heuristic",
     "defense_multi_threat",
     "push_or_fold",
+    "open_hand_defense",
+    "suji_trap_riichi",
 }
+# The ch. 8 lessons that are declaration decisions. A suji-trap board is a
+# riichi/dama question, so it is tenpai by definition; every other ch8 lesson
+# is a fold or a slow-hand read, where a ready hand is out of shape.
+CH8_READY_LESSONS = CH8_LESSONS - {"suji_trap_riichi"}
 CH7_LESSONS = {
     "riichi_judgement",
     "chiitoitsu_riichi_vs_dama",
@@ -124,10 +133,14 @@ SCOPES = {
     "ch8": {
         "prefix": "ch8.",
         "lessons": CH8_LESSONS,
-        "ready_hand_lessons": CH8_LESSONS,
+        # A fold or a slow-hand read (including ch8.4's open-hand cell, which
+        # needs a 2-away-or-worse hand) rejects a ready hand; the suji-trap
+        # declaration keeps it because the decision is tenpai by definition.
+        "ready_hand_lessons": CH8_READY_LESSONS,
         "note": (
-            "q2r2 mechanical review: stable ch8 book label, legal answer, "
-            "unique visible state, clean walk"
+            "q2r2/q7 mechanical review: stable ch8 book label, legal answer, "
+            "unique visible state, clean walk; a ready hand is out of shape "
+            "except for suji_trap_riichi"
         ),
     },
     "ch9": {

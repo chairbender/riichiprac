@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  callOfferActions,
   correctActionTile,
   findKanCandidateTile,
   isCallDecision,
@@ -47,34 +46,7 @@ describe('call-or-pass lesson wiring', () => {
     expect(isCorrectAction({ type: 'unknown' })).toBe(false);
   });
 
-  it('renders the offered call and Pass from the Rust offer', () => {
-    const actions = callOfferActions(callState);
-
-    expect(actions).toHaveLength(2);
-    expect(actions[0]).toMatchObject({
-      action: 'Pon',
-      label: 'Pon Wh',
-      type: 'pon',
-      tile: '5z',
-    });
-    expect(actions[1]).toMatchObject({ action: 'Pass', type: 'pass' });
-  });
-
-  it('renders the offered Kan as a Kan button', () => {
-    const actions = callOfferActions(openQuadState);
-
-    expect(actions).toHaveLength(2);
-    expect(actions[0]).toMatchObject({
-      action: 'Kan',
-      label: 'Kan Wh',
-      type: 'kan',
-      tile: '5z',
-    });
-    expect(actions[1]).toMatchObject({ action: 'Pass', type: 'pass' });
-  });
-
-  it('renders nothing when the state offers no call', () => {
-    expect(callOfferActions({} as GameState)).toEqual([]);
+  it('reports no call decision for an ordinary discard hand', () => {
     expect(isCallDecision({} as GameState)).toBe(false);
   });
 });

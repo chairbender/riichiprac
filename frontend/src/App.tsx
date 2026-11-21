@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
-import {
-  callOfferActions,
-  canDeclareRiichi,
-  isCallDecision,
-  kanToggleTile,
-} from './actions';
+import { isCallDecision } from './actions';
 import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
+import {
+  CALL_DEMO_CASES,
+  callDemoStartIndex,
+  nextCallDemoIndex,
+} from './callDemo';
+import {
+  callButtonsFor,
+  callContextFor,
+  isCallActionType,
+  NO_CALL_BUTTONS,
+} from './callChoices';
 import { ActionBar } from './components/ActionBar';
 import { AppControls } from './components/AppControls';
 import { ExportImportControls } from './components/ExportImportControls';
@@ -20,12 +26,11 @@ import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
-import { handHintFor } from './handHint';
+import { liftedHandRefs } from './renderers/handOverlay';
 import { RendererHost } from './renderers/RendererHost';
 import { ActionRail } from './renderers/hud/ActionRail';
 import { actionRailVisible } from './renderers/hud/actionRail';
 import type { ActionRailModel } from './renderers/hud/actionRail';
-import { HandRail } from './renderers/hud/HandRail';
 import { HudLayer } from './renderers/hud/HudLayer';
 import type { HudSheetContent } from './renderers/hud/HudLayer';
 import { ResultCard } from './renderers/hud/ResultCard';
@@ -78,6 +83,7 @@ import type {
 import {
   SCENARIO_HISTORY_VERSION,
   ScenarioHistory,
+  withoutAnswerState,
 } from './scenarioHistory';
 import type { ScenarioSnapshot } from './scenarioHistory';
 import { stackOrder } from './seatOrder';
@@ -133,10 +139,12 @@ export const App = () => {
   const gameState = useGameStore((state) => state.gameState);
   const isLoading = useGameStore((state) => state.isLoading);
   const error = useGameStore((state) => state.error);
-  const callRiichi = useGameStore((state) => state.callRiichi);
-  const callKan = useGameStore((state) => state.callKan);
+  const pendingCall = useGameStore((state) => state.pendingCall);
+  const callError = useGameStore((state) => state.callError);
+  const callPreview = useGameStore((state) => state.callPreview);
   const submittedAnswer = useGameStore((state) => state.submittedAnswer);
   const dualGrade = useGameStore((state) => state.dualGrade);
+  const resetAnswer = useGameStore((state) => state.resetAnswer);
   const peekedBeforeAnswer = useGameStore((state) => state.peekedBeforeAnswer);
   const peekMortal = useGameStore((state) => state.peekMortal);
   const loadFromJson = useGameStore((state) => state.loadFromJson);
@@ -144,8 +152,9 @@ export const App = () => {
     (state) => state.loadFromAgreementJson,
   );
   const mortalAgreement = useGameStore((state) => state.mortalAgreement);
-  const toggleRiichi = useGameStore((state) => state.toggleRiichi);
-  const toggleKan = useGameStore((state) => state.toggleKan);
+  const beginCall = useGameStore((state) => state.beginCall);
+  const cancelCall = useGameStore((state) => state.cancelCall);
+  const previewCall = useGameStore((state) => state.previewCall);
   const selectTile = useGameStore((state) => state.selectTile);
   const submitAction = useGameStore((state) => state.submitAction);
   const reset = useGameStore((state) => state.reset);
@@ -287,6 +296,14 @@ export const App = () => {
   const seenPackScenariosRef = useRef<Map<string, Set<string>>>(new Map());
   const loadRequestId = useRef(0);
   /**
+   * `?preview=calls`: the review case currently on the board, or null when the
+   * mode is off. Next hand advances it (2026-11-21 review aid); a deal that is
+   * not Next (a settings change) re-loads the same case.
+   */
+  const callDemoIndexRef = useRef<number | null>(
+    callDemoStartIndex(window.location.search),
+  );
+  /**
    * Mirrors `exportDescription` synchronously. A history snapshot is written in
    * the same tick a deal finishes, before React re-renders, so it cannot read
    * the state variable and must not fall back to the previous hand's text.
@@ -341,8 +358,6 @@ export const App = () => {
       requireAgreement: drawnWith,
       submittedAnswer: state.submittedAnswer,
       dualGrade: state.dualGrade,
-      callRiichi: state.callRiichi,
-      callKan: state.callKan,
       peekedBeforeAnswer: state.peekedBeforeAnswer,
       evaluation: state.evaluation,
       mortalAgreement: state.mortalAgreement,
@@ -411,6 +426,20 @@ export const App = () => {
       try {
         await ensureWasmReady();
         if (requestId !== loadRequestId.current) return;
+
+        /*
+         * The call review set: a query-gated sequence of crafted positions the
+         * Next hand control walks. It bypasses replay/generation entirely so
+         * the review starts instantly and every case is one tap away. Wasm is
+         * already ready here, so a Riichi hover can ask the engine for its
+         * legal discards on the first pointer move.
+         */
+        if (callDemoIndexRef.current !== null) {
+          const demo =
+            CALL_DEMO_CASES[callDemoIndexRef.current % CALL_DEMO_CASES.length];
+          finish(() => loadFromJson(JSON.stringify(demo.state)));
+          return;
+        }
 
         if (!wasmCatalogRef.current) {
           const manifest = parseScenarioManifest(list_scenarios());
@@ -644,7 +673,14 @@ export const App = () => {
     ],
   );
 
-  /** Put a history entry's hand and its answer state back on screen. */
+  /**
+   * Put a history entry's hand back on screen, unanswered.
+   *
+   * Back/Forward is "show me that table again", not "show me the answer again":
+   * the stored snapshot's answer, verdict, peek, evaluation and armed toggles
+   * are stripped before the store sees it, so the hand comes back answerable
+   * without a re-deal. The table JSON itself is untouched.
+   */
   const restoreHistoryEntry = useCallback(
     (snapshot: ScenarioSnapshot) => {
       loadedWithRef.current = {
@@ -654,7 +690,7 @@ export const App = () => {
       setSelection(snapshot.selection);
       setRequireAgreement(snapshot.requireAgreement);
       updateExportDescription(snapshot.exportDescription);
-      restoreSnapshot(snapshot);
+      restoreSnapshot(withoutAnswerState(snapshot));
     },
     [restoreSnapshot, updateExportDescription],
   );
@@ -690,8 +726,9 @@ export const App = () => {
 
   /**
    * Keep the current entry's snapshot matching the screen. Answering, peeking,
-   * arming Riichi, or editing the export note all land here, so going Back and
-   * Forward again restores the answered hand instead of a fresh copy of it.
+   * arming Riichi, or editing the export note all land here, so the entry keeps
+   * the same table and note. The answer state is recorded too but Back/Forward
+   * strips it on restore, so it is never brought back as a finished answer.
    */
   useEffect(() => {
     const snapshot = buildSnapshot();
@@ -704,8 +741,6 @@ export const App = () => {
     submittedAnswer,
     dualGrade,
     peekedBeforeAnswer,
-    callRiichi,
-    callKan,
     evaluation,
     mortalAgreement,
     positionDescription,
@@ -783,6 +818,10 @@ export const App = () => {
     // A hotseat hand is re-dealt with the same card choice; a mixed pool keeps
     // drawing normally, and a hotseat drawn from it uses the last choice.
     setHudSheet(null);
+    // Review mode: Next walks the crafted call cases.
+    if (callDemoIndexRef.current !== null) {
+      callDemoIndexRef.current = nextCallDemoIndex(callDemoIndexRef.current);
+    }
     const forced = isHotseatOnly(selection)
       ? {
           category: HOTSEAT_SCENARIO_ID,
@@ -896,51 +935,42 @@ export const App = () => {
   const aiDecision = gameState?.ai_decision ?? null;
   const availableActions = aiDecision?.actions ?? [];
   const isDrill = gameState?.correct_action.type === 'best';
-  // A book call lesson renders its own Call/Pass buttons from the Rust offer.
+  // A book call lesson answers through its call/Pass buttons, never a discard.
   const isCallLesson = gameState ? isCallDecision(gameState) : false;
-  const callActions = gameState ? callOfferActions(gameState) : [];
-  const actionBarActions = isCallLesson ? callActions : availableActions;
   const canDiscard = isCallLesson
     ? false
     : isDrill
       ? availableActions.some((action) => action.type === 'discard')
       : true;
-  // Rust owns the rule (`GameState::can_riichi`), read through one helper so
-  // the dock and the store cannot disagree.
-  const canRiichi = gameState ? canDeclareRiichi(gameState) : false;
   const decision = gameState?.decision;
   const claimedFrom =
     decision?.kind === 'react_to_discard' ? decision.from : null;
 
   /*
-   * 3D-H3: the hand's decision state, derived once for both shells.
+   * 3D-H3: the hand's call state, derived once for both shells.
    *
-   * The 2D dock reads these inside `HandDock`; the HUD's hand rail and action
-   * rail need exactly the same values, so they are computed here from the same
-   * helpers (`kanToggleTile`, `handHintFor`) the dock uses. `availableActions` is
-   * only an AI drill's list — passing it is what makes a drill answer through its
-   * actions instead of a call toggle, in both views.
+   * The shared `CallControls` bar renders in the 2D dock and the HUD's action
+   * rail from this one model, so the two views cannot disagree about which
+   * calls exist. Calls are plain buttons: pressing one either submits the call
+   * (one legal way to make it) or opens a pick step in the store, whose tiles
+   * come from whichever hand surface is on screen.
    */
+  const callContext = gameState
+    ? callContextFor(gameState)
+    : { isDrill: false, availableActions: [] };
+  const callButtons =
+    gameState && humanPlayer
+      ? callButtonsFor(gameState, humanPlayer, callContext)
+      : NO_CALL_BUTTONS;
+
+  // The AI drill's non-call actions stay in the ActionBar; calls moved to the
+  // shared call bar, so a drill never renders two controls for one action.
+  const actionBarActions = availableActions.filter(
+    (action) => !isCallActionType(action.type),
+  );
+
   const answered = dualGrade !== null;
   const revealMortal = answered || peekedBeforeAnswer;
-  const drillActions = isDrill ? availableActions : undefined;
-  const kanTile = humanPlayer
-    ? kanToggleTile(humanPlayer, {
-        availableActions: drillActions,
-        targetAction: gameState?.target_action,
-      })
-    : null;
-  const handHintText = humanPlayer
-    ? handHintFor({
-        player: humanPlayer,
-        isAnswered: answered,
-        canDiscard,
-        callRiichi,
-        callKan,
-        availableActions: drillActions,
-        targetAction: gameState?.target_action,
-      })
-    : '';
 
   /*
    * 3D-14: whether this browser can run the 3D table.
@@ -1075,6 +1105,18 @@ export const App = () => {
     }
   }, [gameState, tableMount.kind, threeRevision, submittedAnswer, previewSticks]);
 
+  /*
+   * 2026-11-21: the call preview (hover/focus on a call button) or the open
+   * pick's selected tiles are raised together in the 3D hand. The store names
+   * them as copies; the renderer speaks in seat/zone/slot, so map them through
+   * the same snapshot the projected buttons use.
+   */
+  const liftedCopies = pendingCall?.picks ?? callPreview;
+  const liftedTiles = useMemo(
+    () => (threeSnapshot ? liftedHandRefs(threeSnapshot, liftedCopies) : []),
+    [threeSnapshot, liftedCopies],
+  );
+
   const agreementHint =
     aiStatus === 'ready'
       ? 'Deal book-graded hands only when the embedded Mortal model plays the book answer. AI drills have no book answer, so they are dealt as usual and graded by Mortal alone. Each agreeing hand may need several forward passes.'
@@ -1106,40 +1148,25 @@ export const App = () => {
    * (`selectTile` reaches the scene through 3D-08), so the answer path has no
    * renderer dependency.
    */
-  const hudHintRow = humanPlayer ? (
-    <HandRail
-      hint={handHintText}
-      aiStatus={aiStatus}
-      isEvaluating={isEvaluating}
-      hasEvaluation={evaluation !== null}
-      peeked={peekedBeforeAnswer}
-      answered={answered}
-      // H5: the pre-answer chip is the verdict sheet's trigger (Peek lives
-      // there); post-answer the result card's Details is the only way in, so
-      // the hint no longer needs to announce "Answer submitted".
-      onOpenVerdict={() => setHudSheet('verdict')}
-      announceHint={!answered}
-    />
-  ) : undefined;
-
   const actionRailModel: ActionRailModel = {
     actions: actionBarActions,
-    canRiichi,
-    kanTile,
+    callButtons,
+    pendingCall,
+    callError,
     answered,
-    isAiScenario: isDrill,
-    callRiichi,
-    callKan,
     evaluation,
     revealMortal,
-    onToggleRiichi: toggleRiichi,
-    onToggleKan: toggleKan,
+    onBeginCall: beginCall,
+    onPass: () => submitAction({ action: 'Pass' }),
+    onCancelCall: cancelCall,
+    onPreviewCall: previewCall,
     onAction: submitAction,
   };
 
-  // An empty rail is unmounted, not reserved: a plain discard lesson shows the
-  // 40 px hint-only panel until its answer (3d_hud.md §7.1).
-  const hudActionRail = actionRailVisible(actionRailModel) ? (
+  // No call/action controls means no pre-answer chrome at all: the call row is
+  // unmounted, not reserved (3d_hud.md §7.1). After an answer the result card
+  // takes over; the HUD never shows a panel before one.
+  const hudCallBar = actionRailVisible(actionRailModel) ? (
     <ActionRail model={actionRailModel} onRowsChange={setActionRows} />
   ) : undefined;
 
@@ -1156,6 +1183,7 @@ export const App = () => {
         onDetails={() => setHudSheet('verdict')}
         onNext={handleNextScenario}
         nextDisabled={isLoading}
+        onReset={resetAnswer}
       />
     ) : undefined;
   // The outcome's green/amber/red is the result panel's outline, not an inner
@@ -1424,8 +1452,7 @@ export const App = () => {
             />
           }
           actionRows={actionRows}
-          hintRow={hudHintRow}
-          actionRail={hudActionRail}
+          callBar={hudCallBar}
           resultCard={hudResultCard}
           resultTone={hudResultTone}
           sheet={hudOpenSheet}
@@ -1449,8 +1476,8 @@ export const App = () => {
               tier={tableMount.query.quality}
               debug={tableMount.query.debug}
               perfHud={tableMount.query.perf}
-              callRiichi={callRiichi}
-              callKan={callKan}
+              pendingCall={pendingCall}
+              liftedTiles={liftedTiles}
               onSelectTile={selectTile}
               onDegraded={handleThreeDegraded}
             />
@@ -1535,10 +1562,8 @@ export const App = () => {
         <ActionBar
           actions={actionBarActions}
           disabled={false}
-          riichiArmed={callRiichi}
           evaluation={evaluation}
           revealMortal={revealMortal}
-          onToggleRiichi={toggleRiichi}
           onAction={submitAction}
         />
       )}
@@ -1548,19 +1573,21 @@ export const App = () => {
           player={humanPlayer}
           grade={dualGrade}
           answer={submittedAnswer}
-          callRiichi={callRiichi}
-          callKan={callKan}
+          callButtons={callButtons}
+          pendingCall={pendingCall}
+          callError={callError}
           aiEvaluation={evaluation}
-          availableActions={isDrill ? availableActions : undefined}
           canDiscard={canDiscard}
-          canRiichi={canRiichi}
           revealMortal={dualGrade !== null || peekedBeforeAnswer}
-          targetAction={gameState?.target_action}
           nextDisabled={isLoading}
           onNextScenario={handleNextScenario}
+          onResetAnswer={resetAnswer}
           onShowVerdict={showVerdict}
-          onToggleRiichi={toggleRiichi}
-          onToggleKan={toggleKan}
+          previewTiles={callPreview}
+          onBeginCall={beginCall}
+          onPass={() => submitAction({ action: 'Pass' })}
+          onCancelCall={cancelCall}
+          onPreviewCall={previewCall}
           onSelectTile={selectTile}
         />
       )}

@@ -21,6 +21,7 @@
 
 import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { PendingCall } from '../callChoices';
 import {
   antiAliasFor,
   probeCapabilities,
@@ -85,7 +86,7 @@ export interface RendererHostProps {
   readonly debug?: DebugMode | null;
   /** `?perf=1`: the live measurement HUD (3D-13). */
   readonly perfHud?: boolean;
-  /** `prefers-reduced-motion`: suppresses the hover lift and the deal-in (3D-12). */
+  /** `prefers-reduced-motion`: suppresses the deal-in animation (3D-12). */
   readonly reducedMotion?: boolean;
   /**
    * The view to keep showing while the 3D scene loads, is unsupported or has
@@ -93,10 +94,18 @@ export interface RendererHostProps {
    * to the view it would otherwise have drawn instead of a blank stage.
    */
   readonly fallback?: ReactNode;
-  /** Call Riichi is armed: the projected hand buttons say so (3D-08). */
-  readonly callRiichi?: boolean;
-  /** Call Kan is armed: the projected hand buttons say so (3D-08). */
-  readonly callKan?: boolean;
+  /**
+   * The open call pick, or null (3D-08). The projected hand buttons name the
+   * tile's part in the call and disable the ones it cannot use.
+   */
+  readonly pendingCall?: PendingCall | null;
+  /**
+   * The hand tiles to raise as a group: a call button's preview set, or the
+   * tiles a multi-tile pick has selected (2026-11-21). The pointer's own hover
+   * is merged in by this host, so a pointer hover and a call preview can never
+   * fight over the lift.
+   */
+  readonly liftedTiles?: readonly HandTileRef[] | null;
   /**
    * The hand-click handler the stacked/top-down views use (App's `selectTile`).
    * The overlay is rendered only when this is supplied; the answer flow itself
@@ -478,8 +487,8 @@ export function RendererHost({
   perfHud = false,
   reducedMotion,
   fallback = null,
-  callRiichi = false,
-  callKan = false,
+  pendingCall = null,
+  liftedTiles = null,
   onSelectTile,
   onDegraded,
 }: RendererHostProps) {
@@ -497,6 +506,8 @@ export function RendererHost({
   const [carveReport, setCarveReport] = useState<CarveReport | null>(null);
   const [carveExported, setCarveExported] = useState(0);
   const [hitRects, setHitRects] = useState<readonly HitRect[]>([]);
+  /** The pointer/focus tile the overlay reports, merged with `liftedTiles`. */
+  const [hoveredTile, setHoveredTile] = useState<HandTileRef | null>(null);
   const [compassRect, setCompassRect] = useState<CompassRect | null>(null);
   const [perfReading, setPerfReading] = useState<PerfHudReading | null>(null);
   const [degradeNotice, setDegradeNotice] = useState<string | null>(null);
@@ -536,11 +547,41 @@ export function RendererHost({
   }, [anchorsOwner]);
 
   const reportHoverTile = useCallback((tile: OverlayHandTile | null) => {
-    const ref: HandTileRef | null = tile
-      ? { seat: tile.seat, zone: tile.zone, slot: tile.slot }
-      : null;
-    rendererRef.current?.setHoverTile?.(ref);
+    setHoveredTile(
+      tile ? { seat: tile.seat, zone: tile.zone, slot: tile.slot } : null,
+    );
   }, []);
+
+  /*
+   * The lift set is the call preview/pick (from App) plus the pointer's own
+   * hover. Kept as one derived list so one change cannot lower a tile another
+   * part of the UI raised. The scene lifts the real mesh; the DOM buttons never
+   * move, so the pointer stays on the same target.
+   */
+  const liftedRefs = useMemo(() => {
+    const key = (tile: HandTileRef) => `${tile.seat}:${tile.zone}:${tile.slot}`;
+    const seen = new Set<string>();
+    const out: HandTileRef[] = [];
+    for (const tile of [...(liftedTiles ?? []), ...(hoveredTile ? [hoveredTile] : [])]) {
+      const name = key(tile);
+      if (seen.has(name)) continue;
+      seen.add(name);
+      out.push(tile);
+    }
+    return out;
+  }, [liftedTiles, hoveredTile]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    if (renderer.setLiftedTiles) {
+      renderer.setLiftedTiles(liftedRefs);
+    } else if (liftedRefs.length === 1) {
+      renderer.setHoverTile?.(liftedRefs[0]);
+    } else {
+      renderer.setHoverTile?.(null);
+    }
+  }, [liftedRefs, status.state]);
 
   const refreshHero = useCallback(() => {
     setHeroReport(rendererRef.current?.heroReport?.() ?? null);
@@ -861,9 +902,7 @@ export function RendererHost({
           <TableOverlay
             snapshot={snapshot}
             rects={hitRects}
-            callRiichi={callRiichi}
-            callKan={callKan}
-            reducedMotion={reduceMotion}
+            pendingCall={pendingCall}
             onSelectTile={onSelectTile}
             onHoverTile={reportHoverTile}
           />

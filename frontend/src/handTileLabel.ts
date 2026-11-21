@@ -7,6 +7,7 @@
  * compares the labels rather than trusting a copy.
  */
 
+import type { CallKind } from './callChoices';
 import { formatTileForDisplay } from './display';
 
 /** The hand tile's state that changes its accessible name. */
@@ -15,20 +16,30 @@ export interface HandTileLabelInput {
   readonly code: string;
   /** True when this copy is the red five of its suit. */
   readonly isRed?: boolean;
-  /** The Call Kan toggle is armed: the click declares a kan on this tile. */
-  readonly callKan?: boolean;
-  /** The Call Riichi toggle is armed: the discard declares Riichi. */
-  readonly callRiichi?: boolean;
+  /**
+   * The open call pick, if any: the tile is being chosen for this call rather
+   * than discarded. Null (or absent) is an ordinary discard.
+   */
+  readonly pick?: CallKind | null;
 }
 
-/** The button's accessible name, e.g. `Discard R5s, with Riichi`. */
+/** The button's accessible name, e.g. `Discard R5s` or `Chi with 3m`. */
 export function handTileLabel({
   code,
   isRed = false,
-  callKan = false,
-  callRiichi = false,
+  pick = null,
 }: HandTileLabelInput): string {
   const name = formatTileForDisplay(code, isRed);
-  const action = callKan ? `Declare Kan on ${name}` : `Discard ${name}`;
-  return callRiichi ? `${action}, with Riichi` : action;
+  switch (pick) {
+    case 'riichi':
+      return `Discard ${name} for Riichi`;
+    case 'chi':
+      return `Chi with ${name}`;
+    case 'pon':
+      return `Pon with ${name}`;
+    case 'kan':
+      return `Kan with ${name}`;
+    default:
+      return `Discard ${name}`;
+  }
 }

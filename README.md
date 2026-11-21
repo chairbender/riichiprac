@@ -70,14 +70,18 @@ book only, the Mortal column says so, and no answer is labelled wrong.
 
 ## Table views
 
-The header's **View** select switches the same hand between two mobile-first
-portrait renderings; it never re-deals, so the answer and any submitted grade
-stay put. The choice is persisted in `localStorage`; an old stored value the app
-no longer understands (including the removed experimental view) falls back to
-the default on load.
+The header's **View** select offers three renderings of the same hand: the 3D
+table, the stacked layout and the top-down plan. Switching never re-deals, so
+the answer and any submitted grade stay put. **3D is the default**, taking the
+whole browser window, with the two 2D layouts beside it in the View control.
 
-- **Stacked** (default): four player rows in turn order, with the human's row
-  directly above the docked hand.
+- **3D** (default): the real-time three.js table, drawn with the committed tile
+  proportions and carved faces, **filling the whole window**. No UI panel sits
+  above or below the canvas in the document flow: the status cards, action
+  rail, hand dock, compass and header controls float over the scene as a HUD.
+- **Stacked**: four player rows in turn order, with the human's row
+  directly above the docked hand. This is also the accessible fallback drawn
+  when the browser cannot run 3D.
 - **Top-down**: a flat plan view of the table. The human's seat is the bottom edge
   (the hand stays in the dock below it), shimocha is on the right, toimen at the
   top, and kamicha on the left. Each river starts at the corner nearest the
@@ -97,6 +101,17 @@ lengthways against the edge nearest whoever declared it. Opponents' hands stay h
 (only their melds and rivers are drawn, exactly as in the stacked view), and the
 whole plan is rotated onto the human's seat so an imported report that puts them
 on another seat still reads with their own side at the bottom.
+
+The pick is remembered in `localStorage` under its own key,
+`riichiprac.table-view` — separate from the settings blob (`riichiprac.settings`,
+which holds the replay-source preference) — so a browser with no stored choice
+opens 3D. A browser that cannot run 3D (no WebGL2, or the session closed it after
+a performance degrade) draws the stacked table and says why, **without
+rewriting the stored choice**: the next capable browser, or a later launch after
+a fixed driver, opens 3D again. An old stored value the app no longer understands
+(including the removed experimental view) falls back to the default on load.
+`?renderer=3d` still forces the 3D table for review links, whatever the stored
+choice; drop the parameter to go back to the stored view.
 
 ## Choosing scenarios
 
@@ -134,8 +149,8 @@ a lesson lists its replay row first and keeps its generated drill as a secondary
 **GENERATED** row; **All scenarios (random)** draws the replay row, on the first
 deal and every later one. A lesson without enough coverage keeps the generated
 default, and its replay row, if a pack ships one, stays opt-in beside it. As of
-2026-11-20, 22 of the 25 hosted lessons are replay-default (8,942 reviewed
-bases); the generated drill is never removed.
+2026-11-21, 26 of the 28 lesson ids the packs cover are replay-default (9,328
+reviewed bases); the generated drill is never removed.
 
 The picker's **Source** filter switches between **Replay**, **Generated** and
 **Both**:
@@ -507,11 +522,13 @@ the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
 Scenario packs are separate from the app bundle and from the weights. The
 browser loads a small **same-origin** manifest
 (`/scenarios/manifest.json`) and then only the content-addressed pack body it
-needs; the miner never ships its corpus, databases or model weights. Six
+needs; the miner never ships its corpus, databases or model weights. Seven
 curated packs ship in `frontend/public/scenarios/`:
 `replay.ch8-defense.2026-11` (2,211 reviewed single-threat bases, 2.26 MB),
 `replay.ch8-defense-multi-threat.2026-11` (764 reviewed 2+ opponent bases,
-591 KB), `replay.ch7-riichi-dama.2026-11` (2,846 reviewed ch. 7 riichi/dama
+591 KB), `replay.ch8-completion.2026-11` (386 reviewed thin/missing ch. 8
+lessons from ch8.2–ch8.4, 331 KB), `replay.ch7-riichi-dama.2026-11` (2,846
+reviewed ch. 7 riichi/dama
 bases, 2.18 MB), `replay.ch5-values.2026-11` (1,670 reviewed ch. 5 value
 bases, 1.18 MB), `replay.ch9-seating-calls.2026-11` (629 reviewed ch. 9
 seating/quad bases, 363 KB) and `replay.ch34-shapes.2026-11` (822 reviewed
@@ -520,14 +537,16 @@ build therefore
 exercises the whole path, and the deploy workflow verifies every body's
 bytes/SHA-256 before upload (`scripts/check-pack-hosting.mjs`); the content gate
 `scripts/check-ch8-pack.mjs --allow-no-variants` (add `--chapter ch7`,
-`--chapter ch5`, `--chapter ch9` or `--chapter ch34` for those packs) proves
+`--chapter ch5`, `--chapter ch9` or `--chapter ch34` for those packs, or
+`--pack replay.ch8-completion.2026-11` for the completion pack) proves
 every scenario belongs
 to the chapter's lessons and the source/licence envelope is complete.
 `scripts/replay-coverage-report.mjs` prints
 which lessons the manifest makes replay-default. Variants are disabled for all
-six packs by product decision; variety comes from real reviewed positions,
-and a lesson with fewer than forty real bases is left out of the pack rather
-than repeating one scenario. See
+seven packs by product decision; variety comes from real reviewed positions,
+and a lesson with fewer than forty real bases ships as an opt-in row at most,
+never as the default. See
+[`q7-ch8-completion-pack.md`](q7-ch8-completion-pack.md),
 [`q6-ch34-shapes-pack.md`](q6-ch34-shapes-pack.md),
 [`q5-ch9-seating-calls-pack.md`](q5-ch9-seating-calls-pack.md),
 [`q4-ch5-value-pack.md`](q4-ch5-value-pack.md),
