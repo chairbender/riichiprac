@@ -149,10 +149,12 @@ function sessionBlockMessage(
       'twice. Close and reopen the tab to try again.'
     );
   }
-  if (source !== 'auto') return null;
+  // A fixed tier has no user control to retry with, so a terminal degrade
+  // blocks the session exactly as the automatic tier does.
+  if (source !== 'auto' && source !== 'forced') return null;
   return (
     'The 3D view was turned off for this session because it could not hold ' +
-    '30 fps at the lowest quality. Pick a quality tier to try it again.'
+    '30 fps at the lowest quality.'
   );
 }
 

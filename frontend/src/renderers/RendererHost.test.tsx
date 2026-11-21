@@ -329,7 +329,7 @@ describe('RendererHost lifecycle', () => {
     expect(hostMock.state.live).toBe(0);
   });
 
-  it('forwards the pinned tier, debug mode and flags', async () => {
+  it('forwards the tier, debug mode and flags', async () => {
     render(
       <RendererHost
         snapshot={snapshot()}
@@ -341,8 +341,10 @@ describe('RendererHost lifecycle', () => {
       />,
     );
     await waitFor(() => expect(hostMock.state.created).toBe(1));
+    // The tier is fixed at `high` (user decision 2026-11-21), so the `tier`
+    // prop is inert; everything else is forwarded as given.
     expect(hostMock.state.options[0]).toEqual({
-      tier: 'balanced',
+      tier: 'high',
       debug: 'height',
       perfHud: true,
       reducedMotion: true,
@@ -977,21 +979,29 @@ describe('RendererHost carve debug view (3D-10)', () => {
 });
 
 describe('RendererHost quality tiers and fallback (3D-11)', () => {
-  it('resolves the automatic tier when neither the URL nor storage pins one', async () => {
+  it('mounts at the fixed high tier whatever the viewport looks like', async () => {
     render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
     await waitFor(() => expect(hostMock.state.created).toBe(1));
-    // jsdom reports a 1024 x 768 viewport with no memory hint: the plan's
-    // "everything else" tier is balanced.
-    expect(hostMock.state.options[0].tier).toBe('balanced');
+    // jsdom is a 1024 x 768 viewport with no memory hint, so the old automatic
+    // rule would have said `balanced`; the tier is fixed now (2026-11-21).
+    expect(hostMock.state.options[0].tier).toBe('high');
     expect(hostMock.state.options[0].antialias).toBe(true);
   });
 
-  it('lets a stored tier beat automatic resolution', async () => {
+  it('ignores a stored tier and a ?quality= pin', async () => {
     window.localStorage.setItem('riichiprac.3d.quality', 'compat');
-    render(<RendererHost snapshot={snapshot()} fallback={fallbackTable()} />);
+    render(
+      <RendererHost
+        snapshot={snapshot()}
+        tier="compat"
+        fallback={fallbackTable()}
+      />,
+    );
     await waitFor(() => expect(hostMock.state.created).toBe(1));
-    expect(hostMock.state.options[0].tier).toBe('compat');
-    expect(hostMock.state.options[0].antialias).toBe(false);
+    // The quality machinery is kept for a future selector but nothing reaches
+    // it: not the stored preference, not the URL.
+    expect(hostMock.state.options[0].tier).toBe('high');
+    expect(hostMock.state.options[0].antialias).toBe(true);
   });
 
   it('follows prefers-reduced-motion when the prop is not supplied', async () => {
@@ -1076,7 +1086,7 @@ describe('RendererHost quality tiers and fallback (3D-11)', () => {
     expect(screen.getByText('The 3D view is closed for this session.')).toBeTruthy();
   });
 
-  it('does not auto-retry after a degrade, but an explicit tier may', async () => {
+  it('does not retry after a terminal degrade: the tier is not the user’s to pin', async () => {
     window.sessionStorage.setItem(
       'riichiprac.3d.fallback',
       JSON.stringify({ reason: 'degraded', at: 1 }),
@@ -1088,11 +1098,14 @@ describe('RendererHost quality tiers and fallback (3D-11)', () => {
     expect(screen.getByText(/turned off for this session/)).toBeTruthy();
     first.unmount();
 
+    // A `tier` prop can no longer override the block: with the tier fixed there
+    // is no "pick a lower one and try again" escape, which is why the message
+    // no longer offers it.
     render(
       <RendererHost snapshot={snapshot()} tier="compat" fallback={fallbackTable()} />,
     );
-    await waitFor(() => expect(hostMock.state.created).toBe(1));
-    expect(hostMock.state.options[0].tier).toBe('compat');
+    expect(hostMock.createRenderer).not.toHaveBeenCalled();
+    expect(screen.getByText(/turned off for this session/)).toBeTruthy();
   });
 
   it('never persists the 3D view as a table view', async () => {

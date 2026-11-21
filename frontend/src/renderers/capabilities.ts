@@ -467,7 +467,7 @@ export function autoQualityTier(environment: TierEnvironment): QualityTier {
 }
 
 /** Where the resolved tier came from. */
-export type QualityTierSource = 'url' | 'stored' | 'auto';
+export type QualityTierSource = 'url' | 'stored' | 'auto' | 'forced';
 
 /** The resolved tier and the rule that chose it. */
 export interface QualityTierResolution {
@@ -485,12 +485,43 @@ export interface TierResolutionInput {
 }
 
 /**
+ * The tier every 3D mount uses (user decision 2026-11-21).
+ *
+ * `high` looked right on a phone and held its frame budget, so it is the only
+ * tier the app chooses for now. The URL > stored > auto machinery below is kept
+ * intact — and tested — for a future quality selector, but **nothing reaches
+ * it**: no query parameter, no stored preference, no automatic choice.
+ *
+ * Set this to `null` to hand the choice back to {@link
+ * resolveQualityTierFromInputs}.
+ */
+export const FORCED_QUALITY_TIER: QualityTier | null = 'high';
+
+/**
+ * Resolve the render tier for a mount.
+ *
+ * With {@link FORCED_QUALITY_TIER} set this is that tier and nothing else; the
+ * URL, the stored preference and the environment are not consulted. The
+ * frame-time monitor can still downgrade a running session (3D-11), which is a
+ * safety net rather than a setting.
+ */
+export function resolveQualityTier(
+  input: TierResolutionInput,
+): QualityTierResolution {
+  if (FORCED_QUALITY_TIER !== null) {
+    return { tier: FORCED_QUALITY_TIER, source: 'forced' };
+  }
+  return resolveQualityTierFromInputs(input);
+}
+
+/**
  * Resolve the render tier: **URL > stored > auto** (3D-11).
  *
  * Explicit `?quality=` always wins so a link can force a tier for a review; a
- * stored preference survives a reload; otherwise the environment decides.
+ * stored preference survives a reload; otherwise the environment decides. This
+ * is the selector's rule, kept for when one is mounted again.
  */
-export function resolveQualityTier(
+export function resolveQualityTierFromInputs(
   input: TierResolutionInput,
 ): QualityTierResolution {
   if (isQualityTier(input.queryTier)) {

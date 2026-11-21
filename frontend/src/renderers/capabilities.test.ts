@@ -23,6 +23,7 @@ import {
   readTierEnvironment,
   rememberThreeFallback,
   resolveQualityTier,
+  resolveQualityTierFromInputs,
   storeQualityTier,
   threeViewUnavailableReason,
   parseRendererQuery,
@@ -386,10 +387,29 @@ function environment(overrides: Partial<TierEnvironment> = {}): TierEnvironment 
   };
 }
 
-describe('tier resolution, URL > stored > auto (3D-11)', () => {
+describe('the fixed high tier (2026-11-21)', () => {
+  it('ignores the URL, the stored preference and the environment', () => {
+    const inputs = {
+      queryTier: 'compat' as const,
+      storedTier: 'balanced' as const,
+      environment: environment({ touchPrimary: true }),
+    };
+    expect(resolveQualityTier(inputs)).toEqual({
+      tier: 'high',
+      source: 'forced',
+    });
+    // The selector's own rule is kept intact for when one is mounted again.
+    expect(resolveQualityTierFromInputs(inputs)).toEqual({
+      tier: 'compat',
+      source: 'url',
+    });
+  });
+});
+
+describe('tier resolution, URL > stored > auto (3D-11; kept for a future selector)', () => {
   it('lets an explicit ?quality= always win', () => {
     expect(
-      resolveQualityTier({
+      resolveQualityTierFromInputs({
         queryTier: 'compat',
         storedTier: 'high',
         environment: environment(),
@@ -399,7 +419,7 @@ describe('tier resolution, URL > stored > auto (3D-11)', () => {
 
   it('prefers the stored tier over automatic tiering', () => {
     expect(
-      resolveQualityTier({
+      resolveQualityTierFromInputs({
         queryTier: null,
         storedTier: 'balanced',
         environment: environment({ touchPrimary: true }),
@@ -409,7 +429,7 @@ describe('tier resolution, URL > stored > auto (3D-11)', () => {
 
   it('starts a touch-primary device at compat', () => {
     expect(
-      resolveQualityTier({
+      resolveQualityTierFromInputs({
         queryTier: null,
         storedTier: null,
         environment: environment({ touchPrimary: true }),
