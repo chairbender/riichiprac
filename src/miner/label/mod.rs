@@ -2,7 +2,7 @@
 //! L2 adds book/Mortal agreement (`stable`/`contested`), optional multi-model
 //! votes, percentile-threshold hooks and optional versioned Q→point calibration.
 //!
-//! This is the native/mining side of the app's MIT Mortal inference. It runs
+//! This is the native/mining side of the app's Mortal inference. It runs
 //! the same [`MortalV4Model`] and the same masked softmax as the browser's
 //! [`crate::ai::wasm_bridge::evaluate_state_named`], but keeps the per-action
 //! **Q values** the browser payload discards and records them as

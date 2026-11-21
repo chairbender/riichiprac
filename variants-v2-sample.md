@@ -116,7 +116,8 @@ variants), far below the effective cap of 8.
 
 - 365 scenarios (100 bases + 265 variants), 72.6 % variants.
 - 225,741 encoded bytes, CC BY 4.0 data, agents `mortal-298k` (libriichi,
-  AGPL-3.0) and `heuristic-v1` (MIT), generated from two fixture games.
+  AGPL-3.0) and `heuristic-v1` (AGPL-3.0-or-later), generated from two fixture
+  games.
 - `mine_replays audit`: 0 failures, 0 warnings.
 - `pack report`: variants 265 (73 %), largest base share 1 %.
 

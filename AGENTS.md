@@ -8,6 +8,11 @@
 You are building a fully client-side, browser-based web application that trains players on specific Riichi Mahjong scenarios and heuristics (heavily inspired by *Riichi Book 1*). 
 The app generates randomized hands and board states that perfectly fit predefined teaching constraints, asking the user to make the correct decision (e.g., Riichi vs. Dama, Push vs. Fold, Nani Kiru).
 
+**Licence:** the repository is **AGPL-3.0-or-later** since 2026-11-22, because
+the shipped WASM ports AGPL-3.0 `libriichi` and Mortal v4 code. See `LICENSE`,
+`THIRD_PARTY_NOTICES.md` and `docs/licensing.md`; do not describe the project as
+MIT in docs, comments or UI.
+
 ## 1b. Reference Material: Riichi Book 1 Source
 The full text of *Riichi Book 1* is checked out locally at:
 

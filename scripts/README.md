@@ -78,11 +78,14 @@ The current maximum absolute difference is ~3e-6.
 
 The checkpoint at `VoidShine/mortal-298k` is **AGPL-3.0**, as is the upstream
 [`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal) code that trained it.
-The converted Safetensors file is therefore an AGPL-3.0 work, separate from this
-repository's MIT code. `convert_weights.py` is its corresponding source: if you
-publish the converted file, keep it tagged `license: agpl-3.0` and link back
-here. Details and the reasoning behind hosting it externally are in
-[`hosting-plan.md`](../hosting-plan.md#5-licensing-weights-are-agpl-30-the-app-stays-mit).
+The converted Safetensors file is therefore an AGPL-3.0 work, under the same
+licence as the rest of this repository (AGPL-3.0-or-later; see
+[`docs/licensing.md`](../docs/licensing.md)). `convert_weights.py` is its
+corresponding source: if you publish the converted file, keep it tagged
+`license: agpl-3.0` and link back here. Details, provenance and the reasoning
+behind hosting it externally are in
+[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md#mortal-model-weights--agpl-30)
+and [`hosting-plan.md`](../hosting-plan.md#5-licensing-agpl-30-or-later-app-and-weights).
 
 ## Validating the wiring against mjai.ekyu.moe
 

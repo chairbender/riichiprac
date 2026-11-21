@@ -91,9 +91,10 @@ Tenhou, Mahjong Soul, or any other third-party human replay corpus.**
    4.1/3.0 ladder is an online-service set of networks whose weights are not
    released, so it is not a local corpus source. Akochan is a useful second
    opinion / diversity source under its own non-commercial output terms. The app
-   already has an MIT Rust reimplementation of Mortal v4 inference (`src/ai/`), so
-   labelling a reconstructed `GameState` does not require linking AGPL code into
-   the app.
+   already has its own Rust reimplementation of Mortal v4 inference (`src/ai/`).
+   That code ports AGPL-3.0 `libriichi`, which makes the repository
+   AGPL-3.0-or-later; labelling a reconstructed `GameState` does not require
+   linking the `libriichi` crate into the app.
 
 3. **The deliverable is a small, curated, static scenario pack — not a huge
    replay database.** The app is a client-side trainer. Ship a manifest plus
@@ -112,8 +113,8 @@ Tenhou, Mahjong Soul, or any other third-party human replay corpus.**
 5. **Do not implement the miner inside the WASM build.** Replay parsing,
    corpus storage, Mortal batch inference and pack publishing are a native-only
    offline tool. Keep it in a separate binary/feature (and, if it links
-   `libriichi`, preferably a separate repository or process) so the MIT app and
-   the AGPL tooling stay clearly separated.
+   `libriichi`, preferably a separate repository or process) so the shipped app
+   and the offline tooling stay operationally separated.
 
 6. **Use the agent specification's triggers and counterfactual pass as
    candidate-selection tools, not as the whole label.** The defensive and
@@ -237,8 +238,8 @@ follows Tenhou's 20-minute update interval and uses the official FileIndex.
 - **We are not using Tenhou records at all.** The copyright assertion, the
   explicit no-redistribution rule, and the competing-product restriction are
   enough that an open-source app cannot build a clean corpus from them.
-- Do not ship Tenhou logs or scenario packs derived from them. "The code is
-  MIT" does not launder the data.
+- Do not ship Tenhou logs or scenario packs derived from them. "The code is open
+  source" does not launder the data.
 - Do not scrape Tenhou in CI, in a browser, or from multiple workers. The
   platform explicitly cares about load and concurrency.
 - A derived `GameState` is still derived from the record. Whether a court would
@@ -366,7 +367,7 @@ publishes only curated scenario packs with `source.kind: "ai_selfplay"`.
 
 | AI | Code licence | Weights | Runs offline? | Self-play logs? | Verdict for us |
 | --- | --- | --- | --- | --- | --- |
-| **Mortal** (`Equim-chan/Mortal`) | **AGPL-3.0** | the community `VoidShine/mortal-298k` checkpoint is the one we have; upstream 4.1/3.0 weights are not released | yes, Rust `libriichi` + Python/Candle inference; CPU or GPU | yes: `libriichi::arena` has `OneVsThree` / `TwoVsTwo` and a `log_dir` that dumps gzipped mjai JSON logs | **Primary engine.** Strong, fast, open, and already the app's evaluator. Keep it offline and out of the shipped MIT binary. |
+| **Mortal** (`Equim-chan/Mortal`) | **AGPL-3.0** | the community `VoidShine/mortal-298k` checkpoint is the one we have; upstream 4.1/3.0 weights are not released | yes, Rust `libriichi` + Python/Candle inference; CPU or GPU | yes: `libriichi::arena` has `OneVsThree` / `TwoVsTwo` and a `log_dir` that dumps gzipped mjai JSON logs | **Primary engine.** Strong, fast, open, and already the app's evaluator. Keep the native arena offline and out of the shipped binary; the app's own port already makes the shipped code AGPL-3.0-or-later. |
 | **Akochan** (`critter-mj/akochan`) | custom Japanese terms (not OSI) | includes its own AI | yes, C++ | yes: `system.exe test <begin> <end>` with `setup_match.json` | Useful second opinion / diversity. Output reuse is allowed for non-commercial use **with attribution**; modification/redistribution is restricted. Do not make it the only source if the app might ever be commercial. |
 | **Kanachan** (`Cryolite/kanachan`) | no `LICENSE` file in the repo (all rights reserved by default) | no trained models shipped | yes, but needs Mahjong Soul data | not a turnkey bot | Not a practical source. |
 | **NAGA** (Dwango) | proprietary | proprietary | no (service) | no | Cannot run offline or ship. |
@@ -403,9 +404,9 @@ Mortal's own documentation advertises:
   one `*.json.gz` mjai log per game. `TwoVsTwo` does the same for two-vs-two.
   This is exactly the corpus generator we need.
 
-Our app already has an independent MIT reimplementation of Mortal v4 inference
-in `src/ai/` (`MortalV4Model`, `encode_v4_observation`, `evaluate_state`). That
-means:
+Our app already has an independent Rust reimplementation of Mortal v4 inference
+in `src/ai/` (`MortalV4Model`, `encode_v4_observation`, `evaluate_state`); it is
+AGPL-3.0-or-later because it ports `libriichi`. That means:
 
 - **Labelling a reconstructed `GameState`** can use the app's own native code,
   reading the AGPL weights as data, exactly as the browser does. No `libriichi`
@@ -414,7 +415,7 @@ means:
   is the easiest, but it is AGPL. Keep that tool separate from the app: a
   separate repository, a separate binary invoked as a subprocess, or at minimum
   a clearly isolated optional tool with its own licence notice. Do not link it
-  into the MIT library that ships to WASM. The corpus repo (`riichiprac-corpus`)
+  into the library that ships to WASM. The corpus repo (`riichiprac-corpus`)
   is **private by default**; making it public is a later decision, not part of
   this plan.
 
@@ -476,9 +477,11 @@ Do not assume a 4.1 network file will load just because the name looks similar.
 
 This is not legal advice, but the conservative position is:
 
-- **Code/weights:** Mortal is AGPL-3.0. Do not ship its code or weights inside
-  the MIT app; the existing app already treats the weights as a separately
-  fetched AGPL asset. Keep self-play generation out of the shipped binary.
+- **Code/weights:** Mortal is AGPL-3.0. Do not ship the native `libriichi` code
+  or the weight files inside the shipped app. The app already carries translated
+  ports of the encoder and solver, which is why it is AGPL-3.0-or-later, and it
+  treats the weights as a separately fetched AGPL asset. Keep self-play
+  generation out of the shipped binary.
 - **Generated logs:** a game record produced by running a program is data, not
   the program's source. The community treats self-play logs as data
   (Kanachan's maintainer explicitly plans to share simulation data because, in
@@ -490,8 +493,8 @@ This is not legal advice, but the conservative position is:
   attribution. If the app ever becomes commercial, get permission or replace
   Akochan-generated data.
 - **Our own additions:** the selection, annotations, explanations and pack
-  format are ours and can be licensed (for example CC BY 4.0 for the data,
-  MIT for the code).
+  format are ours and can be licensed (CC BY 4.0 for the data;
+  AGPL-3.0-or-later for the code).
 
 The safest long-term option is a permissively licensed simulator/policy for the
 raw corpus and Mortal only for labels. That is a larger engineering project; the
@@ -1714,8 +1717,10 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
    with the one `mortal_298k` checkpoint, plus Akochan and heuristic/reference
    policies; dump mjai logs to the local data root and back them up to Google
    Drive with rclone. The runner code lives in a **private** corpus repo outside
-   the app repo; the raw logs do not live in that repo. If the AGPL link is a
-   concern, keep it in the private repo or invoke it as a subprocess.
+   the app repo; the raw logs do not live in that repo. Keep the native arena in
+   the private repo or invoke it as a subprocess; the app repo is already
+   AGPL-3.0-or-later because of its ports, and the native arena still stays out
+   of the shipped build.
 4. **Add book classifiers** for the broad lessons, starting with Riichi/dama,
    push/fold, defense safety, suji trap, pinfu head, honitsu and the call/kan
    lessons. Test them against the existing generators.
@@ -1742,8 +1747,8 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
    mistake mining, close calls, speed vs value, or coverage? The pack mix and UI
    copy differ.
 4. **Data licence:** CC BY 4.0 for packs (attribution, simple) vs CC0 (maximum
-   reuse) vs MIT (code-style, awkward for data)? The app code stays MIT; the
-   data needs its own file.
+   reuse) vs MIT (code-style, awkward for data)? The app code is
+   AGPL-3.0-or-later; the data needs its own licence file.
 5. **Pack hosting:** Pages-only for small packs, or R2/HF for pack bodies?
    The raw corpus and SQLite DB live locally and back up to Google Drive; Drive
    is not a pack host. Pages is simplest; R2 is cheap and CORS-friendly.
