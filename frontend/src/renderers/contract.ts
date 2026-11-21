@@ -120,17 +120,22 @@ export interface TableSnapshot {
     SnapshotSeat,
   ];
   /**
-   * Face-down decorative wall. Fixed count, full ring minus the committed draw
-   * end; the engine publishes no per-slot occupancy, so it is never depleted.
-   * A tile's `slot` is
+   * Face-down wall tiles: the **fixed 14-tile dead wall** on the far run's
+   * draw-end half, followed by the **live wall's remaining tiles**.
+   *
+   * The live count is `compass.tilesRemaining` (a decision state never exceeds
+   * 70 after the deal), so the wall visibly thins as draws are made; the dead
+   * wall never does. `renderers/wall.ts` is the one model that turns the count
+   * into slots. A tile's `slot` is
    * `run * WALL.slotsPerRun + stack * WALL.tiers + tier`; run `n` is the run in
-   * front of absolute seat `n`, so the far wall is `(humanSeat + 2) % 4`.
+   * front of absolute seat `n`, so the far wall is `(humanSeat + 2) % 4` and its
+   * stacks 10..16 are the dead wall.
    */
   readonly wall: readonly SnapshotTile[];
   /**
-   * Revealed dora indicators, face-up on the far wall's dead-wall top tier.
+   * Revealed dora indicators, face-up on the dead wall's top tier.
    * `slot` is the indicator index; the layout places each one and omits the
-   * decorative wall tile it covers, so the two lists never draw twice.
+   * face-down dead-wall tile it covers, so the two lists never draw twice.
    */
   readonly dora: readonly SnapshotTile[];
   readonly compass: {

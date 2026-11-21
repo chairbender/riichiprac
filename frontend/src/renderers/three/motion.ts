@@ -215,9 +215,12 @@ function newestDiscard(layout: BoardLayout, seat: number): BoardTile | undefined
 }
 
 /**
- * The wall tile at a seat's own draw end: the bottom tier of the committed
- * one-tile gap (`WALL.drawEndSlot`, which loses its top tier on every run).
- * The drawer takes the tile from this stack, so a flight starts there.
+ * A seat's own draw-end stack bottom tile, when the depleted wall still has it.
+ *
+ * The live wall is now one arc with a single draw edge (`renderers/wall.ts`), so
+ * this is only the reserved event seam's cheap landing point: a real draw flight
+ * would start at `nextLiveWallSlot`. The fallback in `flightWaypoints` is the
+ * draw slot itself, so a missing tile never breaks the animation seam.
  */
 function drawEndTile(layout: BoardLayout, seat: number): BoardTile | undefined {
   const slot = seat * WALL.slotsPerRun + WALL.drawEndSlot * WALL.tiers;

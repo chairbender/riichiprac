@@ -47,10 +47,10 @@ import type { TileMaterialHandle } from './tileMaterial';
 /**
  * The tile instance capacity (plan §6, 3D-07). Every legal snapshot is far
  * below it: a real game has 136 tiles, of which at most ~122 are outside the
- * wall, and the decorative ring is 132 minus the dora it covers, so ~249 is the
- * honest ceiling. A snapshot above the capacity is structurally illegal and
- * fails loudly in {@link packBoardInstances} rather than silently dropping
- * tiles.
+ * wall, and the drawn wall is at most 70 live tiles plus the 14-tile dead wall
+ * minus the dora indicators it covers, so ~300 is the honest ceiling. A snapshot
+ * above the capacity is structurally illegal and fails loudly in
+ * {@link packBoardInstances} rather than silently dropping tiles.
  */
 export const BOARD_TILE_CAPACITY = 320;
 

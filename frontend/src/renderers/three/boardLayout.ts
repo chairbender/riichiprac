@@ -37,11 +37,14 @@
  *   face normal and the camera's view direction must be ≤ 25° at every
  *   supported aspect (plan §2.4, §9 decision 3). See
  *   {@link handFaceToViewDeg} for exactly what that angle is.
- * - The wall is decorative and full: 4 runs × 17 stacks × 2 tiers minus each
- *   run's draw-end top tile, never depleted (§9 R6). The draw end is at each
- *   seat's right (`WALL.drawEndIsSeatRight`).
- * - Dora indicators replace the far wall's top-tier tiles, counting in from the
- *   draw end, so no tile is ever drawn twice (`DORA`).
+ * - The wall is the real, depleted wall: the live wall's remaining tiles (from
+ *   `compass.tilesRemaining`, drawn top tier first from the break end) plus the
+ *   fixed 14-tile dead wall on the far run, separated by a felt break. The draw
+ *   end is at each seat's right (`WALL.drawEndIsSeatRight`); `renderers/wall.ts`
+ *   owns which live slots exist.
+ * - Dead-wall positions are shifted along the far run by
+ *   `WALL.deadWallGapUnits`; dora indicators replace its top-tier tiles, counting
+ *   in from the draw end, so no tile is ever drawn twice (`DORA`).
  * - Ponds fill from the far row toward the player, and the four overflow cells
  *   extend the nearest row (`POND`).
  * - Opponent hands are upright and face-down; only the human's concealed hand
@@ -75,6 +78,7 @@ import {
   TILE,
   WALL,
 } from '../layoutConstants';
+import { decodeWallSlot, isDeadWallSlot } from '../wall';
 
 /** A point or vector in world space, in tile units. */
 export type Vec3 = readonly [number, number, number];
@@ -153,7 +157,7 @@ export interface BoardLayout {
   readonly humanSeat: Seat;
   /** Every tile, in a stable authoring order (not a paint order). */
   readonly tiles: readonly BoardTile[];
-  /** The decorative wall only. */
+  /** Every wall-zone tile: the live wall plus the dead wall (dora aside). */
   readonly wall: readonly BoardTile[];
   /** Everything except the wall: hands, draws, rivers, melds and dora. */
   readonly foreground: readonly BoardTile[];
@@ -371,8 +375,9 @@ export function orientedBoxesIntersect(
  * The runs at the human's own edge and the far edge are the **end** runs: they
  * are inset so their outer face is flush with a side run's end tile
  * ({@link WALL.endRunRadiusUnits}). The two side runs stay on the committed
- * ring. Everything that places a wall tile — the decorative runs and the dora
- * indicators — goes through this function, so the two can never disagree.
+ * ring. Everything that places a wall tile — the live run, the shifted dead
+ * block and the dora indicators — goes through this function, so they can never
+ * disagree.
  */
 export function wallRunRadius(run: Seat, humanSeat: Seat): number {
   const farSeat = ((humanSeat + 2) % SEATS.count) as Seat;
@@ -381,9 +386,19 @@ export function wallRunRadius(run: Seat, humanSeat: Seat): number {
     : WALL.radiusUnits;
 }
 
-/** Is `slot` under a dora indicator on the far run's top tier? */
+/** The dead-wall stack a dora indicator replaces on the top tier. */
 function doraStack(index: number): number {
   return WALL.drawEndSlot - DORA.firstStackFromDrawEnd - index;
+}
+
+/**
+ * A stack's tangential centre line on its run, in tile units.
+ *
+ * The dead wall uses the same function plus {@link WALL.deadWallGapUnits}, so a
+ * revealed indicator and the dead block it belongs to can never drift apart.
+ */
+function wallStackW(stack: number): number {
+  return (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits;
 }
 
 /**
@@ -626,7 +641,7 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
       null,
       lyingPose(
         farSeat,
-        (doraStack(index) - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits,
+        wallStackW(doraStack(index)) + WALL.deadWallGapUnits,
         wallRunRadius(farSeat, humanSeat),
         wallTierHeightUnits(DORA.tier),
         // The far wall's own frame would turn the glyph away from the viewer, so
@@ -639,35 +654,39 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
     ),
   );
 
-  // The wall tiles a dora indicator covers, keyed by stack and tier on the far
-  // run: those decorative tiles are omitted so the two lists never draw twice.
+  // The dead-wall tiles a dora indicator covers, keyed by stack and tier on the
+  // far run: those face-down tiles are omitted so the two lists never draw twice.
   const coveredStacks = new Set(
     snapshotDora.map((_, index) => `${doraStack(index)}:${DORA.tier}`),
   );
 
+  /*
+   * Wall placement. The live tiles sit on the ring at their own run radius;
+   * the fixed dead wall sits on the far run but is shifted along the run by
+   * `WALL.deadWallGapUnits`, away from the live wall's far end, so the two
+   * blocks are separated by a deliberate felt break. The shift is tangential,
+   * so both blocks still line up radially with their run.
+   */
   const wall: BoardTile[] = [];
   for (const tile of snapshot.wall) {
-    if (
-      !Number.isInteger(tile.slot) ||
-      tile.slot < 0 ||
-      tile.slot >= WALL.runs * WALL.slotsPerRun
-    ) {
+    const decoded = decodeWallSlot(tile.slot);
+    if (!decoded) {
       throw new Error(
         `3D board layout: wall slot ${String(tile.slot)} is outside the ${WALL.runs * WALL.slotsPerRun}-slot ring`,
       );
     }
-    const run = Math.floor(tile.slot / WALL.slotsPerRun);
-    const withinRun = tile.slot % WALL.slotsPerRun;
-    const stack = Math.floor(withinRun / WALL.tiers);
-    const tier = withinRun % WALL.tiers;
+    const { run, stack, tier } = decoded;
+    const dead = isDeadWallSlot(tile.slot, humanSeat);
     if (
+      dead &&
       run === farSeat &&
       tier === DORA.tier &&
       coveredStacks.has(`${stack}:${tier}`)
     ) {
       continue;
     }
-    const w = (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits;
+    const w =
+      wallStackW(stack) + (dead ? WALL.deadWallGapUnits : 0);
     const height = wallTierHeightUnits(tier);
     wall.push(
       boardTile(
@@ -675,12 +694,12 @@ export function layoutBoard(snapshot: TableSnapshot): BoardLayout {
         null,
         {
           position: seatPoint(
-            run as Seat,
+            run,
             w,
-            wallRunRadius(run as Seat, humanSeat),
+            wallRunRadius(run, humanSeat),
             height,
           ),
-          yawDeg: seatYawDeg(run as Seat),
+          yawDeg: seatYawDeg(run),
           tiltDeg: 90,
           rollDeg: 0,
           sizeUnits: TILE_SIZE,

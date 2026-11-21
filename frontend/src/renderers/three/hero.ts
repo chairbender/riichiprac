@@ -102,9 +102,18 @@ function lyingHeroPose(
   };
 }
 
-/** The far wall's stack centre line for a stack index. */
+/**
+ * The dead wall's stack centre line for a stack index.
+ *
+ * Both hero slots on the far run are dead-wall positions (the first dora
+ * indicator and the blue-backed stack just inboard of the five indicator
+ * stacks), so they ride the same deliberate dead-wall offset the board uses.
+ */
 function wallStackW(stack: number): number {
-  return (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits;
+  return (
+    (stack - (WALL.stacksPerRun - 1) / 2) * WALL.stackPitchUnits +
+    WALL.deadWallGapUnits
+  );
 }
 
 /** The top tier's body centre height (the layout's own formula). */
