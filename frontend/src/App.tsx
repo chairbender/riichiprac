@@ -21,12 +21,10 @@ import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
-import { handHint } from './handHint';
 import { RendererHost } from './renderers/RendererHost';
 import { ActionRail } from './renderers/hud/ActionRail';
 import { actionRailVisible } from './renderers/hud/actionRail';
 import type { ActionRailModel } from './renderers/hud/actionRail';
-import { HandRail } from './renderers/hud/HandRail';
 import { HudLayer } from './renderers/hud/HudLayer';
 import type { HudSheetContent } from './renderers/hud/HudLayer';
 import { ResultCard } from './renderers/hud/ResultCard';
@@ -929,12 +927,6 @@ export const App = () => {
 
   const answered = dualGrade !== null;
   const revealMortal = answered || peekedBeforeAnswer;
-  const handHintText = handHint({
-    isAnswered: answered,
-    canDiscard,
-    pendingCall,
-    hasKanCall: callButtons.calls.some((call) => call.kind === 'kan'),
-  });
 
   /*
    * 3D-14: whether this browser can run the 3D table.
@@ -1100,22 +1092,6 @@ export const App = () => {
    * (`selectTile` reaches the scene through 3D-08), so the answer path has no
    * renderer dependency.
    */
-  const hudHintRow = humanPlayer ? (
-    <HandRail
-      hint={handHintText}
-      aiStatus={aiStatus}
-      isEvaluating={isEvaluating}
-      hasEvaluation={evaluation !== null}
-      peeked={peekedBeforeAnswer}
-      answered={answered}
-      // H5: the pre-answer chip is the verdict sheet's trigger (Peek lives
-      // there); post-answer the result card's Details is the only way in, so
-      // the hint no longer needs to announce "Answer submitted".
-      onOpenVerdict={() => setHudSheet('verdict')}
-      announceHint={!answered}
-    />
-  ) : undefined;
-
   const actionRailModel: ActionRailModel = {
     actions: actionBarActions,
     callButtons,
@@ -1130,9 +1106,10 @@ export const App = () => {
     onAction: submitAction,
   };
 
-  // An empty rail is unmounted, not reserved: a plain discard lesson shows the
-  // 40 px hint-only panel until its answer (3d_hud.md §7.1).
-  const hudActionRail = actionRailVisible(actionRailModel) ? (
+  // No call/action controls means no pre-answer chrome at all: the call row is
+  // unmounted, not reserved (3d_hud.md §7.1). After an answer the result card
+  // takes over; the HUD never shows a panel before one.
+  const hudCallBar = actionRailVisible(actionRailModel) ? (
     <ActionRail model={actionRailModel} onRowsChange={setActionRows} />
   ) : undefined;
 
@@ -1417,8 +1394,7 @@ export const App = () => {
             />
           }
           actionRows={actionRows}
-          hintRow={hudHintRow}
-          actionRail={hudActionRail}
+          callBar={hudCallBar}
           resultCard={hudResultCard}
           resultTone={hudResultTone}
           sheet={hudOpenSheet}

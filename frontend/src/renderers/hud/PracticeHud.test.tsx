@@ -28,7 +28,6 @@ import { frameForAspect, layoutBoard } from '../three/boardLayout';
 import { hitRects } from '../three/hitTest';
 import { ActionRail } from './ActionRail';
 import { actionRailVisible } from './actionRail';
-import { HandRail } from './HandRail';
 import { HudLayer } from './HudLayer';
 import { HudToastStack } from './ToastStack';
 import { buildHudToasts } from './toastModel';
@@ -40,7 +39,6 @@ import {
   isCallActionType,
   NO_CALL_BUTTONS,
 } from '../../callChoices';
-import { handHint } from '../../handHint';
 import { useGameStore } from '../../store/useGameStore';
 import type { GameState, PlayerState } from '../../types/game';
 
@@ -141,8 +139,6 @@ function PracticeHud() {
   const callError = useGameStore((state) => state.callError);
   const evaluation = useGameStore((state) => state.evaluation);
   const peeked = useGameStore((state) => state.peekedBeforeAnswer);
-  const isEvaluating = useGameStore((state) => state.isEvaluating);
-  const aiStatus = useGameStore((state) => state.aiStatus);
   const error = useGameStore((state) => state.error);
   const beginCall = useGameStore((state) => state.beginCall);
   const cancelCall = useGameStore((state) => state.cancelCall);
@@ -161,13 +157,6 @@ function PracticeHud() {
   const actions = availableActions.filter(
     (action) => !isCallActionType(action.type),
   );
-  const hint = handHint({
-    isAnswered: answered,
-    canDiscard: true,
-    pendingCall,
-    hasKanCall: callButtons.calls.some((call) => call.kind === 'kan'),
-  });
-
   const railModel = {
     actions,
     callButtons,
@@ -189,19 +178,7 @@ function PracticeHud() {
       <HudLayer
         shellRef={{ current: null }}
         onNextScenario={() => undefined}
-        hintRow={
-          human ? (
-            <HandRail
-              hint={hint}
-              aiStatus={aiStatus}
-              isEvaluating={isEvaluating}
-              hasEvaluation={evaluation !== null}
-              peeked={peeked}
-              answered={answered}
-            />
-          ) : undefined
-        }
-        actionRail={
+        callBar={
           actionRailVisible(railModel) ? (
             <ActionRail model={railModel} />
           ) : undefined
@@ -263,8 +240,9 @@ describe('3D practice HUD: one hand, rail first', () => {
     const handButtons = within(handGroup).getAllByRole('button');
     expect(handButtons).toHaveLength(HUMAN.hand.length + 1);
 
-    // The rail exists (Riichi + Kan) and contributes no hand control.
-    const rail = container.querySelector('.hud-action-rail');
+    // The isolated call row exists (Riichi + Kan) and contributes no hand
+    // control; there is no pre-answer panel.
+    const rail = container.querySelector('.hud-call-bar');
     expect(rail).not.toBeNull();
     expect(within(rail as HTMLElement).getAllByRole('button')).toHaveLength(2);
     expect(rail?.querySelector('[aria-label^="Discard "]')).toBeNull();
@@ -283,7 +261,7 @@ describe('3D practice HUD: one hand, rail first', () => {
     load(gameState());
     const { container } = render(<PracticeHud />);
 
-    const rail = container.querySelector('.hud-action-rail') as HTMLElement;
+    const rail = container.querySelector('.hud-call-bar') as HTMLElement;
     const handGroup = within(container).getByRole('group', { name: 'Your hand' });
     const railButtons = within(rail).getAllByRole('button');
     const handButtons = within(handGroup).getAllByRole('button');
@@ -316,7 +294,7 @@ describe('3D practice HUD: one hand, rail first', () => {
   it('submits, then hides the rail so the result slot is free for H5', () => {
     load(gameState());
     const { container, rerender } = render(<PracticeHud />);
-    expect(container.querySelector('.hud-action-rail')).not.toBeNull();
+    expect(container.querySelector('.hud-call-bar')).not.toBeNull();
 
     fireEvent.click(
       within(container).getByRole('button', { name: 'Call Riichi' }),
@@ -333,7 +311,7 @@ describe('3D practice HUD: one hand, rail first', () => {
 
     // The store changed; re-render is what the store subscription does.
     rerender(<PracticeHud />);
-    expect(container.querySelector('.hud-action-rail')).toBeNull();
+    expect(container.querySelector('.hud-call-bar')).toBeNull();
     expect(screen.getByTestId('result-card')).toBeTruthy();
     expect(container.querySelector('.hud-panel')?.getAttribute('data-slot')).toBe(
       'result',
@@ -357,7 +335,7 @@ describe('3D practice HUD: press a call, then pick its tile', () => {
     );
     expect(useGameStore.getState().pendingCall?.kind).toBe('riichi');
     // The hint and the projected labels both say what the next tap will do.
-    expect(container.querySelector('.hud-hand-rail__hint')?.textContent).toBe(
+    expect(container.querySelector('.call-controls-prompt')?.textContent).toBe(
       'Select a tile to discard for Riichi',
     );
 
@@ -436,7 +414,7 @@ describe('3D practice HUD: messages are toasts over the scene', () => {
     load(gameState());
     const { container } = render(<PracticeHud />);
     expect(container.querySelector('.hud-toast-root')).toBeNull();
-    // The rail's hint is the only live region in the hand panel.
-    expect(container.querySelectorAll('.hud-panel [aria-live]')).toHaveLength(1);
+    // There is no pre-answer panel, and the call row carries no hint region.
+    expect(container.querySelector('.hud-panel')).toBeNull();
   });
 });
