@@ -147,6 +147,14 @@ export interface HudState {
   readonly sheet: boolean;
   /** How many toasts the stack shows (0–3, §2). */
   readonly toasts: number;
+  /**
+   * A mobile stage (2026-11-21): the compass box is the mobile rectangle, the
+   * call row and result card always sit **above** the hand, the call row runs
+   * to the screen's right edge, and an open sheet takes the whole stage below
+   * the top bar instead of stopping at the hand. Desktop keeps the committed
+   * rules.
+   */
+  readonly mobile?: boolean;
 }
 
 /** Everything `HudLayer` positions, plus the anchors and clearances. */
@@ -250,9 +258,12 @@ export function topBarHeight(insets: HudInsets = NO_INSETS): number {
 }
 
 /** The compass plate's DOM square, or null when the scene has no compass. */
-export function compassSquare(compass: CompassRect | null): HudRect | null {
+export function compassSquare(
+  compass: CompassRect | null,
+  mobile = false,
+): HudRect | null {
   if (!compass || !(compass.width > 0) || !(compass.height > 0)) return null;
-  return compassBox(compass);
+  return compassBox(compass, mobile ? 'mobile' : 'desktop');
 }
 
 /** The call row's height for one or two wrapped rows. */
@@ -357,7 +368,8 @@ export function hudLayout(
     anchors.handBand && anchors.handBand.width > 0 && anchors.handBand.height > 0
       ? anchors.handBand
       : null;
-  const compass = compassSquare(anchors.compass);
+  const mobile = state.mobile === true;
+  const compass = compassSquare(anchors.compass, mobile);
   const compassBottom = compass ? compass.top + compass.height : null;
 
   /*
@@ -384,9 +396,19 @@ export function hudLayout(
   if (band) {
     if (callBarVisible) {
       const rowHeight = callBarHeight(actionRows);
-      const anchored = anchorRow(band, compassBottom, rowHeight);
-      const left = Math.max(HUD_GAP, band.left);
-      const right = Math.min(width - HUD_GAP, band.left + band.width);
+      /*
+       * Mobile (2026-11-21): the call controls always sit **above the hand** and
+       * run out to the screen's right edge, so a melded hand (whose band is only
+       * a tile or two wide) cannot squeeze them into its own width. Desktop
+       * keeps the below-the-hand fallback and the band's own span.
+       */
+      const anchored = mobile
+        ? { top: band.top - HUD_GAP - rowHeight, anchor: 'above' as const }
+        : anchorRow(band, compassBottom, rowHeight);
+      const left = mobile ? HUD_GAP : Math.max(HUD_GAP, band.left);
+      const right = mobile
+        ? width - HUD_GAP
+        : Math.min(width - HUD_GAP, band.left + band.width);
       callBar = rect(left, anchored.top, Math.max(0, right - left), rowHeight);
       callBarAnchor = anchored.anchor;
       callBarHandClearance =
@@ -400,7 +422,10 @@ export function hudLayout(
     }
 
     if (panelSlot !== 'none') {
-      const anchored = anchorRow(band, compassBottom, HUD_PANEL_RESULT);
+      // Mobile: the result card is centred over the hand, never docked below it.
+      const anchored = mobile
+        ? { top: band.top - HUD_GAP - HUD_PANEL_RESULT, anchor: 'above' as const }
+        : anchorRow(band, compassBottom, HUD_PANEL_RESULT);
       // Above the hand the panel is the §5 width, centred; docked below the hand
       // it takes the full width minus the gutters.
       const panelWidth =
@@ -423,11 +448,19 @@ export function hudLayout(
     }
 
     const sheetTop = barHeight + HUD_GAP;
-    const sheetBottom = Math.min(
-      band.top - HUD_GAP,
-      sheetTop +
-        Math.min(HUD_SHEET_STAGE_FRACTION * height, HUD_SHEET_MAX_HEIGHT),
-    );
+    /*
+     * Mobile (2026-11-21): the sheet takes everything below the top bar. The
+     * committed rule stops it at the hand so the hint stays visible, but a
+     * landscape phone's 390 px stage left the settings and the verdict with a
+     * 223 px body; the modal owns the screen while it is open.
+     */
+    const sheetBottom = mobile
+      ? height - HUD_GAP
+      : Math.min(
+          band.top - HUD_GAP,
+          sheetTop +
+            Math.min(HUD_SHEET_STAGE_FRACTION * height, HUD_SHEET_MAX_HEIGHT),
+        );
     const sheetWidth = Math.min(HUD_SHEET_MAX_WIDTH, width - 2 * HUD_GAP);
     const sheetHeightPx = sheetBottom - sheetTop;
     if (sheetHeightPx > 0 && sheetWidth > 0) {

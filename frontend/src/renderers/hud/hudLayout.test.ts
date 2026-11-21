@@ -305,14 +305,13 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
    * reaches, and the compass clearance the gate measures.
    */
   const GOLDEN = [
-    { stage: GATE_STAGES[0], callBar: 836, result: 776, sheetBottom: 880, clearance: 154 },
-    { stage: GATE_STAGES[1], callBar: 876, result: 816, sheetBottom: 918, clearance: 205 },
-    { stage: GATE_STAGES[2], callBar: 790, result: 730, sheetBottom: 834, clearance: 203 },
-    { stage: GATE_STAGES[3], callBar: 801, result: 741, sheetBottom: 835, clearance: 225 },
-    { stage: GATE_STAGES[4], callBar: 859, result: 799, sheetBottom: 866, clearance: 284 },
-    { stage: GATE_STAGES[5], callBar: 1061, result: 1001, sheetBottom: 918, clearance: 384 },
-    // 9:16: the stage-height cap binds the sheet; the hand is the closest bound.
-    { stage: GATE_STAGES[6], callBar: 1301, result: 1241, sheetBottom: 918, clearance: 512 },
+    { stage: GATE_STAGES[0], callBar: 836, result: 776, sheetBottom: 1072, clearance: 154 },
+    { stage: GATE_STAGES[1], callBar: 876, result: 816, sheetBottom: 1072, clearance: 205 },
+    { stage: GATE_STAGES[2], callBar: 790, result: 730, sheetBottom: 952, clearance: 203 },
+    { stage: GATE_STAGES[3], callBar: 801, result: 741, sheetBottom: 952, clearance: 225 },
+    { stage: GATE_STAGES[4], callBar: 859, result: 799, sheetBottom: 992, clearance: 284 },
+    { stage: GATE_STAGES[5], callBar: 1061, result: 1001, sheetBottom: 1192, clearance: 384 },
+    { stage: GATE_STAGES[6], callBar: 1301, result: 1241, sheetBottom: 1432, clearance: 512 },
   ] as const;
 
   for (const golden of GOLDEN) {
@@ -324,23 +323,37 @@ describe('HUD layout: the published composition (§5, §7.4)', () => {
         slot: 'actions',
         sheet: false,
         toasts: 0,
+        mobile: true,
       });
       const result = layoutFor(golden.stage, scene, {
         slot: 'result',
         sheet: false,
         toasts: 0,
+        mobile: true,
       });
       // The document's table is whole pixels; the projection is sub-pixel, so
       // compare the drawn edges at the pixel.
       expect(Math.round(actions.callBar?.top ?? -1)).toBe(golden.callBar);
       expect(actions.callBar?.height).toBe(HUD_ACTION_RAIL_HEIGHT);
-      // The call row's right edge is the hand band's right edge.
-      const band = scene.anchors.handBand;
-      expect(actions.callBar?.left).toBeCloseTo(band?.left ?? 0, 1);
+      /*
+       * The mobile call row runs from the leading gutter to the screen's right
+       * edge (2026-11-21): a melded hand's band is only a tile or two wide, so
+       * tying the row to it squeezed the buttons. It still sits above the hand.
+       */
+      expect(actions.callBar?.left).toBeCloseTo(HUD_GAP, 1);
       expect((actions.callBar?.left ?? 0) + (actions.callBar?.width ?? 0)).toBeCloseTo(
-        (band?.left ?? 0) + (band?.width ?? 0),
+        golden.stage.width - HUD_GAP,
         1,
       );
+      const band = scene.anchors.handBand;
+      expect(
+        (actions.callBar?.top ?? 0) + (actions.callBar?.height ?? 0),
+        'the call row sits above the hand',
+      ).toBeLessThanOrEqual((band?.top ?? 0) - HUD_GAP + 0.01);
+      // The result card is centred over the hand.
+      expect(
+        (result.panel?.left ?? 0) + (result.panel?.width ?? 0) / 2,
+      ).toBeCloseTo(golden.stage.width / 2, 0);
       expect(Math.round(result.panel?.top ?? -1)).toBe(golden.result);
       expect(result.panel?.height).toBe(HUD_PANEL_RESULT);
       // Published as whole pixels; ±2 is the rounding of two sub-pixel edges.
@@ -795,5 +808,75 @@ describe('HUD collision helper', () => {
     // The rect's bottom sits inside the compass's 8 px gutter: one violation
     // against the compass, none against the target below it.
     expect(violations.map((violation) => violation.against)).toEqual(['compass']);
+  });
+});
+
+describe('HUD layout: the mobile composition (2026-11-21)', () => {
+  /** A phone: 844 x 390 landscape, mobile board, mobile HUD rules. */
+  const PHONE = { width: 844, height: 390 } as const;
+
+  function phoneLayout(slot: HudSlot, sheet = false, melds: readonly [number, number, number, number] = [0, 0, 0, 0]) {
+    const scene = sceneFor(PHONE, { meldCounts: melds }, 'mobile');
+    return { scene, layout: layoutFor(PHONE, scene, { slot, sheet, toasts: 0, mobile: true }) };
+  }
+
+  it('keeps the call row above the hand and runs it to the right edge', () => {
+    // A melded hand's band is only a tile or two wide; the call row must not be
+    // squeezed into it.
+    for (const melds of [
+      [0, 0, 0, 0],
+      [4, 0, 0, 0],
+    ] as const) {
+      const { scene, layout } = phoneLayout('actions', false, melds);
+      const band = scene.anchors.handBand!;
+      expect(layout.callBarAnchor, `melds ${melds.join('/')}`).toBe('above');
+      expect((layout.callBar?.top ?? 0) + (layout.callBar?.height ?? 0)).toBeLessThanOrEqual(
+        band.top - HUD_GAP + 0.01,
+      );
+      expect(layout.callBar?.left).toBeCloseTo(HUD_GAP, 1);
+      expect((layout.callBar?.left ?? 0) + (layout.callBar?.width ?? 0)).toBeCloseTo(
+        PHONE.width - HUD_GAP,
+        1,
+      );
+    }
+  });
+
+  it('centres the result card over the hand, never below it', () => {
+    const { scene, layout } = phoneLayout('result');
+    const band = scene.anchors.handBand!;
+    expect(layout.panelAnchor).toBe('above');
+    expect(layout.panel?.height).toBe(HUD_PANEL_RESULT);
+    expect((layout.panel?.top ?? 0) + HUD_PANEL_RESULT).toBeLessThanOrEqual(
+      band.top - HUD_GAP + 0.01,
+    );
+    expect(
+      (layout.panel?.left ?? 0) + (layout.panel?.width ?? 0) / 2,
+    ).toBeCloseTo(PHONE.width / 2, 1);
+  });
+
+  it('gives an open sheet the whole stage below the top bar', () => {
+    const { layout } = phoneLayout('actions', true);
+    expect(layout.sheet).not.toBeNull();
+    if (!layout.sheet) return;
+    expect(layout.sheet.top).toBeCloseTo(topBarHeight() + HUD_GAP, 1);
+    // 390 - 78 - 16 = 296 px, against the 231 the committed rule allowed.
+    expect(layout.sheet.height).toBeCloseTo(PHONE.height - topBarHeight() - 2 * HUD_GAP, 1);
+    // The modal owns the screen: the call row and the card are hidden.
+    expect(layout.callBar).toBeNull();
+    expect(layout.panel).toBeNull();
+  });
+
+  it('leaves the desktop composition alone', () => {
+    const scene = sceneFor(PHONE, {}, 'mobile');
+    const desktop = layoutFor(PHONE, scene, { slot: 'actions', sheet: true, toasts: 0 });
+    // Desktop keeps the committed rule: the sheet stops 8 px above the hand.
+    const band = scene.anchors.handBand!;
+    expect((desktop.sheet?.top ?? 0) + (desktop.sheet?.height ?? 0)).toBeCloseTo(
+      band.top - HUD_GAP,
+      1,
+    );
+    // And the call row keeps the hand band's own span.
+    const callRow = layoutFor(PHONE, scene, { slot: 'actions', sheet: false, toasts: 0 });
+    expect(callRow.callBar?.left).toBeCloseTo(Math.max(HUD_GAP, band.left), 1);
   });
 });

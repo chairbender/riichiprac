@@ -100,6 +100,12 @@ export interface HudLayerProps {
    * answer is never announced twice (`3d_hud.md` §6.5.10).
    */
   readonly announcement?: string;
+  /**
+   * A mobile stage (2026-11-21): the HUD uses the mobile compass box, keeps the
+   * call row and result card above the hand, runs the call row to the screen's
+   * right edge and gives an open sheet the whole stage below the top bar.
+   */
+  readonly mobile?: boolean;
 }
 
 interface HudMetrics {
@@ -155,6 +161,7 @@ export function HudLayer({
   sheet = null,
   onCloseSheet,
   announcement = '',
+  mobile = false,
 }: HudLayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
@@ -220,6 +227,7 @@ export function HudLayer({
             actionRows,
             sheet: sheetOpen,
             toasts: toastCount ?? (toasts !== undefined ? 1 : 0),
+            mobile,
           },
           metrics.insets,
         )

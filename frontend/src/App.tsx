@@ -32,6 +32,7 @@ import { ActionRail } from './renderers/hud/ActionRail';
 import { actionRailVisible } from './renderers/hud/actionRail';
 import type { ActionRailModel } from './renderers/hud/actionRail';
 import { HudLayer } from './renderers/hud/HudLayer';
+import { useMobileLayout } from './renderers/hud/useMobileLayout';
 import { useForcedLandscape } from './renderers/useForcedLandscape';
 import type { HudSheetContent } from './renderers/hud/HudLayer';
 import { ResultCard } from './renderers/hud/ResultCard';
@@ -272,6 +273,8 @@ export const App = () => {
    */
   const threeShellRef = useRef<HTMLDivElement>(null);
   const threeStageRef = useRef<HTMLElement>(null);
+  /** The mobile HUD rules (2026-11-21): same device rule as the board. */
+  const mobileLayout = useMobileLayout();
   /**
    * 2026-11-21: the 3D table is landscape-only. A phone held in portrait gets a
    * quarter-turn shell (see `useForcedLandscape`) instead of a portrait layout;
@@ -1454,6 +1457,7 @@ export const App = () => {
         <HudLayer
           shellRef={threeShellRef}
           stageRef={threeStageRef}
+          mobile={mobileLayout}
           onNextScenario={handleNextScenario}
           nextDisabled={isLoading}
           setupTrigger={
