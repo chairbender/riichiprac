@@ -349,7 +349,36 @@ describe('RendererHost lifecycle', () => {
       perfHud: true,
       reducedMotion: true,
       antialias: true,
+      // jsdom is a fine-pointer desktop stage: the committed board.
+      layoutProfile: 'desktop',
     });
+  });
+
+  it('hands the mobile profile to the scene when the stage is a phone', async () => {
+    // A coarse pointer on a short-sided stage: the phone composition (the
+    // smaller compass, the mobile ponds, the left row shift and the
+    // screen-space hand) is the scene's, not the DOM's alone.
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(pointer: coarse)',
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 });
+    try {
+      render(
+        <RendererHost snapshot={snapshot()} fallback={fallbackTable()} />,
+      );
+      await waitFor(() => expect(hostMock.state.created).toBe(1));
+      expect(hostMock.state.options[0].layoutProfile).toBe('mobile');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+      vi.unstubAllGlobals();
+    }
   });
 
   it('redraws on a new snapshot without remounting', async () => {

@@ -807,6 +807,10 @@ export function RendererHost({
           reducedMotion: reduceMotion,
           // 3D-20: MSAA above the compat tier; see `capabilities.MSAA_SAMPLES`.
           antialias: antiAliasFor(resolvedTier),
+          // The board composition: mobile gets the phone plate, ponds, left-seat
+          // shift and screen-space hand; everything else keeps the committed
+          // board (2026-11-21).
+          layoutProfile,
         });
         rendererRef.current = renderer;
         renderer.syncState(snapshotRef.current);
@@ -847,6 +851,7 @@ export function RendererHost({
   }, [
     capabilities,
     debug,
+    layoutProfile,
     onDegraded,
     perfHud,
     reduceMotion,
