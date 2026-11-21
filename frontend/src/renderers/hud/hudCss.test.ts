@@ -292,3 +292,73 @@ describe('HUD stylesheet: the pool page scrolls (2026-11-22)', () => {
     expect(declarations(list.body).get('overflow')).toBe('visible');
   });
 });
+
+/**
+ * Top-level rules only: at-rules (`@media`, `@supports`, …) are skipped whole, so
+ * a rule restated inside a media query is not treated as a duplicate. Returns
+ * one entry per (rule, individual selector) so a selector list can be checked
+ * selector by selector.
+ */
+function topLevelRules(css: string): Array<{
+  readonly selector: string;
+  readonly body: string;
+  readonly index: number;
+}> {
+  const source = stripComments(css);
+  const rules: Array<{ selector: string; body: string; index: number }> = [];
+  let cursor = 0;
+  let index = 0;
+  while (cursor < source.length) {
+    const open = source.indexOf('{', cursor);
+    if (open < 0) break;
+    const prelude = source.slice(cursor, open).trim();
+    // Find the matching close brace.
+    let depth = 1;
+    let close = open + 1;
+    while (close < source.length && depth > 0) {
+      if (source[close] === '{') depth += 1;
+      else if (source[close] === '}') depth -= 1;
+      close += 1;
+    }
+    const body = source.slice(open + 1, close - 1);
+    if (!prelude.startsWith('@')) {
+      for (const selector of prelude.split(',')) {
+        rules.push({ selector: selector.trim(), body, index });
+      }
+    }
+    index += 1;
+    cursor = close;
+  }
+  return rules;
+}
+
+describe('HUD stylesheet: one declaration per property per selector', () => {
+  /*
+   * A duplicated block is not a style choice, it is an edit accident: an append
+   * that left the old copy behind. It cost two debugging rounds on the pool page
+   * (the stale `display: block` silently beat the new `flex: 1`, so the panel had
+   * no height to scroll), and the built stylesheet looked correct rule by rule.
+   * The same property declared twice for the same selector at the top level is
+   * therefore a failure, with both values printed.
+   */
+  it('declares no property twice for one selector outside a media query', () => {
+    const seen = new Map<string, Map<string, string>>();
+    const duplicates: string[] = [];
+    for (const rule of topLevelRules(HUD)) {
+      if (rule.selector.length === 0) continue;
+      const previous = seen.get(rule.selector) ?? new Map<string, string>();
+      for (const [property, value] of declarations(rule.body)) {
+        const first = previous.get(property);
+        if (first !== undefined) {
+          duplicates.push(
+            `${rule.selector} { ${property}: ${first} } then { ${property}: ${value} }`,
+          );
+          continue;
+        }
+        previous.set(property, value);
+      }
+      seen.set(rule.selector, previous);
+    }
+    expect(duplicates).toEqual([]);
+  });
+});

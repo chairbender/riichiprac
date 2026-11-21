@@ -3187,9 +3187,8 @@
 }
 
 .scenario-picker-footnote {
-  margin: 0;
-  padding: 6px 12px 8px;
-  border-top: 1px solid #26303d;
+  /* Right under the Source radios, not at the panel's foot (2026-11-22). */
+  margin: 4px 12px 0;
   color: #7f9cba;
   font-size: 0.62rem;
   line-height: 1.35;

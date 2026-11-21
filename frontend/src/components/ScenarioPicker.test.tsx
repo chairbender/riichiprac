@@ -597,13 +597,18 @@ describe('the replay footnote (2026-11-22)', () => {
     const label = replay.closest('label');
     expect(label?.textContent?.replace(/\s+/g, '')).toContain('Replay*');
 
-    // And the note is the last thing in the panel, so every view that hosts the
-    // picker shows it: the 2D popover and the 3D sheet's pool page.
+    // The note sits directly under the Source radios (2026-11-22), so every view
+    // that hosts the picker shows it: the 2D popover and the 3D pool page.
+    const note = within(panel).getByText(
+      '* Scenarios from replays of AI self play matches',
+    );
+    expect(note.className).toBe('scenario-picker-footnote');
+    const source = panel.querySelector('.scenario-picker-source');
+    expect(source).not.toBeNull();
+    // Its next sibling is the note: under the radios, above the lesson list.
+    expect(source?.nextElementSibling).toBe(note);
     expect(
-      within(panel).getByText(
-        '* Scenarios from replays of AI self play matches',
-      ),
-    ).toBeTruthy();
-    expect(panel.lastElementChild?.className).toBe('scenario-picker-footnote');
+      panel.querySelector('.scenario-picker-all')?.previousElementSibling,
+    ).toBe(note);
   });
 });
