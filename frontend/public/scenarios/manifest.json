@@ -61,9 +61,9 @@
     },
     {
       "id": "replay.ch7-riichi-dama.2026-11",
-      "path": "replay.ch7-riichi-dama.2026-11-08cbeacac15f.json.gz",
-      "sha256": "08cbeacac15ff8704d40846a92f40a56d06df413fc4442084863b996a92b692d",
-      "bytes": 2176750,
+      "path": "replay.ch7-riichi-dama.2026-11-e08472e483c5.json.gz",
+      "sha256": "e08472e483c58d43a7f3d41030034a87479ee84f085fceae4ceec9911fd0c018",
+      "bytes": 2183692,
       "scenario_count": 2846,
       "lesson_ids": [
         "chiitoitsu_riichi_vs_dama",

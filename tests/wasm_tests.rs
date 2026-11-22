@@ -1937,6 +1937,62 @@ fn test_dama_improving_hand_payload_stays_dama() {
     }
 }
 
+/// The payload's Details line must name the hand's improving kinds, not restate
+/// the box's "at least six kinds". The list is checked against the shape natively
+/// (`improvement` tests recompute it); here the boundary is that the shipped
+/// JSON carries one entry per counted kind and the summary repeats that count.
+#[wasm_bindgen_test]
+fn test_dama_improving_hand_details_name_the_improving_tiles() {
+    for run in 0..5 {
+        let val: serde_json::Value =
+            serde_json::from_str(&generate_puzzle("dama_improving_hand".to_string()))
+                .expect("payload must be valid JSON");
+
+        let rationale = &val["book_rationale"];
+        let rule = rationale["rules"]
+            .as_array()
+            .expect("rules must be an array")
+            .iter()
+            .find(|rule| rule["id"] == "improving_hand")
+            .expect("the improving-hand reason must be explained");
+        let applies = rule["applies"].as_str().expect("applies must be text");
+
+        assert!(
+            !applies.contains("at least six kinds of draws"),
+            "run {run}: the generic sentence must be replaced by the list: {applies}"
+        );
+        let kinds: usize = applies
+            .strip_prefix("The ")
+            .and_then(|rest| rest.split(' ').next())
+            .and_then(|count| count.parse().ok())
+            .unwrap_or_else(|| panic!("run {run}: no kind count in {applies}"));
+        assert!(kinds >= 6, "run {run}: only {kinds} kinds");
+
+        let list = applies
+            .split_once(" are ")
+            .and_then(|(_, rest)| rest.split_once(". Each draw"))
+            .map(|(list, _)| list)
+            .unwrap_or_else(|| panic!("run {run}: no kind list in {applies}"));
+        let entries: Vec<&str> = list.split(", ").collect();
+        assert_eq!(
+            entries.len(),
+            kinds,
+            "run {run}: {kinds} kinds but {} entries: {applies}",
+            entries.len()
+        );
+        assert!(
+            entries.iter().all(|entry| entry.contains(" left)")),
+            "run {run}: every kind must state its live copies: {applies}"
+        );
+
+        let summary = rationale["summary"].as_str().expect("summary must be text");
+        assert!(
+            summary.contains(&format!("{kinds} kinds")),
+            "run {run}: the summary must repeat the derived count: {summary}"
+        );
+    }
+}
+
 #[wasm_bindgen_test]
 fn test_payload_supports_riichi_and_dama_actions() {
     let ryanmen: serde_json::Value =

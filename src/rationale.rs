@@ -25,6 +25,7 @@ use agari::tile::{Honor, Suit, Tile};
 use agari::yaku::Yaku;
 
 use crate::display::format_tile_for_display;
+use crate::generator::dama_improving_hand::improvement;
 use crate::generator::floating_quad_acceptance;
 use crate::generator::{
     SanshokuFacts, can_be_pinfu_head, is_perfect_one_away, isolated_turns, perfect_one_away_shape,
@@ -709,6 +710,15 @@ pub fn rationale_for(state: &GameState) -> Option<BookRationale> {
     let mut rules = Vec::new();
     let mut absent = Vec::new();
 
+    // The improving-hand count is expensive (every draw against every
+    // discard), so compute it once and hand it to both the summary and the
+    // reason's `applies` line.
+    let improving = if state.dama_reasons.contains(&DamaReason::ImprovingHand) {
+        improving_count(state)
+    } else {
+        None
+    };
+
     for trigger in &state.riichi_triggers {
         let text = trigger.rationale();
         rules.push(book_rule(
@@ -722,7 +732,7 @@ pub fn rationale_for(state: &GameState) -> Option<BookRationale> {
             Some(text) => rules.push(book_rule(
                 reason.as_str(),
                 text,
-                applies_dama(*reason, state),
+                applies_dama(*reason, state, improving.as_ref()),
             )),
             None => {
                 if let Some(note) = reason.absent_note() {
@@ -753,7 +763,7 @@ pub fn rationale_for(state: &GameState) -> Option<BookRationale> {
         .unwrap_or_else(|| ch7(CHIITOITSU_BOX, 345, "Riichi judgement"));
 
     Some(BookRationale {
-        summary: summary_for(state),
+        summary: summary_for(state, improving.as_ref()),
         rules,
         absent,
         source: scenario_source(&state.category).unwrap_or(fallback),
@@ -839,7 +849,11 @@ fn applies_riichi(trigger: RiichiTrigger, state: &GameState) -> String {
     }
 }
 
-fn applies_dama(reason: DamaReason, state: &GameState) -> String {
+fn applies_dama(
+    reason: DamaReason,
+    state: &GameState,
+    improving: Option<&improvement::Improvement>,
+) -> String {
     let wind = human(state).map(|player| player.wind);
     let wait = wait_tile(state);
     match reason {
@@ -904,19 +918,153 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
                 discards + 1
             )
         }
-        DamaReason::ImprovingHand => {
-            let turn = human(state).map_or(0, |player| player.discards.len() + 1);
-            format!(
-                "It is only the {turn}th turn and the ready hand has at least six kinds \
-                 of draws that raise its score or improve its wait."
-            )
-        }
+        DamaReason::ImprovingHand => match improving {
+            Some(count) => improving_hand_details(count, state),
+            None => {
+                let turn = human(state).map_or(0, |player| player.discards.len() + 1);
+                format!(
+                    "It is only the {turn}th turn and the ready hand has at least six kinds \
+                     of draws that raise its score or improve its wait."
+                )
+            }
+        },
         DamaReason::Honitsu => {
             "The seven-pairs hand is a one-suit shape, so the flush alone is worth \
              Mangan or more without Riichi."
                 .to_string()
         }
     }
+}
+
+/// The hand the answer keeps: the displayed fourteen tiles minus the discard.
+fn kept_hand_after_answer(state: &GameState) -> Option<Vec<Tile>> {
+    let answer = state.correct_action.tile()?;
+    let mut tiles: Vec<Tile> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    let index = tiles.iter().position(|tile| tile.to_string() == answer)?;
+    tiles.remove(index);
+    Some(tiles)
+}
+
+/// The ch7:656-660 improving count for the ready hand the answer keeps.
+///
+/// `None` when the state does not show a full ready hand (an imported table
+/// without `tiles`, or a hand that draws nothing). The reason's `applies` line
+/// then keeps the generic sentence instead of inventing a list.
+fn improving_count(state: &GameState) -> Option<improvement::Improvement> {
+    let kept = kept_hand_after_answer(state)?;
+    if kept.len() != 13 {
+        return None;
+    }
+    let wind = human(state)?.wind;
+    let dora: Vec<Tile> = state
+        .dora_indicators
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    let count = improvement::count(&kept, state.round_wind, wind, &dora);
+    if count.tiles.is_empty() {
+        None
+    } else {
+        Some(count)
+    }
+}
+
+/// The Details line for the improving-hand box: the actual kinds, their live
+/// copies, and any three-han step, all read off the hand.
+///
+/// The count is the same one the classifier and the generator use, so the list
+/// cannot drift from the answer. Copies are counted from the tiles the player
+/// can see, which is why the sentence gives the number rather than claiming
+/// four.
+fn improving_hand_details(improvement: &improvement::Improvement, state: &GameState) -> String {
+    let copies: std::collections::HashMap<Tile, u8> = improvement
+        .tiles
+        .iter()
+        .map(|&tile| {
+            let visible = table_copies(state, &tile.to_string());
+            (tile, 4u8.saturating_sub(visible))
+        })
+        .collect();
+    improving_hand_text(improvement, &copies)
+}
+
+/// The improving-hand sentence for a count and a per-kind live-copy map.
+fn improving_hand_text(
+    improvement: &improvement::Improvement,
+    copies: &std::collections::HashMap<Tile, u8>,
+) -> String {
+    let names: Vec<String> = improvement
+        .tiles
+        .iter()
+        .map(|&tile| {
+            let name = format_tile_for_display(&tile.to_string(), false);
+            match copies.get(&tile).copied().unwrap_or(4) {
+                0 => format!("{name} (no copies left)"),
+                1 => format!("{name} (1 left)"),
+                left => format!("{name} ({left} left)"),
+            }
+        })
+        .collect();
+    let live: u8 = improvement
+        .tiles
+        .iter()
+        .map(|tile| copies.get(tile).copied().unwrap_or(4))
+        .sum();
+    let dead = improvement
+        .tiles
+        .iter()
+        .filter(|tile| copies.get(tile).copied().unwrap_or(4) == 0)
+        .count();
+    let kinds = improvement.kinds();
+
+    let mut text = if kinds >= improvement::MANY_IMPROVING_KINDS {
+        format!(
+            "The {kinds} kinds that improve this ready hand are {}. Each draw leaves \
+             tenpai whose winning tiles score more than the current worst win, or whose \
+             wait crosses the book's good-wait line (two kinds and more than four live \
+             tiles); {live} copies are still live.",
+            names.join(", ")
+        )
+    } else {
+        format!(
+            "Only {kinds} kinds improve this ready hand ({}), short of the six-kind \
+             clause; {live} copies are still live.",
+            names.join(", ")
+        )
+    };
+    if dead > 0 {
+        text.push_str(
+            " The kinds with no copies left cannot be drawn any more; the count is the \
+             hand's shape.",
+        );
+    }
+
+    for step in improvement
+        .steps
+        .iter()
+        .filter(|step| improvement.big_steps.contains(&step.tile))
+    {
+        let drawn = format_tile_for_display(&step.tile.to_string(), false);
+        let discard = format_tile_for_display(&step.discard.to_string(), false);
+        let waits: Vec<String> = step
+            .waits
+            .iter()
+            .map(|wait| format_tile_for_display(&wait.to_string(), false))
+            .collect();
+        text.push_str(&format!(
+            " Drawing {drawn} is a three-han step: it takes the best win from {} to {} han \
+             without Riichi, discarding {discard} to wait on {}.",
+            improvement.baseline_best_han,
+            step.best_han,
+            waits.join(" / ")
+        ));
+    }
+
+    text
 }
 
 fn applies_shouminkan(trigger: ShouminkanTrigger, state: &GameState) -> String {
@@ -943,7 +1091,7 @@ fn applies_shouminkan(trigger: ShouminkanTrigger, state: &GameState) -> String {
     }
 }
 
-fn summary_for(state: &GameState) -> String {
+fn summary_for(state: &GameState, improving: Option<&improvement::Improvement>) -> String {
     if !state.shouminkan_triggers.is_empty() {
         return "Upgrade the open Pon to an Added Kan: the book's kakan criteria pick this \
                 hand."
@@ -998,10 +1146,28 @@ fn summary_for(state: &GameState) -> String {
         };
     }
     if state.category == "dama_improving_hand" {
-        return "Stay in dama: it is still an early turn, and the ready hand has at least \
-                six kinds of draws that improve its score or its wait, so the book waits \
-                for one of them."
-            .to_string();
+        let turn = human(state).map_or(0, |player| player.discards.len() + 1);
+        return match improving {
+            Some(count) if count.kinds() >= improvement::MANY_IMPROVING_KINDS => format!(
+                "Stay in dama: it is still turn {turn}, and {} kinds of draws improve this \
+                 ready hand, so the book waits for one of them.",
+                count.kinds()
+            ),
+            Some(count) => format!(
+                "Stay in dama: it is still turn {turn}, and drawing {} improves this ready \
+                 hand by at least three han in one step.",
+                count
+                    .big_steps
+                    .iter()
+                    .map(|tile| format_tile_for_display(&tile.to_string(), false))
+                    .collect::<Vec<_>>()
+                    .join(" / ")
+            ),
+            None => format!(
+                "Stay in dama: it is still turn {turn}, and the ready hand has at least six \
+                 kinds of draws that improve its score or its wait."
+            ),
+        };
     }
     if !state.riichi_triggers.is_empty() {
         return "Declare Riichi: the book's chiitoitsu criteria pick this hand.".to_string();
@@ -5847,6 +6013,131 @@ mod tests {
         assert_eq!(rationale.rules.len(), 3);
         assert_eq!(rationale.absent.len(), 3);
         assert!(rationale.caveats.iter().any(|c| c.contains("honitsu")));
+    }
+
+    /// The improving-hand Details line names the actual kinds the hand can
+    /// draw, with their live copies, and matches the same count the answer was
+    /// decided from. The expected list is recomputed here rather than written
+    /// into the test, so a hard-coded sentence fails.
+    #[test]
+    fn improving_hand_details_name_the_computed_improving_tiles() {
+        let state = crate::generator::finalize_state(
+            generate_puzzle("dama_improving_hand").expect("the lesson must generate"),
+        );
+        let rationale = state.book_rationale.clone().expect("rationale must attach");
+        let rule = rationale
+            .rules
+            .iter()
+            .find(|rule| rule.id == "improving_hand")
+            .expect("the improving-hand reason must be explained");
+
+        let kept = kept_hand_after_answer(&state).expect("the answer keeps a hand");
+        let dora: Vec<Tile> = state
+            .dora_indicators
+            .iter()
+            .filter_map(|code| Tile::try_from(code.as_str()).ok())
+            .collect();
+        let count = improvement::count(
+            &kept,
+            state.round_wind,
+            human(&state).expect("the human seat").wind,
+            &dora,
+        );
+        assert!(
+            count.kinds() >= improvement::MANY_IMPROVING_KINDS,
+            "the lesson must clear the six-kind clause, got {}",
+            count.kinds()
+        );
+
+        let names: Vec<String> = count
+            .tiles
+            .iter()
+            .map(|tile| format_tile_for_display(&tile.to_string(), false))
+            .collect();
+        let mut cursor = 0usize;
+        for name in &names {
+            let found = rule.applies[cursor..].find(name).unwrap_or_else(|| {
+                panic!(
+                    "the Details line must name {name}, in tile order; got: {}",
+                    rule.applies
+                )
+            });
+            cursor += found + name.len();
+        }
+        assert!(
+            rule.applies.contains(&format!("{} kinds", count.kinds())),
+            "the Details line must state the computed kind count: {}",
+            rule.applies
+        );
+        assert!(
+            rule.applies.contains("copies"),
+            "the Details line must say how many copies are left: {}",
+            rule.applies
+        );
+        assert!(
+            !rule.applies.contains("at least six kinds of draws"),
+            "the generic sentence must be replaced by the derived list: {}",
+            rule.applies
+        );
+        assert!(
+            rationale.summary.contains(&count.kinds().to_string()),
+            "the summary must repeat the computed count: {}",
+            rationale.summary
+        );
+    }
+
+    /// The box's other clause: a single draw worth three han is named with the
+    /// step it makes. This is the book's kanchan example (ch7:674), whose
+    /// count is short of six and whose whole answer is the 8s step.
+    #[test]
+    fn improving_hand_details_name_the_three_han_step() {
+        let hand = parse_hand("123789m78999p57s").expect("the book hand must parse");
+        let count = improvement::count(
+            &hand,
+            crate::state::Wind::East,
+            crate::state::Wind::South,
+            &[],
+        );
+        assert!(
+            count.kinds() < improvement::MANY_IMPROVING_KINDS,
+            "the fixture must need the three-han clause"
+        );
+        assert!(
+            count.has_big_step(),
+            "the fixture's 8s draw is the three-han step"
+        );
+
+        let copies: std::collections::HashMap<Tile, u8> =
+            count.tiles.iter().map(|&tile| (tile, 3u8)).collect();
+        let text = improving_hand_text(&count, &copies);
+
+        for step in count
+            .steps
+            .iter()
+            .filter(|step| count.big_steps.contains(&step.tile))
+        {
+            let drawn = format_tile_for_display(&step.tile.to_string(), false);
+            let discard = format_tile_for_display(&step.discard.to_string(), false);
+            assert!(
+                text.contains(&format!(
+                    "Drawing {drawn} is a three-han step: it takes the best win from {} to {} \
+                     han",
+                    count.baseline_best_han, step.best_han
+                )),
+                "the three-han step must name {drawn} and its jump: {text}"
+            );
+            assert!(
+                text.contains(&discard),
+                "the step must name the discard that completes it: {text}"
+            );
+            for wait in &step.waits {
+                let name = format_tile_for_display(&wait.to_string(), false);
+                assert!(
+                    text.contains(&name),
+                    "the step must name its new wait {name}: {text}"
+                );
+            }
+        }
     }
 
     #[test]

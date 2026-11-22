@@ -1,0 +1,69 @@
+{
+  "manifest": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/packs/manifest.json",
+  "manifest_bytes": 5219,
+  "strict": false,
+  "profile": "non_commercial",
+  "findings": [
+    {
+      "code": "lesson_counts_missing",
+      "severity": "warning",
+      "detail": "pack `replay.ch8-defense-multi-threat.2026-11` records no lesson_counts; republish with `pack publish` so coverage needs no body download"
+    },
+    {
+      "code": "lesson_counts_missing",
+      "severity": "warning",
+      "detail": "pack `replay.ch8-defense.2026-11` records no lesson_counts; republish with `pack publish` so coverage needs no body download"
+    }
+  ],
+  "packs": [
+    {
+      "pack_id": "replay.ch34-shapes.2026-11",
+      "scenario_count": 822,
+      "bytes": 724376,
+      "sha256": "1e7f3266ea8f81bf3ea2e4626bbd9c7bc6096109bfbebdd7df51e7e1c3b01200",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch5-values.2026-11",
+      "scenario_count": 1670,
+      "bytes": 1176300,
+      "sha256": "5d0b01e6badb331b6771c239e50c4fac2659bbfcf338641199dc6bdb447f5864",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch7-riichi-dama.2026-11",
+      "scenario_count": 2846,
+      "bytes": 2183692,
+      "sha256": "e08472e483c58d43a7f3d41030034a87479ee84f085fceae4ceec9911fd0c018",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch8-completion.2026-11",
+      "scenario_count": 386,
+      "bytes": 330933,
+      "sha256": "5d5ba61a45383cf03a4f08ea8c1931f01ea5ea6fed8d2345d2e3864330afd184",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch8-defense-multi-threat.2026-11",
+      "scenario_count": 764,
+      "bytes": 591096,
+      "sha256": "15fe519c65df9c153abe88e4e2d19151f34c598ea7607baf0abf25d7ec2ece94",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch8-defense.2026-11",
+      "scenario_count": 2211,
+      "bytes": 2260809,
+      "sha256": "6ae2c924e80cac88248b553bddd161e98a1b0f2b4a4b50df493738d17f836d43",
+      "findings": []
+    },
+    {
+      "pack_id": "replay.ch9-seating-calls.2026-11",
+      "scenario_count": 629,
+      "bytes": 363061,
+      "sha256": "3deda6140a90fd024ddeef0201213c5df6f181125de00c78ff0c369d6996a7b2",
+      "findings": []
+    }
+  ]
+}
