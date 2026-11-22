@@ -24,6 +24,23 @@ HONOR_CODE = {
     "Red": 47,
 }
 
+HONOR_JP = {
+    "East": "東",
+    "South": "南",
+    "West": "西",
+    "North": "北",
+    "White": "白",
+    "Green": "發",
+    "Red": "中",
+    "Ton": "東",
+    "Nan": "南",
+    "Sha": "西",
+    "Pei": "北",
+    "Haku": "白",
+    "Hatsu": "發",
+    "Chun": "中",
+}
+
 # (Japanese name, closed_han, open_han) -- 0 indicates Yakuman
 YAKU_MAP: dict[str, tuple[str, int, int]] = {
     "MenzenTsumo": ("門前清自摸和", 1, 0),
@@ -85,7 +102,7 @@ YAKU_MAP: dict[str, tuple[str, int, int]] = {
 
 def tile_obj_to_t6(tile_obj: dict[str, Any]) -> int:
     """Convert an Agari tile dictionary to a tenhou.net/6 integer tile code."""
-    tile = tile_obj["tile"]
+    tile = tile_obj["tile"] if "tile" in tile_obj else tile_obj
     if "Honor" in tile:
         return HONOR_CODE[tile["Honor"]]
     suited = tile["Suited"]
@@ -187,11 +204,7 @@ def format_daiminkan_call(
 
 def format_kakan_call(added_t6: int, pon_str: str) -> str:
     """Upgrade an existing Tenhou/6 Pon string ('p...') into a Kakan string ('k...')."""
-    # pon_str is 'p' + 3 two-digit codes; insert added_t6 right before the called tile
-    # or equivalently place added_t6 in the matching slot.
     t0, t1, t2 = int(pon_str[1:3]), int(pon_str[3:5]), int(pon_str[5:7])
-    # Detect which slot held the called tile if an aka tile distinguishes them,
-    # otherwise default to middle/standard slot.
     if t0 in (51, 52, 53) and t1 not in (51, 52, 53):
         tiles = [added_t6, t0, t1, t2]
     elif t2 in (51, 52, 53) and t1 not in (51, 52, 53):
@@ -217,10 +230,12 @@ def format_score_string(score: dict[str, Any], is_tsumo: bool) -> str:
     else:
         amt_str = f"{total}点"
 
-    if isinstance(level, dict) and "Yakuman" in level:
-        mult = level["Yakuman"]
-        prefix = "役満" if mult == 1 else f"{mult}倍役満"
-        return f"{prefix}{amt_str}"
+    if isinstance(level, dict):
+        if "Yakuman" in level:
+            mult = level["Yakuman"]
+            prefix = "役満" if mult == 1 else f"{mult}倍役満"
+            return f"{prefix}{amt_str}"
+        level = next(iter(level.keys()), "Normal")
 
     level_names = {
         "Mangan": "満貫",
@@ -229,27 +244,69 @@ def format_score_string(score: dict[str, Any], is_tsumo: bool) -> str:
         "Sanbaiman": "三倍満",
         "Yakuman": "役満",
     }
-    if level in level_names:
+    if isinstance(level, str) and level in level_names:
         return f"{level_names[level]}{amt_str}"
 
     return f"{fu}符{han}飜{amt_str}"
 
 
-def format_yaku_list(details: dict[str, Any]) -> list[str]:
-    """Convert Agari yaku_list and dora counts to Tenhou/6 Japanese yaku entries."""
-    is_open = details.get("is_open", False)
-    result: list[str] = []
-
-    for yaku in details.get("yaku_list", []):
+def format_yaku_entry(yaku: str | dict[str, Any], is_open: bool) -> str:
+    """Normalize a string or serde-tagged dict Yaku entry into Tenhou/6 format."""
+    if isinstance(yaku, str):
         if yaku in YAKU_MAP:
             jp_name, closed_han, open_han = YAKU_MAP[yaku]
             han = open_han if is_open else closed_han
-            if han == 0:
-                result.append(f"{jp_name}(役満)")
+            return f"{jp_name}(役満)" if han == 0 else f"{jp_name}({han}飜)"
+        return f"{yaku}(1飜)"
+
+    if isinstance(yaku, dict) and yaku:
+        variant, payload = next(iter(yaku.items()))
+        inner: Any = payload
+        if isinstance(payload, dict):
+            for key in ("Honor", "Wind", "Dragon", "name"):
+                if key in payload:
+                    inner = payload[key]
+                    break
             else:
-                result.append(f"{jp_name}({han}飜)")
-        else:
-            result.append(f"{yaku}(1飜)")
+                if len(payload) == 1:
+                    inner = next(iter(payload.values()))
+
+        if variant in (
+            "Yakuhai",
+            "SeatWind",
+            "PrevalentWind",
+            "RoundWind",
+            "Dragon",
+            "ValueHonor",
+            "Jikaze",
+            "Bakaze",
+            "Sangenpai",
+        ):
+            if isinstance(inner, str) and inner in HONOR_JP:
+                return f"役牌 {HONOR_JP[inner]}(1飜)"
+
+        if variant in ("DoubleWind", "Renpuuhai"):
+            if isinstance(inner, str) and inner in HONOR_JP:
+                return f"役牌 {HONOR_JP[inner]}(2飜)"
+
+        if variant in ("Dora", "AkaDora", "UraDora") and isinstance(inner, int):
+            jp = {"Dora": "ドラ", "AkaDora": "赤ドラ", "UraDora": "裏ドラ"}[variant]
+            return f"{jp}({inner}飜)"
+
+        if variant in YAKU_MAP:
+            jp_name, closed_han, open_han = YAKU_MAP[variant]
+            han = open_han if is_open else closed_han
+            return f"{jp_name}(役満)" if han == 0 else f"{jp_name}({han}飜)"
+
+        return f"{variant}(1飜)"
+
+    return f"{yaku}(1飜)"
+
+
+def format_yaku_list(details: dict[str, Any]) -> list[str]:
+    """Convert Agari yaku_list and dora counts to Tenhou/6 Japanese yaku entries."""
+    is_open = details.get("is_open", False)
+    result = [format_yaku_entry(y, is_open) for y in details.get("yaku_list", [])]
 
     dora = details.get("dora_count", 0)
     aka = details.get("aka_dora_count", 0)
@@ -279,18 +336,22 @@ def build_round_result(
     end_pts_t6 = [pre_pts_t6[i] + deltas_agari_t6[i] for i in range(4)]
     total_deltas = [end_pts_t6[i] - starting_pts_t6[i] for i in range(4)]
 
-    if "ron" in outcome:
-        ron = outcome["ron"]
-        winner = seat_to_tenhou_idx(ron["winner"], round_number)
-        loser = seat_to_tenhou_idx(ron["loser"], round_number)
-        details = ron["details"]
-        pao_seat = details.get("pao_liable")
-        pao = seat_to_tenhou_idx(pao_seat, round_number) if pao_seat else winner
-        score_str = format_score_string(details["score"], is_tsumo=False)
-        yaku_entries = format_yaku_list(details)
-        return ["和了", total_deltas, [winner, loser, pao, score_str, *yaku_entries]]
+    if isinstance(outcome, dict) and "ron" in outcome:
+        ron_val = outcome["ron"]
+        rons = ron_val if isinstance(ron_val, list) else [ron_val]
+        entries: list[Any] = ["和了"]
+        for ron in rons:
+            winner = seat_to_tenhou_idx(ron["winner"], round_number)
+            loser = seat_to_tenhou_idx(ron["loser"], round_number)
+            details = ron["details"]
+            pao_seat = details.get("pao_liable")
+            pao = seat_to_tenhou_idx(pao_seat, round_number) if pao_seat else winner
+            score_str = format_score_string(details["score"], is_tsumo=False)
+            yaku_entries = format_yaku_list(details)
+            entries.extend([total_deltas, [winner, loser, pao, score_str, *yaku_entries]])
+        return entries
 
-    if "tsumo" in outcome:
+    if isinstance(outcome, dict) and "tsumo" in outcome:
         tsumo = outcome["tsumo"]
         winner = seat_to_tenhou_idx(tsumo["winner"], round_number)
         details = tsumo["details"]
@@ -300,8 +361,8 @@ def build_round_result(
         yaku_entries = format_yaku_list(details)
         return ["和了", total_deltas, [winner, winner, pao, score_str, *yaku_entries]]
 
-    if "multi_ron" in outcome:
-        entries: list[Any] = ["和了"]
+    if isinstance(outcome, dict) and "multi_ron" in outcome:
+        entries = ["和了"]
         for ron in outcome["multi_ron"]:
             winner = seat_to_tenhou_idx(ron["winner"], round_number)
             loser = seat_to_tenhou_idx(ron["loser"], round_number)
@@ -313,7 +374,6 @@ def build_round_result(
             entries.extend([total_deltas, [winner, loser, pao, score_str, *yaku_entries]])
         return entries
 
-    # Exhaustive or abortive draw fallback
     draw_labels = {
         "four_winds": "四風連打",
         "nine_terminals": "九種九牌",
@@ -438,7 +498,6 @@ def convert_round(
             and any(k in action for k in ("kan", "ankan", "kakan", "daiminkan"))
         ):
             if not needs_draw:
-                # Daiminkan called on last_discard_id
                 assert last_discard_id is not None and last_discarder is not None
                 target_t34 = last_discard_id // 4
                 matching = [tid for tid in hands[actor] if tid // 4 == target_t34][:3]
@@ -452,23 +511,30 @@ def convert_round(
                 )
                 draws[actor].append(kan_str)
             else:
-                # Self-turn draw followed by Ankan or Kakan
                 drawn_id = wall_ids[wall_idx]
                 wall_idx += 1
                 hands[actor].append(drawn_id)
                 draws[actor].append(id_to_t6[drawn_id])
 
-                # Identify tile group for self-kan
                 target_t34 = None
                 if isinstance(action, dict):
                     for key in ("ankan", "kakan", "kan"):
                         val = action.get(key)
                         if isinstance(val, int):
                             target_t34 = val // 4
-                        elif isinstance(val, dict) and "id" in val:
-                            target_t34 = val["id"] // 4
+                        elif isinstance(val, dict):
+                            if "id" in val:
+                                target_t34 = val["id"] // 4
+                            elif "tile_id" in val:
+                                target_t34 = val["tile_id"] // 4
+                            elif "Honor" in val or "Suited" in val or "tile" in val:
+                                target_t6 = tile_obj_to_t6(val)
+                                target_t34 = next(
+                                    (tid // 4 for tid in hands[actor] if id_to_t6[tid] == target_t6),
+                                    None,
+                                )
+
                 if target_t34 is None:
-                    # Infer from 4-of-a-kind in hand (ankan) or matching open pon (kakan)
                     for tid in hands[actor]:
                         if sum(1 for x in hands[actor] if x // 4 == tid // 4) == 4:
                             target_t34 = tid // 4
@@ -479,7 +545,6 @@ def convert_round(
 
                 assert target_t34 is not None
                 if target_t34 in open_pons[actor]:
-                    # Kakan
                     added_id = next(tid for tid in hands[actor] if tid // 4 == target_t34)
                     hands[actor].remove(added_id)
                     kakan_str = format_kakan_call(
@@ -487,7 +552,6 @@ def convert_round(
                     )
                     discards[actor].append(kakan_str)
                 else:
-                    # Ankan
                     kan_ids = [tid for tid in hands[actor] if tid // 4 == target_t34][:4]
                     for tid in kan_ids:
                         hands[actor].remove(tid)
@@ -502,19 +566,18 @@ def convert_round(
             last_drawn_id = rep_id
             needs_draw = False
 
-    # Only include dora indicators actually revealed (1 + completed kans)
     all_dora = [tile_obj_to_t6(d) for d in round_data.get("dora_indicators", [])]
     revealed_dora = all_dora[: 1 + num_kans]
 
-    # Include ura-dora indicators only if a winner declared riichi
     outcome = round_data["result"]["result"]
     has_ura = False
-    for key in ("ron", "tsumo"):
-        if key in outcome and outcome[key]["details"].get("ura_dora_indicators"):
-            has_ura = True
-    if "multi_ron" in outcome:
-        if any(r["details"].get("ura_dora_indicators") for r in outcome["multi_ron"]):
-            has_ura = True
+    if isinstance(outcome, dict):
+        for key in ("ron", "tsumo", "multi_ron"):
+            if key not in outcome:
+                continue
+            items = outcome[key] if isinstance(outcome[key], list) else [outcome[key]]
+            if any(item["details"].get("ura_dora_indicators") for item in items):
+                has_ura = True
 
     all_ura = [tile_obj_to_t6(u) for u in round_data.get("dead_wall_ura", [])]
     revealed_ura = all_ura[: 1 + num_kans] if has_ura else []
@@ -555,7 +618,6 @@ def convert_agari_to_tenhou6(agari_data: dict[str, Any]) -> dict[str, Any]:
     rounds = agari_data.get("rounds", [])
     tenhou_logs = [convert_round(r, dealer_offset, aka_count) for r in rounds]
 
-    # Compute final raw table scores and Uma/Oka-adjusted scores for `sc`
     if rounds:
         last_res = rounds[-1]["result"]
         pre_t6 = rotate_list(last_res["pre_points"], dealer_offset)

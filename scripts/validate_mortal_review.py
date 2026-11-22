@@ -1,772 +1,665 @@
 #!/usr/bin/env python3
-"""Compare mjai.ekyu.moe's Mortal review with our own evaluation.
-
-The reviewer at <https://mjai.ekyu.moe> cannot be submitted to headlessly (its
-form is behind a Cloudflare Turnstile), so the workflow is:
-
-1. ``cargo run --release --bin export_tenhou6 -- --scenario <id> --out log.json \
-       --evaluate --evaluation-out ours.json``
-2. Upload ``log.json`` at <https://mjai.ekyu.moe>:
-   * "Custom log (tenhou.net/6 JSON)"
-   * target player = the ``player-id`` the exporter printed
-   * engine "Mortal", the network the local checkpoint was trained as
-   * advanced options: temperature ``1.00`` (so the displayed
-     ``pi(a|s)`` is directly comparable with our softmax)
-3. ``scripts/validate_mortal_review.py --report <report-url> --evaluation ours.json``
-
-The report page is public, so only the upload itself needs a browser. Pass the
-report URL, a saved copy of the page, or `-` to paste the HTML in:
-
-    scripts/validate_mortal_review.py --report https://mjai.ekyu.moe/... \
-        --evaluation ours.json
-    scripts/validate_mortal_review.py --report page.html --evaluation ours.json
-    pbpaste | scripts/validate_mortal_review.py --report - --evaluation ours.json
-
-Three report sources are understood:
-
-* the report JSON the KillerDucky UI loads
-  (`https://mjai.ekyu.moe/report/<id>.json`, or the `?data=` URL from the
-  address bar) — exact floats, preferred;
-* a saved copy of either HTML layout: the default one keeps the exact values in
-  `title` attributes, the classic one renders five-decimal spans (~1e-5).
-
-The site puts a Cloudflare challenge in front of direct requests from some
-networks. If `--report <url>` comes back as a challenge, open the page in a
-browser, save the JSON (or run `curl` there) and pass the file, or pipe it
-with `--report -`.
-
-The comparison focuses on the last decision in the review, which is the
-snapshot our log was built to reach:
-
-* ``top_action``  – does Mortal pick the same action we do?
-* ``max_probability_delta`` – over the actions both sides list, after both are
-  temperature-adjusted to the same ``tau``. A tiny delta means the same
-  network on the same observation; a large one means either different weights
-  or a different observation.
-* ``mask`` – actions one side lists and the other does not. A wrong legal mask
-  is the most likely wiring bug, so it is reported separately.
-
-Exit codes: 0 when the top action matches, 1 when it does not, 2 on usage or
-parsing errors.
-"""
+"""Convert Agari Riichi Mahjong replay JSON logs to tenhou.net/6 JSON format."""
 
 from __future__ import annotations
 
 import argparse
-import html
+from collections import Counter
 import json
-import math
 import re
 import sys
 import urllib.parse
-import urllib.request
-from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
-# --- Names -----------------------------------------------------------------
+SEAT_TO_OFFSET = {"east": 0, "south": 1, "west": 2, "north": 3}
+WIND_TO_BASE_KYOKU = {"east": 0, "south": 4, "west": 8, "north": 12}
 
-# riichi-mahjong-tiles SVG ids -> our tile codes.
-TILE_NAMES = {
-    "e": "1z",
-    "s": "2z",
-    "w": "3z",
-    "n": "4z",
-    "p": "5z",
-    "f": "6z",
-    "c": "7z",
+SUIT_BASE = {"Man": 10, "Pin": 20, "Sou": 30}
+AKA_CODE = {"Man": 51, "Pin": 52, "Sou": 53}
+HONOR_CODE = {
+    "East": 41,
+    "South": 42,
+    "West": 43,
+    "North": 44,
+    "White": 45,
+    "Green": 46,
+    "Red": 47,
 }
 
-# Action labels the reviewer prints -> the family we compare on.
-# The report JSON (and its mjai events) uses one-letter honor codes; our action
-# names use 1z..7z.
-HONOR_CODES = {
-    "E": "1z",
-    "S": "2z",
-    "W": "3z",
-    "N": "4z",
-    "P": "5z",
-    "F": "6z",
-    "C": "7z",
+HONOR_JP = {
+    "East": "東",
+    "South": "南",
+    "West": "西",
+    "North": "北",
+    "White": "白",
+    "Green": "發",
+    "Red": "中",
+    "Ton": "東",
+    "Nan": "南",
+    "Sha": "西",
+    "Pei": "北",
+    "Haku": "白",
+    "Hatsu": "發",
+    "Chun": "中",
 }
 
-# Action words both report layouts print, mapped to our action families. The
-# classic layout prints a chi's tiles *before* the word, so the word is looked
-# up anywhere in the fragment, and "chii"/"skip" are the classic spellings.
-ACTION_WORDS = [
-    ("discard", "discard"),
-    ("riichi", "riichi"),
-    ("pon", "pon"),
-    ("chii", "chi"),
-    ("chi", "chi"),
-    ("kan", "kan"),
-    ("ron", "agari"),
-    ("tsumo", "agari"),
-    ("pass", "pass"),
-    ("skip", "pass"),
-    ("ryuukyoku", "ryukyoku"),
-]
-
-ENTRY_SPLIT = '<details class="collapse entry"'
-TAG_RE = re.compile(r"<[^>]+>")
-TILE_RE = re.compile(r"#pai-([a-z0-9]+)")
-NUMBER = r"-?[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?"
-# The KillerDucky layout (the site default) puts the exact values in `title`
-# attributes; the classic layout renders `-0.` + `06974` as two spans and no
-# title, so it needs its own pattern.
-TITLE_ROW_RE = re.compile(
-    r"<tr><td>(?P<action>.*?)<td><span title=(?P<q>" + NUMBER + r")>"
-    r".*?<td><span title=(?P<prob>" + NUMBER + r")>"
-)
-CLASSIC_ROW_RE = re.compile(
-    r"<tr>\s*<td>\s*(?P<action>.*?)\s*</td>\s*"
-    r'<td>\s*<span class="?int"?>(?P<qint>[^<]*)</span>'
-    r'<span class="?frac"?>(?P<qfrac>[^<]*)</span>\s*</td>\s*'
-    r'<td>\s*<span class="?int"?>(?P<pint>[^<]*)</span>'
-    r'<span class="?frac"?>(?P<pfrac>[^<]*)</span>',
-    re.DOTALL,
-)
-SUMMARY_RE = re.compile(r"<summary>(?P<label>[^<]*)")
-TEMPERATURE_RE = re.compile(r"temperature[^0-9]*([0-9.]+)", re.IGNORECASE | re.DOTALL)
-
-
-@dataclass
-class Scored:
-    action: str
-    q: float
-    prob: float
-
-
-@dataclass
-class Entry:
-    label: str
-    player: str
-    mortal: str
-    details: list[Scored] = field(default_factory=list)
-
-
-@dataclass
-class Report:
-    """Everything the comparison needs, from either report representation."""
-
-    entries: list[Entry]
-    temperature: float | None = None
-    model_tag: str | None = None
-    player_id: int | None = None
-    source: str = "html"
+# (Japanese name, closed_han, open_han) -- 0 indicates Yakuman
+YAKU_MAP: dict[str, tuple[str, int, int]] = {
+    "MenzenTsumo": ("門前清自摸和", 1, 0),
+    "Riichi": ("立直", 1, 0),
+    "DoubleRiichi": ("両立直", 2, 0),
+    "Ippatsu": ("一発", 1, 0),
+    "Tanyao": ("断幺九", 1, 1),
+    "Pinfu": ("平和", 1, 0),
+    "Iipeikou": ("一盃口", 1, 0),
+    "Ryanpeikou": ("二盃口", 3, 0),
+    "Haitei": ("海底摸月", 1, 1),
+    "Houtei": ("河底撈魚", 1, 1),
+    "Rinshan": ("嶺上開花", 1, 1),
+    "Chankan": ("槍槓", 1, 1),
+    "YakuhaiEast": ("役牌 東", 1, 1),
+    "YakuhaiSouth": ("役牌 南", 1, 1),
+    "YakuhaiWest": ("役牌 西", 1, 1),
+    "YakuhaiNorth": ("役牌 北", 1, 1),
+    "YakuhaiWhite": ("役牌 白", 1, 1),
+    "YakuhaiGreen": ("役牌 發", 1, 1),
+    "YakuhaiRed": ("役牌 中", 1, 1),
+    "YakuhaiTon": ("役牌 東", 1, 1),
+    "YakuhaiNan": ("役牌 南", 1, 1),
+    "YakuhaiSha": ("役牌 西", 1, 1),
+    "YakuhaiPei": ("役牌 北", 1, 1),
+    "YakuhaiHaku": ("役牌 白", 1, 1),
+    "YakuhaiHatsu": ("役牌 發", 1, 1),
+    "YakuhaiChun": ("役牌 中", 1, 1),
+    "Toitoi": ("対々和", 2, 2),
+    "Sanankou": ("三暗刻", 2, 2),
+    "Sankantsu": ("三槓子", 2, 2),
+    "SanshokuDoujun": ("三色同順", 2, 1),
+    "SanshokuDoukou": ("三色同刻", 2, 2),
+    "Ittsu": ("一気通貫", 2, 1),
+    "Chanta": ("混全帯幺九", 2, 1),
+    "Junchan": ("純全帯幺九", 3, 2),
+    "Chiitoitsu": ("七対子", 2, 0),
+    "Honroutou": ("混老頭", 2, 2),
+    "Shousangen": ("小三元", 2, 2),
+    "Honitsu": ("混一色", 3, 2),
+    "Chinitsu": ("清一色", 6, 5),
+    "KokushiMusou": ("国士無双", 0, 0),
+    "KokushiMusou13Wait": ("国士無双１３面待ち", 0, 0),
+    "Suuankou": ("四暗刻", 0, 0),
+    "SuuankouTanki": ("四暗刻単騎", 0, 0),
+    "Daisangen": ("大三元", 0, 0),
+    "Shousuushii": ("小四喜", 0, 0),
+    "Daisuushii": ("大四喜", 0, 0),
+    "Tsuuiisou": ("字一色", 0, 0),
+    "Chinroutou": ("清老頭", 0, 0),
+    "Ryuuiisou": ("緑一色", 0, 0),
+    "ChuurenPoutou": ("九蓮宝燈", 0, 0),
+    "JunseiChuurenPoutou": ("純正九蓮宝燈", 0, 0),
+    "Suukantsu": ("四槓子", 0, 0),
+    "Tenhou": ("天和", 0, 0),
+    "Chiihou": ("地和", 0, 0),
+}
 
 
-# --- Parsing ---------------------------------------------------------------
+def snake_to_pascal(name: str) -> str:
+    """Convert snake_case identifiers to PascalCase if needed."""
+    if "_" not in name:
+        return name
+    return "".join(part.capitalize() for part in name.split("_") if part)
 
 
-def normalise_report_url(url: str) -> str:
-    """Resolve the KillerDucky wrapper (`?data=/report/<id>.json`) to its data."""
-    parts = urllib.parse.urlsplit(url)
-    query = urllib.parse.parse_qs(parts.query)
-    data = query.get("data")
-    if data and data[0]:
-        return urllib.parse.urljoin(url, data[0])
-    return url
+def tile_obj_to_t6(tile_obj: dict[str, Any]) -> int:
+    """Convert an Agari tile dictionary to a tenhou.net/6 integer tile code."""
+    tile = tile_obj["tile"] if "tile" in tile_obj else tile_obj
+    if "Honor" in tile:
+        return HONOR_CODE[tile["Honor"]]
+    suited = tile["Suited"]
+    suit = suited["suit"]
+    value = suited["value"]
+    if tile_obj.get("is_aka") and value == 5:
+        return AKA_CODE[suit]
+    return SUIT_BASE[suit] + value
 
 
-def fetch_report(location: str) -> str:
-    if location == "-":
-        # Let the operator paste the saved page straight into the terminal.
-        return sys.stdin.read()
-    if location.startswith(("http://", "https://")):
-        url = normalise_report_url(location)
-        request = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) "
-                "riichiprac-mortal-validator/0.1",
-                "Accept": "application/json, text/html;q=0.9",
-            },
-        )
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return response.read().decode("utf-8", "replace")
-    return Path(location).read_text(encoding="utf-8")
+def tile_id_fallback_to_t6(tile_id: int, aka_count: int = 3) -> int:
+    """Fallback conversion from 0..135 tile ID to tenhou.net/6 tile code."""
+    if aka_count > 0:
+        if tile_id == 16:
+            return 51
+        if tile_id == 52:
+            return 52
+        if tile_id == 88:
+            return 53
+    tile_34 = tile_id // 4
+    if tile_34 < 9:
+        return 11 + tile_34
+    if tile_34 < 18:
+        return 21 + (tile_34 - 9)
+    if tile_34 < 27:
+        return 31 + (tile_34 - 18)
+    return 41 + (tile_34 - 27)
 
 
-class ReportUnavailable(Exception):
-    """The page could not be read (Cloudflare challenge, wrong URL, ...)."""
+def build_id_map(round_data: dict[str, Any], aka_count: int) -> dict[int, int]:
+    """Build a complete 0..135 tile ID -> tenhou.net/6 code table from round data."""
+    id_map = {tid: tile_id_fallback_to_t6(tid, aka_count) for tid in range(136)}
+
+    def ingest_list(items: list[dict[str, Any]]) -> None:
+        for item in items:
+            if isinstance(item, dict) and "id" in item and "tile" in item:
+                id_map[item["id"]] = tile_obj_to_t6(item)
+
+    for hand in round_data.get("starting_hands", []):
+        ingest_list(hand)
+    ingest_list(round_data.get("dora_indicators", []))
+    ingest_list(round_data.get("wall_tiles", []))
+    ingest_list(round_data.get("dead_wall_ura", []))
+    ingest_list(round_data.get("dead_wall_kan_draws", []))
+    return id_map
 
 
-def event_tile(code: str) -> str:
-    return HONOR_CODES.get(code, code)
+def t6_sort_key(code: int) -> tuple[int, int, int]:
+    """Sort Tenhou/6 tile codes in standard display order (non-aka before aka)."""
+    if code == 51:
+        return (1, 5, 51)
+    if code == 52:
+        return (2, 5, 52)
+    if code == 53:
+        return (3, 5, 53)
+    return (code // 10, code % 10, code)
 
 
-def event_action(event: dict) -> str:
-    """Map one mjai event from the report JSON onto our action naming."""
-    kind = event.get("type")
-    if kind == "dahai":
-        return f"Discard_{event_tile(event.get('pai', '?'))}"
-    return {
-        "reach": "Riichi",
-        "chi": "Chi",
-        "pon": "Pon",
-        "daiminkan": "Kan",
-        "ankan": "Kan",
-        "kakan": "Kan",
-        "hora": "Agari",
-        "ryukyoku": "Ryukyoku",
-        "none": "Pass",
-    }.get(kind, kind or "Pass")
+def normalize_t6_base(code: int) -> int:
+    """Map red-five Tenhou/6 codes (51, 52, 53) to their base 5 codes (15, 25, 35)."""
+    if code == 51:
+        return 15
+    if code == 52:
+        return 25
+    if code == 53:
+        return 35
+    return code
 
 
-def parse_json_report(document: dict) -> Report:
-    review = document.get("review") or {}
-    entries: list[Entry] = []
-    for kyoku in review.get("kyokus") or []:
-        for raw in kyoku.get("entries") or []:
-            details = [
-                Scored(
-                    action=event_action(detail["action"]),
-                    q=float(detail["q_value"]),
-                    prob=float(detail["prob"]),
-                )
-                for detail in raw.get("details") or []
-            ]
-            entries.append(
-                Entry(
-                    label=f"Turn {raw.get('junme', '?')} (x{raw.get('tiles_left', '?')})",
-                    player=event_action(raw.get("actual") or {}),
-                    mortal=event_action(raw.get("expected") or {}),
-                    details=details,
-                )
-            )
-    return Report(
-        entries=entries,
-        temperature=review.get("temperature"),
-        model_tag=review.get("model_tag"),
-        player_id=document.get("player_id"),
-        source="json",
+def rotate_list(items: list[Any], offset: int) -> list[Any]:
+    """Rotate a 4-element list so Agari index `offset` becomes Tenhou index 0."""
+    n = len(items)
+    offset %= n
+    return [items[(offset + i) % n] for i in range(n)]
+
+
+def get_kyoku(round_data: dict[str, Any]) -> int:
+    """Compute Tenhou/6 kyoku index (0=East 1, 4=South 1, 8=West 1)."""
+    wind = round_data.get("round_wind", "East").lower()
+    wind_base = WIND_TO_BASE_KYOKU.get(wind, 0)
+    raw_rn = round_data["round_number"]
+    return raw_rn if raw_rn >= wind_base else wind_base + raw_rn
+
+
+def seat_to_tenhou_idx(seat: str, kyoku: int) -> int:
+    """Map Agari seat wind in `kyoku` to Tenhou player index (0..3)."""
+    seat_offset = SEAT_TO_OFFSET[seat.lower()]
+    return (kyoku + seat_offset) % 4
+
+
+def format_pon_call(
+    called_t6: int, hand_t6s: list[int], caller: int, discarder: int
+) -> tuple[str, int]:
+    """Format a Tenhou/6 Pon string with 'p' positioned before the called tile."""
+    rel = (discarder - caller) % 4
+    h0, h1 = sorted(hand_t6s, key=t6_sort_key)
+    if rel == 3:  # Kamicha (left) -> pos 0
+        return f"p{called_t6:02d}{h0:02d}{h1:02d}", 0
+    if rel == 2:  # Toimen (across) -> pos 1
+        return f"{h0:02d}p{called_t6:02d}{h1:02d}", 1
+    # Shimocha (right, rel == 1) -> pos 2
+    return f"{h0:02d}{h1:02d}p{called_t6:02d}", 2
+
+
+def format_daiminkan_call(
+    called_t6: int, hand_t6s: list[int], caller: int, discarder: int
+) -> str:
+    """Format a Tenhou/6 Daiminkan string with 'm' positioned before the called tile."""
+    rel = (discarder - caller) % 4
+    h0, h1, h2 = sorted(hand_t6s, key=t6_sort_key)
+    if rel == 3:  # Kamicha -> pos 0
+        return f"m{called_t6:02d}{h0:02d}{h1:02d}{h2:02d}"
+    if rel == 2:  # Toimen -> pos 1
+        return f"{h0:02d}m{called_t6:02d}{h1:02d}{h2:02d}"
+    # Shimocha -> pos 3
+    return f"{h0:02d}{h1:02d}{h2:02d}m{called_t6:02d}"
+
+
+def format_kakan_call(added_t6: int, pon_str: str, called_slot: int) -> str:
+    """Upgrade an existing Tenhou/6 Pon string into a Kakan string with 'k' before added."""
+    codes = [int(x) for x in re.findall(r"\d{2}", pon_str)]
+    if called_slot == 0:
+        return f"k{added_t6:02d}{codes[0]:02d}{codes[1]:02d}{codes[2]:02d}"
+    if called_slot == 1:
+        return f"{codes[0]:02d}k{added_t6:02d}{codes[1]:02d}{codes[2]:02d}"
+    return f"{codes[0]:02d}{codes[1]:02d}k{added_t6:02d}{codes[2]:02d}"
+
+
+def format_ankan_call(kan_t6s: list[int]) -> str:
+    """Format a Tenhou/6 Ankan string ('t0t1t2at3')."""
+    t0, t1, t2, t3 = sorted(kan_t6s, key=t6_sort_key)
+    return f"{t0:02d}{t1:02d}{t2:02d}a{t3:02d}"
+
+
+def format_score_string(score: dict[str, Any], is_tsumo: bool) -> str:
+    """Build Tenhou's Japanese score summary string (e.g., '30符3飜3900点')."""
+    fu = score["fu"]["total"]
+    han = score["han"]
+    level = score.get("score_level", "Normal")
+    payment = score["payment"]
+    total = payment["total"]
+
+    if is_tsumo:
+        if score.get("is_dealer"):
+            amt_str = f"{payment['from_non_dealer']}点∀"
+        else:
+            amt_str = f"{payment['from_non_dealer']}-{payment['from_dealer']}点"
+    else:
+        amt_str = f"{total}点"
+
+    if isinstance(level, dict):
+        if "Yakuman" in level:
+            mult = level["Yakuman"]
+            prefix = "役満" if mult == 1 else f"{mult}倍役満"
+            return f"{prefix}{amt_str}"
+        level = next(iter(level.keys()), "Normal")
+
+    level_names = {
+        "Mangan": "満貫",
+        "Haneman": "跳満",
+        "Baiman": "倍満",
+        "Sanbaiman": "三倍満",
+        "Yakuman": "役満",
+        "KazoeYakuman": "役満",
+        "CountedYakuman": "役満",
+    }
+    if isinstance(level, str) and level in level_names:
+        return f"{level_names[level]}{amt_str}"
+
+    if score.get("is_counted_yakuman") or han >= 13:
+        return f"役満{amt_str}"
+
+    return f"{fu}符{han}飜{amt_str}"
+
+
+def format_yaku_entry(yaku: str | dict[str, Any], is_open: bool) -> str | None:
+    """Normalize a string or serde-tagged dict Yaku entry into Tenhou/6 format."""
+    if isinstance(yaku, str):
+        key = snake_to_pascal(yaku)
+        if key in ("Dora", "AkaDora", "UraDora"):
+            return None
+        if key in YAKU_MAP:
+            jp_name, closed_han, open_han = YAKU_MAP[key]
+            han = open_han if is_open else closed_han
+            return f"{jp_name}(役満)" if han == 0 else f"{jp_name}({han}飜)"
+        return f"{key}(1飜)"
+
+    if isinstance(yaku, dict) and yaku:
+        raw_variant, payload = next(iter(yaku.items()))
+        variant = snake_to_pascal(raw_variant)
+        if variant in ("Dora", "AkaDora", "UraDora"):
+            return None
+
+        inner: Any = payload
+        if isinstance(payload, dict):
+            for key in ("Honor", "Wind", "Dragon", "wind", "dragon", "honor", "name"):
+                if key in payload:
+                    inner = payload[key]
+                    break
+            else:
+                if len(payload) == 1:
+                    inner = next(iter(payload.values()))
+
+        inner_norm = snake_to_pascal(inner) if isinstance(inner, str) else inner
+
+        if variant in (
+            "Yakuhai",
+            "SeatWind",
+            "PrevalentWind",
+            "RoundWind",
+            "Dragon",
+            "ValueHonor",
+            "Jikaze",
+            "Bakaze",
+            "Sangenpai",
+        ):
+            if isinstance(inner_norm, str) and inner_norm in HONOR_JP:
+                return f"役牌 {HONOR_JP[inner_norm]}(1飜)"
+
+        if variant in ("DoubleWind", "Renpuuhai"):
+            if isinstance(inner_norm, str) and inner_norm in HONOR_JP:
+                return f"役牌 {HONOR_JP[inner_norm]}(2飜)"
+
+        if variant in YAKU_MAP:
+            jp_name, closed_han, open_han = YAKU_MAP[variant]
+            han = open_han if is_open else closed_han
+            return f"{jp_name}(役満)" if han == 0 else f"{jp_name}({han}飜)"
+
+        return f"{variant}(1飜)"
+
+    return f"{yaku}(1飜)"
+
+
+def format_yaku_list(details: dict[str, Any]) -> list[str]:
+    """Convert Agari yaku_list and dora counts to Tenhou/6 Japanese yaku entries."""
+    is_open = details.get("is_open", False)
+    result: list[str] = []
+    for y in details.get("yaku_list", []):
+        entry = format_yaku_entry(y, is_open)
+        if entry is not None:
+            result.append(entry)
+
+    dora = details.get("dora_count", 0)
+    aka = details.get("aka_dora_count", 0)
+    ura = details.get("ura_dora_count", 0)
+    if dora > 0:
+        result.append(f"ドラ({dora}飜)")
+    if aka > 0:
+        result.append(f"赤ドラ({aka}飜)")
+    if ura > 0:
+        result.append(f"裏ドラ({ura}飜)")
+
+    return result
+
+
+def classify_exhaustive_draw(
+    outcome: Any, tenpai_payments_t6: list[int], dealer_repeats: bool
+) -> str:
+    """Return Tenhou/6's exact exhaustive draw label: '流局', '全員不聴', or '全員聴牌'."""
+    if any(x != 0 for x in tenpai_payments_t6):
+        return "流局"
+
+    if isinstance(outcome, dict):
+        ryu = outcome.get("ryukyoku") or outcome.get("exhaustive_draw")
+        if isinstance(ryu, dict):
+            for key in ("tenpai_players", "tenpai", "tenpai_seats"):
+                val = ryu.get(key)
+                if isinstance(val, list):
+                    count = (
+                        sum(1 for x in val if x)
+                        if all(isinstance(x, bool) for x in val)
+                        else len(val)
+                    )
+                    if count == 4:
+                        return "全員聴牌"
+                    if count == 0:
+                        return "全員不聴"
+            for key in ("tenpai_count", "num_tenpai"):
+                val = ryu.get(key)
+                if isinstance(val, int):
+                    if val == 4:
+                        return "全員聴牌"
+                    if val == 0:
+                        return "全員不聴"
+
+    return "全員聴牌" if dealer_repeats else "全員不聴"
+
+
+def build_round_result(
+    round_data: dict[str, Any],
+    kyoku: int,
+    dealer_offset: int,
+    starting_pts_t6: list[int],
+) -> list[Any]:
+    """Construct the 17th element (round outcome) of a tenhou.net/6 round entry."""
+    res_block = round_data["result"]
+    outcome = res_block["result"]
+
+    pre_pts_t6 = rotate_list(res_block["pre_points"], dealer_offset)
+    deltas_agari_t6 = rotate_list(res_block["point_deltas"], dealer_offset)
+    end_pts_t6 = [pre_pts_t6[i] + deltas_agari_t6[i] for i in range(4)]
+    total_deltas = [end_pts_t6[i] - starting_pts_t6[i] for i in range(4)]
+
+    if isinstance(outcome, dict) and ("ron" in outcome or "multi_ron" in outcome):
+        ron_val = outcome.get("ron", outcome.get("multi_ron"))
+        rons = ron_val if isinstance(ron_val, list) else [ron_val]
+        entries: list[Any] = ["和了"]
+
+        if len(rons) == 1:
+            ron = rons[0]
+            winner = seat_to_tenhou_idx(ron["winner"], kyoku)
+            loser = seat_to_tenhou_idx(ron["loser"], kyoku)
+            details = ron["details"]
+            pao_seat = details.get("pao_liable")
+            pao = seat_to_tenhou_idx(pao_seat, kyoku) if pao_seat else winner
+            score_str = format_score_string(details["score"], is_tsumo=False)
+            yaku_entries = format_yaku_list(details)
+            entries.extend([total_deltas, [winner, loser, pao, score_str, *yaku_entries]])
+            return entries
+
+        riichi_bets = [pre_pts_t6[i] - starting_pts_t6[i] for i in range(4)]
+        remaining_riichi_pot = -sum(riichi_bets) + round_data.get("riichi_sticks", 0) * 1000
+        remaining_honba_bonus = round_data.get("honba", 0) * 300
+        claimed_riichi = [False] * 4
+
+        for idx, ron in enumerate(rons):
+            winner = seat_to_tenhou_idx(ron["winner"], kyoku)
+            loser = seat_to_tenhou_idx(ron["loser"], kyoku)
+            details = ron["details"]
+            pay = details["score"]["payment"]["total"]
+            sub_deltas = [0, 0, 0, 0]
+            sub_deltas[winner] += pay
+            sub_deltas[loser] -= pay
+            if idx == 0:
+                sub_deltas[winner] += remaining_riichi_pot + remaining_honba_bonus
+                sub_deltas[loser] -= remaining_honba_bonus
+            for p in range(4):
+                if not claimed_riichi[p] and riichi_bets[p] != 0:
+                    sub_deltas[p] += riichi_bets[p]
+                    claimed_riichi[p] = True
+
+            pao_seat = details.get("pao_liable")
+            pao = seat_to_tenhou_idx(pao_seat, kyoku) if pao_seat else winner
+            score_str = format_score_string(details["score"], is_tsumo=False)
+            yaku_entries = format_yaku_list(details)
+            entries.extend([sub_deltas, [winner, loser, pao, score_str, *yaku_entries]])
+        return entries
+
+    if isinstance(outcome, dict) and "tsumo" in outcome:
+        tsumo = outcome["tsumo"]
+        winner = seat_to_tenhou_idx(tsumo["winner"], kyoku)
+        details = tsumo["details"]
+        pao_seat = details.get("pao_liable")
+        pao = seat_to_tenhou_idx(pao_seat, kyoku) if pao_seat else winner
+        score_str = format_score_string(details["score"], is_tsumo=True)
+        yaku_entries = format_yaku_list(details)
+        return ["和了", total_deltas, [winner, winner, pao, score_str, *yaku_entries]]
+
+    abortive_labels = {
+        "four_winds": "四風連打",
+        "suufon_renda": "四風連打",
+        "nine_terminals": "九種九牌",
+        "kyuushu_kyuuhai": "九種九牌",
+        "four_riichi": "四家立直",
+        "suucha_riichi": "四家立直",
+        "four_kans": "四開槓",
+        "suukaikan": "四開槓",
+        "triple_ron": "三家和了",
+        "sanchahou": "三家和了",
+        "nagashi_mangan": "流し満貫",
+    }
+    if isinstance(outcome, str) and outcome.lower() in abortive_labels:
+        return [abortive_labels[outcome.lower()], total_deltas]
+    if isinstance(outcome, dict):
+        for key, label in abortive_labels.items():
+            if key in outcome:
+                return [label, total_deltas]
+
+    label = classify_exhaustive_draw(
+        outcome, deltas_agari_t6, bool(res_block.get("dealer_repeats", False))
     )
+    return [label, total_deltas]
 
 
-def load_report(text: str) -> Report:
-    stripped = text.lstrip()
-    if stripped.startswith("{"):
-        return parse_json_report(json.loads(stripped))
-    if "Just a moment" in text[:3000] or "challenges.cloudflare.com" in text[:5000]:
-        raise ReportUnavailable(
-            "the report came back as a Cloudflare challenge, not data. Open the "
-            "report in the browser, save the page (or fetch the .json the UI "
-            "loads) and pass the saved file instead: --report page.json"
-        )
-    return Report(entries=parse_entries(text), source="html")
+def _resolve_self_kan_t34(
+    action: Any, hand: list[int], open_pons: dict[int, tuple[str, int]], id_to_t6: dict[int, int]
+) -> int | None:
+    """Determine the 0..33 tile type for an Ankan or Kakan action."""
+    if isinstance(action, dict):
+        for key in ("ankan", "kakan", "kan"):
+            val = action.get(key)
+            if isinstance(val, int):
+                return val // 4
+            if isinstance(val, list) and val:
+                first = val[0]
+                return first // 4 if isinstance(first, int) else first["id"] // 4
+            if isinstance(val, dict):
+                if "id" in val:
+                    return val["id"] // 4
+                if "tile_id" in val:
+                    return val["tile_id"] // 4
+                if "Honor" in val or "Suited" in val or "tile" in val:
+                    target_t6 = tile_obj_to_t6(val)
+                    return next(
+                        (tid // 4 for tid in hand if id_to_t6[tid] == target_t6),
+                        None,
+                    )
 
-
-def tile_code(svg_id: str) -> str:
-    """`3s` -> `3s`, `5mr` -> `5mr`, `e` -> `1z`."""
-    if svg_id in TILE_NAMES:
-        return TILE_NAMES[svg_id]
-    return svg_id
-
-
-def classify(fragment: str) -> tuple[str, list[str]]:
-    """Which action family a rendered action shows, and its tile ids."""
-    text = " ".join(html.unescape(TAG_RE.sub(" ", fragment)).lower().split())
-    tiles = [tile_code(match) for match in TILE_RE.findall(fragment)]
-    for word, family in ACTION_WORDS:
-        if re.search(rf"\b{word}\b", text):
-            return family, tiles
-    return "?", tiles
-
-
-def action_name(fragment: str) -> str:
-    """Turn a rendered action (`Discard <svg…#pai-3s>`, `Chii`, `Skip`) into a name."""
-    family, tiles = classify(fragment)
-    if family == "discard":
-        return f"Discard_{tiles[0]}" if tiles else "Discard_?"
-    return {
-        "riichi": "Riichi",
-        "pon": "Pon",
-        "chi": "Chi",
-        "kan": "Kan",
-        "agari": "Agari",
-        "pass": "Pass",
-        "ryukyoku": "Ryukyoku",
-    }.get(family, "?")
-
-
-def parse_rows(body: str) -> list[Scored]:
-    rows = [
-        Scored(
-            action=action_name(match.group("action")),
-            q=float(match.group("q")),
-            prob=float(match.group("prob")) / 100.0,
-        )
-        for match in TITLE_ROW_RE.finditer(body)
-    ]
-    if rows:
-        return rows
-    for match in CLASSIC_ROW_RE.finditer(body):
-        q = (match.group("qint") + match.group("qfrac")).replace(" ", "")
-        prob = (match.group("pint") + match.group("pfrac")).replace(" ", "")
-        try:
-            rows.append(
-                Scored(
-                    action=action_name(match.group("action")),
-                    q=float(q),
-                    prob=float(prob) / 100.0,
-                )
-            )
-        except ValueError:
-            continue
-    return rows
-
-
-def parse_entries(page: str) -> list[Entry]:
-    entries: list[Entry] = []
-    chunks = page.split(ENTRY_SPLIT)[1:]
-    for chunk in chunks:
-        end = chunk.find("</details></details>")
-        body = chunk if end < 0 else chunk[:end]
-        # The classic layout quotes its class attributes; the default one does
-        # not. Normalise both before looking for the role labels.
-        body = body.replace('class="role"', "class=role")
-        summary = SUMMARY_RE.search(body)
-        label = summary.group("label").strip() if summary else "?"
-        player = ""
-        mortal = ""
-        player_at = body.find("class=role>Player:")
-        mortal_at = body.find("class=role>Mortal:")
-        if player_at >= 0:
-            player = action_name(
-                body[player_at : mortal_at if mortal_at > player_at else None]
-            )
-        if mortal_at >= 0:
-            mortal = action_name(body[mortal_at : body.find("<details>", mortal_at)])
-        entries.append(
-            Entry(label=label, player=player, mortal=mortal, details=parse_rows(body))
-        )
-    return entries
-
-
-def same_family(left: str, right: str) -> bool:
-    """Chi_Low/Chi_Mid/Chi_High all print as "Chi" in the report."""
-    if left == right:
-        return True
-    return left.startswith("Chi") and right.startswith("Chi")
-
-
-def resolve_temperature(
-    report: Report, page: str, override: float | None
-) -> tuple[float, str]:
-    """The temperature the review ran at, and where that answer came from."""
-    if override is not None:
-        return override, "--temperature"
-    found = report.temperature if report.temperature else find_temperature(page)
-    if found is not None:
-        return found, "the report"
-    # mjai-reviewer's own default; guessing 1.0 here would silently compare
-    # two different distributions.
-    return 0.1, "the reviewer default (the page does not say)"
-
-
-def find_temperature(page: str) -> float | None:
-    for match in TEMPERATURE_RE.finditer(TAG_RE.sub(" ", page)):
-        try:
-            return float(match.group(1))
-        except ValueError:
-            continue
+    for tid in hand:
+        t34 = tid // 4
+        if sum(1 for x in hand if x // 4 == t34) == 4 or t34 in open_pons:
+            return t34
     return None
 
 
-# --- Comparison ------------------------------------------------------------
+def convert_round(
+    round_data: dict[str, Any], dealer_offset: int, aka_count: int
+) -> list[Any]:
+    """Convert a single Agari round object into a 17-element tenhou.net/6 round list."""
+    kyoku = get_kyoku(round_data)
+    honba = round_data["honba"]
+    riichi_sticks = round_data["riichi_sticks"]
 
+    id_to_t6 = build_id_map(round_data, aka_count)
+    starting_pts = rotate_list(round_data["starting_points"], dealer_offset)
+    starting_hands_raw = rotate_list(round_data["starting_hands"], dealer_offset)
 
-def retemperature(
-    probabilities: list[float], source_tau: float, target_tau: float
-) -> list[float]:
-    """Rescale a softmax from `source_tau` to `target_tau` without the logits.
-
-    ``log p = q / tau_s - logsumexp(q / tau_s)``, so ``softmax(q / tau_t)`` is
-    ``softmax(log p * tau_s / tau_t)``.
-    """
-    if not probabilities:
-        return []
-    scale = source_tau / target_tau
-    scaled = [
-        (math.log(p) * scale) if p > 0 else -math.inf for p in probabilities
+    hands: list[list[int]] = [[t["id"] for t in h] for h in starting_hands_raw]
+    haipai: list[list[int]] = [
+        sorted((id_to_t6[tid] for tid in h), key=t6_sort_key) for h in hands
     ]
-    top = max(scaled)
-    weights = [math.exp(value - top) if math.isfinite(value) else 0.0 for value in scaled]
-    total = sum(weights)
-    return [weight / total for weight in weights] if total else weights
+    draws: list[list[int | str]] = [[] for _ in range(4)]
+    discards: list[list[int | str]] = [[] for _ in range(4)]
+    open_pons: list[dict[int, tuple[str, int]]] = [{} for _ in range(4)]
 
+    wall_ids = [t["id"] for t in round_data.get("wall_tiles", [])]
+    kan_draw_ids = [t["id"] for t in round_data.get("dead_wall_kan_draws", [])]
+    wall_idx = 0
+    kan_idx = 0
+    num_kans = 0
 
-def compare(ours: dict, entry: Entry, tau: float) -> dict:
-    our_actions = [item["action"] for item in ours["evaluations"]]
-    our_probs = retemperature(
-        [float(item["probability"]) for item in ours["evaluations"]],
-        float(ours.get("temperature", 1.0)),
-        tau,
-    )
-    their_probs = {detail.action: detail.prob for detail in entry.details}
-    theirs = [detail.action for detail in entry.details]
+    needs_draw = True
+    pending_kan_draw_for: int | None = None
+    last_drawn_id: int | None = None
+    last_discard_id: int | None = None
+    last_discarder: int | None = None
 
-    our_top = ours["recommended_action"]
-    their_top = theirs[0] if theirs else ""
-    deltas = [
-        abs(their_probs[action] - prob)
-        for action, prob in zip(our_actions, our_probs)
-        if action in their_probs
-    ]
-    listed_by_them_only = [
-        action for action in theirs if not any(same_family(action, other) for other in our_actions)
-    ]
-    listed_by_us_only = [
-        action for action in our_actions if not any(same_family(action, other) for other in theirs)
-    ]
-    return {
-        "temperature": tau,
-        "our_temperature": float(ours.get("temperature", 1.0)),
-        "our_top_action": our_top,
-        "their_top_action": their_top,
-        "top_action_matches": same_family(our_top, their_top),
-        "their_player_action": entry.player,
-        "our_top_probability": our_probs[0] if our_probs else None,
-        "their_top_probability": their_probs.get(theirs[0]) if theirs else None,
-        "max_probability_delta": max(deltas) if deltas else None,
-        "only_in_report": listed_by_them_only,
-        "missing_from_report": listed_by_us_only,
-        "their_actions": [
-            {"action": detail.action, "q": detail.q, "prob": detail.prob}
-            for detail in entry.details
-        ],
-        "our_actions": [
-            {"action": action, "prob": prob}
-            for action, prob in zip(our_actions, our_probs)
-        ],
+    def flush_pending_kan_draw() -> None:
+        nonlocal kan_idx, pending_kan_draw_for, last_drawn_id, needs_draw
+        if pending_kan_draw_for is not None:
+            rep_id = kan_draw_ids[kan_idx]
+            kan_idx += 1
+            hands[pending_kan_draw_for].append(rep_id)
+            draws[pending_kan_draw_for].append(id_to_t6[rep_id])
+            last_drawn_id = rep_id
+            needs_draw = False
+            pending_kan_draw_for = None
+
+    draw_before_terminal = {"tsumo", "kyuushu_kyuuhai", "nine_terminals"}
+    terminal_actions = {
+        "ron",
+        "tsumo",
+        "ryukyoku",
+        "exhaustive_draw",
+        "abortive_draw",
+        "kyuushu_kyuuhai",
+        "nine_terminals",
+        "draw",
     }
 
+    for step in round_data.get("actions", []):
+        action = step.get("action")
+        if isinstance(action, str) and action.lower() in terminal_actions:
+            if action.lower() in draw_before_terminal and step.get("seat"):
+                flush_pending_kan_draw()
+                actor = seat_to_tenhou_idx(step["seat"], kyoku)
+                if needs_draw and wall_idx < len(wall_ids):
+                    drawn_id = wall_ids[wall_idx]
+                    wall_idx += 1
+                    hands[actor].append(drawn_id)
+                    draws[actor].append(id_to_t6[drawn_id])
+            break
 
-def print_report(result: dict) -> None:
-    print(f"temperature (tau)      {result['temperature']:.2f}")
-    print(f"their player action    {result['their_player_action']}")
-    print(f"our top action         {result['our_top_action']}")
-    print(f"their top action       {result['their_top_action']}")
-    print(
-        "top action match       "
-        + ("yes" if result["top_action_matches"] else "NO")
-    )
-    if result["max_probability_delta"] is not None:
-        print(f"max |dP| (all rows)    {result['max_probability_delta']:.4f}")
-    if result["only_in_report"]:
-        print(f"only in report         {result['only_in_report']}")
-    if result["missing_from_report"]:
-        print(f"missing from report    {result['missing_from_report']}")
-    print()
-    print(f"{'action':<18}{'ours':>10}{'reviewer':>12}")
-    theirs = {item["action"]: item for item in result["their_actions"]}
-    seen = set()
-    for item in result["our_actions"]:
-        match = next((key for key in theirs if same_family(item["action"], key)), None)
-        prob = theirs[match]["prob"] if match else float("nan")
-        if match:
-            seen.add(match)
-        print(f"{item['action']:<18}{item['prob']:>10.4f}{prob:>12.4f}")
-    for item in result["their_actions"]:
-        if item["action"] not in seen:
-            print(f"{item['action']:<18}{'—':>10}{item['prob']:>12.4f}")
+        if isinstance(action, dict) and any(k.lower() in terminal_actions for k in action):
+            break
 
+        seat = step.get("seat")
+        if not seat:
+            continue
+        actor = seat_to_tenhou_idx(seat, kyoku)
 
-# --- Self-test ------------------------------------------------------------
+        flush_pending_kan_draw()
 
-SVG_NAMES = {code: key for key, code in TILE_NAMES.items()}
-
-
-def svg_name(action: str) -> str:
-    if not action.startswith("Discard_"):
-        return ""
-    tile = action[len("Discard_"):]
-    if tile.endswith("r") and tile[:-1] in ("5m", "5p", "5s"):
-        return tile
-    return SVG_NAMES.get(tile, tile)
-
-
-def render_synthetic_report(ours: dict, tau: float) -> str:
-    """A report page in the reviewer's shape, built from our own evaluation."""
-    source = float(ours.get("temperature", 1.0))
-    probs = retemperature(
-        [float(item["probability"]) for item in ours["evaluations"]], source, tau
-    )
-    top = ours["recommended_action"]
-
-    def render(action: str) -> str:
-        svg = svg_name(action)
-        if svg:
-            return (
-                f'Discard <svg class=tile><use class=face href=#pai-{svg}></use></svg>'
+        if action == "pon":
+            assert last_discard_id is not None and last_discarder is not None
+            target_t34 = last_discard_id // 4
+            matching = [tid for tid in hands[actor] if tid // 4 == target_t34][:2]
+            for tid in matching:
+                hands[actor].remove(tid)
+            pon_str, slot = format_pon_call(
+                id_to_t6[last_discard_id],
+                [id_to_t6[tid] for tid in matching],
+                actor,
+                last_discarder,
             )
-        return action
+            draws[actor].append(pon_str)
+            open_pons[actor][target_t34] = (pon_str, slot)
+            needs_draw = False
+            last_drawn_id = None
+            continue
 
-    rows = "".join(
-        f"<tr><td>{render(item['action'])}<td><span title={index * -0.01}>"
-        f"<span class=int>-0.</span><span class=frac>010</span></span>"
-        f"<td><span title={prob * 100}><span class=int>{prob * 100:.0f}.</span>"
-        f"<span class=frac>000</span></span>"
-        for index, (item, prob) in enumerate(zip(ours["evaluations"], probs))
-    )
-    return (
-        "<html><body>"
-        f"<dd>softmax temperature (&tau;)<dd>{tau:.2f}"
-        f'<details class="collapse entry"><summary>Turn 1 (&times;40) </summary>'
-        "<ul class=tehai-state><li><svg class=tile><use class=face href=#pai-1m>"
-        '</use></svg></ul><span> <span class=role>Player: </span>Discard '
-        '<svg class=tile><use class=face href=#pai-1m></use></svg></span> <br> '
-        f'<span class=role>Mortal: </span>{render(top)}'
-        "<details><table border=1><thead><tr><th>Action<th>Q<th>prob<tbody>"
-        f"{rows}</table></details></details>"
-        "</body></html>"
-    )
+        if isinstance(action, dict) and "chi" in action:
+            assert last_discard_id is not None
+            used_ids = [t["id"] for t in action["chi"]["hand_tiles"]]
+            for tid in used_ids:
+                hands[actor].remove(tid)
+            hand_t6s = sorted((id_to_t6[tid] for tid in used_ids), key=t6_sort_key)
+            called_t6 = id_to_t6[last_discard_id]
+            chi_str = f"c{called_t6:02d}{hand_t6s[0]:02d}{hand_t6s[1]:02d}"
+            draws[actor].append(chi_str)
+            needs_draw = False
+            last_drawn_id = None
+            continue
 
+        if isinstance(action, dict) and ("discard" in action or "riichi" in action):
+            is_riichi = "riichi" in action
+            tile_id = action["riichi"] if is_riichi else action["discard"]
 
-def render_synthetic_classic_report(ours: dict, tau: float) -> str:
-    """The same decision in the classic layout: quoted classes, no titles."""
-    source = float(ours.get("temperature", 1.0))
-    probs = retemperature(
-        [float(item["probability"]) for item in ours["evaluations"]], source, tau
-    )
+            if needs_draw:
+                drawn_id = wall_ids[wall_idx]
+                wall_idx += 1
+                hands[actor].append(drawn_id)
+                draws[actor].append(id_to_t6[drawn_id])
+                last_drawn_id = drawn_id
 
-    def render(action: str) -> str:
-        svg = svg_name(action)
-        if svg:
-            return (
-                'Discard <svg class="tile"><use class="face" '
-                f'href="#pai-{svg}"></use></svg>'
-            )
-        return action
+            is_tsumogiri = tile_id == last_drawn_id
+            disc_val = 60 if is_tsumogiri else id_to_t6[tile_id]
+            disc_entry: int | str = f"r{disc_val}" if is_riichi else disc_val
+            discards[actor].append(disc_entry)
 
-    def decimal(value: float) -> str:
-        whole, _, fraction = f"{value:.5f}".partition(".")
-        return (
-            f'<span class="int">{whole}.</span>'
-            f'<span class="frac">{fraction}</span>'
-        )
+            hands[actor].remove(tile_id)
+            last_discard_id = tile_id
+            last_discarder = actor
+            needs_draw = True
+            last_drawn_id = None
+            continue
 
-    rows = "".join(
-        f"<tr><td>{render(item['action'])}</td>"
-        f"<td>{decimal(index * -0.01)}</td><td>{decimal(prob * 100)}</td></tr>"
-        for index, (item, prob) in enumerate(zip(ours["evaluations"], probs))
-    )
-    return (
-        "<html><body>"
-        f"<dt>softmax temperature (&tau;)<dd>{tau:.2f}"
-        '<details class="collapse entry" data-mark-red>'
-        "<summary>Turn 3 (60) <span class=\"turn-info\">tenpai</span></summary>"
-        '<ul class="tehai-state"><li><svg class="tile"><use class="face" '
-        'href="#pai-1m"></use></svg></ul>'
-        '<span><span class="role">Player: </span>'
-        '<span class="role">Discard <svg class="tile"><use class="face" '
-        'href="#pai-1m"></use></svg></span></span><br>'
-        f'<span class="role">Mortal: </span>{render(ours["recommended_action"])}'
-        '<details><table border="1" class="data"><thead><tr><th>Action</th>'
-        "<th>Q</th><th>prob</th></tr></thead><tbody>"
-        f"{rows}</tbody></table></details></details>"
-        "</body></html>"
-    )
-
-
-def selftest() -> int:
-    ours = {
-        "scenario": "selftest",
-        "temperature": 1.0,
-        "recommended_action": "Discard_3s",
-        "evaluations": [
-            {"action": "Discard_3s", "probability": 0.7},
-            {"action": "Discard_1z", "probability": 0.2},
-            {"action": "Discard_5mr", "probability": 0.1},
-        ],
-    }
-    for tau in (1.0, 0.1):
-        entries = parse_entries(render_synthetic_report(ours, tau))
-        assert len(entries) == 1, entries
-        result = compare(ours, entries[0], tau)
-        assert result["top_action_matches"], result
-        assert result["max_probability_delta"] < 1e-6, result
-        assert not result["only_in_report"] and not result["missing_from_report"], result
-        assert entries[0].details[0].action == "Discard_3s", entries[0].details
-        assert entries[0].details[2].action == "Discard_5mr", entries[0].details
-        assert entries[0].mortal == "Discard_3s", entries[0].mortal
-
-        # The classic layout prints the same decision with quoted classes and
-        # five-digit decimals instead of exact titles.
-        entries = parse_entries(render_synthetic_classic_report(ours, tau))
-        assert len(entries) == 1, entries
-        assert entries[0].player == "Discard_1m", entries[0].player
-        assert entries[0].mortal == "Discard_3s", entries[0].mortal
-        assert [row.action for row in entries[0].details] == [
-            "Discard_3s",
-            "Discard_1z",
-            "Discard_5mr",
-        ], entries[0].details
-        classic = compare(ours, entries[0], tau)
-        assert classic["top_action_matches"], classic
-        assert classic["max_probability_delta"] < 1e-4, classic
-
-    # The report JSON the KillerDucky UI loads is the most precise source.
-    report_json = {
-        "engine": "Mortal",
-        "player_id": 1,
-        "review": {
-            "temperature": 1.0,
-            "model_tag": "4.0",
-            "kyokus": [
-                {
-                    "entries": [
-                        {
-                            "junme": 3,
-                            "tiles_left": 61,
-                            "expected": {"type": "reach", "actor": 1},
-                            "actual": {"type": "dahai", "actor": 1, "pai": "P", "tsumogiri": True},
-                            "details": [
-                                {"action": {"type": "reach", "actor": 1}, "q_value": 0.52, "prob": 0.6},
-                                {"action": {"type": "dahai", "actor": 1, "pai": "P", "tsumogiri": True}, "q_value": 0.33, "prob": 0.35},
-                                {"action": {"type": "none"}, "q_value": -1.0, "prob": 0.05},
-                            ],
-                        }
-                    ]
-                }
-            ],
-        },
-    }
-    parsed = load_report(json.dumps(report_json))
-    assert parsed.source == "json", parsed
-    assert parsed.temperature == 1.0 and parsed.model_tag == "4.0", parsed
-    assert parsed.player_id == 1, parsed
-    entry = parsed.entries[0]
-    assert (entry.player, entry.mortal) == ("Discard_5z", "Riichi"), entry
-    assert [row.action for row in entry.details] == [
-        "Riichi",
-        "Discard_5z",
-        "Pass",
-    ], entry.details
-    assert normalise_report_url(
-        "https://mjai.ekyu.moe/killerducky/?data=/report/abc.json"
-    ) == "https://mjai.ekyu.moe/report/abc.json"
-
-    # The classic layout prints a chi's tiles before the word, and spells it
-    # with two i's; both must land on our single "Chi" family.
-    assert action_name('2m 3m <svg><use href="#pai-4m"></use></svg> Chii') == "Chi"
-    assert action_name("Skip") == "Pass"
-    assert action_name("Ron") == "Agari"
-    assert same_family("Chi_Low", "Chi")
-    print("selftest ok")
-    return 0
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Compare an mjai.ekyu.moe Mortal report with our evaluation."
-    )
-    parser.add_argument("--report",
-                        help="report URL, a saved HTML file, or '-' to read a pasted page from stdin")
-    parser.add_argument("--evaluation",
-                        help="the JSON written by `export_tenhou6 --evaluate`")
-    parser.add_argument("--temperature", type=float, default=None,
-                        help="temperature the review ran at (default: read it from the page, "
-                             "falling back to the reviewer's own 0.1)")
-    parser.add_argument("--entry", type=int, default=-1,
-                        help="which decision to compare, counted from the end (default: last)")
-    parser.add_argument("--json", action="store_true", help="print the result as JSON")
-    parser.add_argument("--same-weights", action="store_true",
-                        help="assert the review ran the same checkpoint; then require the "
-                             "per-action probabilities to agree too")
-    parser.add_argument("--expect-player", type=int, default=1,
-                        help="the player id the fixture was exported for (default: 1)")
-    parser.add_argument("--save-html", type=Path, help="also save the fetched page here")
-    parser.add_argument("--selftest", action="store_true",
-                        help="check the parser against a synthetic report and exit")
-    args = parser.parse_args()
-    if args.selftest:
-        return selftest()
-    if not args.report or not args.evaluation:
-        parser.error("--report and --evaluation are required (or use --selftest)")
-
-    ours = json.loads(Path(args.evaluation).read_text(encoding="utf-8"))
-    page = fetch_report(args.report)
-    if args.save_html:
-        args.save_html.write_text(page, encoding="utf-8")
-
-    try:
-        report = load_report(page)
-    except ReportUnavailable as err:
-        print(err, file=sys.stderr)
-        return 2
-
-    entries = report.entries
-    if not entries:
-        print(
-            "no review entries found: is this a Mortal report page, and did the "
-            "review finish?",
-            file=sys.stderr,
-        )
-        return 2
-    entries = [entry for entry in entries if entry.details]
-    if not entries:
-        print("the report has no decision tables to compare", file=sys.stderr)
-        return 2
-
-    tau, tau_source = resolve_temperature(report, page, args.temperature)
-    if tau <= 0:
-        print(f"invalid temperature {tau}", file=sys.stderr)
-        return 2
-
-    entry = entries[args.entry]
-    result = compare(ours, entry, tau)
-    result["entry"] = entry.label
-    result["entries"] = len(entries)
-    result["scenario"] = ours.get("scenario")
-    result["report_source"] = report.source
-    result["report_model_tag"] = report.model_tag
-    result["report_player_id"] = report.player_id
-    result["same_weights"] = args.same_weights
-
-    result["temperature_source"] = tau_source
-
-    if args.json:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-    else:
-        print(f"entry                  {entry.label} (#{len(entries) + args.entry} of {len(entries)})")
-        print_report(result)
-        print(f"temperature source     {tau_source}")
-
-    if report.model_tag:
-        print(f"reviewed network       {report.model_tag}")
-    if report.player_id is not None:
-        note = "" if report.player_id == args.expect_player else f" (expected {args.expect_player})"
-        print(f"reviewed player        {report.player_id}{note}")
-    if args.same_weights:
-        close = result["max_probability_delta"] is not None and result["max_probability_delta"] < 0.02
-        print(
-            "weights                same network asserted: "
-            + ("probabilities agree" if close else "PROBABILITIES DIFFER")
-        )
-    else:
-        print(
-            "weights                different training run assumed: only the top action is graded"
-        )
-
-    if not result["top_action_matches"]:
-        print(
-            "\nThe top actions differ. Our checkpoint is an independent training run "
-            "(VoidShine/mortal-298k, not the reviewer's network), so occasional "
-            "disagreements are expected; but check the mask columns before blaming "
-            "the weights. Compare the tables action by action.",
-            file=sys.stderr,
-        )
-        return 1
-    if args.same_weights and (result["max_probability_delta"] or 0.0) >= 0.02:
-        print(
-            "\nTop action agrees but the probabilities do not: the observation differs "
-            "from Mortal's even though the decision does not.",
-            file=sys.stderr,
-        )
-        return 1
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+        # Kan handling (daiminkan, ankan, kakan)
+        if action == "kan" or (
+            isinstance(action
