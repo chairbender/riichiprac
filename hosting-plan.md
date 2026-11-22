@@ -456,11 +456,11 @@ is never in the browser's pack chain.
 `replay.ch8-defense.2026-11` (2,211 bases, 2,260,809 body bytes),
 `replay.ch8-defense-multi-threat.2026-11` (764 bases, 591,096 bytes),
 `replay.ch8-completion.2026-11` (386 bases, 330,933 bytes),
-`replay.ch7-riichi-dama.2026-11` (2,846 bases, 2,176,750 bytes),
+`replay.ch7-riichi-dama.2026-11` (2,846 bases, 2,183,692 bytes),
 `replay.ch5-values.2026-11` (1,670 bases, 1,176,300 bytes),
 `replay.ch9-seating-calls.2026-11` (629 bases, 363,061 bytes) and
 `replay.ch34-shapes.2026-11` (822 bases, 724,376 bytes), with a
-5,560-byte manifest (7,623,325 body bytes in total). `scripts/check-ch8-pack.mjs
+5,560-byte manifest (7,630,267 body bytes in total). `scripts/check-ch8-pack.mjs
 --allow-no-variants` checks each pack's content (`--chapter ch7`,
 `--chapter ch5`, `--chapter ch9` and `--chapter ch34` select the ch. 7, ch. 5,
 ch. 9 and ch. 3/4 lesson

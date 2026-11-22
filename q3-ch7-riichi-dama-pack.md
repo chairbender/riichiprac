@@ -8,8 +8,23 @@ classifier v3 (B4 landed the seven-pairs recogniser this pack exercises).
 
 **Shipped artifact:** `frontend/public/scenarios/`, pack
 `replay.ch7-riichi-dama.2026-11`, **2,846 reviewed bases, 0 variants,
-2,176,750 bytes**, six lessons across ch7.1/ch7.2/ch7.3. Every lesson clears the
+2,183,692 bytes**, six lessons across ch7.1/ch7.2/ch7.3. Every lesson clears the
 40-base coverage floor, so all six become **replay-default**.
+
+**Refreshed 2026-11-21 (task 261120-2242).** `dama_improving_hand`'s Details
+line now lists the hand's improving kinds and their live copies instead of the
+generic "at least six kinds" sentence, and names any three-han step. The pack
+was reassembled from the same reviewed queue and republished: every scenario,
+base and lesson count is unchanged; the body is now 2,183,692 bytes (SHA-256
+`e08472e483c58d43a7f3d41030034a87479ee84f085fceae4ceec9911fd0c018`). The Q3
+measurements below are the original 2026-11-19 run; this task's reports are in
+[`testdata/reports/261120-2242/`](testdata/reports/261120-2242/). The only
+per-scenario change is `book_rationale`; the reassembly also stamps the current
+`generator.classifier_version` (4) while the reviewed bases and labels remain
+the Q3 v3 selection.
+`node scripts/check-improving-hand-details.mjs` re-checks the shipped text
+(57/57 bases at this assembly): every listed kind and `(N left)` must agree
+with the tiles visible on the table.
 
 ## Lessons and coverage
 

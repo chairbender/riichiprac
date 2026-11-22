@@ -55,6 +55,29 @@ const GOOD_WAIT_MIN_KINDS: usize = 2;
 /// ... and more than four live tiles.
 const GOOD_WAIT_MIN_TILES: u8 = 5;
 
+/// One improving draw and the ready line it leaves behind.
+///
+/// The Details panel names the improving kinds, so each counted kind carries
+/// the line the count accepted it on: the discard, the wait and the value. The
+/// line is the one with the best han among the draw's qualifying discards
+/// (ties keep the first discard in tile order), so the text reports a real
+/// continuation of the hand rather than a summed-up claim.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Step {
+    /// The drawn kind.
+    pub tile: Tile,
+    /// The discard that leaves the improved ready hand.
+    pub discard: Tile,
+    /// Every winning tile of that hand.
+    pub waits: Vec<Tile>,
+    /// The best han any of those winning tiles scores without Riichi.
+    pub best_han: u8,
+    /// The draw raises the score of every winning tile of that line.
+    pub score: bool,
+    /// The draw turns the wait good where the ready hand's wait was not.
+    pub wait: bool,
+}
+
 /// What one ready hand can draw to improve itself.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Improvement {
@@ -62,8 +85,12 @@ pub(crate) struct Improvement {
     pub tiles: Vec<Tile>,
     /// The kinds whose draw adds at least three han in one step.
     pub big_steps: Vec<Tile>,
+    /// The accepted line for every improving kind, in `tiles` order.
+    pub steps: Vec<Step>,
     /// The hand's han without Riichi at its worst winning tile, with dora.
     pub baseline_han: u8,
+    /// The best han any winning tile now scores without Riichi, with dora.
+    pub baseline_best_han: u8,
 }
 
 impl Improvement {
@@ -95,7 +122,9 @@ impl Improvement {
         Self {
             tiles: Vec::new(),
             big_steps: Vec::new(),
+            steps: Vec::new(),
             baseline_han: 0,
+            baseline_best_han: 0,
         }
     }
 }
@@ -189,6 +218,7 @@ fn count_with(
 
     let mut improving = Vec::new();
     let mut big_steps = Vec::new();
+    let mut steps = Vec::new();
 
     for drawn in ALL_TILES {
         // A winning draw ends the hand; it does not improve a ready hand, and
@@ -205,7 +235,7 @@ fn count_with(
         let mut drawn_counts: HashMap<Tile, u8> = counts.clone();
         *drawn_counts.entry(drawn).or_insert(0) += 1;
 
-        let mut best_line: Option<u8> = None;
+        let mut best_line: Option<Step> = None;
         for discard in ALL_TILES {
             let held = *drawn_counts.get(&discard).unwrap_or(&0);
             if held == 0 {
@@ -243,14 +273,27 @@ fn count_with(
             }
 
             let best = best_han(&kept_tiles, &waits, round_wind, seat_wind, dora);
-            best_line = Some(best_line.map_or(best, |current| current.max(best)));
+            // A draw can have several qualifying discards; the described line
+            // is the one with the highest win, and an equal line keeps the
+            // first discard in tile order.
+            if best_line.as_ref().is_none_or(|line| best > line.best_han) {
+                best_line = Some(Step {
+                    tile: drawn,
+                    discard,
+                    waits,
+                    best_han: best,
+                    score: score_better,
+                    wait: wait_better,
+                });
+            }
         }
 
-        let Some(best) = best_line else {
+        let Some(step) = best_line else {
             continue;
         };
         improving.push(drawn);
-        if best >= base_best.saturating_add(BIG_STEP_HAN) {
+        steps.push(step.clone());
+        if step.best_han >= base_best.saturating_add(BIG_STEP_HAN) {
             big_steps.push(drawn);
         }
     }
@@ -258,11 +301,14 @@ fn count_with(
     improving.sort();
     big_steps.sort();
     big_steps.retain(|tile| improving.contains(tile));
+    steps.sort_by_key(|step| step.tile);
 
     Improvement {
         tiles: improving,
         big_steps,
+        steps,
         baseline_han: base_worst,
+        baseline_best_han: base_best,
     }
 }
 
@@ -340,6 +386,70 @@ mod tests {
         assert!(
             improvement.big_steps.contains(&parse_tile("8s")),
             "8s completes junchan + sanshoku for the six-han step"
+        );
+    }
+
+    /// Every counted kind carries the line it was accepted on, and the line
+    /// really is the hand's best ready continuation: draw the tile, discard
+    /// the recorded tile, and the waits and han match `agari`'s own count.
+    #[test]
+    fn every_improving_kind_records_the_line_it_was_counted_on() {
+        for code in ["3458m345p123678s", "123789m78999p57s"] {
+            let improvement = probe(code);
+            assert_eq!(
+                improvement.steps.len(),
+                improvement.tiles.len(),
+                "{code}: one line per counted kind"
+            );
+
+            for (step, &tile) in improvement.steps.iter().zip(&improvement.tiles) {
+                assert_eq!(step.tile, tile, "{code}: steps are in tile order");
+                let mut hand = hand(code);
+                hand.push(step.tile);
+                let index = hand
+                    .iter()
+                    .position(|held| *held == step.discard)
+                    .unwrap_or_else(|| panic!("{code}: the recorded discard is held"));
+                hand.remove(index);
+
+                assert_eq!(
+                    calculate_shanten(&to_counts(&hand)).shanten,
+                    0,
+                    "{code} + {tile} - {} must be ready",
+                    step.discard
+                );
+                let ukeire = calculate_ukeire(&to_counts(&hand));
+                let waits: Vec<Tile> = ukeire.tiles.iter().map(|entry| entry.tile).collect();
+                assert_eq!(step.waits, waits, "{code} + {tile}");
+                let best = waits
+                    .iter()
+                    .map(|&wait| han_of(&hand, wait, Wind::East, Wind::South, &[]))
+                    .max()
+                    .unwrap_or(0);
+                assert_eq!(step.best_han, best, "{code} + {tile}");
+                assert!(
+                    step.score || step.wait,
+                    "{code} + {tile} must improve the score or the wait"
+                );
+            }
+        }
+    }
+
+    /// The single-step clause reports the real han jump, not a fixed number:
+    /// the book's kanchan hand jumps from a yaku-less wait to a six-han one.
+    #[test]
+    fn a_big_step_records_its_han_jump() {
+        let improvement = probe("123789m78999p57s");
+        let step = improvement
+            .steps
+            .iter()
+            .find(|step| step.tile == parse_tile("8s"))
+            .expect("drawing 8s is the book's three-han step");
+        assert!(
+            step.best_han >= improvement.baseline_best_han + BIG_STEP_HAN,
+            "{} -> {} han",
+            improvement.baseline_best_han,
+            step.best_han
         );
     }
 

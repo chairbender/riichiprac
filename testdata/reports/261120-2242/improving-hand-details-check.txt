@@ -1,0 +1,2 @@
+replay.ch7-riichi-dama.2026-11: 57 dama_improving_hand base(s)
+checked 57 dama_improving_hand base(s), 0 failure(s)
