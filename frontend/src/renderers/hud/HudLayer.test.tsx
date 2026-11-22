@@ -5,8 +5,8 @@
  * What this file proves, in DOM facts rather than pictures:
  *
  * - the shell is one fixed layer whose only always-mounted content is the top
- *   bar, and the top bar carries **Next Scenario and full screen only** — no
- *   title, no scenario name (user decision 2026-11-19);
+ *   bar, and the top bar carries **Next Scenario, full screen and the optional
+ *   About trigger** — no title, no scenario name (user decision 2026-11-19);
  * - the **pre-answer call row** is a bare, isolated row anchored above the
  *   hand's right edge — no panel, no hint line, no Mortal chip (user change
  *   2026-11-21);
@@ -155,6 +155,13 @@ describe('HudLayer: the shell and the top bar', () => {
     expect(
       start.compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it('mounts the supplied About trigger at the bar’s right end', () => {
+    render(<Harness aboutTrigger={<button type="button">?</button>} />);
+    const end = document.querySelector('.hud-top-bar__end') as HTMLElement;
+    // Next, full screen, About: the "?" is the rightmost control.
+    expect(end.lastElementChild?.textContent).toBe('?');
   });
 
   it('wires Next Scenario to the caller and honours its disabled state', () => {

@@ -273,6 +273,36 @@ describe('App 3D HUD mount (3D-H2)', () => {
     expect(screen.getByRole('button', { name: 'Next scenario' })).toBeTruthy();
   });
 
+  it('opens the About panel from the top bar’s ? without re-dealing', async () => {
+    const { container } = renderThree();
+    await waitFor(() => expect(hostMock.props).not.toBeNull());
+
+    const button = screen.getByRole('button', { name: 'About riichiprac' });
+    expect(container.querySelector('.hud-top-bar__end')?.contains(button)).toBe(
+      true,
+    );
+    const before = useGameStore.getState().gameState;
+
+    fireEvent.click(button);
+
+    const dialog = screen.getByRole('dialog', { name: 'About riichiprac' });
+    expect(
+      within(dialog).getByText(/Practice the strategies in Riichi Book I/),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole('link', {
+        name: 'Creative Commons Attribution-NonCommercial 3.0 Unported License',
+      }),
+    ).toBeTruthy();
+    // A view change only: the table, the deal and the scene stay put.
+    expect(useGameStore.getState().gameState).toBe(before);
+    expect(container.querySelector('.table-3d')).not.toBeNull();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(button);
+  });
+
   it('deals the next hand from the top bar through the store’s own handler', async () => {
     const { container } = renderThree();
     await waitFor(() => expect(hostMock.props).not.toBeNull());
@@ -304,6 +334,29 @@ describe('App 3D HUD mount (3D-H2)', () => {
 
     expect(container.querySelector('.hud-root')).toBeNull();
     expect(container.querySelector('.hud-top-bar')).toBeNull();
+  });
+
+  it('opens the About panel from the 2D header’s ? and returns focus to it', async () => {
+    const { container } = renderStacked(hand.state);
+    await waitFor(() =>
+      expect(useGameStore.getState().gameState).not.toBeNull(),
+    );
+
+    const button = screen.getByRole('button', { name: 'About riichiprac' });
+    expect(container.querySelector('.app-header')?.contains(button)).toBe(true);
+    const before = useGameStore.getState().gameState;
+
+    fireEvent.click(button);
+
+    const dialog = screen.getByRole('dialog', { name: 'About riichiprac' });
+    expect(
+      within(dialog).getByText(/I am not a riichi expert/),
+    ).toBeTruthy();
+    expect(useGameStore.getState().gameState).toBe(before);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(button);
   });
 });
 
