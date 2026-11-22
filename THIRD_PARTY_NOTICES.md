@@ -4,6 +4,24 @@ riichiprac is licensed **AGPL-3.0-or-later** (see `LICENSE` and
 `docs/licensing.md`). This file records the third-party works the repository
 derives from, vendors, or distributes, with their licences and provenance.
 
+## Riichi Book 1 — CC BY-NC 3.0
+
+- Work: *Riichi Book 1: A Mahjong Strategy Primer* by **Daina Chiba**.
+- Licence: [Creative Commons
+  Attribution-NonCommercial 3.0 Unported](https://creativecommons.org/licenses/by-nc/3.0/).
+- How it is used: the book is the main inspiration for riichiprac. The lessons
+  encode its heuristics and cite the chapter and section; the verdict panel
+  quotes short passages from the book beside the rule each scenario teaches.
+  The book's full text is not vendored, redistributed, or included in any
+  build.
+- Attribution: the README's "Built on Riichi Book 1" section and the About
+  panel name the book, the author, and the licence.
+- No endorsement: riichiprac is an independent, non-commercial study aid.
+  Daina Chiba has not reviewed or endorsed it.
+- This licence is separate from the repository's AGPL-3.0-or-later code
+  licence. The AGPL does not relicense the book, and the book's CC BY-NC
+  licence does not relicense any code in this repository.
+
 ## Mortal and libriichi — AGPL-3.0
 
 - Upstream: <https://github.com/Equim-chan/Mortal>, including its Rust

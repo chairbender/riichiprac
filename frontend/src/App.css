@@ -512,6 +512,140 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* About ------------------------------------------------------------------- */
+
+/*
+ * The top-right "?" control. It is a compact circular peer of the header's
+ * other buttons; the panel it opens carries the app's credits and the Riichi
+ * Book 1 attribution.
+ */
+.about-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #34506e;
+  border-radius: 999px;
+  background-color: #1a2a3c;
+  color: #a5d8ff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.about-button:hover {
+  background-color: #213b56;
+}
+
+.about-button:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+/* Above the sticky header (40) and the hotseat backdrop (80). */
+.about-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background-color: rgba(5, 8, 13, 0.68);
+  overscroll-behavior: contain;
+}
+
+.about-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(32rem, calc(100vw - 1.5rem));
+  max-height: min(86vh, 42rem);
+  overflow: hidden;
+  border: 1px solid #34506e;
+  border-radius: 14px;
+  background-color: #141b25;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+  color: #c6d4e4;
+}
+
+.about-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #26303d;
+}
+
+.about-panel-title {
+  margin: 0;
+  color: #e7ecf3;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.about-panel-title:focus {
+  outline: none;
+}
+
+.about-panel-close {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #34506e;
+  border-radius: 8px;
+  background-color: transparent;
+  color: #a5d8ff;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.about-panel-close:hover {
+  background-color: #1a2a3c;
+}
+
+.about-panel-close:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+.about-panel-body {
+  padding: 12px 16px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.about-content p {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.about-content p:last-child {
+  margin-bottom: 0;
+}
+
+.about-content a {
+  color: #a5d8ff;
+}
+
+.about-content a:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+.about-content strong {
+  color: #e7ecf3;
+}
+
 /*
  * The post-answer pair (Reset beside Next). One row so Reset never pushes the
  * primary control off screen; Next keeps its full-width dock styling by taking

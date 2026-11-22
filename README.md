@@ -1,6 +1,20 @@
 # riichiprac
 Practice riichi mahjong strategy
 
+## Built on Riichi Book 1
+
+riichiprac is a practice companion to *Riichi Book 1: A Mahjong Strategy
+Primer* by **Daina Chiba**. The book is the main inspiration for this project:
+every lesson names the chapter and section it teaches, the rule it encodes is
+the book's rule, and short quotations from the book appear in the app's rule
+explanations. It is distributed under the
+[Creative Commons Attribution-NonCommercial 3.0 Unported License](https://creativecommons.org/licenses/by-nc/3.0/).
+
+riichiprac is an independent, non-commercial study aid. It is not affiliated
+with, reviewed by, or endorsed by the book's author. The book's licence covers
+the book, not this repository's code: the app itself is AGPL-3.0-or-later (see
+[License](#license) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)).
+
 ## Development
 
 Requires Rust, [`wasm-pack`](https://rustwasm.github.io/wasm-pack/), and Node.js.
@@ -595,6 +609,12 @@ Third-party provenance is in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md): Mortal and libriichi, the
 converted weights, Three.js, the CC0 tile symbols, `agari` and the remaining
 dependencies.
+
+*Riichi Book 1* by Daina Chiba is a separate work under CC BY-NC 3.0; its
+attribution and the "no endorsement" statement are in
+[Built on Riichi Book 1](#built-on-riichi-book-1) above, in the notices file,
+and in the app's About panel. The book's licence does not relicense any code in
+this repository.
 
 The Mortal weights (`mortal_298k.safetensors`) are an AGPL-3.0 work derived from
 [`VoidShine/mortal-298k`](https://huggingface.co/VoidShine/mortal-298k), a

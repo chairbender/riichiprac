@@ -102,6 +102,20 @@
   gap: var(--hud-space);
 }
 
+/*
+ * About (the top-right "?"): the same `AboutButton` the 2D header uses, sized
+ * to the HUD's tap square instead of the 2D header's compact circle. The base
+ * look comes from `.hud-top-bar button`; only the box changes here.
+ */
+.hud-top-bar .about-button {
+  width: var(--hud-tap);
+  height: auto;
+  min-width: var(--hud-tap);
+  padding: 0;
+  border-radius: var(--hud-radius-control);
+  font-weight: 800;
+}
+
 .hud-top-bar button {
   min-height: var(--hud-tap);
   padding: 6px 12px;

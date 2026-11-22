@@ -10,9 +10,9 @@
  * What it owns:
  *
  * - the top bar: the app's name ("riichiprac") on the very top-left with the
- *   setup trigger under it (3D-H4), and next hand + full screen on the right.
- *   Never a scenario or lesson name (user decision 2026-11-19, §1.1): a visible
- *   lesson name is an answer hint;
+ *   setup trigger under it (3D-H4), and next hand + full screen + About on the
+ *   right. Never a scenario or lesson name (user decision 2026-11-19, §1.1): a
+ *   visible lesson name is an answer hint;
  * - the **isolated call row** above the hand (user change 2026-11-21): the
  *   call/action buttons as a bare row, right-aligned to the hand band, with no
  *   panel surface, no hint line and no Mortal chip. It is the only pre-answer
@@ -71,6 +71,11 @@ export interface HudLayerProps {
    * to the setup sheet; the top bar holds no other app chrome (§1.1).
    */
   readonly setupTrigger?: ReactNode;
+  /**
+   * The About panel's "?" control, mounted at the end of the bar (the
+   * top-right). App opens it through the same one-sheet seam as Setup/Verdict.
+   */
+  readonly aboutTrigger?: ReactNode;
   /** The call row's real height: two when it wraps. */
   readonly actionRows?: 1 | 2;
   /**
@@ -156,6 +161,7 @@ export function HudLayer({
   onNextScenario,
   nextDisabled = false,
   setupTrigger,
+  aboutTrigger,
   actionRows = 1,
   callBar,
   resultCard,
@@ -305,6 +311,7 @@ export function HudLayer({
             <div className="hud-top-bar__end">
               <NextScenarioButton onClick={onNextScenario} disabled={nextDisabled} />
               <FullscreenButton target={shellRef} />
+              {aboutTrigger}
             </div>
           </div>
         )}

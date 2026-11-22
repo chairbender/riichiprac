@@ -14,6 +14,13 @@ the shipped WASM ports AGPL-3.0 `libriichi` and Mortal v4 code. See `LICENSE`,
 MIT in docs, comments or UI.
 
 ## 1b. Reference Material: Riichi Book 1 Source
+*Riichi Book 1: A Mahjong Strategy Primer* is by Daina Chiba and is distributed
+under the [Creative Commons Attribution-NonCommercial 3.0 Unported
+License](https://creativecommons.org/licenses/by-nc/3.0/). riichiprac is an
+independent, non-commercial study aid: never imply that the author reviewed or
+endorses it. The book's licence covers the book, not this repository's
+AGPL-3.0-or-later code (see `THIRD_PARTY_NOTICES.md`).
+
 The full text of *Riichi Book 1* is checked out locally at:
 
 ```

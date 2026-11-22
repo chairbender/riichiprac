@@ -14,6 +14,7 @@ import {
   isCallActionType,
   NO_CALL_BUTTONS,
 } from "./callChoices";
+import { AboutButton, AboutContent, AboutDialog } from "./components/AboutPanel";
 import { ActionBar } from "./components/ActionBar";
 import { AppControls } from "./components/AppControls";
 import { ExportImportControls } from "./components/ExportImportControls";
@@ -266,13 +267,22 @@ export const App = () => {
    * opening or closing one never re-deals and never re-grades, a new hand
    * closes it, and at most one sheet exists at a time (`3d_hud.md` §6.5.8).
    */
-  const [hudSheet, setHudSheet] = useState<"setup" | "verdict" | null>(null);
+  const [hudSheet, setHudSheet] = useState<
+    "setup" | "verdict" | "about" | null
+  >(null);
   /*
    * The setup sheet has two pages (2026-11-21): the settings list, and the
    * scenario pool, which needs the whole pane. Escape, a scrim tap or the
    * header's close step back one page before closing the sheet.
    */
   const [setupPage, setSetupPage] = useState<"settings" | "pool">("settings");
+  /**
+   * The 2D About panel. It is presentation state only: opening or closing it
+   * never re-deals and never grades, exactly like the HUD's sheets.
+   */
+  const [aboutOpen, setAboutOpen] = useState(false);
+  /** The 2D "?" control, so focus returns to it when the panel closes. */
+  const aboutButtonRef = useRef<HTMLButtonElement>(null);
   const closeHudSheet = useCallback(() => {
     // Step back to the settings page first; the next close closes the sheet.
     if (hudSheet === "setup" && setupPage === "pool") {
@@ -893,6 +903,9 @@ export const App = () => {
     // nothing about the hand or its grade.
     const next = event.target.value;
     if (!isTableView(next)) return;
+    // The 2D About modal belongs to the shell being left; the 3D view has its
+    // own HUD sheet for it.
+    setAboutOpen(false);
     setTableView(next);
     // 3D-14: an explicit 3D choice is a fresh request, so it clears the
     // session close a degrade left behind instead of being silently ignored.
@@ -1426,8 +1439,30 @@ export const App = () => {
         }
       : null;
 
+  /*
+   * The About panel in the 3D HUD. It is the same body the 2D dialog shows, so
+   * the attribution and the caveats cannot differ between shells; `Sheet` owns
+   * the dialog semantics, focus return and scroll lock.
+   */
+  const hudAboutSheet: HudSheetContent | null =
+    hudSheet === "about"
+      ? {
+          title: "About riichiprac",
+          body: (
+            <div className="hud-about-sheet">
+              <AboutContent />
+            </div>
+          ),
+        }
+      : null;
+
   /** The one open sheet: at most one exists at a time (§6.5.8). */
-  const hudOpenSheet = hudSheet === "verdict" ? hudVerdictSheet : hudSetupSheet;
+  const hudOpenSheet =
+    hudSheet === "verdict"
+      ? hudVerdictSheet
+      : hudSheet === "about"
+        ? hudAboutSheet
+        : hudSetupSheet;
 
   const verdictPanel = gameState ? (
     <VerdictPanel
@@ -1509,6 +1544,12 @@ export const App = () => {
               expanded={hudSheet === "setup"}
             />
           }
+          aboutTrigger={
+            <AboutButton
+              onOpen={() => setHudSheet("about")}
+              expanded={hudSheet === "about"}
+            />
+          }
           actionRows={actionRows}
           callBar={hudCallBar}
           resultCard={hudResultCard}
@@ -1555,8 +1596,22 @@ export const App = () => {
           <h1 className="app-title">riichiprac</h1>
         </div>
 
-        <div className="app-controls">{controls}</div>
+        <div className="app-controls">
+          {controls}
+          <AboutButton
+            buttonRef={aboutButtonRef}
+            onOpen={() => setAboutOpen(true)}
+            expanded={aboutOpen}
+          />
+        </div>
       </header>
+
+      {aboutOpen && (
+        <AboutDialog
+          onClose={() => setAboutOpen(false)}
+          returnFocusRef={aboutButtonRef}
+        />
+      )}
 
       {threeNotice && (
         <div className="three-fallback-notice" role="status">

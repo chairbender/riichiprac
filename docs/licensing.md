@@ -10,6 +10,21 @@ in [`LICENSE`](../LICENSE); the works it derives from are recorded in
 The app ships as `riichiprac_bg.wasm` in the browser, so the AGPL covers the
 deployed web app as well as the source in this repository.
 
+## Riichi Book 1 is a separate work
+
+The lessons are built on *Riichi Book 1: A Mahjong Strategy Primer* by Daina
+Chiba, which is distributed under the [Creative Commons
+Attribution-NonCommercial 3.0 Unported
+License](https://creativecommons.org/licenses/by-nc/3.0/). The app cites the
+book's chapters and quotes short passages in its rule explanations.
+
+That licence covers the book, not this repository. It is separate from the
+AGPL-3.0-or-later licence on the code: the AGPL does not relicense the book,
+and the book's CC BY-NC terms do not relicense the app. The attribution and the
+"no endorsement" statement live in the README's "Built on Riichi Book 1"
+section, [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md#riichi-book-1--cc-by-nc-30)
+and the in-app About panel.
+
 ## Transition (2026-11-22)
 
 Prior to **2026-11-22** this repository was licensed **MIT**. From that date it
