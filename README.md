@@ -37,6 +37,31 @@ the app runs normally and the AI panel reports that the model is unavailable.
 The evaluator is a port of AGPL-3.0 `libriichi`/Mortal code, so the whole project
 is AGPL-3.0-or-later (see [License](#license)).
 
+### 3D renderer
+
+The 3D table lives under `frontend/src/renderers/` (`three/` for the scene,
+`hud/` for the floating chrome) and its carved assets under
+`frontend/public/table/relief3d/`. Start with:
+
+- [`3d_renderer_architecture.md`](3d_renderer_architecture.md) — the as-built
+  architecture, the actual constants, the asset channel table, the tier table,
+  the measurement commands and the known limits.
+- [`3d_renderer_implementation_plan.md`](3d_renderer_implementation_plan.md) — the
+  unit sequence, acceptance criteria, as-built notes and recorded decisions.
+- [`3d_hud.md`](3d_hud.md) — the floating HUD's composition and collision gate.
+
+The 3D gates, with no GPU needed:
+
+```bash
+node frontend/scripts/check-3d-layout.mjs
+node frontend/tools/relief3d/bake-relief3d.mjs --check
+(cd frontend && npm run build && node scripts/check-3d-budget.mjs)
+```
+
+`check-3d-seams.mjs` and `check-3d-pom.mjs` need a real Chrome; they are the
+deploy job's browser checks. The carve bake reads the committed glyph masters
+(`frontend/public/table/faces/`) and never hand-edits an atlas.
+
 ## Book vs. Mortal: how an answer is graded
 
 Every puzzle is graded twice: against the Riichi Book 1 rule the scenario
@@ -90,6 +115,8 @@ The header's **View** select offers three renderings of the same hand: the 3D
 table, the stacked layout and the top-down plan. Switching never re-deals, so
 the answer and any submitted grade stay put. **3D is the default**, taking the
 whole browser window, with the two 2D layouts beside it in the View control.
+(The plan once listed a fourth, 2.5D "rendered" view; it never landed and its
+pipeline was retired — see `docs/2_5d-removal.md`. There are three views.)
 
 - **3D** (default): the real-time three.js table, drawn with the committed tile
   proportions and carved faces, **filling the whole window**. No UI panel sits

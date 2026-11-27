@@ -89,7 +89,9 @@ Before adding geometry, a material or a carve number under
 `frontend/src/renderers/three/`, read the existing source and take the number
 from there. This is a standing rule for every 3D session: a runtime tile that
 invents its own corner radius, blue band or engraving depth is a bug even when
-it renders.
+it renders. The as-built record is `3d_renderer_architecture.md` (constants,
+asset channels, tiers, measurement commands, known limits); the build order and
+each unit's as-built note are in `3d_renderer_implementation_plan.md`.
 
 * **Tile body and material** — `frontend/src/renderers/three/tileGeometry.ts`,
   `tileMaterial.ts` and `layoutConstants.ts` (`TILE`, `TILE_MM`): 21 × 28 ×
@@ -166,7 +168,9 @@ governed by `3d_hud.md`, which is binding on every HUD unit. Facts to build on:
   pick is remembered locally under its own key (`riichiprac.table-view`), separate from the older
   settings blob so a 2D choice stored while 3D was opt-in does not keep anyone out of 3D. A browser
   that cannot run 3D draws the stacked table, says why, and keeps the choice. `?renderer=3d` still
-  overrides for review links. Switching never re-deals.
+  overrides for review links. Switching never re-deals. **There are three views.** The plan once
+  planned a fourth, 2.5D "rendered" view; it never landed and its pipeline was retired
+  (`docs/2_5d-removal.md`), so the README and this list are correct at three.
 * **No skeuomorphism by default:** Do NOT make a physically rich, square Mahjong table the
   default view. (The 3D table is the default *view*; it is the signed-off camera and carve, not a
   modelled room, rails or floors — see §3b.)
