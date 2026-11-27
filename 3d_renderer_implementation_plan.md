@@ -1,6 +1,10 @@
 # 3D renderer implementation plan and task sequence
 
-Status: planning, checked in 2026-11-18; 2.5D references retired 2026-11-19.
+Status: implemented, 2026-11-27. Planning was checked in on 2026-11-18; the
+2.5D references were retired on 2026-11-19. The shipped result, including the
+places where it differs from this plan, is recorded in
+[`3d_renderer_architecture.md`](3d_renderer_architecture.md) and summarised
+under "Implementation status" below.
 Task: 261118-1340 ("3D renderer: review the plan and break it into tasks").
 
 > **Post-merge note (2026-11-19).** The 2.5D render pipeline the early units ran
@@ -11,6 +15,46 @@ Task: 261118-1340 ("3D renderer: review the plan and break it into tasks").
 > owns them in `frontend/src/renderers/layoutConstants.ts` and bakes its carve
 > with `frontend/tools/relief3d/bake-relief3d.mjs`. `docs/2_5d-removal.md`
 > records the keep/delete decision.
+
+## Implementation status (3D-16, 2026-11-27)
+
+The plan is built, with one dependency outstanding (3D-15, below). The as-built
+architecture, constants, asset channels, tier table, measurement protocol and
+known limits are in
+[`3d_renderer_architecture.md`](3d_renderer_architecture.md); this section is the
+short ledger of what shipped and where it departs from the plan.
+
+**Landed:** 3D-01 … 3D-14, 3D-16 (this record), 3D-17 (the 3D-owned carve),
+3D-19 (radial cast shadows), 3D-20 (crevice seams and MSAA), and the whole HUD
+chain 3D-H1 … 3D-H5. 3D-15's full-board stress verification (task
+261118-142130) exists on its own branch,
+`task/261118-142130-3d-r15-full-board-verification-and-sign` (commit
+`e1f5d56`), and is **not merged into this tree**; this docs unit therefore
+records the tree it lands on and leaves 3D-15's fixture/report to that branch.
+
+**Deviations from the planned scope:**
+
+| # | Planned | As built | Why |
+| --- | --- | --- | --- |
+| D1 | Four views (3D, stacked, top-down, 2.5D "rendered") | **Three views**; 3D is the default | The 2.5D pipeline was retired 2026-11-19 before its view landed (`docs/2_5d-removal.md`). |
+| D2 | URL > stored > auto tier, frame-time auto-downgrade | All implemented and tested, but **`high` is forced** and the monitor is off | User decision 2026-11-21: `high` held its frame budget on the phone it was chosen for, and a momentary dip should not silently blur the table. |
+| D3 | Camera at the reference's 76 units | Distance is **solved per aspect** (50.26 at 16:9); the 76-unit floor is deleted | The fit subject is the tiles, not the 700 mm mat; the reference framing read "too far away". |
+| D4 | `antialias: false` | **4× MSAA above `compat`** (+174 MB of buffers at the cap) | 3D-20 measured the bevel/seam step; MSAA is buffers, not shader work, so the POM march is not multiplied. |
+| D5 | Physical carve displacement | `POM_HEIGHT_SCALE = 0.25` of a 0.55 mm integration depth over a 0.495 mm carve | Matches the approved decals' shading-only look; the full physical groove is still normal/AO/self-shadow shaded. |
+| D6 | Static decorative wall | Wall follows `tiles_remaining` (122 live + 14 dead, dead block nudged 0.3 units) | R6 resolved in 261120-2112 from the state that already existed; no Rust field added. |
+| D7 | 3D-14 mounts the scene alone | The floating HUD chain (H1–H5) rides over it | The 2026-11-18 full-window decision; 3D-14's scene-only interim was always a staging point. |
+| D8 | A new revision is always a cut | One exception: the post-answer board is a presentation-only delta at the same revision | Task 261121-1206; the Rust engine and `gameState` are untouched. |
+| D9 | Plate prose in the committed spec | The 3D chain ships the committed **17.92 mm** plate; the retired `relief-spec.json` prose says 20.89 mm | Decision 6 (no rebake). Recorded as information for the retired file's owner in the architecture record §9. |
+| D10 | 3D-16 depends on 3D-15 | 3D-15 is not in this tree (branch above) | Recorded rather than silently satisfied. |
+
+**Gates at this landing:** the frontend gate is green on a POSIX checkout with
+the WASM package built; on the Windows checkout used for this record two
+baseline environment issues (a case-only filename collision in the HUD, and Node
+26's experimental `localStorage`) are documented in the architecture record's
+Appendix A with the exact commands used. The layout and budget gates pass on
+this tree.
+
+---
 
 This document turns the starting proposal
 `3d_carved_tile_renderer_implementation_plan.md` (the reviewer's copy lives at
@@ -2712,6 +2756,21 @@ and any conflict is hand-resolved.
 
 **Gate:** frontend gate (docs-only diff otherwise).
 
+**As built (3D-16, 2026-11-27).** `3d_renderer_architecture.md` (new) records the
+topology, module map, state/motion rules, every table/camera/carve/tier number,
+the asset channel table with pins, the measurement protocol, the known limits and
+an appendix with the landing gate record. `THIRD_PARTY_NOTICES.md` gained a full
+Three.js 0.187.0 MIT notice (and the two dev-only bake dependencies). README's
+Development section gained a 3D-renderer entry point, its view list now says
+three views explicitly, and `AGENTS.md` §3b points a new contributor at this
+record and the plan while §4 records the three-view deviation. This plan's status
+line and "Implementation status" section mark the work implemented and list the
+ten deviations. The stale `relief-spec.json` prose (17.92 mm vs 20.89 mm) is
+recorded in the architecture record §9 as information only; that file was retired
+with the 2.5D pipeline, so no rebake and no request follow. The layout and budget
+gates pass on the landing tree; the Windows-specific gate blockers are recorded
+in the architecture record's Appendix A, not fixed here.
+
 ---
 
 ### 3D-17 — 3D-owned carve rebake at the decal profile
@@ -3206,6 +3265,9 @@ CI gate, so a 2.5D edit cannot turn the 3D gate red.
 
 - [`AGENTS.md`](AGENTS.md) — project rules, including §6 (no agent visual
   sign-off), §4 (view modes) and §3b (the 3D chain's own constants).
+- [`3d_renderer_architecture.md`](3d_renderer_architecture.md) — the as-built
+  record: topology, constants, asset channels, tier table, measurement protocol,
+  known limits and the landing gate record.
 - [`docs/2_5d-removal.md`](docs/2_5d-removal.md) — the retired 2.5D pipeline:
   what was removed, what survived and why. The old `2_5d_*` docs, the
   `tools/render/*` specs and the reference renders are in git history.

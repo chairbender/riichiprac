@@ -66,12 +66,51 @@ derives from, vendors, or distributes, with their licences and provenance.
 - The `riichi-mahjong-tiles` npm package (MIT) supplies the 2D React tile
   components: <https://github.com/SakaiTaka23/riichi-mahjong-tiles>.
 
+## Three.js - MIT
+
+The 3D table ships **three.js 0.187.0** (exact pin, no addons; `@types/three`
+0.187.0 is a dev-only type package). It is a direct runtime dependency and is
+bundled into the lazy 3D chunk.
+
+- Upstream: <https://github.com/mrdoob/three.js>
+- Licence: MIT. Copyright © 2010-2026 three.js authors.
+- The full MIT text, as distributed with the package:
+
+```
+The MIT License
+
+Copyright © 2010-2026 three.js authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+The 3D carve bake (`frontend/tools/relief3d/bake-relief3d.mjs`) is dev-only and
+uses `@napi-rs/canvas` 1.1.1 (MIT). The retained glyph-master baker in
+`tools/render/` uses `@resvg/resvg-js` 2.6.2 (MPL-2.0). Neither is shipped to
+users; their licences are recorded here so the toolchain is auditable.
+
 ## Libraries
 
 Direct dependencies keep their own licences; this repository's
 AGPL-3.0-or-later does not relicense them.
 
-- `three` (MIT) — <https://github.com/mrdoob/three.js>
+- `three` (MIT, 0.187.0) — <https://github.com/mrdoob/three.js> (full notice above)
 - `agari` (MIT) — <https://github.com/agari-industries/agari>
 - `react`, `react-dom`, `zustand` (MIT)
 - `candle-core`, `candle-nn`, `wasm-bindgen`, `serde`, `serde_json`
